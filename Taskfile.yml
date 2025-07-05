@@ -13,6 +13,7 @@ vars:
   NODE_1_IP: 172.29.51.11
   NODE_2_IP: 172.29.51.12
   NODE_3_IP: 172.29.51.13
+  TALOSCONFIG: talos/generated/talosconfig
 
 tasks:
   # Bootstrap tasks
@@ -54,29 +55,64 @@ tasks:
         msg: 'Schematic ID file not found. Run task talos:generate-schematic first.'
 
   talos:generate-config:
-    desc: Generate Talos configuration for all-control-plane cluster
-    deps: [talos:update-installer-images]
+    desc: Generate Talos configuration using talhelper with 1Password integration
+    preconditions:
+      - sh: 'command -v talhelper'
+        msg: 'talhelper is required. Install with: go install github.com/budimanjojo/talhelper/cmd/talhelper@latest'
+      - sh: '[ -n "${OP_ACCOUNT:-}" ]'
+        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=CamiAndGeoff)'
     cmds:
+      - echo "Generating Talos configuration with talhelper and 1Password integration..."
       - mkdir -p talos/generated
       - |
-        talosctl gen config {{.CLUSTER_NAME}} {{.CLUSTER_ENDPOINT}} \
-          --output-dir talos/generated \
-          --with-examples=false \
-          --with-docs=false \
-          --config-patch @talos/patches/cluster.yaml \
-          --config-patch-control-plane @talos/patches/controlplane.yaml
-      - echo "Generated control plane configuration for all nodes"
+        # Check if secrets exist in 1Password first
+        if op item get "Talos Secrets - {{.CLUSTER_NAME}}" &> /dev/null; then
+          echo "Retrieving existing secrets from 1Password..."
+          op item get "Talos Secrets - {{.CLUSTER_NAME}}" --fields label=talsecret --format json | jq -r '.value' > talos/talsecret.yaml
+          echo "Using existing secrets from 1Password"
+        elif [[ -f talos/talsecret.yaml ]]; then
+          echo "Using existing local secrets file..."
+        else
+          echo "Generating new Talos secrets..."
+          talhelper gensecret > talos/talsecret.yaml
+          
+          # Store new secrets in 1Password
+          echo "Storing new secrets in 1Password..."
+          if ! op item get "Talos Secrets - {{.CLUSTER_NAME}}" &> /dev/null; then
+            op item create \
+              --category="Secure Note" \
+              --title="Talos Secrets - {{.CLUSTER_NAME}}" \
+              --vault="Automation" \
+              "talsecret[password]=$(cat talos/talsecret.yaml)"
+          else
+            op item edit "Talos Secrets - {{.CLUSTER_NAME}}" \
+              "talsecret[password]=$(cat talos/talsecret.yaml)"
+          fi
+          echo "Secrets stored in 1Password"
+        fi
+      - |
+        # Generate configuration files
+        echo "Generating Talos configuration files..."
+        talhelper genconfig --secret-file talos/talsecret.yaml
+      - echo "Generated Talos configuration with talhelper"
+      - echo "Configuration files created in clusterconfig/"
 
   talos:apply-config:
     desc: Apply Talos configuration to nodes
     deps: [talos:generate-config]
+    env:
+      TALOSCONFIG: clusterconfig/talosconfig
     cmds:
-      - talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file talos/generated/controlplane.yaml
-      - talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file talos/generated/controlplane.yaml
-      - talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file talos/generated/controlplane.yaml
+      - echo "Applying Talos configuration to all control plane nodes..."
+      - talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
+      - talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
+      - talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
+      - echo "Configuration applied to all nodes"
 
   talos:bootstrap:
     desc: Bootstrap Talos cluster with all control plane nodes
+    env:
+      TALOSCONFIG: clusterconfig/talosconfig
     cmds:
       - echo "Bootstrapping first control plane node..."
       - talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}

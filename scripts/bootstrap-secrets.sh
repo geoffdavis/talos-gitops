@@ -71,6 +71,19 @@ create_1password_items() {
         success "Talos Cluster Secrets - $CLUSTER_NAME item already exists"
     fi
     
+    # Check if Talos PKI certificates item exists
+    if ! op item get "Talos PKI Certificates - $CLUSTER_NAME" &> /dev/null; then
+        log "Creating Talos PKI Certificates - $CLUSTER_NAME item..."
+        op item create \
+            --category="Secure Note" \
+            --title="Talos PKI Certificates - $CLUSTER_NAME" \
+            --vault="Automation" \
+            "notes=Talos PKI certificates will be stored here after first generation"
+        success "Created Talos PKI Certificates - $CLUSTER_NAME item"
+    else
+        success "Talos PKI Certificates - $CLUSTER_NAME item already exists"
+    fi
+    
     # Check if BGP authentication exists
     if ! op item get "BGP Authentication - $CLUSTER_NAME" &> /dev/null; then
         log "Creating BGP Authentication - $CLUSTER_NAME item..."
@@ -242,21 +255,127 @@ cluster:
   secretboxEncryptionSecret: $secretbox_key
 EOF
     
+    # Check if PKI certificates already exist in 1Password
+    local pki_exists=false
+    if op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=machine-ca-crt --format json &> /dev/null; then
+        log "Found existing PKI certificates in 1Password, restoring them..."
+        pki_exists=true
+        
+        # Extract PKI certificates from 1Password
+        local machine_ca_crt machine_ca_key cluster_ca_crt cluster_ca_key etcd_ca_crt etcd_ca_key
+        local aggregator_ca_crt aggregator_ca_key service_account_key
+        
+        machine_ca_crt=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=machine-ca-crt --format json | jq -r '.value')
+        machine_ca_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=machine-ca-key --format json | jq -r '.value')
+        cluster_ca_crt=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=cluster-ca-crt --format json | jq -r '.value')
+        cluster_ca_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=cluster-ca-key --format json | jq -r '.value')
+        etcd_ca_crt=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=etcd-ca-crt --format json | jq -r '.value')
+        etcd_ca_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=etcd-ca-key --format json | jq -r '.value')
+        aggregator_ca_crt=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=aggregator-ca-crt --format json | jq -r '.value')
+        aggregator_ca_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=aggregator-ca-key --format json | jq -r '.value')
+        service_account_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=service-account-key --format json | jq -r '.value')
+        
+        # Create PKI patch file with existing certificates
+        cat > "$temp_dir/pki-patch.yaml" << EOF
+machine:
+  ca:
+    crt: $machine_ca_crt
+    key: $machine_ca_key
+cluster:
+  ca:
+    crt: $cluster_ca_crt
+    key: $cluster_ca_key
+  etcd:
+    ca:
+      crt: $etcd_ca_crt
+      key: $etcd_ca_key
+  aggregatorCA:
+    crt: $aggregator_ca_crt
+    key: $aggregator_ca_key
+  serviceAccount:
+    key: $service_account_key
+EOF
+        
+        success "Existing PKI certificates restored from 1Password"
+    fi
+    
     # Generate Talos configuration
     mkdir -p talos/generated
-    talosctl gen config $CLUSTER_NAME https://172.29.51.10:6443 \
-        --output-dir talos/generated \
-        --with-examples=false \
-        --with-docs=false \
-        --force \
-        --config-patch @talos/patches/cluster.yaml \
-        --config-patch @"$temp_dir/secrets-patch.yaml" \
-        --config-patch-control-plane @talos/patches/controlplane.yaml \
-        --config-patch-worker @talos/patches/worker.yaml
+    if [[ "$pki_exists" == "true" ]]; then
+        # Use existing PKI certificates without --force
+        talosctl gen config $CLUSTER_NAME https://172.29.51.10:6443 \
+            --output-dir talos/generated \
+            --with-examples=false \
+            --with-docs=false \
+            --config-patch @talos/patches/cluster.yaml \
+            --config-patch @"$temp_dir/secrets-patch.yaml" \
+            --config-patch @"$temp_dir/pki-patch.yaml" \
+            --config-patch-control-plane @talos/patches/controlplane.yaml \
+            --config-patch-worker @talos/patches/worker.yaml
+        success "Talos configuration generated with existing PKI certificates"
+    else
+        # Generate new PKI certificates and store them in 1Password
+        talosctl gen config $CLUSTER_NAME https://172.29.51.10:6443 \
+            --output-dir talos/generated \
+            --with-examples=false \
+            --with-docs=false \
+            --force \
+            --config-patch @talos/patches/cluster.yaml \
+            --config-patch @"$temp_dir/secrets-patch.yaml" \
+            --config-patch-control-plane @talos/patches/controlplane.yaml \
+            --config-patch-worker @talos/patches/worker.yaml
+        
+        log "Storing new PKI certificates in 1Password..."
+        
+        # Extract and store PKI certificates from generated configuration files
+        local config_file="talos/generated/controlplane.yaml"
+        if [[ -f "$config_file" ]]; then
+            # Extract machine CA certificate and key
+            local machine_ca_crt machine_ca_key
+            machine_ca_crt=$(yq eval '.machine.ca.crt' "$config_file")
+            machine_ca_key=$(yq eval '.machine.ca.key' "$config_file")
+            
+            # Extract cluster CA certificate and key
+            local cluster_ca_crt cluster_ca_key
+            cluster_ca_crt=$(yq eval '.cluster.ca.crt' "$config_file")
+            cluster_ca_key=$(yq eval '.cluster.ca.key' "$config_file")
+            
+            # Extract etcd CA certificate and key
+            local etcd_ca_crt etcd_ca_key
+            etcd_ca_crt=$(yq eval '.cluster.etcd.ca.crt' "$config_file")
+            etcd_ca_key=$(yq eval '.cluster.etcd.ca.key' "$config_file")
+            
+            # Extract aggregator CA certificate and key
+            local aggregator_ca_crt aggregator_ca_key
+            aggregator_ca_crt=$(yq eval '.cluster.aggregatorCA.crt' "$config_file")
+            aggregator_ca_key=$(yq eval '.cluster.aggregatorCA.key' "$config_file")
+            
+            # Extract service account key
+            local service_account_key
+            service_account_key=$(yq eval '.cluster.serviceAccount.key' "$config_file")
+            
+            # Store all certificates in 1Password
+            op item edit "Talos PKI Certificates - $CLUSTER_NAME" \
+                "machine-ca-crt[password]=$machine_ca_crt" \
+                "machine-ca-key[password]=$machine_ca_key" \
+                "cluster-ca-crt[password]=$cluster_ca_crt" \
+                "cluster-ca-key[password]=$cluster_ca_key" \
+                "etcd-ca-crt[password]=$etcd_ca_crt" \
+                "etcd-ca-key[password]=$etcd_ca_key" \
+                "aggregator-ca-crt[password]=$aggregator_ca_crt" \
+                "aggregator-ca-key[password]=$aggregator_ca_key" \
+                "service-account-key[password]=$service_account_key"
+            
+            success "New PKI certificates stored in 1Password"
+        else
+            warn "Configuration file not found, PKI certificates may not have been generated"
+        fi
+        
+        success "Talos configuration generated with new PKI certificates"
+    fi
     
     # Clean up
     rm -rf "$temp_dir"
-    success "Talos configuration generated with secrets"
 }
 
 # Update secret references in manifests
