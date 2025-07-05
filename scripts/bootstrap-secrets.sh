@@ -57,31 +57,31 @@ create_1password_items() {
     log "Creating 1Password items..."
     
     # Check if Talos cluster secrets item exists
-    if ! op item get "Talos Cluster Secrets" &> /dev/null; then
-        log "Creating Talos Cluster Secrets item..."
+    if ! op item get "Talos Cluster Secrets - $CLUSTER_NAME" &> /dev/null; then
+        log "Creating Talos Cluster Secrets - $CLUSTER_NAME item..."
         op item create \
             --category="Secure Note" \
-            --title="Talos Cluster Secrets" \
+            --title="Talos Cluster Secrets - $CLUSTER_NAME" \
             --vault="Automation" \
             "cluster-secret[password]=$(openssl rand -base64 32)" \
             "bootstrap-token[password]=$(openssl rand -base64 32)" \
             "secretbox-key[password]=$(openssl rand -base64 32)"
-        success "Created Talos Cluster Secrets item"
+        success "Created Talos Cluster Secrets - $CLUSTER_NAME item"
     else
-        success "Talos Cluster Secrets item already exists"
+        success "Talos Cluster Secrets - $CLUSTER_NAME item already exists"
     fi
     
     # Check if BGP authentication exists
-    if ! op item get "BGP Authentication" &> /dev/null; then
-        log "Creating BGP Authentication item..."
+    if ! op item get "BGP Authentication - $CLUSTER_NAME" &> /dev/null; then
+        log "Creating BGP Authentication - $CLUSTER_NAME item..."
         op item create \
             --category="Secure Note" \
-            --title="BGP Authentication" \
+            --title="BGP Authentication - $CLUSTER_NAME" \
             --vault="Automation" \
             "password[password]=$(openssl rand -base64 16)"
-        success "Created BGP Authentication item"
+        success "Created BGP Authentication - $CLUSTER_NAME item"
     else
-        success "BGP Authentication item exists"
+        success "BGP Authentication - $CLUSTER_NAME item exists"
     fi
     
     # Check if Cloudflare API token exists
@@ -101,8 +101,8 @@ create_1password_items() {
     fi
     
     # Check if Longhorn UI credentials exist
-    if ! op item get "Longhorn UI Credentials" &> /dev/null; then
-        log "Creating Longhorn UI Credentials item..."
+    if ! op item get "Longhorn UI Credentials - $CLUSTER_NAME" &> /dev/null; then
+        log "Creating Longhorn UI Credentials - $CLUSTER_NAME item..."
         local password
         password=$(openssl rand -base64 16)
         local auth_string
@@ -110,14 +110,14 @@ create_1password_items() {
         
         op item create \
             --category="Login" \
-            --title="Longhorn UI Credentials" \
+            --title="Longhorn UI Credentials - $CLUSTER_NAME" \
             --vault="Automation" \
             "username=admin" \
             "password=$password" \
             "auth[password]=$auth_string"
-        success "Created Longhorn UI Credentials item"
+        success "Created Longhorn UI Credentials - $CLUSTER_NAME item"
     else
-        success "Longhorn UI Credentials item exists"
+        success "Longhorn UI Credentials - $CLUSTER_NAME item exists"
     fi
 }
 
@@ -130,9 +130,9 @@ bootstrap_cluster_secrets() {
     temp_dir=$(mktemp -d)
     
     # Export secrets to temporary files
-    op item get "Talos Cluster Secrets" --fields label=cluster-secret --format json | jq -r '.value' > "$temp_dir/cluster-secret"
-    op item get "Talos Cluster Secrets" --fields label=bootstrap-token --format json | jq -r '.value' > "$temp_dir/bootstrap-token"
-    op item get "Talos Cluster Secrets" --fields label=secretbox-key --format json | jq -r '.value' > "$temp_dir/secretbox-key"
+    op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=cluster-secret --format json | jq -r '.value' > "$temp_dir/cluster-secret"
+    op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=bootstrap-token --format json | jq -r '.value' > "$temp_dir/bootstrap-token"
+    op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=secretbox-key --format json | jq -r '.value' > "$temp_dir/secretbox-key"
     
     # Create Kubernetes secrets if cluster is accessible
     if kubectl get namespaces &> /dev/null; then
@@ -168,7 +168,7 @@ bootstrap_cluster_secrets() {
         # Create BGP authentication secret
         kubectl create namespace cilium-system --dry-run=client -o yaml | kubectl apply -f -
         
-        if op item get "BGP Authentication" --fields label=password --format json > "$temp_dir/bgp-auth.json" 2>/dev/null; then
+        if op item get "BGP Authentication - $CLUSTER_NAME" --fields label=password --format json > "$temp_dir/bgp-auth.json" 2>/dev/null; then
             local bgp_password
             bgp_password=$(jq -r '.value' "$temp_dir/bgp-auth.json")
             kubectl create secret generic cilium-bgp-auth \
@@ -198,7 +198,7 @@ bootstrap_cluster_secrets() {
         # Create Longhorn auth secret
         kubectl create namespace longhorn-system --dry-run=client -o yaml | kubectl apply -f -
         
-        if op item get "Longhorn UI Credentials" --fields label=auth --format json > "$temp_dir/longhorn-auth.json" 2>/dev/null; then
+        if op item get "Longhorn UI Credentials - $CLUSTER_NAME" --fields label=auth --format json > "$temp_dir/longhorn-auth.json" 2>/dev/null; then
             local auth_string
             auth_string=$(jq -r '.value' "$temp_dir/longhorn-auth.json")
             kubectl create secret generic longhorn-auth \
@@ -229,9 +229,9 @@ generate_talos_config() {
     
     # Export cluster secrets
     local cluster_secret bootstrap_token secretbox_key
-    cluster_secret=$(op item get "Talos Cluster Secrets" --fields label=cluster-secret --format json | jq -r '.value')
-    bootstrap_token=$(op item get "Talos Cluster Secrets" --fields label=bootstrap-token --format json | jq -r '.value')
-    secretbox_key=$(op item get "Talos Cluster Secrets" --fields label=secretbox-key --format json | jq -r '.value')
+    cluster_secret=$(op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=cluster-secret --format json | jq -r '.value')
+    bootstrap_token=$(op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=bootstrap-token --format json | jq -r '.value')
+    secretbox_key=$(op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=secretbox-key --format json | jq -r '.value')
     
     # Create patch file with secrets
     cat > "$temp_dir/secrets-patch.yaml" << EOF
