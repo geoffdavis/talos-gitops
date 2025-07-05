@@ -351,7 +351,7 @@ tasks:
     desc: Run Renovate in dry-run mode to see what updates are available
     cmds:
       - echo "Running Renovate dry-run to check for available updates..."
-      - RENOVATE_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") npx renovate --dry-run .
+      - RENOVATE_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") npx renovate --dry-run geoffdavis/talos-gitops
     preconditions:
       - sh: 'command -v op'
         msg: '1Password CLI (op) is required to retrieve GitHub token'
@@ -363,7 +363,7 @@ tasks:
       - echo "WARNING - This will create actual PRs if updates are found"
       - echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
       - sleep 5
-      - RENOVATE_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") npx renovate .
+      - RENOVATE_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") npx renovate geoffdavis/talos-gitops
     preconditions:
       - sh: 'command -v op'
         msg: '1Password CLI (op) is required to retrieve GitHub token'
