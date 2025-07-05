@@ -362,4 +362,33 @@ task talos:upgrade        # Upgrade Talos version
 task flux:reconcile       # Force GitOps reconciliation
 ```
 
+## Dependency Management
+
+This repository uses Renovate for automated dependency updates. You can also run Renovate manually:
+
+### Manual Renovate Operations
+```bash
+# Install Renovate CLI
+task renovate:install
+
+# Validate Renovate configuration
+task renovate:validate
+
+# Dry-run to see available updates (no changes made)
+task renovate:dry-run
+
+# Run Renovate to create actual PRs (use with caution)
+task renovate:run
+```
+
+### What Renovate Manages
+- **Talos OS versions** (manual review required)
+- **Helm chart versions** in all HelmRelease files
+- **Container images** in all Kubernetes manifests
+- **CLI tools** in `.mise.toml` (kubectl, talosctl, flux, etc.)
+- **Siderolabs extensions** (auto-merged)
+- **Security updates** (prioritized)
+
+Renovate runs automatically on schedule and creates PRs for updates. Check the dependency dashboard issue in your repository for current status.
+
 For detailed deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
