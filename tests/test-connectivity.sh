@@ -1,7 +1,8 @@
 #!/bin/bash
 # Network connectivity tests for Talos GitOps cluster
 
-set -euo pipefail
+# Remove strict error handling to allow script to continue on failures
+# set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
