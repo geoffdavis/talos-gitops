@@ -3,7 +3,9 @@ version: '3'
 vars:
   CLUSTER_NAME: home-ops
   CONTROL_PLANE_SUBNET: 172.29.51.0/24
+  # renovate: datasource=github-releases depName=siderolabs/talos
   TALOS_VERSION: v1.8.1
+  # renovate: datasource=github-releases depName=kubernetes/kubernetes
   KUBERNETES_VERSION: v1.31.1
   CLUSTER_ENDPOINT: https://172.29.51.10:6443
   NODE_1_IP: 172.29.51.11
@@ -321,3 +323,31 @@ tasks:
       - kubectl get ciliumbgpclusterconfig
       - echo "=== LoadBalancer Services ==="
       - kubectl get svc --all-namespaces | grep LoadBalancer
+
+  # Renovate tasks
+  renovate:dry-run:
+    desc: Run Renovate in dry-run mode to see what updates are available
+    cmds:
+      - echo "Running Renovate dry-run to check for available updates..."
+      - npx renovate --dry-run --log-level=info .
+
+  renovate:run:
+    desc: Run Renovate locally (creates actual PRs)
+    cmds:
+      - echo "Running Renovate to create update PRs..."
+      - echo "WARNING - This will create actual PRs if updates are found"
+      - echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
+      - sleep 5
+      - npx renovate --log-level=info .
+
+  renovate:validate:
+    desc: Validate Renovate configuration
+    cmds:
+      - echo "Validating Renovate configuration..."
+      - npx renovate-config-validator .renovaterc.json
+
+  renovate:install:
+    desc: Install Renovate CLI globally
+    cmds:
+      - echo "Installing Renovate CLI..."
+      - npm install -g renovate
