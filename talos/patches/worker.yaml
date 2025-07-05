@@ -4,6 +4,7 @@ machine:
   install:
     installDiskSelector:
       model: APPLE*  # Select Apple internal storage
+    # renovate: datasource=github-releases depName=siderolabs/talos
     image: ghcr.io/siderolabs/talos:v1.8.1
     wipe: false
     extraKernelArgs:
