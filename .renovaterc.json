@@ -1,0 +1,174 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":enableRenovate",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergeDigests",
+    ":automergeBranch"
+  ],
+  "timezone": "America/Los_Angeles",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "commitMessagePrefix": "chore(deps):",
+  "rebaseWhen": "conflicted",
+  "ignorePaths": [
+    "**/talos/generated/**"
+  ],
+  "packageRules": [
+    {
+      "description": "Helm chart updates",
+      "matchManagers": ["flux"],
+      "matchUpdateTypes": ["major"],
+      "enabled": true,
+      "automerge": false,
+      "labels": ["helm", "major"]
+    },
+    {
+      "description": "Helm chart minor/patch updates",
+      "matchManagers": ["flux"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "enabled": true,
+      "automerge": true,
+      "labels": ["helm", "minor-patch"]
+    },
+    {
+      "description": "Container image updates",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["major"],
+      "enabled": true,
+      "automerge": false,
+      "labels": ["container", "major"]
+    },
+    {
+      "description": "Container image minor/patch updates",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "enabled": true,
+      "automerge": true,
+      "labels": ["container", "minor-patch"]
+    },
+    {
+      "description": "Talos OS updates",
+      "matchPackageNames": ["ghcr.io/siderolabs/talos"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": true,
+      "automerge": false,
+      "labels": ["talos", "infrastructure"],
+      "reviewers": ["@gadavis"]
+    },
+    {
+      "description": "Siderolabs extensions",
+      "matchPackageNames": [
+        "ghcr.io/siderolabs/iscsi-tools",
+        "ghcr.io/siderolabs/ext-lldpd",
+        "ghcr.io/siderolabs/usb-modem-drivers",
+        "ghcr.io/siderolabs/thunderbolt"
+      ],
+      "enabled": true,
+      "automerge": true,
+      "labels": ["siderolabs", "extensions"]
+    },
+    {
+      "description": "Critical security updates",
+      "matchPackageNames": [
+        "cilium/cilium",
+        "cert-manager",
+        "ingress-nginx"
+      ],
+      "matchUpdateTypes": ["patch"],
+      "enabled": true,
+      "automerge": false,
+      "labels": ["security", "critical"],
+      "reviewers": ["@gadavis"]
+    },
+    {
+      "description": "mise tool versions",
+      "matchManagers": ["mise"],
+      "enabled": true,
+      "automerge": true,
+      "labels": ["tools", "mise"]
+    },
+    {
+      "description": "Group Flux system updates",
+      "groupName": "Flux system",
+      "matchPackageNames": [
+        "fluxcd/source-controller",
+        "fluxcd/kustomize-controller",
+        "fluxcd/helm-controller",
+        "fluxcd/notification-controller"
+      ],
+      "automerge": false,
+      "labels": ["flux", "system"]
+    }
+  ],
+  "flux": {
+    "fileMatch": [
+      "(^|/)infrastructure/.+\\.ya?ml$",
+      "(^|/)apps/.+\\.ya?ml$",
+      "(^|/)clusters/.+\\.ya?ml$"
+    ]
+  },
+  "kubernetes": {
+    "fileMatch": [
+      "(^|/)infrastructure/.+\\.ya?ml$",
+      "(^|/)apps/.+\\.ya?ml$",
+      "(^|/)clusters/.+\\.ya?ml$"
+    ]
+  },
+  "regexManagers": [
+    {
+      "description": "Update Talos version in comments and docs",
+      "fileMatch": [
+        "(^|/)README\\.md$",
+        "(^|/)docs/.+\\.md$",
+        "(^|/)talos/.+\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=github-releases depName=siderolabs/talos\\s+(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "siderolabs/talos"
+    },
+    {
+      "description": "Update Kubernetes version references",
+      "fileMatch": [
+        "(^|/)README\\.md$",
+        "(^|/)docs/.+\\.md$",
+        "(^|/)Taskfile\\.yml$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=github-releases depName=kubernetes/kubernetes\\s+(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "kubernetes/kubernetes"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update Helm chart versions in HelmRelease files",
+      "fileMatch": [
+        "(^|/)infrastructure/.+\\.ya?ml$",
+        "(^|/)apps/.+\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "chart:\\s+(?<depName>[^\\s]+)\\s+version:\\s+\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "helm"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "reviewers": ["@gadavis"]
+  },
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Dependency Dashboard",
+  "dependencyDashboardHeader": "This issue contains a list of Renovate updates and their statuses.",
+  "dependencyDashboardFooter": "- 🚦 **Red**: Major version updates that require manual review\n- 🟡 **Yellow**: Minor/patch updates that will auto-merge\n- 🟢 **Green**: Successfully updated dependencies"
+}
