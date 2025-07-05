@@ -17,3 +17,5 @@ yq = "4.44.3"
 jq = "1.7.1"
 # renovate: datasource=github-releases depName=go-task/task
 task = "3.38.0"
+# renovate: datasource=node-version depName=node
+node = "20.18.0"
