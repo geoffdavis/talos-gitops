@@ -6,7 +6,7 @@ vars:
   CLUSTER_NAME: home-ops
   CONTROL_PLANE_SUBNET: 172.29.51.0/24
   # renovate: datasource=github-releases depName=siderolabs/talos
-  TALOS_VERSION: v1.10.4
+  TALOS_VERSION: v1.10.5
   # renovate: datasource=github-releases depName=kubernetes/kubernetes
   KUBERNETES_VERSION: v1.31.1
   CLUSTER_ENDPOINT: https://172.29.51.10:6443
@@ -34,8 +34,28 @@ tasks:
       - task: apps:deploy-core
 
   # Talos tasks
+  talos:generate-schematic:
+    desc: Generate custom Talos schematic with extensions via Image Factory
+    cmds:
+      - ./scripts/generate-talos-schematic.sh
+    preconditions:
+      - sh: 'command -v curl'
+        msg: 'curl is required for Image Factory API'
+      - sh: 'command -v jq'
+        msg: 'jq is required for JSON processing'
+
+  talos:update-installer-images:
+    desc: Update machine configurations to use custom installer images
+    deps: [talos:generate-schematic]
+    cmds:
+      - ./scripts/update-installer-images.sh
+    preconditions:
+      - sh: '[ -f talos/generated/schematic-id.txt ]'
+        msg: 'Schematic ID file not found. Run task talos:generate-schematic first.'
+
   talos:generate-config:
     desc: Generate Talos configuration
+    deps: [talos:update-installer-images]
     cmds:
       - mkdir -p talos/generated
       - |

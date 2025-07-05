@@ -2,7 +2,7 @@
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
 kubectl = "1.31.1"
 # renovate: datasource=github-releases depName=siderolabs/talos
-talosctl = "1.10.4"
+talosctl = "1.10.5"
 # renovate: datasource=github-releases depName=fluxcd/flux2
 flux2 = "2.4.0"
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
