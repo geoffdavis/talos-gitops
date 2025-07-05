@@ -62,7 +62,7 @@ create_1password_items() {
         op item create \
             --category="Secure Note" \
             --title="Talos Cluster Secrets" \
-            --vault="Private" \
+            --vault="Automation" \
             "cluster-secret[password]=$(openssl rand -base64 32)" \
             "bootstrap-token[password]=$(openssl rand -base64 32)" \
             "secretbox-key[password]=$(openssl rand -base64 32)"
@@ -77,7 +77,7 @@ create_1password_items() {
         op item create \
             --category="Secure Note" \
             --title="BGP Authentication" \
-            --vault="Private" \
+            --vault="Automation" \
             "password[password]=$(openssl rand -base64 16)"
         success "Created BGP Authentication item"
     else
@@ -87,7 +87,7 @@ create_1password_items() {
     # Check if Cloudflare API token exists
     if ! op item get "Cloudflare API Token" &> /dev/null; then
         warn "Cloudflare API Token item not found. Please create it manually with your Cloudflare API token."
-        echo "  op item create --category='API Credential' --title='Cloudflare API Token' --vault='Private' 'token[password]=YOUR_TOKEN_HERE'"
+        echo "  op item create --category='API Credential' --title='Cloudflare API Token' --vault='Automation' 'token[password]=YOUR_TOKEN_HERE'"
     else
         success "Cloudflare API Token item exists"
     fi
@@ -111,7 +111,7 @@ create_1password_items() {
         op item create \
             --category="Login" \
             --title="Longhorn UI Credentials" \
-            --vault="Private" \
+            --vault="Automation" \
             "username=admin" \
             "password=$password" \
             "auth[password]=$auth_string"
