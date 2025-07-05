@@ -6,7 +6,7 @@ vars:
   CLUSTER_NAME: home-ops
   CONTROL_PLANE_SUBNET: 172.29.51.0/24
   # renovate: datasource=github-releases depName=siderolabs/talos
-  TALOS_VERSION: v1.8.1
+  TALOS_VERSION: v1.10.0
   # renovate: datasource=github-releases depName=kubernetes/kubernetes
   KUBERNETES_VERSION: v1.31.1
   CLUSTER_ENDPOINT: https://172.29.51.10:6443
@@ -19,10 +19,7 @@ tasks:
   bootstrap:secrets:
     desc: Bootstrap secrets from 1Password (requires OP_ACCOUNT environment variable)
     cmds:
-      - op item get "talos-cluster-secrets" --fields label=talosconfig --format json > /tmp/talosconfig.json
-      - op item get "cloudflare-api-token" --fields label=token --format json > /tmp/cf-token.json
-      - op item get "unifi-credentials" --fields label=username,password --format json > /tmp/unifi-creds.json
-      - echo "Secrets bootstrapped successfully"
+      - ./scripts/bootstrap-secrets.sh
     preconditions:
       - sh: '[ -n "$OP_ACCOUNT" ]'
         msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=CamiAndGeoff)'
