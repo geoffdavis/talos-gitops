@@ -13,9 +13,6 @@ machine:
         routes:
           - network: "::/0"
             gateway: "fe80::1"
-  # Force full system reboot for Mac mini USB detection
-  reboot:
-    mode: "hard"
 cluster:
   id: home-ops
   secret: ""

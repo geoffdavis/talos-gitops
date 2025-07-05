@@ -5,13 +5,10 @@ machine:
     installDiskSelector:
       model: APPLE*  # Select Apple internal storage
     # renovate: datasource=github-releases depName=siderolabs/talos
-    image: ghcr.io/siderolabs/talos:v1.8.1
+    image: ghcr.io/siderolabs/talos:v1.10.0
     wipe: false
     extraKernelArgs:
       - talos.logging.kernel=udp://172.29.51.1:514/
-  # Force full system reboot for Mac mini USB detection
-  reboot:
-    mode: "hard"
   network:
     interfaces:
       - interface: eth0
@@ -41,10 +38,10 @@ machine:
           slot: 0
   # Siderolabs extensions for Intel Mac mini
   extensions:
-    - image: ghcr.io/siderolabs/iscsi-tools:20240312-v1.8.0
-    - image: ghcr.io/siderolabs/ext-lldpd:20240312-v1.8.0
-    - image: ghcr.io/siderolabs/usb-modem-drivers:20240312-v1.8.0
-    - image: ghcr.io/siderolabs/thunderbolt:20240312-v1.8.0
+    - image: ghcr.io/siderolabs/iscsi-tools:20241125-v1.10.0
+    - image: ghcr.io/siderolabs/ext-lldpd:20241125-v1.10.0
+    - image: ghcr.io/siderolabs/usb-modem-drivers:20241125-v1.10.0
+    - image: ghcr.io/siderolabs/thunderbolt:20241125-v1.10.0
   disks:
     - device: /dev/disk/by-id/usb-*-1TB  # USB SSD for Longhorn
       partitions:
