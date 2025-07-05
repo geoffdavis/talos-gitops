@@ -36,9 +36,7 @@ machine:
       keys:
         - nodeID: {}
           slot: 0
-  # Essential Siderolabs extensions for Intel Mac mini functionality
-  extensions:
-    - image: ghcr.io/siderolabs/iscsi-tools:v1.10.5
-    - image: ghcr.io/siderolabs/ext-lldpd:v1.10.5
-    - image: ghcr.io/siderolabs/usb-modem-drivers:v1.10.5
-    - image: ghcr.io/siderolabs/thunderbolt:v1.10.5
+  # NOTE: In Talos v1.10+, system extensions are no longer configured in machine config
+  # Extensions must be included in custom installer images or boot assets
+  # See: https://www.talos.dev/v1.10/talos-guides/configuration/system-extensions/
+  # TODO: Create custom installer image with: iscsi-tools, ext-lldpd, usb-modem-drivers, thunderbolt
