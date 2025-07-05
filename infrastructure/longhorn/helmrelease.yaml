@@ -1,0 +1,159 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: longhorn
+      version: "1.6.2"
+      sourceRef:
+        kind: HelmRepository
+        name: longhorn
+        namespace: flux-system
+      interval: 12h
+  values:
+    # Persistence settings for USB SSDs
+    persistence:
+      defaultClass: true
+      defaultClassReplicaCount: 3
+      defaultDataLocality: best-effort
+      reclaimPolicy: Retain
+      migratable: true
+      recurringJobSelector:
+        enable: true
+      backingImage:
+        enable: true
+        cleanupWaitInterval: 60
+      
+    # Default settings optimized for USB SSDs
+    defaultSettings:
+      backupTarget: ""
+      backupTargetCredentialSecret: ""
+      allowRecurringJobWhileVolumeDetached: true
+      createDefaultDiskLabeledNodes: true
+      defaultDataPath: "/var/lib/longhorn"
+      defaultDataLocality: "best-effort"
+      replicaSoftAntiAffinity: true
+      replicaAutoBalance: "best-effort"
+      storageOverProvisioningPercentage: 200
+      storageMinimalAvailablePercentage: 25
+      upgradeChecker: true
+      defaultReplicaCount: 3
+      defaultLonghornStaticStorageClass: "longhorn"
+      backupstorePollInterval: 300
+      failedBackupTTL: 1440
+      restoreVolumeRecurringJobs: true
+      recurringSuccessfulJobsHistoryLimit: 1
+      recurringFailedJobsHistoryLimit: 1
+      supportBundleFailedHistoryLimit: 1
+      taintToleration: "node-role.kubernetes.io/control-plane:NoSchedule"
+      systemManagedComponentsNodeSelector: "kubernetes.io/os:linux"
+      priorityClass: "system-cluster-critical"
+      autoSalvage: true
+      autoDeletePodWhenVolumeDetachedUnexpectedly: true
+      disableSchedulingOnCordonedNode: true
+      replicaZoneSoftAntiAffinity: true
+      nodeDownPodDeletionPolicy: "delete-both-statefulset-and-deployment-pod"
+      allowNodeDrainWithLastHealthyReplica: false
+      mkfsExt4Parameters: "-O ^64bit,^metadata_csum"
+      guaranteedEngineManagerCPU: 12
+      guaranteedReplicaManagerCPU: 12
+      kubernetesClusterAutoscalerEnabled: false
+      orphanAutoDeletion: true
+      storageNetwork: ""
+      deletingConfirmationFlag: true
+      engineReplicaTimeout: 8
+      snapshotDataIntegrity: "fast-check"
+      snapshotDataIntegrityImmediateCheckAfterSnapshotCreation: true
+      snapshotDataIntegrityCronjob: "0 0 */7 * *"
+      removeSnapshotsOnFilesystemFreeze: "enabled"
+      fastReplicaRebuildEnabled: true
+      replicaFileSyncHttpClientTimeout: 30
+      logLevel: "Info"
+      
+    # Ingress configuration
+    ingress:
+      enabled: true
+      ingressClassName: "nginx"
+      host: "longhorn.homelab.local"
+      tls: true
+      tlsSecret: "longhorn-tls"
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        nginx.ingress.kubernetes.io/auth-type: basic
+        nginx.ingress.kubernetes.io/auth-secret: longhorn-auth
+        nginx.ingress.kubernetes.io/auth-realm: "Longhorn Authentication Required"
+        nginx.ingress.kubernetes.io/proxy-body-size: "10000m"
+        
+    # Service configuration
+    service:
+      ui:
+        type: LoadBalancer
+        loadBalancerIP: "172.29.51.150"
+        annotations:
+          io.cilium/lb-ipam-pool: "default"
+        nodePort: null
+        
+    # Enable CSI snapshots
+    csi:
+      kubeletRootDir: "/var/lib/kubelet"
+      attacherReplicaCount: 3
+      provisionerReplicaCount: 3
+      resizerReplicaCount: 3
+      snapshotterReplicaCount: 3
+      
+    # Node selector and tolerations for control plane scheduling
+    longhornManager:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        kubernetes.io/os: linux
+        
+    longhornDriver:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        kubernetes.io/os: linux
+        
+    longhornUI:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        kubernetes.io/os: linux
+        
+    # Resource limits
+    resources:
+      limits:
+        cpu: 200m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+        
+    # Monitoring
+    serviceMonitor:
+      enabled: true
+      
+    # Backup configuration
+    # Note: Configure backup target via External Secrets from 1Password
+    preUpgradeChecker:
+      jobEnabled: true
+      upgradeVersionCheck: true

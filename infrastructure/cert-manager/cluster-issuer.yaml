@@ -1,0 +1,97 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@geoffdavis.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - dns01:
+          cloudflare:
+            email: admin@geoffdavis.com
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - "k8s.home.geoffdavis.com"
+            - "*.k8s.home.geoffdavis.com"
+      - http01:
+          ingress:
+            class: nginx
+            podTemplate:
+              spec:
+                nodeSelector:
+                  kubernetes.io/os: linux
+                tolerations:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+                    effect: NoSchedule
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                    effect: NoSchedule
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@geoffdavis.com
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      - dns01:
+          cloudflare:
+            email: admin@geoffdavis.com
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - "k8s.home.geoffdavis.com"
+            - "*.k8s.home.geoffdavis.com"
+      - http01:
+          ingress:
+            class: nginx
+            podTemplate:
+              spec:
+                nodeSelector:
+                  kubernetes.io/os: linux
+                tolerations:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+                    effect: NoSchedule
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                    effect: NoSchedule
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: cloudflare-api-token
+  namespace: cert-manager
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword-connect
+    kind: ClusterSecretStore
+  target:
+    name: cloudflare-api-token
+    creationPolicy: Owner
+  data:
+    - secretKey: api-token
+      remoteRef:
+        key: "Cloudflare API Token"
+        property: "token"

@@ -1,0 +1,28 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: default-ipv6-pool
+spec:
+  # IPv6 LoadBalancer pool using ULA addresses
+  # Based on fd47:25e1:2f96:51::/64 (VLAN 51)
+  # Reserve fd47:25e1:2f96:51:100::/120 for LoadBalancer services
+  blocks:
+  - cidr: fd47:25e1:2f96:51:100::/120
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default-ipv6-policy
+spec:
+  # Announce IPv6 LoadBalancer IPs via L2
+  loadBalancerIPs: true
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/control-plane: ""
+  interfaces:
+  - eth0
+  # IPv6 service announcement
+  serviceSelector:
+    matchLabels: {}
+  # Enable IPv6 neighbor discovery
+  externalIPs: true

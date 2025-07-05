@@ -1,0 +1,50 @@
+# Talos cluster configuration patch for home-ops
+machine:
+  network:
+    hostname: ""
+    interfaces:
+      - interface: eth0
+        dhcp: true
+        dhcpOptions:
+          ipv6: true
+        vip:
+          ip: 172.29.51.10
+        # Enable IPv6 Router Advertisement
+        routes:
+          - network: "::/0"
+            gateway: "fe80::1"
+  # Force full system reboot for Mac mini USB detection
+  reboot:
+    mode: "hard"
+cluster:
+  id: home-ops
+  secret: ""
+  controlPlane:
+    endpoint: https://172.29.51.10:6443
+  clusterName: home-ops
+  network:
+    dnsDomain: k8s.home.geoffdavis.com
+    podSubnets:
+      - 10.244.0.0/16                          # IPv4 pods
+      - fd47:25e1:2f96:51:2000::/64            # IPv6 pods
+    serviceSubnets:
+      - 10.96.0.0/12                           # IPv4 services
+      - fd47:25e1:2f96:51:1000::/108           # IPv6 services
+    cni:
+      name: none  # We'll install Cilium manually
+  proxy:
+    disabled: true  # Cilium will handle kube-proxy functionality
+  discovery:
+    enabled: true
+    registries:
+      kubernetes:
+        disabled: false
+      service:
+        disabled: false
+  allowSchedulingOnControlPlanes: true
+  apiServer:
+    extraArgs:
+      oidc-issuer-url: https://auth.k8s.home.geoffdavis.com
+      oidc-client-id: kubernetes
+      oidc-username-claim: email
+      oidc-groups-claim: groups
