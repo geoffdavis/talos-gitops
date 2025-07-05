@@ -38,8 +38,12 @@ machine:
       keys:
         - nodeID: {}
           slot: 0
-  # Simplified configuration for initial deployment
-  # Extensions and advanced configs can be added later via cluster upgrades
+  # Essential Siderolabs extensions for Intel Mac mini functionality
+  extensions:
+    - image: ghcr.io/siderolabs/iscsi-tools:v1.10.5
+    - image: ghcr.io/siderolabs/ext-lldpd:v1.10.5
+    - image: ghcr.io/siderolabs/usb-modem-drivers:v1.10.5
+    - image: ghcr.io/siderolabs/thunderbolt:v1.10.5
 cluster:
   allowSchedulingOnControlPlanes: true
   apiServer:
