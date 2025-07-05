@@ -104,54 +104,6 @@
       ],
       "automerge": false,
       "labels": ["flux", "system"]
-    },
-    {
-      "description": "Cilium Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["cilium"],
-      "registryUrls": ["https://helm.cilium.io/"]
-    },
-    {
-      "description": "Longhorn Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["longhorn"],
-      "registryUrls": ["https://charts.longhorn.io"]
-    },
-    {
-      "description": "Cert-manager Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["cert-manager"],
-      "registryUrls": ["https://charts.jetstack.io"]
-    },
-    {
-      "description": "Ingress-nginx Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["ingress-nginx"],
-      "registryUrls": ["https://kubernetes.github.io/ingress-nginx"]
-    },
-    {
-      "description": "External-secrets Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["external-secrets"],
-      "registryUrls": ["https://charts.external-secrets.io"]
-    },
-    {
-      "description": "External-dns Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["external-dns"],
-      "registryUrls": ["https://kubernetes-sigs.github.io/external-dns"]
-    },
-    {
-      "description": "Prometheus stack Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["kube-prometheus-stack"],
-      "registryUrls": ["https://prometheus-community.github.io/helm-charts"]
-    },
-    {
-      "description": "Kubernetes dashboard Helm packages",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["kubernetes-dashboard"],
-      "registryUrls": ["https://kubernetes.github.io/dashboard"]
     }
   ],
   "flux": {
