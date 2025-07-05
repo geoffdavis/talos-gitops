@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflare-tunnel-config
+  namespace: cloudflare-tunnel
+data:
+  config.yaml: |
+    tunnel: home-ops-tunnel
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    metrics: 0.0.0.0:2000
+    no-autoupdate: true
+    
+    ingress:
+      # Grafana - monitoring dashboard
+      - hostname: grafana.geoffdavis.com
+        service: http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
+        
+      # Prometheus - metrics collection
+      - hostname: prometheus.geoffdavis.com
+        service: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+        
+      # Longhorn - storage management (secured with basic auth)
+      - hostname: longhorn.geoffdavis.com
+        service: http://longhorn-frontend.longhorn-system.svc.cluster.local:80
+        
+      # Kubernetes Dashboard (secured) - use HTTP since Cloudflare handles TLS
+      - hostname: k8s.geoffdavis.com
+        service: http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000
+        
+      # AlertManager - alert management
+      - hostname: alerts.geoffdavis.com
+        service: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+        
+      # Hubble UI - network observability
+      - hostname: hubble.geoffdavis.com
+        service: http://hubble-ui.cilium-system.svc.cluster.local:80
+        
+      # Default rule - catch all
+      - service: http_status:404

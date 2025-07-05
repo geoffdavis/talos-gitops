@@ -1,0 +1,323 @@
+version: '3'
+
+vars:
+  CLUSTER_NAME: home-ops
+  CONTROL_PLANE_SUBNET: 172.29.51.0/24
+  TALOS_VERSION: v1.8.1
+  KUBERNETES_VERSION: v1.31.1
+  CLUSTER_ENDPOINT: https://172.29.51.10:6443
+  NODE_1_IP: 172.29.51.11
+  NODE_2_IP: 172.29.51.12
+  NODE_3_IP: 172.29.51.13
+
+tasks:
+  # Bootstrap tasks
+  bootstrap:secrets:
+    desc: Bootstrap secrets from 1Password
+    cmds:
+      - op item get "talos-cluster-secrets" --fields label=talosconfig --format json > /tmp/talosconfig.json
+      - op item get "cloudflare-api-token" --fields label=token --format json > /tmp/cf-token.json
+      - op item get "unifi-credentials" --fields label=username,password --format json > /tmp/unifi-creds.json
+      - echo "Secrets bootstrapped successfully"
+
+  bootstrap:cluster:
+    desc: Bootstrap the entire cluster
+    deps: [bootstrap:secrets, talos:generate-config]
+    cmds:
+      - task: talos:apply-config
+      - task: talos:bootstrap
+      - task: flux:bootstrap
+      - task: apps:deploy-core
+
+  # Talos tasks
+  talos:generate-config:
+    desc: Generate Talos configuration
+    cmds:
+      - mkdir -p talos/generated
+      - |
+        talosctl gen config {{.CLUSTER_NAME}} {{.CLUSTER_ENDPOINT}} \
+          --output-dir talos/generated \
+          --with-examples=false \
+          --with-docs=false \
+          --config-patch @talos/patches/cluster.yaml \
+          --config-patch-control-plane @talos/patches/controlplane.yaml \
+          --config-patch-worker @talos/patches/worker.yaml
+
+  talos:apply-config:
+    desc: Apply Talos configuration to nodes
+    deps: [talos:generate-config]
+    cmds:
+      - talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file talos/generated/controlplane.yaml
+      - talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file talos/generated/controlplane.yaml
+      - talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file talos/generated/controlplane.yaml
+
+  talos:bootstrap:
+    desc: Bootstrap Talos cluster
+    cmds:
+      - talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}
+      - talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --merge=false
+
+  talos:upgrade:
+    desc: Upgrade Talos nodes
+    cmds:
+      - talosctl upgrade --nodes {{.NODE_1_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
+      - talosctl upgrade --nodes {{.NODE_2_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
+      - talosctl upgrade --nodes {{.NODE_3_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
+
+  talos:reboot:
+    desc: Perform hard reboot of all nodes (for USB detection)
+    cmds:
+      - echo "Rebooting nodes with hard reboot for USB device detection..."
+      - talosctl reboot --nodes {{.NODE_1_IP}} --mode=hard
+      - sleep 30
+      - talosctl reboot --nodes {{.NODE_2_IP}} --mode=hard
+      - sleep 30
+      - talosctl reboot --nodes {{.NODE_3_IP}} --mode=hard
+      - echo "All nodes rebooted. Wait for cluster to come back online."
+
+  talos:check-extensions:
+    desc: Check if extensions are loaded on nodes
+    cmds:
+      - echo "Checking extensions on {{.NODE_1_IP}}..."
+      - talosctl get extensions --nodes {{.NODE_1_IP}}
+      - echo "Checking extensions on {{.NODE_2_IP}}..."
+      - talosctl get extensions --nodes {{.NODE_2_IP}}
+      - echo "Checking extensions on {{.NODE_3_IP}}..."
+      - talosctl get extensions --nodes {{.NODE_3_IP}}
+
+  # Flux tasks
+  flux:bootstrap:
+    desc: Bootstrap Flux
+    cmds:
+      - |
+        flux bootstrap github \
+          --owner=gadavis \
+          --repository=home-ops \
+          --branch=main \
+          --path=clusters/homelab \
+          --personal=true \
+          --token-auth
+
+  flux:reconcile:
+    desc: Force Flux reconciliation
+    cmds:
+      - flux reconcile source git flux-system
+      - flux reconcile kustomization flux-system
+
+  # Application deployment
+  apps:deploy-core:
+    desc: Deploy core applications
+    cmds:
+      - task: apps:deploy-cilium
+      - task: apps:deploy-onepassword-connect
+      - task: apps:deploy-longhorn
+      - task: apps:deploy-ingress
+
+  apps:deploy-cilium:
+    desc: Deploy Cilium CNI
+    cmds:
+      - helm repo add cilium https://helm.cilium.io/
+      - helm repo update
+      - helm upgrade --install cilium cilium/cilium -n kube-system -f infrastructure/cilium/values.yaml
+
+  apps:deploy-onepassword-connect:
+    desc: Deploy 1Password Connect
+    cmds:
+      - kubectl apply -f infrastructure/onepassword-connect/
+
+  apps:deploy-longhorn:
+    desc: Deploy Longhorn storage
+    cmds:
+      - helm repo add longhorn https://charts.longhorn.io
+      - helm repo update
+      - helm upgrade --install longhorn longhorn/longhorn -n longhorn-system --create-namespace -f infrastructure/longhorn/values.yaml
+
+  apps:deploy-ingress:
+    desc: Deploy ingress controller
+    cmds:
+      - kubectl apply -f infrastructure/ingress-nginx/
+
+  # BGP Configuration (Multiple Methods)
+  bgp:configure-unifi:
+    desc: Configure BGP on Unifi UDM Pro (via SSH script - legacy method)
+    cmds:
+      - echo "Configuring BGP on Unifi UDM Pro via SSH script..."
+      - scp scripts/unifi-bgp-config.sh unifi-admin@udm-pro:/tmp/
+      - ssh unifi-admin@udm-pro "chmod +x /tmp/unifi-bgp-config.sh && /tmp/unifi-bgp-config.sh"
+
+  bgp:generate-config:
+    desc: Generate BGP configuration file for UniFi UI upload (recommended method)
+    cmds:
+      - echo "BGP configuration file available at scripts/unifi-bgp-config.conf"
+      - echo ""
+      - echo "To upload this configuration:"
+      - echo "1. Open UniFi Network UI"
+      - echo "2. Go to Network > Settings > Routing > BGP"
+      - echo "3. Click 'Upload Configuration'"
+      - echo "4. Select scripts/unifi-bgp-config.conf"
+      - echo "5. Apply the configuration"
+
+  bgp:show-config:
+    desc: Display BGP configuration file contents
+    cmds:
+      - echo "=== BGP Configuration for UniFi UDM Pro ==="
+      - cat scripts/unifi-bgp-config.conf
+
+  bgp:verify-peering:
+    desc: Verify BGP peering status (requires SSH access to UDM Pro)
+    cmds:
+      - echo "Checking BGP peering status on UDM Pro..."
+      - ssh unifi-admin@udm-pro "vtysh -c 'show bgp summary'"
+
+  bgp:verify-peering-ipv6:
+    desc: Verify BGP IPv6 peering status (requires SSH access to UDM Pro)
+    cmds:
+      - echo "Checking BGP IPv6 peering status on UDM Pro..."
+      - ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv6 unicast summary'"
+      - ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv6 unicast neighbors'"
+
+  bgp:show-routes-ipv6:
+    desc: Show BGP IPv6 routes (requires SSH access to UDM Pro)
+    cmds:
+      - echo "Checking BGP IPv6 routes on UDM Pro..."
+      - ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv6 unicast'"
+      - ssh unifi-admin@udm-pro "vtysh -c 'show ipv6 route bgp'"
+
+  # Network diagnostics
+  network:check-lldp:
+    desc: Check LLDP neighbors on all nodes
+    cmds:
+      - echo "Checking LLDP neighbors on {{.NODE_1_IP}}..."
+      - talosctl list /sys/class/net --nodes {{.NODE_1_IP}}
+      - echo "Checking LLDP neighbors on {{.NODE_2_IP}}..."
+      - talosctl list /sys/class/net --nodes {{.NODE_2_IP}}
+      - echo "Checking LLDP neighbors on {{.NODE_3_IP}}..."
+      - talosctl list /sys/class/net --nodes {{.NODE_3_IP}}
+
+  network:check-usb:
+    desc: Check USB device detection on all nodes
+    cmds:
+      - echo "Checking USB devices on {{.NODE_1_IP}}..."
+      - talosctl list /sys/bus/usb/devices --nodes {{.NODE_1_IP}}
+      - echo "Checking USB devices on {{.NODE_2_IP}}..."
+      - talosctl list /sys/bus/usb/devices --nodes {{.NODE_2_IP}}
+      - echo "Checking USB devices on {{.NODE_3_IP}}..."
+      - talosctl list /sys/bus/usb/devices --nodes {{.NODE_3_IP}}
+
+  network:check-ipv6:
+    desc: Check IPv6 configuration on all nodes
+    cmds:
+      - echo "Checking IPv6 addresses on {{.NODE_1_IP}}..."
+      - talosctl read /proc/net/if_inet6 --nodes {{.NODE_1_IP}}
+      - echo "Checking IPv6 addresses on {{.NODE_2_IP}}..."
+      - talosctl read /proc/net/if_inet6 --nodes {{.NODE_2_IP}}
+      - echo "Checking IPv6 addresses on {{.NODE_3_IP}}..."
+      - talosctl read /proc/net/if_inet6 --nodes {{.NODE_3_IP}}
+
+  network:test-ipv6:
+    desc: Test IPv6 connectivity from cluster nodes
+    cmds:
+      - echo "Testing IPv6 connectivity from {{.NODE_1_IP}}..."
+      - talosctl read /proc/net/route --nodes {{.NODE_1_IP}}
+      - echo "Testing IPv6 connectivity from {{.NODE_2_IP}}..."
+      - talosctl read /proc/net/route --nodes {{.NODE_2_IP}}
+      - echo "Testing IPv6 connectivity from {{.NODE_3_IP}}..."
+      - talosctl read /proc/net/route --nodes {{.NODE_3_IP}}
+
+  # Storage diagnostics
+  storage:check-iscsi:
+    desc: Check iSCSI configuration on all nodes
+    cmds:
+      - echo "Checking iSCSI on {{.NODE_1_IP}}..."
+      - talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_1_IP}}
+      - echo "Checking iSCSI on {{.NODE_2_IP}}..."
+      - talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_2_IP}}
+      - echo "Checking iSCSI on {{.NODE_3_IP}}..."
+      - talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_3_IP}}
+
+  storage:check-longhorn:
+    desc: Check Longhorn storage mounts
+    cmds:
+      - kubectl get pods -n longhorn-system
+      - kubectl get nodes -o custom-columns=NAME:.metadata.name,LONGHORN-READY:.status.conditions[?(@.type=="LonghornReady")].status
+
+  # Testing tasks
+  test:all:
+    desc: Run all tests
+    cmds:
+      - task: test:config
+      - task: test:connectivity
+      - task: test:extensions
+
+  test:config:
+    desc: Test configuration validity
+    cmds:
+      - echo "Testing Talos configuration..."
+      - talosctl validate --config talos/generated/controlplane.yaml
+      - echo "Testing Kubernetes manifests..."
+      - kubectl apply --dry-run=client -f clusters/homelab/
+
+  test:connectivity:
+    desc: Test cluster connectivity
+    cmds:
+      - echo "Testing cluster connectivity..."
+      - kubectl get nodes
+      - kubectl get pods --all-namespaces
+
+  test:extensions:
+    desc: Test Talos extensions
+    cmds:
+      - echo "Testing Talos extensions..."
+      - task: talos:check-extensions
+      - task: network:check-usb
+      - task: storage:check-iscsi
+
+  test:ipv6:
+    desc: Test IPv6 configuration and connectivity
+    cmds:
+      - echo "Testing IPv6 configuration..."
+      - task: network:check-ipv6
+      - task: bgp:verify-peering-ipv6
+      - kubectl get svc -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,IPv4:.status.loadBalancer.ingress[*].ip,IPv6:.status.loadBalancer.ingress[*].ip
+
+  # Maintenance tasks
+  maintenance:backup:
+    desc: Backup cluster configuration
+    cmds:
+      - mkdir -p backups/$(date +%Y%m%d-%H%M%S)
+      - kubectl get all --all-namespaces -o yaml > backups/$(date +%Y%m%d-%H%M%S)/cluster-state.yaml
+      - talosctl get machineconfig -o yaml > backups/$(date +%Y%m%d-%H%M%S)/talos-config.yaml
+
+  maintenance:cleanup:
+    desc: Cleanup old resources
+    cmds:
+      - kubectl delete pods --field-selector=status.phase=Succeeded --all-namespaces
+      - kubectl delete pods --field-selector=status.phase=Failed --all-namespaces
+
+  # Development tasks
+  dev:port-forward:
+    desc: Port forward common services
+    cmds:
+      - kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80 &
+      - kubectl port-forward -n onepassword-connect svc/onepassword-connect 8081:8080 &
+      - echo "Services available at localhost:8080 (Longhorn) and localhost:8081 (1Password Connect)"
+
+  dev:logs:
+    desc: Tail logs for debugging
+    cmds:
+      - kubectl logs -f -n kube-system -l app.kubernetes.io/name=cilium
+
+  # Cluster status
+  cluster:status:
+    desc: Show comprehensive cluster status
+    cmds:
+      - echo "=== Cluster Nodes ==="
+      - kubectl get nodes -o wide
+      - echo "=== System Pods ==="
+      - kubectl get pods -n kube-system
+      - echo "=== Longhorn Status ==="
+      - kubectl get pods -n longhorn-system
+      - echo "=== BGP Status ==="
+      - kubectl get ciliumbgpclusterconfig
+      - echo "=== LoadBalancer Services ==="
+      - kubectl get svc --all-namespaces | grep LoadBalancer

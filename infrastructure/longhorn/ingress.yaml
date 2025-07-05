@@ -1,0 +1,60 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: longhorn-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Longhorn Authentication Required"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10000m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns.alpha.kubernetes.io/hostname: "longhorn.k8s.home.geoffdavis.com"
+    external-dns.alpha.kubernetes.io/target: "172.29.51.200"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - longhorn.k8s.home.geoffdavis.com
+      secretName: longhorn-tls
+  rules:
+    - host: longhorn.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: longhorn-frontend
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: longhorn-auth
+  namespace: longhorn-system
+type: Opaque
+data:
+  # Generated via: htpasswd -nb admin <password> | base64
+  # This will be populated by External Secrets from 1Password
+  auth: ""
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: longhorn-auth
+  namespace: longhorn-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword-connect
+    kind: ClusterSecretStore
+  target:
+    name: longhorn-auth
+    creationPolicy: Owner
+  data:
+    - secretKey: auth
+      remoteRef:
+        key: "Longhorn UI Credentials"
+        property: "auth"

@@ -1,0 +1,108 @@
+# Talos control plane configuration patch for Intel Mac mini
+machine:
+  type: controlplane
+  install:
+    installDiskSelector:
+      model: APPLE*  # Select Apple internal storage
+    image: ghcr.io/siderolabs/talos:v1.8.1
+    wipe: false
+    extraKernelArgs:
+      - talos.logging.kernel=udp://172.29.51.1:514/
+  # Force full system reboot for Mac mini USB detection
+  reboot:
+    mode: "hard"
+  network:
+    interfaces:
+      - interface: eth0
+        dhcp: true
+        vip:
+          ip: 172.29.51.10
+  kubelet:
+    extraArgs:
+      feature-gates: GracefulNodeShutdown=true
+      shutdown-grace-period: 30s
+      shutdown-grace-period-critical-pods: 10s
+  time:
+    servers:
+      - time.cloudflare.com
+      - pool.ntp.org
+  sysctls:
+    net.ipv4.ip_forward: "1"
+    net.ipv6.conf.all.forwarding: "1"
+  systemDiskEncryption:
+    ephemeral:
+      provider: luks2
+      keys:
+        - nodeID: {}
+          slot: 0
+    state:
+      provider: luks2
+      keys:
+        - nodeID: {}
+          slot: 0
+  # Siderolabs extensions for Intel Mac mini
+  extensions:
+    - image: ghcr.io/siderolabs/iscsi-tools:20240312-v1.8.0
+    - image: ghcr.io/siderolabs/ext-lldpd:20240312-v1.8.0
+    - image: ghcr.io/siderolabs/usb-modem-drivers:20240312-v1.8.0
+    - image: ghcr.io/siderolabs/thunderbolt:20240312-v1.8.0
+  disks:
+    - device: /dev/disk/by-id/usb-*-1TB  # USB SSD for Longhorn
+      partitions:
+        - mountpoint: /var/lib/longhorn
+          size: 900GB
+          format: ext4
+  files:
+    - content: |
+        [Unit]
+        Description=Longhorn Storage Directory
+        Before=kubelet.service
+        
+        [Mount]
+        What=/dev/disk/by-partlabel/longhorn
+        Where=/var/lib/longhorn
+        Type=ext4
+        Options=defaults
+        
+        [Install]
+        WantedBy=multi-user.target
+      path: /etc/systemd/system/var-lib-longhorn.mount
+      mode: 0644
+    # LLDP daemon configuration
+    - content: |
+        # LLDP daemon configuration for Talos
+        # Enable LLDP transmission and reception
+        configure lldp tx-interval 30
+        configure lldp tx-hold 4
+        configure system hostname $(hostname)
+        configure system description "Talos Linux Kubernetes Node"
+        configure system platform "Intel Mac mini"
+      path: /etc/lldpd.conf
+      mode: 0644
+    # Enable and configure iSCSI for Longhorn
+    - content: |
+        node.startup = automatic
+        node.leading_login = No
+        node.conn[0].startup = manual
+        node.conn[0].iscsi.InitiatorName = iqn.1994-05.com.redhat:$(hostname)
+        discovery.sendtargets.iscsi.MaxRecvDataSegmentLength = 32768
+        node.conn[0].iscsi.MaxRecvDataSegmentLength = 65536
+      path: /etc/iscsi/iscsid.conf
+      mode: 0600
+cluster:
+  allowSchedulingOnControlPlanes: true
+  apiServer:
+    extraArgs:
+      oidc-issuer-url: https://auth.homelab.local
+      oidc-client-id: kubernetes
+      oidc-username-claim: email
+      oidc-groups-claim: groups
+  controllerManager:
+    extraArgs:
+      bind-address: 0.0.0.0
+  scheduler:
+    extraArgs:
+      bind-address: 0.0.0.0
+  etcd:
+    extraArgs:
+      listen-metrics-urls: http://0.0.0.0:2381

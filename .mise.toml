@@ -1,0 +1,10 @@
+[tools]
+kubectl = "1.31.1"
+talosctl = "1.8.1"
+flux = "2.4.0"
+kustomize = "5.4.3"
+helm = "3.16.1"
+cilium = "0.16.16"
+yq = "4.44.3"
+jq = "1.7.1"
+go-task = "3.38.0"

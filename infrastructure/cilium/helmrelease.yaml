@@ -1,0 +1,134 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: cilium-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: cilium
+      version: "1.16.1"
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+      interval: 12h
+  values:
+    # Talos-specific configuration
+    securityContext:
+      privileged: true
+    
+    # CNI Configuration
+    cni:
+      install: true
+      exclusive: false
+    
+    # IPAM Configuration
+    ipam:
+      mode: kubernetes
+    
+    # IPv6 Configuration
+    ipv6:
+      enabled: true
+    
+    # Enable dual-stack networking
+    enableIPv4: true
+    enableIPv6: true
+    
+    # BGP Configuration
+    bgp:
+      enabled: true
+      announce:
+        loadbalancerIP: true
+        podCIDR: true
+        serviceIP: true
+    
+    # API Server Configuration
+    k8sServiceHost: "172.29.51.10"
+    k8sServicePort: 6443
+    
+    # Kube-proxy replacement
+    kubeProxyReplacement: "strict"
+    
+    # Enable Hubble for observability
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+      ui:
+        enabled: true
+        service:
+          type: LoadBalancer
+          annotations:
+            metallb.universe.tf/address-pool: default
+    
+    # Operator configuration
+    operator:
+      replicas: 1
+      rollOutPods: true
+    
+    # Enable native routing
+    routingMode: native
+    autoDirectNodeRoutes: true
+    
+    # Enable local redirect policy
+    localRedirectPolicy: true
+    
+    # Enable bandwidth manager
+    bandwidthManager:
+      enabled: true
+      bbr: true
+    
+    # Enable socket load balancing
+    socketLB:
+      enabled: true
+    
+    # Enable node port acceleration
+    nodePort:
+      enabled: true
+      acceleration: native
+    
+    # Enable host services
+    hostServices:
+      enabled: true
+      protocols: tcp,udp
+    
+    # Enable external IPs
+    externalIPs:
+      enabled: true
+    
+    # Enable node local DNS cache
+    nodeLocalDNS:
+      enabled: false  # Disabled as we're using CoreDNS
+    
+    # Enable L2 announcements
+    l2announcements:
+      enabled: true
+    
+    # Enable gateway API
+    gatewayAPI:
+      enabled: true
+    
+    # Prometheus metrics
+    prometheus:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+    
+    # Resource limits
+    resources:
+      limits:
+        memory: 500Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    
+    # Node selector for control plane scheduling
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule

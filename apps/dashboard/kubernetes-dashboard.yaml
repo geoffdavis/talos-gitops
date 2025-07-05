@@ -1,0 +1,75 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: kubernetes-dashboard
+      version: "7.5.0"
+      sourceRef:
+        kind: HelmRepository
+        name: kubernetes-dashboard
+        namespace: flux-system
+      interval: 12h
+  values:
+    app:
+      ingress:
+        enabled: false  # We'll create our own ingress
+        
+    nginx:
+      enabled: false
+      
+    cert-manager:
+      enabled: false
+      
+    metrics-server:
+      enabled: false
+      
+    kong:
+      enabled: false
+      
+    # Configure the dashboard
+    api:
+      containers:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+          limits:
+            cpu: 200m
+            memory: 400Mi
+      
+      nodeSelector:
+        kubernetes.io/os: linux
+        
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+          
+    web:
+      containers:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
+          limits:
+            cpu: 200m
+            memory: 400Mi
+      
+      nodeSelector:
+        kubernetes.io/os: linux
+        
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule

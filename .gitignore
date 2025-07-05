@@ -1,0 +1,42 @@
+# Talos generated files
+talos/generated/
+
+# Temporary files
+*.tmp
+*.log
+/tmp/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets and credentials (as backup, though they should be in 1Password)
+*.key
+*.crt
+*.pem
+secrets.yaml
+credentials.json
+
+# Test results
+test-results/
+*.xml
+junit.xml
+
+# Backup files
+backups/
+*.backup
+
+# Local development
+.env
+.envrc
+
+# Flux decryption keys (should not be committed)
+sops.yaml
+age.key

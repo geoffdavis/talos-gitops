@@ -1,0 +1,98 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPAdvertisement
+metadata:
+  name: bgp-advertisements
+  namespace: cilium-system
+spec:
+  advertisements:
+    - advertisementType: "Service"
+      service:
+        addresses:
+          - LoadBalancerIP
+          - ExternalIP
+      selector:
+        matchExpressions:
+          - key: somekey
+            operator: NotIn
+            values: ['never-used-value']
+    - advertisementType: "PodCIDR"
+    - advertisementType: "CiliumPodIPPool"
+      selector:
+        matchLabels:
+          io.cilium/lb-ipam-pool: "default"
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cilium-bgp
+  namespace: cilium-system
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  bgpInstances:
+    - name: "main"
+      localASN: 64512
+      peers:
+        - name: "unifi-udm-pro"
+          peerASN: 64513
+          peerAddress: "172.29.51.1"
+          peerConfigRef:
+            name: "cilium-bgp-peer-config"
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPPeerConfig
+metadata:
+  name: cilium-bgp-peer-config
+  namespace: cilium-system
+spec:
+  authSecretRef: cilium-bgp-auth
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 120
+  connectRetryTimeSeconds: 120
+  holdTimeSeconds: 90
+  keepAliveTimeSeconds: 30
+  advertisedPathAttributes:
+    - selectorType: "PodCIDR"
+      attributes:
+        localPreference: 100
+        communities:
+          standard:
+            - "64512:100"
+    - selectorType: "Service"
+      attributes:
+        localPreference: 100
+        communities:
+          standard:
+            - "64512:200"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cilium-bgp-auth
+  namespace: cilium-system
+type: Opaque
+data:
+  # BGP authentication password (base64 encoded)
+  # This will be populated by External Secrets from 1Password
+  password: ""
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: cilium-bgp-auth
+  namespace: cilium-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword-connect
+    kind: ClusterSecretStore
+  target:
+    name: cilium-bgp-auth
+    creationPolicy: Owner
+  data:
+    - secretKey: password
+      remoteRef:
+        key: "BGP Authentication"
+        property: "password"

@@ -1,0 +1,83 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns.alpha.kubernetes.io/hostname: "grafana.k8s.home.geoffdavis.com"
+    external-dns.alpha.kubernetes.io/target: "172.29.51.200"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - grafana.k8s.home.geoffdavis.com
+      secretName: grafana-tls
+  rules:
+    - host: grafana.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-grafana
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns.alpha.kubernetes.io/hostname: "prometheus.k8s.home.geoffdavis.com"
+    external-dns.alpha.kubernetes.io/target: "172.29.51.200"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - prometheus.k8s.home.geoffdavis.com
+      secretName: prometheus-tls
+  rules:
+    - host: prometheus.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-prometheus
+                port:
+                  number: 9090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns.alpha.kubernetes.io/hostname: "alertmanager.k8s.home.geoffdavis.com"
+    external-dns.alpha.kubernetes.io/target: "172.29.51.200"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - alertmanager.k8s.home.geoffdavis.com
+      secretName: alertmanager-tls
+  rules:
+    - host: alertmanager.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-alertmanager
+                port:
+                  number: 9093
