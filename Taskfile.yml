@@ -54,7 +54,7 @@ tasks:
         msg: 'Schematic ID file not found. Run task talos:generate-schematic first.'
 
   talos:generate-config:
-    desc: Generate Talos configuration
+    desc: Generate Talos configuration for all-control-plane cluster
     deps: [talos:update-installer-images]
     cmds:
       - mkdir -p talos/generated
@@ -64,8 +64,8 @@ tasks:
           --with-examples=false \
           --with-docs=false \
           --config-patch @talos/patches/cluster.yaml \
-          --config-patch-control-plane @talos/patches/controlplane.yaml \
-          --config-patch-worker @talos/patches/worker.yaml
+          --config-patch-control-plane @talos/patches/controlplane.yaml
+      - echo "Generated control plane configuration for all nodes"
 
   talos:apply-config:
     desc: Apply Talos configuration to nodes
@@ -76,10 +76,30 @@ tasks:
       - talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file talos/generated/controlplane.yaml
 
   talos:bootstrap:
-    desc: Bootstrap Talos cluster
+    desc: Bootstrap Talos cluster with all control plane nodes
     cmds:
+      - echo "Bootstrapping first control plane node..."
       - talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}
-      - talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --merge=false
+      - echo "Waiting for cluster to initialize..."
+      - sleep 30
+      - echo "Getting kubeconfig from cluster..."
+      - talosctl kubeconfig --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} --endpoints {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} --merge=false
+      - echo "All three nodes are now functioning as control plane nodes"
+
+  talos:convert-to-all-controlplane:
+    desc: Convert existing cluster to all-control-plane setup
+    deps: [talos:generate-config]
+    cmds:
+      - echo "Converting cluster to all-control-plane setup..."
+      - echo "Applying control plane configuration to all nodes..."
+      - talosctl apply-config --nodes {{.NODE_1_IP}} --file talos/generated/controlplane.yaml
+      - talosctl apply-config --nodes {{.NODE_2_IP}} --file talos/generated/controlplane.yaml
+      - talosctl apply-config --nodes {{.NODE_3_IP}} --file talos/generated/controlplane.yaml
+      - echo "Waiting for nodes to restart and join as control planes..."
+      - sleep 60
+      - echo "Verifying cluster status..."
+      - kubectl get nodes -o wide
+      - echo "All nodes should now show as control planes with 'control-plane' role"
 
   talos:upgrade:
     desc: Upgrade Talos nodes
@@ -333,16 +353,29 @@ tasks:
 
   # Cluster status
   cluster:status:
-    desc: Show comprehensive cluster status
+    desc: Show comprehensive cluster status for all-control-plane cluster
     cmds:
-      - echo "=== Cluster Nodes ==="
+      - echo "=== All-Control-Plane Cluster Nodes ==="
       - kubectl get nodes -o wide
+      - echo ""
+      - echo "=== Node Roles (should show 'control-plane' for all nodes) ==="
+      - kubectl get nodes --show-labels | grep "node-role.kubernetes.io"
+      - echo ""
+      - echo "=== etcd Members ==="
+      - kubectl get pods -n kube-system -l component=etcd -o wide
+      - echo ""
+      - echo "=== Control Plane Components ==="
+      - kubectl get pods -n kube-system -l tier=control-plane -o wide
+      - echo ""
       - echo "=== System Pods ==="
       - kubectl get pods -n kube-system
+      - echo ""
       - echo "=== Longhorn Status ==="
       - kubectl get pods -n longhorn-system
+      - echo ""
       - echo "=== BGP Status ==="
       - kubectl get ciliumbgpclusterconfig
+      - echo ""
       - echo "=== LoadBalancer Services ==="
       - kubectl get svc --all-namespaces | grep LoadBalancer
 

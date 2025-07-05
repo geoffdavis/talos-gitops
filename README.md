@@ -7,7 +7,8 @@ This repository contains the configuration and automation for managing a Talos K
 - **Cluster Name**: home-ops
 - **Internal DNS Domain**: k8s.home.geoffdavis.com
 - **External Domain**: geoffdavis.com
-- **Nodes**: 3 Intel Mac mini devices
+- **Architecture**: All-Control-Plane cluster - 3 Intel Mac mini devices functioning as both control plane and worker nodes
+- **High Availability**: etcd cluster spans all 3 nodes for maximum resilience
 - **Storage**: Internal disks for OS, 1TB USB SSDs for Longhorn storage
 - **CNI**: Cilium with BGP peering to Unifi UDM Pro
 - **GitOps**: Flux with Kustomize
@@ -16,6 +17,19 @@ This repository contains the configuration and automation for managing a Talos K
 - **Local Network**: Unifi integration, dual-stack IPv4/IPv6
   - **IPv4**: 172.29.51.0/24 (VLAN 51)
   - **IPv6**: fd47:25e1:2f96:51::/64 (ULA, VLAN 51)
+
+## All-Control-Plane Architecture
+
+This cluster is configured with all three nodes functioning as both control plane and worker nodes, providing:
+
+- **Maximum Resource Utilization**: No dedicated worker nodes means all resources available for workloads
+- **High Availability**: etcd cluster distributed across all 3 nodes
+- **Fault Tolerance**: Cluster remains operational with 1 node failure
+- **Simplified Management**: All nodes have identical configuration
+- **Better Resilience**: Control plane components distributed across all nodes
+
+For detailed information about the all-control-plane setup, conversion procedures, and troubleshooting, see:
+📖 **[All-Control-Plane Setup Guide](docs/ALL_CONTROL_PLANE_SETUP.md)**
 
 ## Mac Mini Specific Features
 
@@ -169,6 +183,8 @@ Before deploying, set up your Cloudflare tunnel:
 
 ## Quick Start
 
+### For New All-Control-Plane Clusters
+
 1. Install dependencies:
    ```bash
    mise install
@@ -179,7 +195,7 @@ Before deploying, set up your Cloudflare tunnel:
    task bootstrap:secrets
    ```
 
-3. Generate Talos configuration:
+3. Generate Talos configuration (all-control-plane setup):
    ```bash
    task talos:generate-config
    ```
@@ -208,6 +224,16 @@ Before deploying, set up your Cloudflare tunnel:
    ```bash
    task flux:bootstrap
    ```
+
+### Converting Existing Cluster to All-Control-Plane
+
+If you have an existing cluster with dedicated worker nodes:
+
+```bash
+task talos:convert-to-all-controlplane
+```
+
+This will safely convert all nodes to control plane nodes with proper configuration updates.
 
 ## Network Configuration
 
