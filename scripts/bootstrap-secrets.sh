@@ -248,6 +248,7 @@ EOF
         --output-dir talos/generated \
         --with-examples=false \
         --with-docs=false \
+        --force \
         --config-patch @talos/patches/cluster.yaml \
         --config-patch @"$temp_dir/secrets-patch.yaml" \
         --config-patch-control-plane @talos/patches/controlplane.yaml \
@@ -275,6 +276,31 @@ update_secret_references() {
     success "Secret references updated"
 }
 
+# Validate GitHub token for Renovate
+validate_github_token() {
+    log "Validating GitHub token for Renovate..."
+    
+    if op item get "GitHub Personal Access Token" &> /dev/null; then
+        # Try different possible field names for the token
+        local token_found=false
+        for field in "token" "password" "credential"; do
+            if op read "op://Private/GitHub Personal Access Token/$field" &> /dev/null 2>&1; then
+                success "GitHub token validated for Renovate (field: $field)"
+                token_found=true
+                break
+            fi
+        done
+        
+        if [[ "$token_found" == "false" ]]; then
+            warn "GitHub Personal Access Token item exists but no valid token field found"
+            warn "Expected fields: token, password, or credential"
+        fi
+    else
+        warn "GitHub Personal Access Token item not found in 1Password"
+        warn "Create it with: op item create --category='API Credential' --title='GitHub Personal Access Token' --vault='Private' 'token[password]=YOUR_TOKEN_HERE'"
+    fi
+}
+
 # Main execution
 main() {
     log "Starting secrets bootstrap process for $CLUSTER_NAME cluster..."
@@ -284,6 +310,7 @@ main() {
     bootstrap_cluster_secrets
     generate_talos_config
     update_secret_references
+    validate_github_token
     
     log "Secrets bootstrap completed successfully!"
     echo ""
