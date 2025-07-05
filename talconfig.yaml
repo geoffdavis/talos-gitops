@@ -1,0 +1,213 @@
+clusterName: home-ops
+endpoint: https://172.29.51.10:6443
+domain: k8s.home.geoffdavis.com
+allowSchedulingOnMasters: true
+additionalApiServerCertSans:
+  - 172.29.51.10
+additionalMachineCertSans: []
+
+# Talos and Kubernetes versions
+talosVersion: v1.10.5
+kubernetesVersion: v1.31.1
+
+# Network configuration
+cniConfig:
+  name: none
+
+# Cluster configuration
+clusterPodNets:
+  - 10.244.0.0/16
+  - fd47:25e1:2f96:51:2000::/64
+clusterSvcNets:
+  - 10.96.0.0/12
+  - fd47:25e1:2f96:51:1000::/108
+
+# Nodes configuration (all as control plane for all-control-plane setup)
+nodes:
+  - hostname: mini01
+    ipAddress: 172.29.51.11
+    controlPlane: true
+    installDiskSelector:
+      model: "APPLE*"
+    schematic:
+      customization:
+        systemExtensions:
+          officialExtensions:
+            - siderolabs/iscsi-tools
+            - siderolabs/lldpd
+            - siderolabs/usb-modem-drivers
+            - siderolabs/thunderbolt
+
+  - hostname: mini02
+    ipAddress: 172.29.51.12
+    controlPlane: true
+    installDiskSelector:
+      model: "APPLE*"
+    schematic:
+      customization:
+        systemExtensions:
+          officialExtensions:
+            - siderolabs/iscsi-tools
+            - siderolabs/lldpd
+            - siderolabs/usb-modem-drivers
+            - siderolabs/thunderbolt
+
+  - hostname: mini03
+    ipAddress: 172.29.51.13
+    controlPlane: true
+    installDiskSelector:
+      model: "APPLE*"
+    schematic:
+      customization:
+        systemExtensions:
+          officialExtensions:
+            - siderolabs/iscsi-tools
+            - siderolabs/lldpd
+            - siderolabs/usb-modem-drivers
+            - siderolabs/thunderbolt
+
+# Control plane patches
+controlPlane:
+  patches:
+    # Install configuration
+    - |-
+      machine:
+        install:
+          extraKernelArgs:
+            - talos.logging.kernel=udp://172.29.51.1:514/
+          wipe: false
+
+    # Network configuration
+    - |-
+      machine:
+        network:
+          interfaces:
+            - interface: eth0
+              routes:
+                - network: "::/0"
+                  gateway: "fe80::1"
+              dhcp: true
+              dhcpOptions:
+                routeMetric: 1024
+                ipv6: true
+              vip:
+                ip: 172.29.51.10
+
+    # Kubelet configuration (fix for Kubernetes v1.31.1)
+    - |-
+      machine:
+        kubelet:
+          extraArgs:
+            feature-gates: GracefulNodeShutdown=true
+          extraConfig:
+            shutdownGracePeriod: 30s
+            shutdownGracePeriodCriticalPods: 10s
+
+    # System configuration
+    - |-
+      machine:
+        sysctls:
+          net.ipv4.ip_forward: "1"
+          net.ipv6.conf.all.forwarding: "1"
+        systemDiskEncryption:
+          state:
+            provider: luks2
+            keys:
+              - nodeID: {}
+                slot: 0
+          ephemeral:
+            provider: luks2
+            keys:
+              - nodeID: {}
+                slot: 0
+        features:
+          rbac: true
+          stableHostname: true
+          apidCheckExtKeyUsage: true
+          diskQuotaSupport: true
+          kubePrism:
+            enabled: true
+            port: 7445
+          hostDNS:
+            enabled: true
+            forwardKubeDNSToHost: true
+        nodeLabels:
+          node.kubernetes.io/exclude-from-external-load-balancers: ""
+
+    # Kubernetes API server configuration
+    - |-
+      cluster:
+        apiServer:
+          extraArgs:
+            oidc-client-id: kubernetes
+            oidc-groups-claim: groups
+            oidc-issuer-url: https://auth.homelab.local
+            oidc-username-claim: email
+          disablePodSecurityPolicy: true
+          admissionControl:
+            - name: PodSecurity
+              configuration:
+                apiVersion: pod-security.admission.config.k8s.io/v1alpha1
+                kind: PodSecurityConfiguration
+                defaults:
+                  enforce: baseline
+                  enforce-version: latest
+                  audit: restricted
+                  audit-version: latest
+                  warn: restricted
+                  warn-version: latest
+                exemptions:
+                  usernames: []
+                  runtimeClasses: []
+                  namespaces: [kube-system]
+          auditPolicy:
+            apiVersion: audit.k8s.io/v1
+            kind: Policy
+            rules:
+              - level: Metadata
+
+    # Controller manager configuration
+    - |-
+      cluster:
+        controllerManager:
+          extraArgs:
+            bind-address: 0.0.0.0
+            leader-elect-lease-duration: 15s
+            leader-elect-renew-deadline: 10s
+            leader-elect-retry-period: 2s
+
+    # Scheduler configuration
+    - |-
+      cluster:
+        scheduler:
+          extraArgs:
+            bind-address: 0.0.0.0
+            leader-elect-lease-duration: 15s
+            leader-elect-renew-deadline: 10s
+            leader-elect-retry-period: 2s
+
+    # etcd configuration
+    - |-
+      cluster:
+        etcd:
+          extraArgs:
+            election-timeout: "1000"
+            heartbeat-interval: "100"
+            listen-metrics-urls: http://0.0.0.0:2381
+
+    # Disable kube-proxy (using Cilium)
+    - |-
+      cluster:
+        proxy:
+          disabled: true
+
+    # Discovery configuration
+    - |-
+      cluster:
+        discovery:
+          enabled: true
+          registries:
+            kubernetes:
+              disabled: false
+            service:
+              disabled: false
