@@ -5,7 +5,6 @@
     ":enableRenovate",
     ":dependencyDashboard",
     ":semanticCommits",
-    ":automergeDigests",
     ":automergeBranch"
   ],
   "timezone": "America/Los_Angeles",
