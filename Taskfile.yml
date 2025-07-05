@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 vars:
   CLUSTER_NAME: home-ops
   CONTROL_PLANE_SUBNET: 172.29.51.0/24
@@ -15,12 +17,15 @@ vars:
 tasks:
   # Bootstrap tasks
   bootstrap:secrets:
-    desc: Bootstrap secrets from 1Password
+    desc: Bootstrap secrets from 1Password (requires OP_ACCOUNT environment variable)
     cmds:
       - op item get "talos-cluster-secrets" --fields label=talosconfig --format json > /tmp/talosconfig.json
       - op item get "cloudflare-api-token" --fields label=token --format json > /tmp/cf-token.json
       - op item get "unifi-credentials" --fields label=username,password --format json > /tmp/unifi-creds.json
       - echo "Secrets bootstrapped successfully"
+    preconditions:
+      - sh: '[ -n "$OP_ACCOUNT" ]'
+        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=CamiAndGeoff)'
 
   bootstrap:cluster:
     desc: Bootstrap the entire cluster

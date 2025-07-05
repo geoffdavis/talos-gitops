@@ -117,6 +117,24 @@ geoffdavis.com (external via Cloudflare tunnel)
 - 3 Intel Mac mini devices with USB SSDs
 - Existing `home.geoffdavis.com` domain setup
 
+## Environment Setup
+
+1. **Create environment file**:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Configure 1Password account**:
+   Edit `.env` and set your 1Password account:
+   ```bash
+   OP_ACCOUNT=YourAccountName
+   ```
+
+3. **Install tools**:
+   ```bash
+   mise install
+   ```
+
 ## Cloudflare Setup
 
 Before deploying, set up your Cloudflare tunnel:

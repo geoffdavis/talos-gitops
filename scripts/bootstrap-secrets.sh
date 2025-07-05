@@ -41,6 +41,10 @@ check_prerequisites() {
         error "1Password CLI is not authenticated. Please run 'op signin' first."
     fi
     
+    if [[ -z "${OP_ACCOUNT:-}" ]]; then
+        error "OP_ACCOUNT environment variable is not set. Please export OP_ACCOUNT=your-account-name"
+    fi
+    
     if ! command -v kubectl &> /dev/null; then
         error "kubectl is not installed. Please install it first."
     fi
