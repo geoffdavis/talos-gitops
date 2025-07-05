@@ -2,10 +2,10 @@
 machine:
   type: worker
   install:
-    installDiskSelector:
+    diskSelector:
       model: APPLE*  # Select Apple internal storage
     # renovate: datasource=github-releases depName=siderolabs/talos
-    image: ghcr.io/siderolabs/talos:v1.10.0
+    image: ghcr.io/siderolabs/talos:v1.10.4
     wipe: false
     extraKernelArgs:
       - talos.logging.kernel=udp://172.29.51.1:514/
@@ -36,52 +36,5 @@ machine:
       keys:
         - nodeID: {}
           slot: 0
-  # Siderolabs extensions for Intel Mac mini
-  extensions:
-    - image: ghcr.io/siderolabs/iscsi-tools:20241125-v1.10.0
-    - image: ghcr.io/siderolabs/ext-lldpd:20241125-v1.10.0
-    - image: ghcr.io/siderolabs/usb-modem-drivers:20241125-v1.10.0
-    - image: ghcr.io/siderolabs/thunderbolt:20241125-v1.10.0
-  disks:
-    - device: /dev/disk/by-id/usb-*-1TB  # USB SSD for Longhorn
-      partitions:
-        - mountpoint: /var/lib/longhorn
-          size: 900GB
-          format: ext4
-  files:
-    - content: |
-        [Unit]
-        Description=Longhorn Storage Directory
-        Before=kubelet.service
-        
-        [Mount]
-        What=/dev/disk/by-partlabel/longhorn
-        Where=/var/lib/longhorn
-        Type=ext4
-        Options=defaults
-        
-        [Install]
-        WantedBy=multi-user.target
-      path: /etc/systemd/system/var-lib-longhorn.mount
-      mode: 0644
-    # LLDP daemon configuration
-    - content: |
-        # LLDP daemon configuration for Talos
-        # Enable LLDP transmission and reception
-        configure lldp tx-interval 30
-        configure lldp tx-hold 4
-        configure system hostname $(hostname)
-        configure system description "Talos Linux Kubernetes Node"
-        configure system platform "Intel Mac mini"
-      path: /etc/lldpd.conf
-      mode: 0644
-    # Enable and configure iSCSI for Longhorn
-    - content: |
-        node.startup = automatic
-        node.leading_login = No
-        node.conn[0].startup = manual
-        node.conn[0].iscsi.InitiatorName = iqn.1994-05.com.redhat:$(hostname)
-        discovery.sendtargets.iscsi.MaxRecvDataSegmentLength = 32768
-        node.conn[0].iscsi.MaxRecvDataSegmentLength = 65536
-      path: /etc/iscsi/iscsid.conf
-      mode: 0600
+  # Simplified configuration for initial deployment
+  # Extensions and advanced configs can be added later via cluster upgrades
