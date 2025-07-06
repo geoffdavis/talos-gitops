@@ -1,6 +1,6 @@
 clusterName: home-ops
 endpoint: https://172.29.51.10:6443
-domain: k8s.home.geoffdavis.com
+# domain: k8s.home.geoffdavis.com  # Using default cluster.local
 allowSchedulingOnMasters: true
 additionalApiServerCertSans:
   - 172.29.51.10
@@ -82,7 +82,7 @@ controlPlane:
       machine:
         network:
           interfaces:
-            - interface: eth0
+            - interface: enp3s0f0
               routes:
                 - network: "::/0"
                   gateway: "fe80::1"
@@ -109,6 +109,7 @@ controlPlane:
         sysctls:
           net.ipv4.ip_forward: "1"
           net.ipv6.conf.all.forwarding: "1"
+          kernel.kexec_load_disabled: "1"  # Disable kexec for Mac mini USB support
         systemDiskEncryption:
           state:
             provider: luks2
@@ -141,7 +142,7 @@ controlPlane:
           extraArgs:
             oidc-client-id: kubernetes
             oidc-groups-claim: groups
-            oidc-issuer-url: https://auth.homelab.local
+            oidc-issuer-url: https://auth.k8s.home.geoffdavis.com
             oidc-username-claim: email
           disablePodSecurityPolicy: true
           admissionControl:
