@@ -5,6 +5,5 @@ resources:
   - namespace.yaml
   - helmrelease.yaml
   - bgp-policy.yaml
-  - bgp-peering-policy.yaml
   - loadbalancer-pool.yaml
   - loadbalancer-pool-ipv6.yaml
