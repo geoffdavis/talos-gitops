@@ -153,9 +153,34 @@ tasks:
       TALOSCONFIG: clusterconfig/talosconfig
     cmds:
       - echo "Applying Talos configuration to all control plane nodes..."
-      - talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
-      - talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
-      - talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
+      - |
+        # Try with talosconfig first, fall back to insecure if needed
+        talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml || \
+        talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
+      - |
+        talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml || \
+        talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
+      - |
+        talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml || \
+        talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
+      - echo "Configuration applied to all nodes"
+
+  talos:apply-config-only:
+    desc: Apply Talos configuration to nodes (without regenerating)
+    env:
+      TALOSCONFIG: clusterconfig/talosconfig
+    cmds:
+      - echo "Applying Talos configuration to all control plane nodes..."
+      - |
+        # Try with talosconfig first, fall back to insecure if needed
+        talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml || \
+        talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
+      - |
+        talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml || \
+        talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
+      - |
+        talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml || \
+        talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
       - echo "Configuration applied to all nodes"
 
   talos:bootstrap:
@@ -194,15 +219,25 @@ tasks:
       - talosctl upgrade --nodes {{.NODE_3_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
 
   talos:reboot:
-    desc: Perform hard reboot of all nodes (for USB detection)
+    desc: Reboot specified nodes or all nodes (for USB detection)
+    env:
+      TALOSCONFIG: clusterconfig/talosconfig
+    vars:
+      NODES: '{{.NODES | default "all"}}'
     cmds:
-      - echo "Rebooting nodes with hard reboot for USB device detection..."
-      - talosctl reboot --nodes {{.NODE_1_IP}} --mode=hard
-      - sleep 30
-      - talosctl reboot --nodes {{.NODE_2_IP}} --mode=hard
-      - sleep 30
-      - talosctl reboot --nodes {{.NODE_3_IP}} --mode=hard
-      - echo "All nodes rebooted. Wait for cluster to come back online."
+      - |
+        if [ "{{.NODES}}" = "all" ]; then
+          echo "Rebooting all nodes for USB device detection..."
+          talosctl reboot --nodes {{.NODE_1_IP}}
+          sleep 30
+          talosctl reboot --nodes {{.NODE_2_IP}}
+          sleep 30
+          talosctl reboot --nodes {{.NODE_3_IP}}
+          echo "All nodes rebooted. Wait for cluster to come back online."
+        else
+          echo "Rebooting node(s): {{.NODES}}"
+          talosctl reboot --nodes {{.NODES}}
+        fi
 
   talos:check-extensions:
     desc: Check if extensions are loaded on nodes
@@ -257,16 +292,20 @@ tasks:
 
   # Flux tasks
   flux:bootstrap:
-    desc: Bootstrap Flux
+    desc: Bootstrap Flux GitOps with 1Password integration
+    preconditions:
+      - sh: 'command -v op'
+        msg: '1Password CLI (op) is required to retrieve GitHub token'
     cmds:
+      - echo "Bootstrapping Flux GitOps..."
       - |
+        export GITHUB_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") && \
         flux bootstrap github \
-          --owner=gadavis \
-          --repository=home-ops \
+          --owner=geoffdavis \
+          --repository=talos-gitops \
           --branch=main \
           --path=clusters/homelab \
-          --personal=true \
-          --token-auth
+          --personal=true
 
   flux:reconcile:
     desc: Force Flux reconciliation
@@ -286,7 +325,7 @@ tasks:
   apps:deploy-cilium:
     desc: Deploy Cilium CNI for Talos (with kube-proxy replacement)
     cmds:
-      - helm repo add cilium https://helm.cilium.io/
+      - helm repo add cilium https://helm.cilium.io/ || true
       - helm repo update
       - |
         helm upgrade --install cilium cilium/cilium \

@@ -70,7 +70,9 @@ For Talos clusters without kube-proxy, Cilium requires specific configuration:
 helm upgrade --install cilium cilium/cilium \
     --version 1.15.6 \
     --namespace kube-system \
-    --set ipam.mode=kubernetes \
+    --set ipam.mode=cluster-pool \
+    --set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16" \
+    --set ipam.operator.clusterPoolIPv4MaskSize=24 \
     --set kubeProxyReplacement=true \
     --set securityContext.capabilities.ciliumAgent="{CHOWN,KILL,NET_ADMIN,NET_RAW,IPC_LOCK,SYS_ADMIN,SYS_RESOURCE,DAC_OVERRIDE,FOWNER,SETGID,SETUID}" \
     --set securityContext.capabilities.cleanCiliumState="{NET_ADMIN,SYS_ADMIN,SYS_RESOURCE}" \
@@ -133,9 +135,47 @@ If Cilium pods are in CrashLoopBackOff:
 2. Ensure Cilium is configured with the correct k8sServiceHost and k8sServicePort
 3. Verify the capabilities are set correctly (no SYS_MODULE for Talos)
 
+### API Server Failed to Start
+
+If the API server is in CrashLoopBackOff or continuously exiting:
+
+1. **Check API server logs**:
+   ```bash
+   talosctl list /var/log/pods --nodes <node-ip> | grep kube-apiserver
+   talosctl read /var/log/pods/<apiserver-pod-dir>/kube-apiserver/<latest>.log --nodes <node-ip>
+   ```
+
+2. **Common issues**:
+   - **OIDC configuration errors**: Ensure the OIDC issuer URL is accessible
+   - **PodSecurity admission errors**: Check for duplicate namespaces in exemptions (talhelper bug)
+   - **Certificate errors**: Verify all certificates are valid
+
+3. **Fix and restart**:
+   - Fix configuration issues in `talconfig.yaml`
+   - If fixing generated files manually, use `task talos:apply-config-only`
+   - Restart kubelet to force static pod recreation:
+     ```bash
+     talosctl service kubelet restart --nodes <node-ip>
+     ```
+
 ### Nodes Not Ready
 
 If nodes remain NotReady after Cilium fix:
 1. Check Cilium pod logs: `kubectl logs -n kube-system -l k8s-app=cilium`
 2. Verify CoreDNS pods are running
 3. Check node logs: `talosctl logs -n <node-ip>`
+
+## Known Issues
+
+### talhelper Configuration Generation
+
+- **Duplicate namespace exemptions**: talhelper may generate duplicate entries in PodSecurity exemptions. After generating config, check for duplicates:
+  ```bash
+  grep -A2 "kube-system" clusterconfig/home-ops-mini*.yaml
+  ```
+  If duplicates exist, manually fix them before applying.
+
+### Mac Mini Specific
+
+- **USB devices not detected**: Ensure `kernel.kexec_load_disabled: "1"` is set in sysctls
+- **Network interface names**: Mac minis use `enp3s0f0` not `eth0`
