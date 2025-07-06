@@ -17,11 +17,14 @@ This document details the issues encountered during the cluster rebuild and the 
 ### 2. API Server Failed to Start
 
 **Problem**: The kube-apiserver failed to start with two errors:
+
 - OIDC authenticator initialization failed trying to connect to `https://auth.homelab.local`
 - PodSecurity admission plugin error due to duplicate `kube-system` namespace in exemptions
 
-**Fix**: 
+**Fix**:
+
 1. Updated OIDC issuer URL in `talconfig.yaml` to the correct domain:
+
    ```yaml
    oidc-issuer-url: https://auth.k8s.home.geoffdavis.com
    ```
@@ -98,7 +101,7 @@ Updated `apps:deploy-cilium` to handle existing helm repo:
 3. **Generated new configuration**: `task talos:generate-config`
 4. **Applied configuration**: `task talos:apply-config`
 5. **Bootstrapped cluster**: `task talos:bootstrap`
-6. **Fixed API server issues**: 
+6. **Fixed API server issues**:
    - Manually fixed duplicate namespace in generated configs
    - Applied configuration without regenerating
    - Restarted kubelet to force static pod recreation
