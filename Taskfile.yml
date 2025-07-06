@@ -432,6 +432,7 @@ tasks:
       - task: test:config
       - task: test:connectivity
       - task: test:extensions
+      - task: test:recovery
 
   test:config:
     desc: Test configuration validity
@@ -463,6 +464,12 @@ tasks:
       - task: network:check-ipv6
       - task: bgp:verify-peering-ipv6
       - kubectl get svc -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,IPv4:.status.loadBalancer.ingress[*].ip,IPv6:.status.loadBalancer.ingress[*].ip
+
+  test:recovery:
+    desc: Test cluster recovery functionality
+    cmds:
+      - echo "Testing cluster recovery functionality..."
+      - ./tests/test-recovery.sh
 
   # Maintenance tasks
   maintenance:backup:
