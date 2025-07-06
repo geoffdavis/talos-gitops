@@ -25,6 +25,16 @@ tasks:
       - sh: '[ -n "$OP_ACCOUNT" ]'
         msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
 
+  bootstrap:k8s-secrets:
+    desc: Bootstrap Kubernetes secrets from 1Password (for existing cluster)
+    cmds:
+      - ./scripts/bootstrap-k8s-secrets.sh
+    preconditions:
+      - sh: '[ -n "$OP_ACCOUNT" ]'
+        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
+      - sh: 'kubectl get namespaces &> /dev/null'
+        msg: 'Kubernetes cluster must be accessible'
+
   bootstrap:cluster:
     desc: Bootstrap the entire cluster
     deps: [bootstrap:secrets, talos:generate-config]
