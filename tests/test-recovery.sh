@@ -188,18 +188,37 @@ test_cilium_configuration() {
 test_cluster_connectivity() {
     log "Testing cluster connectivity after recovery..."
     
-    # Test kubeconfig
+    # Test kubeconfig - check both local file and default kubectl context
+    local kubeconfig_found=false
+    local kubectl_output
+    
     if [[ -f "kubeconfig" ]]; then
-        pass "kubeconfig file exists"
+        pass "Local kubeconfig file exists"
+        kubeconfig_found=true
         
-        # Test API connectivity
-        if kubectl --kubeconfig=./kubeconfig get nodes &> /dev/null; then
-            pass "Can connect to cluster API with kubeconfig"
+        # Test API connectivity with local kubeconfig
+        kubectl_output=$(kubectl --kubeconfig=./kubeconfig get nodes 2>&1)
+        
+        if [[ $? -eq 0 ]]; then
+            pass "Can connect to cluster API with local kubeconfig"
+        elif echo "$kubectl_output" | grep -q "certificate"; then
+            warn "Cannot connect to cluster API with local kubeconfig (certificate issues - run 'task talos:recover-kubeconfig')"
+        elif echo "$kubectl_output" | grep -q "refused\|unreachable"; then
+            warn "Cannot connect to cluster API (cluster may be powered off or unreachable)"
         else
-            warn "Cannot connect to cluster API (cluster may be powered off)"
+            warn "Cannot connect to cluster API (unknown error)"
         fi
     else
-        warn "kubeconfig file not found"
+        warn "Local kubeconfig file not found"
+    fi
+    
+    # Also test default kubectl context
+    kubectl_output=$(kubectl get nodes 2>&1)
+    
+    if [[ $? -eq 0 ]]; then
+        pass "Can connect to cluster API with default kubectl context"
+    elif [[ "$kubeconfig_found" == "false" ]]; then
+        fail "No working kubeconfig found (run 'task talos:recover-kubeconfig')"
     fi
     
     # Test Talos connectivity
