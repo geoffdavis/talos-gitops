@@ -181,17 +181,31 @@ test_cluster_networking() {
 test_cilium_connectivity() {
     log "Testing Cilium connectivity..."
     
-    # Test if Cilium is installed
-    if kubectl get pods -n cilium-system &> /dev/null; then
-        pass "Cilium namespace exists"
+    # Cilium runs in kube-system for Talos
+    if kubectl get pods -n kube-system -l k8s-app=cilium &> /dev/null; then
+        pass "Cilium pods found in kube-system"
         
         # Test Cilium pod status
         local cilium_pods
-        cilium_pods=$(kubectl get pods -n cilium-system --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+        cilium_pods=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep -c "Running" || echo "0")
         if [[ "$cilium_pods" -gt 0 ]]; then
             pass "Found $cilium_pods running Cilium pods"
         else
             warn "No running Cilium pods found"
+        fi
+        
+        # Test Cilium configuration for Talos
+        if kubectl get cm -n kube-system cilium-config &> /dev/null; then
+            pass "Cilium config map exists"
+            
+            # Check for kube-proxy replacement
+            if kubectl get cm -n kube-system cilium-config -o yaml | grep -q "kube-proxy-replacement.*true"; then
+                pass "Cilium is configured for kube-proxy replacement (required for Talos)"
+            else
+                fail "Cilium is not configured for kube-proxy replacement"
+            fi
+        else
+            warn "Cilium config map not found"
         fi
         
         # Test Cilium connectivity (if cilium CLI is available)
