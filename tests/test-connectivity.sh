@@ -139,7 +139,8 @@ test_cluster_networking() {
             pass "Can access cluster pods"
             
             # Test system pods
-            local system_namespaces=("kube-system" "cilium-system" "flux-system")
+            # For Talos, Cilium runs in kube-system, not cilium-system
+            local system_namespaces=("kube-system" "flux-system" "longhorn-system")
             
             for ns in "${system_namespaces[@]}"; do
                 if kubectl get pods -n "$ns" &> /dev/null; then
@@ -148,7 +149,13 @@ test_cluster_networking() {
                     if [[ "$pod_count" -gt 0 ]]; then
                         pass "Found $pod_count pods in namespace $ns"
                     else
-                        warn "No pods found in namespace $ns"
+                        if [[ "$ns" == "flux-system" ]]; then
+                            warn "No pods found in namespace $ns (Flux not bootstrapped yet)"
+                        elif [[ "$ns" == "longhorn-system" ]]; then
+                            warn "No pods found in namespace $ns (Longhorn not deployed yet)"
+                        else
+                            warn "No pods found in namespace $ns"
+                        fi
                     fi
                 else
                     warn "Cannot access namespace $ns"
@@ -164,7 +171,8 @@ test_cluster_networking() {
             
             # Test LoadBalancer services
             local lb_services
-            lb_services=$(kubectl get svc -A --no-headers | grep -c "LoadBalancer" || echo "0")
+            lb_services=$(kubectl get svc -A --no-headers 2>/dev/null | grep -c "LoadBalancer" || echo "0")
+            lb_services=$(echo "$lb_services" | tr -d '\n' | tr -d ' ')
             if [[ "$lb_services" -gt 0 ]]; then
                 pass "Found $lb_services LoadBalancer services"
             else
@@ -246,7 +254,7 @@ test_bgp_connectivity() {
             warn "No BGP peer configuration found"
         fi
     else
-        warn "Cilium BGP configuration not found"
+        warn "Cilium BGP configuration not found (BGP may not be deployed yet)"
     fi
     
     # Test BGP routes (if running on cluster)
@@ -271,7 +279,10 @@ test_loadbalancer_connectivity() {
         
         # Test LoadBalancer services
         local lb_services
-        mapfile -t lb_services < <(kubectl get svc -A --no-headers | grep "LoadBalancer" | awk '{print $1 "/" $2 " " $5}' 2>/dev/null || true)
+        lb_services=()
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && lb_services+=("$line")
+        done < <(kubectl get svc -A --no-headers 2>/dev/null | grep "LoadBalancer" | awk '{print $1 "/" $2 " " $5}' || true)
         
         for service in "${lb_services[@]}"; do
             if [[ -n "$service" ]]; then
@@ -308,6 +319,7 @@ test_storage_connectivity() {
         # Test Longhorn pod status
         local longhorn_pods
         longhorn_pods=$(kubectl get pods -n longhorn-system --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+        longhorn_pods=$(echo "$longhorn_pods" | tr -d '\n' | tr -d ' ')
         if [[ "$longhorn_pods" -gt 0 ]]; then
             pass "Found $longhorn_pods running Longhorn pods"
         else
@@ -318,6 +330,7 @@ test_storage_connectivity() {
         if kubectl get storageclass &> /dev/null; then
             local longhorn_sc
             longhorn_sc=$(kubectl get storageclass --no-headers 2>/dev/null | grep -c "longhorn" || echo "0")
+            longhorn_sc=$(echo "$longhorn_sc" | tr -d '\n' | tr -d ' ')
             if [[ "$longhorn_sc" -gt 0 ]]; then
                 pass "Found $longhorn_sc Longhorn storage classes"
             else

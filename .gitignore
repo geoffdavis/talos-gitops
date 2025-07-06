@@ -1,5 +1,8 @@
 # Talos generated files
 talos/generated/
+talos/talsecret.yaml
+talosconfig
+kubeconfig
 
 # Temporary files
 *.tmp
