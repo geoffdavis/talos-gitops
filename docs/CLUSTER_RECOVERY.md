@@ -17,6 +17,7 @@ task cluster:recover
 ```
 
 This will:
+
 1. Restore secrets from 1Password
 2. Regenerate Talos configuration
 3. Recover kubeconfig
@@ -101,12 +102,14 @@ All nodes should show "Ready" within a few minutes.
 ### 1Password Entries
 
 The cluster uses multiple 1Password entries:
+
 - **"talos - home-ops"** (legacy) - Contains the actual cluster secrets with fields like `cluster_id`, `cluster_secret`, etc.
 - **"Talos Secrets - home-ops"** - May contain different/newer secrets
 
 ### Cilium Configuration
 
 Critical settings for Talos without kube-proxy:
+
 - `kubeProxyReplacement=true`
 - `k8sServiceHost=localhost`
 - `k8sServicePort=7445` (KubePrism port)
@@ -124,6 +127,7 @@ Critical settings for Talos without kube-proxy:
 ### Certificate Errors
 
 If you see certificate verification errors:
+
 1. Ensure you're using the correct secrets from 1Password
 2. Regenerate the configuration with `task talos:generate-config`
 3. Force update kubeconfig with `--force` flag
@@ -131,6 +135,7 @@ If you see certificate verification errors:
 ### Cilium Pods Crashing
 
 If Cilium pods are in CrashLoopBackOff:
+
 1. Check if kube-proxy is disabled in the cluster
 2. Ensure Cilium is configured with the correct k8sServiceHost and k8sServicePort
 3. Verify the capabilities are set correctly (no SYS_MODULE for Talos)
@@ -140,6 +145,7 @@ If Cilium pods are in CrashLoopBackOff:
 If the API server is in CrashLoopBackOff or continuously exiting:
 
 1. **Check API server logs**:
+
    ```bash
    talosctl list /var/log/pods --nodes <node-ip> | grep kube-apiserver
    talosctl read /var/log/pods/<apiserver-pod-dir>/kube-apiserver/<latest>.log --nodes <node-ip>
@@ -154,6 +160,7 @@ If the API server is in CrashLoopBackOff or continuously exiting:
    - Fix configuration issues in `talconfig.yaml`
    - If fixing generated files manually, use `task talos:apply-config-only`
    - Restart kubelet to force static pod recreation:
+  
      ```bash
      talosctl service kubelet restart --nodes <node-ip>
      ```
@@ -161,6 +168,7 @@ If the API server is in CrashLoopBackOff or continuously exiting:
 ### Nodes Not Ready
 
 If nodes remain NotReady after Cilium fix:
+
 1. Check Cilium pod logs: `kubectl logs -n kube-system -l k8s-app=cilium`
 2. Verify CoreDNS pods are running
 3. Check node logs: `talosctl logs -n <node-ip>`
@@ -170,9 +178,11 @@ If nodes remain NotReady after Cilium fix:
 ### talhelper Configuration Generation
 
 - **Duplicate namespace exemptions**: talhelper may generate duplicate entries in PodSecurity exemptions. After generating config, check for duplicates:
+
   ```bash
   grep -A2 "kube-system" clusterconfig/home-ops-mini*.yaml
   ```
+
   If duplicates exist, manually fix them before applying.
 
 ### Mac Mini Specific
