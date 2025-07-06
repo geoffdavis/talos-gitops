@@ -23,7 +23,7 @@ tasks:
       - ./scripts/bootstrap-secrets.sh
     preconditions:
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=CamiAndGeoff)'
+        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
 
   bootstrap:cluster:
     desc: Bootstrap the entire cluster
@@ -54,19 +54,68 @@ tasks:
       - sh: '[ -f talos/generated/schematic-id.txt ]'
         msg: 'Schematic ID file not found. Run task talos:generate-schematic first.'
 
+  talos:restore-secrets:
+    desc: Restore Talos secrets from the correct 1Password entry (talos - home-ops)
+    preconditions:
+      - sh: '[ -n "${OP_ACCOUNT:-}" ]'
+        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
+    cmds:
+      - echo "Restoring Talos secrets from 1Password 'talos - {{.CLUSTER_NAME}}' entry..."
+      - |
+        op --account {{.OP_ACCOUNT}} item get "talos - {{.CLUSTER_NAME}}" --vault="Automation" --format json | jq -r '{
+          cluster: {
+            id: .fields[] | select(.label == "cluster_id") | .value,
+            secret: .fields[] | select(.label == "cluster_secret") | .value
+          },
+          secrets: {
+            bootstraptoken: .fields[] | select(.label == "bootstraptoken") | .value,
+            secretboxencryptionsecret: .fields[] | select(.label == "secretboxencryptionsecret") | .value
+          },
+          trustdinfo: {
+            token: .fields[] | select(.label == "trustdinfo_token") | .value
+          },
+          certs: {
+            etcd: {
+              crt: .fields[] | select(.label == "cert_etcd_crt") | .value,
+              key: .fields[] | select(.label == "cert_etcd_key") | .value
+            },
+            k8s: {
+              crt: .fields[] | select(.label == "cert_k8s_crt") | .value,
+              key: .fields[] | select(.label == "cert_k8s_key") | .value
+            },
+            k8saggregator: {
+              crt: .fields[] | select(.label == "cert_k8saggregator_crt") | .value,
+              key: .fields[] | select(.label == "cert_k8saggregator_key") | .value
+            },
+            k8sserviceaccount: {
+              key: .fields[] | select(.label == "cert_k8sserviceaccount_key") | .value
+            },
+            os: {
+              crt: .fields[] | select(.label == "cert_os_crt") | .value,
+              key: .fields[] | select(.label == "cert_os_key") | .value
+            }
+          }
+        }' | yq -P > talos/talsecret.yaml
+      - echo "Secrets restored from 1Password"
+
   talos:generate-config:
     desc: Generate Talos configuration using talhelper with 1Password integration
     preconditions:
       - sh: 'command -v talhelper'
         msg: 'talhelper is required. Install with: go install github.com/budimanjojo/talhelper/cmd/talhelper@latest'
       - sh: '[ -n "${OP_ACCOUNT:-}" ]'
-        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=CamiAndGeoff)'
+        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
     cmds:
       - echo "Generating Talos configuration with talhelper and 1Password integration..."
       - mkdir -p talos/generated
       - |
-        # Check if secrets exist in 1Password first
-        if op item get "Talos Secrets - {{.CLUSTER_NAME}}" &> /dev/null; then
+        # Check for existing secrets in multiple locations
+        # First check for "talos - home-ops" (legacy entry)
+        if op --account {{.OP_ACCOUNT}} item get "talos - {{.CLUSTER_NAME}}" --vault="Automation" &> /dev/null; then
+          echo "Found legacy secrets entry 'talos - {{.CLUSTER_NAME}}', restoring..."
+          task talos:restore-secrets
+        # Then check for "Talos Secrets - home-ops" (new format)
+        elif op item get "Talos Secrets - {{.CLUSTER_NAME}}" &> /dev/null; then
           echo "Retrieving existing secrets from 1Password..."
           op item get "Talos Secrets - {{.CLUSTER_NAME}}" --fields label=talsecret --format json | jq -r '.value' > talos/talsecret.yaml
           echo "Using existing secrets from 1Password"
@@ -119,7 +168,7 @@ tasks:
       - echo "Waiting for cluster to initialize..."
       - sleep 30
       - echo "Getting kubeconfig from cluster..."
-      - talosctl kubeconfig --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} --endpoints {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} --merge=false
+      - talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
       - echo "All three nodes are now functioning as control plane nodes"
 
   talos:convert-to-all-controlplane:
@@ -165,6 +214,47 @@ tasks:
       - echo "Checking extensions on {{.NODE_3_IP}}..."
       - talosctl get extensions --nodes {{.NODE_3_IP}}
 
+  talos:recover-kubeconfig:
+    desc: Recover kubeconfig after cluster restart or certificate issues
+    env:
+      TALOSCONFIG: clusterconfig/talosconfig
+    cmds:
+      - echo "Recovering kubeconfig from cluster..."
+      - talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
+      - echo "Testing connection..."
+      - kubectl get nodes || echo "If connection fails, check if nodes are powered on and reachable"
+
+  talos:fix-cilium:
+    desc: Fix Cilium CNI after cluster issues (for Talos without kube-proxy)
+    cmds:
+      - echo "Redeploying Cilium with correct Talos configuration..."
+      - task: apps:deploy-cilium
+      - echo "Checking Cilium status..."
+      - kubectl get pods -n kube-system | grep cilium
+      - echo "Nodes should become Ready within a few minutes"
+
+  cluster:recover:
+    desc: Complete cluster recovery process after power outage or certificate issues
+    cmds:
+      - echo "Starting complete cluster recovery process..."
+      - echo "Step 1 - Ensuring environment is configured..."
+      - 'test -f .env || (echo "ERROR: .env file missing. Copy from .env.example and set OP_ACCOUNT" && exit 1)'
+      - source .env
+      - echo "Step 2 - Restoring secrets from 1Password..."
+      - task: talos:restore-secrets
+      - echo "Step 3 - Regenerating Talos configuration..."
+      - task: talos:generate-config
+      - echo "Step 4 - Recovering kubeconfig..."
+      - task: talos:recover-kubeconfig
+      - echo "Step 5 - Checking cluster status..."
+      - kubectl get nodes || echo "Nodes not ready yet"
+      - echo "Step 6 - Fixing Cilium if needed..."
+      - task: talos:fix-cilium
+      - echo "Step 7 - Final status check..."
+      - sleep 60
+      - kubectl get nodes
+      - echo "Recovery process complete. All nodes should be Ready."
+
   # Flux tasks
   flux:bootstrap:
     desc: Bootstrap Flux
@@ -194,11 +284,25 @@ tasks:
       - task: apps:deploy-ingress
 
   apps:deploy-cilium:
-    desc: Deploy Cilium CNI
+    desc: Deploy Cilium CNI for Talos (with kube-proxy replacement)
     cmds:
       - helm repo add cilium https://helm.cilium.io/
       - helm repo update
-      - helm upgrade --install cilium cilium/cilium -n kube-system -f infrastructure/cilium/values.yaml
+      - |
+        helm upgrade --install cilium cilium/cilium \
+          --version 1.15.6 \
+          --namespace kube-system \
+          --set ipam.mode=kubernetes \
+          --set kubeProxyReplacement=true \
+          --set securityContext.capabilities.ciliumAgent="{CHOWN,KILL,NET_ADMIN,NET_RAW,IPC_LOCK,SYS_ADMIN,SYS_RESOURCE,DAC_OVERRIDE,FOWNER,SETGID,SETUID}" \
+          --set securityContext.capabilities.cleanCiliumState="{NET_ADMIN,SYS_ADMIN,SYS_RESOURCE}" \
+          --set cgroup.autoMount.enabled=false \
+          --set cgroup.hostRoot=/sys/fs/cgroup \
+          --set k8sServiceHost=localhost \
+          --set k8sServicePort=7445
+      - echo "Waiting for Cilium to be ready..."
+      - sleep 30
+      - kubectl wait --for=condition=ready pods -l k8s-app=cilium -n kube-system --timeout=300s || true
 
   apps:deploy-onepassword-connect:
     desc: Deploy 1Password Connect

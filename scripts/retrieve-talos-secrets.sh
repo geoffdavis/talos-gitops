@@ -204,5 +204,10 @@ main() {
 # Change to repository root
 cd "$(dirname "$0")/.."
 
+# Source .env file if it exists
+if [[ -f ".env" ]]; then
+    source .env
+fi
+
 # Run main function
 main "$@"
