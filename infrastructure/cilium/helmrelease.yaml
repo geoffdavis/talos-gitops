@@ -67,6 +67,11 @@ spec:
     # Enable native routing
     routingMode: native
     autoDirectNodeRoutes: true
+    ipv4NativeRoutingCIDR: 10.244.0.0/16
+    
+    # Required for native routing mode
+    enableIPv4Masquerade: true
+    enableIPMasqAgent: false
     
     # Enable local redirect policy
     localRedirectPolicy: true
