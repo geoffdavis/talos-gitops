@@ -23,7 +23,7 @@ spec:
         fsGroup: 999
       containers:
         - name: connect-api
-          image: 1password/connect-api:1.7.2
+          image: 1password/connect-api:1.7.3
           ports:
             - containerPort: 8080
               name: http
@@ -70,7 +70,7 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
         - name: connect-sync
-          image: 1password/connect-sync:1.7.2
+          image: 1password/connect-sync:1.7.3
           env:
             - name: OP_HTTP_PORT
               value: "8081"
