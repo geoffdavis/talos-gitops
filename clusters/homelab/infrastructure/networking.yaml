@@ -58,3 +58,19 @@ spec:
       kind: Deployment
       name: cloudflare-tunnel
       namespace: cloudflare-tunnel
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-cilium-bgp
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./infrastructure/cilium-bgp
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-cilium
+    - name: infrastructure-onepassword

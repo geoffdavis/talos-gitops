@@ -15,6 +15,34 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: infrastructure-external-secrets
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./infrastructure/external-secrets
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-sources
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: external-secrets
+      namespace: external-secrets-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: external-secrets-webhook
+      namespace: external-secrets-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: external-secrets-cert-controller
+      namespace: external-secrets-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: infrastructure-cilium
   namespace: flux-system
 spec:
@@ -42,6 +70,8 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  dependsOn:
+    - name: infrastructure-external-secrets
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
