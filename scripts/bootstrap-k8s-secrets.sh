@@ -56,6 +56,14 @@ check_prerequisites() {
 create_1password_items() {
     log "Creating 1Password items..."
     
+    # Check if Cloudflare Tunnel credentials exist
+    if ! op item get "Cloudflare Tunnel Credentials" &> /dev/null; then
+        warn "Cloudflare Tunnel Credentials item not found. Please create it manually with your tunnel credentials."
+        echo "  This should include fields: 'credentials.json' (the JSON credentials file) and 'tunnel-token' (the tunnel token)"
+    else
+        success "Cloudflare Tunnel Credentials item exists"
+    fi
+    
     # Check if BGP authentication exists
     if ! op item get "BGP Authentication - $CLUSTER_NAME" &> /dev/null; then
         log "Creating BGP Authentication - $CLUSTER_NAME item..."
