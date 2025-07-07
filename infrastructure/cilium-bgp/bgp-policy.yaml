@@ -53,19 +53,7 @@ spec:
   # connectRetryTimeSeconds is not a valid field in the current schema
   holdTimeSeconds: 90
   keepAliveTimeSeconds: 30
-  advertisedPathAttributes:
-    - selectorType: "PodCIDR"
-      attributes:
-        localPreference: 100
-        communities:
-          standard:
-            - "64512:100"
-    - selectorType: "Service"
-      attributes:
-        localPreference: 100
-        communities:
-          standard:
-            - "64512:200"
+  # advertisedPathAttributes moved to CiliumBGPAdvertisement in newer versions
 ---
 apiVersion: v1
 kind: Secret
