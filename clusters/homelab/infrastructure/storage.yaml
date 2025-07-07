@@ -11,8 +11,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  dependsOn:
-    - name: infrastructure-cilium
+  # Removed cilium dependency as it's managed by Talos bootstrap
   healthChecks:
     - apiVersion: apps/v1
       kind: DaemonSet
