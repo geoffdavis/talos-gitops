@@ -164,7 +164,6 @@ spec:
       
     # Pod labels
     podLabels:
-      app.kubernetes.io/name: external-dns
       app.kubernetes.io/component: dns-controller
       
     # Configure monitoring
