@@ -127,3 +127,62 @@ The Cilium configuration in `Taskfile.yml` now uses cluster-pool IPAM mode:
 ```
 
 This provides better IP address management for the cluster.
+
+## GitOps Deployment Fixes
+
+### 1. Fixed Missing Files in Kustomizations
+
+Several kustomization.yaml files referenced non-existent resources:
+
+- **infrastructure/cert-manager/kustomization.yaml**: Removed reference to non-existent `cluster-issuer.yaml`
+- **infrastructure/ingress-nginx/kustomization.yaml**: Removed references to `loadbalancer-pool.yaml` and `loadbalancer-pool-ipv6.yaml`
+
+### 2. Fixed External Secrets Schema Error
+
+In `infrastructure/onepassword-connect/secret-store.yaml`, corrected the schema:
+
+```yaml
+auth:
+  secretRef:
+    connectTokenSecretRef:  # Changed from 'connectToken'
+      name: onepassword-token
+      key: token
+```
+
+### 3. Fixed Pod Security Standards Violations
+
+Added required seccomp profiles to containers in `infrastructure/onepassword-connect/deployment.yaml`:
+
+```yaml
+securityContext:
+  seccompProfile:
+    type: RuntimeDefault
+```
+
+### 4. Fixed Circular Dependencies
+
+Moved Prometheus Operator from apps layer to infrastructure layer to break circular dependency between monitoring and ingress-nginx.
+
+### 5. Fixed Cilium Deployment
+
+Cilium deployment required manual intervention due to CNI chicken-and-egg problem:
+
+1. Simplified Cilium configuration by removing advanced features initially
+2. Manually installed Cilium using Helm to bootstrap the CNI:
+   ```bash
+   helm install cilium cilium/cilium --version 1.16.1 \
+     --namespace cilium-system \
+     --set ipam.mode=cluster-pool \
+     --set ipam.operator.clusterPoolIPv4PodCIDRList=10.244.0.0/16 \
+     --set ipam.operator.clusterPoolIPv4MaskSize=24 \
+     --set kubeProxyReplacement=false \
+     --set securityContext.privileged=true
+   ```
+3. Once CNI was working, Flux controllers recovered and continued reconciliation
+
+### 6. Remaining Issues
+
+- **Cilium BGP**: CRDs not available in the current Cilium version - may need to enable BGP Control Plane feature
+- **Longhorn**: VolumeSnapshot CRDs missing - will be created once Longhorn CSI driver is installed
+- **Cloudflare Tunnel**: Deployment failing - needs investigation
+- **External DNS**: Still reconciling
