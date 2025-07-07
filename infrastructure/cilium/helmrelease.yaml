@@ -36,13 +36,9 @@ spec:
     enableIPv4: true
     enableIPv6: true
     
-    # BGP Configuration
-    bgp:
+    # BGP Control Plane Configuration
+    bgpControlPlane:
       enabled: true
-      announce:
-        loadbalancerIP: true
-        podCIDR: true
-        serviceIP: true
     
     # API Server Configuration
     k8sServiceHost: "172.29.51.10"
