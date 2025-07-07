@@ -50,7 +50,7 @@ spec:
   gracefulRestart:
     enabled: true
     restartTimeSeconds: 120
-  connectRetryTimeSeconds: 120
+  # connectRetryTimeSeconds is not a valid field in the current schema
   holdTimeSeconds: 90
   keepAliveTimeSeconds: 30
   advertisedPathAttributes:
