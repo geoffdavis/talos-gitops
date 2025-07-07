@@ -55,6 +55,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           livenessProbe:
             httpGet:
               path: /heartbeat
@@ -97,6 +99,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
           livenessProbe:
             httpGet:
               path: /heartbeat
