@@ -42,6 +42,10 @@ spec:
           volumeMounts:
             - name: shared-data
               mountPath: /home/opuser/.op/data
+            - name: credentials
+              mountPath: /home/opuser/.op/1password-credentials.json
+              subPath: 1password-credentials.json
+              readOnly: true
           resources:
             requests:
               memory: "64Mi"
@@ -86,6 +90,10 @@ spec:
           volumeMounts:
             - name: shared-data
               mountPath: /home/opuser/.op/data
+            - name: credentials
+              mountPath: /home/opuser/.op/1password-credentials.json
+              subPath: 1password-credentials.json
+              readOnly: true
           resources:
             requests:
               memory: "64Mi"
@@ -116,6 +124,9 @@ spec:
       volumes:
         - name: shared-data
           emptyDir: {}
+        - name: credentials
+          secret:
+            secretName: onepassword-connect-credentials
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
