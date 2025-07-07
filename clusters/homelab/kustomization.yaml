@@ -2,68 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # Infrastructure sources
-  - ../../infrastructure/sources
-  
-  # Core infrastructure
-  - ../../infrastructure/cilium
-  - ../../infrastructure/onepassword-connect
-  - ../../infrastructure/longhorn
-  - ../../infrastructure/ingress-nginx
-  - ../../infrastructure/cert-manager
-  - ../../infrastructure/external-dns
-  - ../../infrastructure/cloudflare-tunnel
-  
-  # Applications
-  - ../../apps/monitoring
-  - ../../apps/dashboard
-
-patches:
-  # Environment-specific patches
-  - target:
-      kind: HelmRelease
-      name: cilium
-    patch: |-
-      - op: replace
-        path: /spec/values/bgp/enabled
-        value: true
-      - op: replace
-        path: /spec/values/bgp/announce/loadbalancerIP
-        value: true
-      - op: replace
-        path: /spec/values/bgp/announce/podCIDR
-        value: true
-      - op: replace
-        path: /spec/values/k8sServiceHost
-        value: "172.29.51.10"
-      - op: replace
-        path: /spec/values/k8sServicePort
-        value: 6443
-
-  - target:
-      kind: HelmRelease
-      name: longhorn
-    patch: |-
-      - op: replace
-        path: /spec/values/defaultSettings/defaultDataPath
-        value: "/var/lib/longhorn"
-      - op: replace
-        path: /spec/values/defaultSettings/defaultReplicaCount
-        value: 3
-      - op: replace
-        path: /spec/values/defaultSettings/defaultDataLocality
-        value: "best-effort"
-
-  - target:
-      kind: HelmRelease
-      name: external-dns
-    patch: |-
-      - op: replace
-        path: /spec/values/domainFilters/0
-        value: "geoffdavis.com"
-      - op: add
-        path: /spec/values/domainFilters/1
-        value: "k8s.home.geoffdavis.com"
-      - op: replace
-        path: /spec/values/txtOwnerId
-        value: "home-ops"
+  # Flux Kustomizations with proper dependencies
+  - infrastructure/core.yaml
+  - infrastructure/storage.yaml
+  - infrastructure/networking.yaml
+  - infrastructure/apps.yaml
