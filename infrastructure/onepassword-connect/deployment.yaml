@@ -34,13 +34,14 @@ spec:
               value: "localhost:11221"
             - name: OP_HTTP_PORT
               value: "8080"
+            - name: OP_CONNECT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: onepassword-connect-token
+                  key: token
           volumeMounts:
             - name: shared-data
               mountPath: /home/opuser/.op/data
-            - name: credentials
-              mountPath: /home/opuser/.op/1password-credentials.json
-              subPath: 1password-credentials.json
-              readOnly: true
           resources:
             requests:
               memory: "64Mi"
@@ -77,13 +78,14 @@ spec:
               value: "11221"
             - name: OP_BUS_PEERS
               value: "localhost:11220"
+            - name: OP_CONNECT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: onepassword-connect-token
+                  key: token
           volumeMounts:
             - name: shared-data
               mountPath: /home/opuser/.op/data
-            - name: credentials
-              mountPath: /home/opuser/.op/1password-credentials.json
-              subPath: 1password-credentials.json
-              readOnly: true
           resources:
             requests:
               memory: "64Mi"
@@ -114,9 +116,6 @@ spec:
       volumes:
         - name: shared-data
           emptyDir: {}
-        - name: credentials
-          secret:
-            secretName: onepassword-connect-credentials
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
