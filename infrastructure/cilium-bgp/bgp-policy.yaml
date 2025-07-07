@@ -51,7 +51,7 @@ spec:
     enabled: true
     restartTimeSeconds: 120
   # connectRetryTimeSeconds is not a valid field in the current schema
-  holdTimeSeconds: 90
+  # holdTimeSeconds: 90  # Not supported in current Cilium version
   keepAliveTimeSeconds: 30
   # advertisedPathAttributes moved to CiliumBGPAdvertisement in newer versions
 ---
