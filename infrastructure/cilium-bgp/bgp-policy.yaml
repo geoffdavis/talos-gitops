@@ -2,7 +2,7 @@ apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPAdvertisement
 metadata:
   name: bgp-advertisements
-  namespace: cilium-system
+  namespace: kube-system
 spec:
   advertisements:
     - advertisementType: "Service"
@@ -25,7 +25,7 @@ apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPClusterConfig
 metadata:
   name: cilium-bgp
-  namespace: cilium-system
+  namespace: kube-system
 spec:
   nodeSelector:
     matchLabels:
@@ -44,7 +44,7 @@ apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPPeerConfig
 metadata:
   name: cilium-bgp-peer-config
-  namespace: cilium-system
+  namespace: kube-system
 spec:
   authSecretRef: cilium-bgp-auth
   gracefulRestart:
@@ -71,7 +71,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: cilium-bgp-auth
-  namespace: cilium-system
+  namespace: kube-system
 type: Opaque
 data:
   # BGP authentication password (base64 encoded)
@@ -82,7 +82,7 @@ apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
   name: cilium-bgp-auth
-  namespace: cilium-system
+  namespace: kube-system
 spec:
   refreshInterval: 1h
   secretStoreRef:
