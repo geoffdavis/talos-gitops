@@ -1,188 +1,122 @@
-# Cluster Rebuild Fixes - July 2025
+# Talos Kubernetes Cluster Rebuild Fixes
 
-This document details the issues encountered during the cluster rebuild and the fixes applied.
+## Date: July 7, 2025
 
-## Issues Encountered
+### Summary of Issues and Fixes
 
-### 1. DNS Resolution Failure with Custom Cluster Domain
+#### 1. ✅ Cilium CNI Issues - FIXED
+**Problem**: Cilium was being managed by both Flux and Talos bootstrap, causing conflicts. The pods were failing with RBAC errors and incorrect IPAM mode.
 
-**Problem**: Flux components failed to communicate because they were trying to resolve services using `.cluster.local` domain, but the cluster was configured with a custom domain `k8s.home.geoffdavis.com`.
+**Solution**:
+- Removed Cilium from Flux management completely
+- Deleted infrastructure-cilium kustomization and references
+- Used `task talos:fix-cilium` to deploy Cilium with proper Talos configuration
+- Configured with `cluster-pool` IPAM mode and correct pod CIDR
 
-**Fix**: Reverted to using the default `cluster.local` domain by commenting out the custom domain in `talconfig.yaml`:
+**Result**: All nodes are now Ready and CNI is functioning properly
 
-```yaml
-# domain: k8s.home.geoffdavis.com  # Using default cluster.local
+#### 2. ✅ Pod Security Standards Violations - FIXED
+**Problem**: Multiple deployments were missing required seccomp profiles
+
+**Solution**: Added seccomp profiles to:
+- 1Password Connect deployment
+- Cloudflare Tunnel deployment  
+
+#### 3. ✅ External Secrets Schema Error - FIXED
+**Problem**: connectToken field was deprecated in favor of connectTokenSecretRef
+
+**Solution**: Updated external-secrets-operator.yaml to use the new schema
+
+#### 4. ✅ Longhorn StorageClass Conflict - FIXED
+**Problem**: Flux was trying to manage a StorageClass that Longhorn already created
+
+**Solution**: Removed the default longhorn StorageClass from Flux management
+
+#### 5. ✅ 1Password Connect Configuration - FIXED
+**Problem**: Credentials were incorrectly passed as environment variable instead of mounted file
+
+**Solution**: Updated deployment to mount credentials at `/home/opuser/.op/1password-credentials.json`
+
+#### 6. ❌ ClusterSecretStore Validation - IN PROGRESS
+**Problem**: onepassword-connect ClusterSecretStore shows ValidationFailed despite pod running
+
+**Current Status**: 
+- Pod is running and healthy
+- Service endpoints are correct
+- Still showing i/o timeout errors when External Secrets tries to validate
+
+#### 7. ❌ Cilium BGP Configuration - NEEDS FIX
+**Problem**: CiliumBGPPeerConfig has invalid field `.spec.advertisedPathAttributes`
+
+**Next Steps**: Need to check current Cilium BGP CRD schema
+
+#### 8. ❌ Cloudflare Tunnel - BLOCKED
+**Problem**: Deployment waiting for secret from External Secrets
+
+**Dependency**: Requires ClusterSecretStore to be functional
+
+### Current Cluster State
+
+**Nodes**: All Ready ✅
+```
+mini01   Ready    control-plane   13h   v1.31.1
+mini02   Ready    control-plane   13h   v1.31.1
+mini03   Ready    control-plane   13h   v1.31.1
 ```
 
-### 2. API Server Failed to Start
+**Failed Flux Kustomizations**:
+- infrastructure-cilium-bgp (schema error)
+- infrastructure-cloudflare-tunnel (waiting for secrets)
+- infrastructure-external-dns (reconciling)
 
-**Problem**: The kube-apiserver failed to start with two errors:
+### Next Steps
 
-- OIDC authenticator initialization failed trying to connect to `https://auth.homelab.local`
-- PodSecurity admission plugin error due to duplicate `kube-system` namespace in exemptions
+1. **Fix ClusterSecretStore validation**:
+   - Investigate why 1Password Connect API is timing out
+   - Check network connectivity between External Secrets and 1Password Connect
+   - Verify 1Password credentials are correctly formatted
 
-**Fix**:
+2. **Fix Cilium BGP configuration**:
+   - Check current CiliumBGPPeerConfig CRD schema
+   - Update bgp-policy.yaml to match current schema
 
-1. Updated OIDC issuer URL in `talconfig.yaml` to the correct domain:
+3. **Monitor deployments**:
+   - Once ClusterSecretStore is working, External Secrets should sync
+   - This will unblock Cloudflare Tunnel and other dependent services
 
-   ```yaml
-   oidc-issuer-url: https://auth.k8s.home.geoffdavis.com
-   ```
+### Commands Used
 
-2. Fixed duplicate namespace issue (this is a talhelper generation bug that requires manual fixing after generation)
+```bash
+# Fix Cilium CNI
+task talos:fix-cilium
 
-### 3. Network Interface Name Change
+# Reconcile Flux changes
+flux reconcile kustomization <name> --with-source
 
-**Problem**: VIP configuration was using incorrect network interface name `eth0`.
-
-**Fix**: Updated to the correct interface name `enp3s0f0` in `talconfig.yaml`:
-
-```yaml
-- interface: enp3s0f0
-  vip:
-    ip: 172.29.51.10
+# Check cluster state
+kubectl get nodes
+kubectl get pods -A | grep -v Running
+flux get kustomizations --all-namespaces
 ```
 
-### 4. Mac Mini USB Support
+### Key Configuration Changes
 
-**Problem**: Mac minis require hard reboots for proper USB device detection.
-
-**Fix**: Added sysctl to disable kexec in `talconfig.yaml`:
-
+1. **Cilium IPAM mode** (infrastructure/cilium/helmrelease.yaml):
 ```yaml
-sysctls:
-  kernel.kexec_load_disabled: "1"  # Disable kexec for Mac mini USB support
+ipam:
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList: ["10.0.0.0/8"]
+    clusterPoolIPv4MaskSize: 24
 ```
 
-## Task Improvements
-
-### 1. Fixed Reboot Task
-
-Updated `talos:reboot` task in `Taskfile.yml` to properly accept NODES parameter:
-
+2. **1Password Connect credentials mount**:
 ```yaml
-talos:reboot:
-  desc: Reboot specified nodes or all nodes (for USB detection)
-  env:
-    TALOSCONFIG: clusterconfig/talosconfig
-  vars:
-    NODES: '{{.NODES | default "all"}}'
+volumeMounts:
+  - name: credentials
+    mountPath: /home/opuser/.op/1password-credentials.json
+    subPath: 1password-credentials.json
+    readOnly: true
 ```
 
-### 2. Added Apply Config Without Regeneration
-
-Created `talos:apply-config-only` task to apply configuration without regenerating (useful when manually fixing generated files):
-
-```yaml
-talos:apply-config-only:
-  desc: Apply Talos configuration to nodes (without regenerating)
-  env:
-    TALOSCONFIG: clusterconfig/talosconfig
-  cmds:
-    - echo "Applying Talos configuration to all control plane nodes..."
-    - |
-      talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml || \
-      talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
-    # ... (similar for other nodes)
-```
-
-### 3. Fixed Helm Repo Exists Error
-
-Updated `apps:deploy-cilium` to handle existing helm repo:
-
-```yaml
-- helm repo add cilium https://helm.cilium.io/ || true
-```
-
-## Rebuild Process Summary
-
-1. **Reset all nodes**: Nodes were wiped and rebooted from USB installers
-2. **Fixed configuration**: Updated `talconfig.yaml` with all fixes mentioned above
-3. **Generated new configuration**: `task talos:generate-config`
-4. **Applied configuration**: `task talos:apply-config`
-5. **Bootstrapped cluster**: `task talos:bootstrap`
-6. **Fixed API server issues**:
-   - Manually fixed duplicate namespace in generated configs
-   - Applied configuration without regenerating
-   - Restarted kubelet to force static pod recreation
-7. **Deployed Cilium CNI**: `task apps:deploy-cilium`
-8. **Verified cluster health**: All nodes Ready, API server running
-
-## Key Learnings
-
-1. **Default cluster domain**: Stick with `cluster.local` unless you have a specific need for a custom domain
-2. **Configuration validation**: Always check generated configurations for issues before applying
-3. **Mac mini specifics**: Disable kexec for proper USB support
-4. **Network interfaces**: Verify correct interface names before configuration
-5. **OIDC configuration**: Ensure issuer URLs are accessible and correctly configured
-
-## Updated Cilium Configuration
-
-The Cilium configuration in `Taskfile.yml` now uses cluster-pool IPAM mode:
-
-```yaml
---set ipam.mode=cluster-pool
---set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16"
---set ipam.operator.clusterPoolIPv4MaskSize=24
-```
-
-This provides better IP address management for the cluster.
-
-## GitOps Deployment Fixes
-
-### 1. Fixed Missing Files in Kustomizations
-
-Several kustomization.yaml files referenced non-existent resources:
-
-- **infrastructure/cert-manager/kustomization.yaml**: Removed reference to non-existent `cluster-issuer.yaml`
-- **infrastructure/ingress-nginx/kustomization.yaml**: Removed references to `loadbalancer-pool.yaml` and `loadbalancer-pool-ipv6.yaml`
-
-### 2. Fixed External Secrets Schema Error
-
-In `infrastructure/onepassword-connect/secret-store.yaml`, corrected the schema:
-
-```yaml
-auth:
-  secretRef:
-    connectTokenSecretRef:  # Changed from 'connectToken'
-      name: onepassword-token
-      key: token
-```
-
-### 3. Fixed Pod Security Standards Violations
-
-Added required seccomp profiles to containers in `infrastructure/onepassword-connect/deployment.yaml`:
-
-```yaml
-securityContext:
-  seccompProfile:
-    type: RuntimeDefault
-```
-
-### 4. Fixed Circular Dependencies
-
-Moved Prometheus Operator from apps layer to infrastructure layer to break circular dependency between monitoring and ingress-nginx.
-
-### 5. Fixed Cilium Deployment
-
-Cilium deployment required manual intervention due to CNI chicken-and-egg problem:
-
-1. Simplified Cilium configuration by removing advanced features initially
-2. Manually installed Cilium using Helm to bootstrap the CNI:
-   ```bash
-   helm install cilium cilium/cilium --version 1.16.1 \
-     --namespace cilium-system \
-     --set ipam.mode=cluster-pool \
-     --set ipam.operator.clusterPoolIPv4PodCIDRList=10.244.0.0/16 \
-     --set ipam.operator.clusterPoolIPv4MaskSize=24 \
-     --set kubeProxyReplacement=false \
-     --set securityContext.privileged=true
-   ```
-3. Once CNI was working, Flux controllers recovered and continued reconciliation
-
-### 6. Remaining Issues
-
-- **Cilium BGP**: CRDs not available in the current Cilium version - may need to enable BGP Control Plane feature
-- **Longhorn**: VolumeSnapshot CRDs missing - will be created once Longhorn CSI driver is installed
-- **Cloudflare Tunnel**: Deployment failing - needs investigation
-- **External DNS**: Still reconciling
+3. **Namespace updates**: Changed from `cilium-system` to `kube-system` for all Cilium BGP resources
