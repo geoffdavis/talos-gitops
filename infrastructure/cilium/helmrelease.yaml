@@ -26,11 +26,14 @@ spec:
     
     # IPAM Configuration
     ipam:
-      mode: kubernetes
+      mode: cluster-pool
+      operator:
+        clusterPoolIPv4PodCIDRList: ["10.0.0.0/8"]
+        clusterPoolIPv4MaskSize: 24
     
-    # API Server Configuration
-    k8sServiceHost: "172.29.51.10"
-    k8sServicePort: 6443
+    # API Server Configuration - removed to use default discovery
+    # k8sServiceHost: "172.29.51.10"
+    # k8sServicePort: 6443
     
     # Kube-proxy replacement - must be disabled in Talos
     kubeProxyReplacement: false
