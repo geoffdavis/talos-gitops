@@ -33,7 +33,7 @@ spec:
           enabled: true
           namespace: ingress-nginx
         prometheusRule:
-          enabled: true
+          enabled: false  # Disabled until monitoring stack is ready
           namespace: ingress-nginx
           
       # Configure for homelab use
