@@ -28,24 +28,12 @@ spec:
     ipam:
       mode: kubernetes
     
-    # IPv6 Configuration
-    ipv6:
-      enabled: true
-    
-    # Enable dual-stack networking
-    enableIPv4: true
-    enableIPv6: true
-    
-    # BGP Control Plane Configuration
-    bgpControlPlane:
-      enabled: true
-    
     # API Server Configuration
     k8sServiceHost: "172.29.51.10"
     k8sServicePort: 6443
     
-    # Kube-proxy replacement
-    kubeProxyReplacement: true
+    # Kube-proxy replacement - must be disabled in Talos
+    kubeProxyReplacement: false
     
     # Enable Hubble for observability
     hubble:
@@ -54,76 +42,11 @@ spec:
         enabled: true
       ui:
         enabled: true
-        service:
-          type: LoadBalancer
-          annotations:
-            metallb.universe.tf/address-pool: default
     
     # Operator configuration
     operator:
       replicas: 1
       rollOutPods: true
-    
-    # Enable native routing
-    routingMode: native
-    autoDirectNodeRoutes: true
-    ipv4NativeRoutingCIDR: 10.244.0.0/16
-    
-    # Required for native routing mode
-    enableIPv4Masquerade: true
-    enableIPMasqAgent: false
-    
-    # Enable local redirect policy
-    localRedirectPolicy: true
-    
-    # Enable bandwidth manager
-    bandwidthManager:
-      enabled: true
-      bbr: true
-    
-    # Enable socket load balancing
-    socketLB:
-      enabled: true
-    
-    # Enable node port acceleration
-    nodePort:
-      enabled: true
-      acceleration: native
-    
-    # Enable host services
-    hostServices:
-      enabled: true
-      protocols: tcp,udp
-    
-    # Enable external IPs
-    externalIPs:
-      enabled: true
-    
-    # Enable node local DNS cache
-    nodeLocalDNS:
-      enabled: false  # Disabled as we're using CoreDNS
-    
-    # Enable L2 announcements
-    l2announcements:
-      enabled: true
-    
-    # Enable gateway API
-    gatewayAPI:
-      enabled: true
-    
-    # Prometheus metrics
-    prometheus:
-      enabled: true
-      serviceMonitor:
-        enabled: true
-    
-    # Resource limits
-    resources:
-      limits:
-        memory: 500Mi
-      requests:
-        cpu: 100m
-        memory: 128Mi
     
     # Node selector for control plane scheduling
     tolerations:
