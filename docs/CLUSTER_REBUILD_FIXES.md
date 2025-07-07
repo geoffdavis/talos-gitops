@@ -37,23 +37,30 @@
 
 **Solution**: Updated deployment to mount credentials at `/home/opuser/.op/1password-credentials.json`
 
-#### 6. ❌ ClusterSecretStore Validation - IN PROGRESS
-**Problem**: onepassword-connect ClusterSecretStore shows ValidationFailed despite pod running
+#### 6. ❌ 1PASSWORD CONNECT CREDENTIALS - NEEDS UPDATE
+**Problem**: The 1Password Connect credentials are in an old format (version 1) and need to be regenerated
 
-**Current Status**: 
-- Pod is running and healthy
-- Service endpoints are correct
-- Still showing i/o timeout errors when External Secrets tries to validate
+**Error**: `"credentials file is not version 2"`
 
-#### 7. ❌ Cilium BGP Configuration - NEEDS FIX
-**Problem**: CiliumBGPPeerConfig has invalid field `.spec.advertisedPathAttributes`
+**Solution**: Need to regenerate credentials from 1Password account. See `docs/1PASSWORD_CONNECT_SETUP.md` for detailed instructions.
 
-**Next Steps**: Need to check current Cilium BGP CRD schema
+**Impact**: This is blocking:
+- ClusterSecretStore validation
+- All External Secrets from syncing
+- Cloudflare Tunnel deployment
+- External DNS deployment
+- Cert-manager Cloudflare DNS validation
+- BGP authentication secrets
+
+#### 7. ✅ Cilium BGP Configuration - FIXED
+**Problem**: CiliumBGPPeerConfig had invalid field `.spec.advertisedPathAttributes`
+
+**Solution**: Removed the invalid field - in newer Cilium versions, path attributes are configured in CiliumBGPAdvertisement
 
 #### 8. ❌ Cloudflare Tunnel - BLOCKED
 **Problem**: Deployment waiting for secret from External Secrets
 
-**Dependency**: Requires ClusterSecretStore to be functional
+**Dependency**: Requires 1Password Connect credentials to be updated
 
 ### Current Cluster State
 
@@ -65,24 +72,34 @@ mini03   Ready    control-plane   13h   v1.31.1
 ```
 
 **Failed Flux Kustomizations**:
-- infrastructure-cilium-bgp (schema error)
+- infrastructure-cilium-bgp (waiting for Flux to sync latest changes)
 - infrastructure-cloudflare-tunnel (waiting for secrets)
-- infrastructure-external-dns (reconciling)
+- infrastructure-external-dns (waiting for secrets)
 
 ### Next Steps
 
-1. **Fix ClusterSecretStore validation**:
-   - Investigate why 1Password Connect API is timing out
-   - Check network connectivity between External Secrets and 1Password Connect
-   - Verify 1Password credentials are correctly formatted
+1. **Update 1Password Connect Credentials** (CRITICAL):
+   - Follow instructions in `docs/1PASSWORD_CONNECT_SETUP.md`
+   - Generate new version 2 credentials
+   - Update the Kubernetes secret
+   - Restart the 1Password Connect deployment
 
-2. **Fix Cilium BGP configuration**:
-   - Check current CiliumBGPPeerConfig CRD schema
-   - Update bgp-policy.yaml to match current schema
+2. **After credentials are updated**:
+   - ClusterSecretStore should validate
+   - External Secrets will start syncing
+   - Dependent services will deploy automatically
 
 3. **Monitor deployments**:
-   - Once ClusterSecretStore is working, External Secrets should sync
-   - This will unblock Cloudflare Tunnel and other dependent services
+   ```bash
+   # Watch External Secrets sync
+   kubectl get externalsecrets -A
+   
+   # Check ClusterSecretStore status
+   kubectl get clustersecretstore onepassword-connect
+   
+   # Monitor Flux reconciliation
+   flux get kustomizations --all-namespaces
+   ```
 
 ### Commands Used
 
@@ -97,11 +114,15 @@ flux reconcile kustomization <name> --with-source
 kubectl get nodes
 kubectl get pods -A | grep -v Running
 flux get kustomizations --all-namespaces
+
+# Debug 1Password Connect
+kubectl logs -n onepassword-connect deployment/onepassword-connect -c connect-api
+kubectl logs -n onepassword-connect deployment/onepassword-connect -c connect-sync
 ```
 
 ### Key Configuration Changes
 
-1. **Cilium IPAM mode** (infrastructure/cilium/helmrelease.yaml):
+1. **Cilium IPAM mode** (removed from Flux management):
 ```yaml
 ipam:
   mode: cluster-pool
@@ -120,3 +141,21 @@ volumeMounts:
 ```
 
 3. **Namespace updates**: Changed from `cilium-system` to `kube-system` for all Cilium BGP resources
+
+4. **Removed from CiliumBGPPeerConfig**: `advertisedPathAttributes` field (not valid in current schema)
+
+### Current Blockers
+
+The main blocker is the 1Password Connect credentials format issue. Once the credentials are regenerated in version 2 format:
+
+1. The ClusterSecretStore will validate
+2. External Secrets will sync
+3. All dependent services will deploy
+4. The cluster will be fully operational
+
+The cluster foundation is solid with:
+- ✅ All nodes Ready
+- ✅ CNI functioning properly  
+- ✅ Most core components deployed
+- ✅ Pod Security Standards compliant
+- ❌ Waiting on secrets management

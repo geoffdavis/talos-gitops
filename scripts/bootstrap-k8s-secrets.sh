@@ -85,12 +85,12 @@ create_1password_items() {
         success "Cloudflare API Token item exists"
     fi
     
-    # Check if 1Password Connect credentials exist
-    if ! op item get "1Password Connect" &> /dev/null; then
-        warn "1Password Connect item not found. Please create it manually with your Connect credentials."
-        echo "  This should include the 1password-credentials.json file and Connect token"
+    # Check if 1Password Connect token exists
+    if ! op item get "home Access Token: home-ops-automation" --vault="Automation" &> /dev/null; then
+        warn "1Password Connect token not found. Please create it in the Automation vault."
+        echo "  This should be a JWT token for 1Password Connect access"
     else
-        success "1Password Connect item exists"
+        success "1Password Connect token exists"
     fi
     
     # Check if Longhorn UI credentials exist
@@ -132,21 +132,10 @@ bootstrap_cluster_secrets() {
     # Create 1Password Connect secrets
     kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
     
-    # Get 1Password Connect credentials
-    if op item get "1Password Connect" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
-        kubectl create secret generic onepassword-connect-credentials \
-            --namespace=onepassword-connect \
-            --from-file=1password-credentials.json="$temp_dir/op-credentials.json" \
-            --dry-run=client -o yaml | kubectl apply -f -
-        success "Created 1Password Connect credentials secret"
-    else
-        warn "1Password Connect credentials not found"
-    fi
-    
-    # Get 1Password Connect token
-    if op item get "1Password Connect" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
+    # Get 1Password Connect JWT token
+    if op item get "home Access Token: home-ops-automation" --vault="Automation" --fields credential --reveal > "$temp_dir/op-token" 2>/dev/null; then
         local token
-        token=$(jq -r '.value' "$temp_dir/op-token.json")
+        token=$(cat "$temp_dir/op-token")
         kubectl create secret generic onepassword-connect-token \
             --namespace=onepassword-connect \
             --from-literal=token="$token" \
@@ -156,14 +145,14 @@ bootstrap_cluster_secrets() {
         warn "1Password Connect token not found"
     fi
     
-    # Create BGP authentication secret
-    kubectl create namespace cilium-system --dry-run=client -o yaml | kubectl apply -f -
+    # Create BGP authentication secret (in kube-system for Talos-managed Cilium)
+    kubectl create namespace kube-system --dry-run=client -o yaml | kubectl apply -f -
     
-    if op item get "BGP Authentication - $CLUSTER_NAME" --fields label=password --format json > "$temp_dir/bgp-auth.json" 2>/dev/null; then
+    if op item get "BGP Authentication - $CLUSTER_NAME" --vault="Automation" --fields label=password --format json > "$temp_dir/bgp-auth.json" 2>/dev/null; then
         local bgp_password
         bgp_password=$(jq -r '.value' "$temp_dir/bgp-auth.json")
         kubectl create secret generic cilium-bgp-auth \
-            --namespace=cilium-system \
+            --namespace=kube-system \
             --from-literal=password="$bgp_password" \
             --dry-run=client -o yaml | kubectl apply -f -
         success "Created BGP authentication secret"
