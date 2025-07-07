@@ -45,7 +45,7 @@ spec:
     k8sServicePort: 6443
     
     # Kube-proxy replacement
-    kubeProxyReplacement: "strict"
+    kubeProxyReplacement: true
     
     # Enable Hubble for observability
     hubble:
