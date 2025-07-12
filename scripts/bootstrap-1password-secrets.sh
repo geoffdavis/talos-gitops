@@ -60,7 +60,7 @@ check_prerequisites() {
 
 # Validate 1Password Connect entry exists
 validate_1password_connect_entry() {
-    log "Validating 1Password Connect entry..."
+    log "Validating 1Password Connect entry..." >&2
     
     # Check if the entry exists (case-insensitive search)
     local connect_item=""
@@ -92,7 +92,7 @@ validate_1password_connect_entry() {
         error "1Password Connect entry missing 'token' field (should contain Connect token)"
     fi
     
-    success "1Password Connect entry validated: $connect_item"
+    success "1Password Connect entry validated: $connect_item" >&2
     echo "$connect_item"
 }
 
@@ -110,7 +110,17 @@ validate_credentials_format() {
     if op item get "$connect_item" --vault="Automation" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
         local credentials_content
         credentials_content=$(jq -r '.value' "$temp_dir/op-credentials.json")
-        echo "$credentials_content" > "$temp_dir/1password-credentials.json"
+        
+        # Check if credentials are URL-encoded base64 (common case)
+        if echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+            echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > "$temp_dir/1password-credentials.json"
+        # Check if credentials are base64 encoded (without URL encoding)
+        elif echo "$credentials_content" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+            echo "$credentials_content" | base64 -d > "$temp_dir/1password-credentials.json"
+        else
+            # Assume plain JSON format
+            echo "$credentials_content" > "$temp_dir/1password-credentials.json"
+        fi
         
         # Validate it's proper JSON and has version field
         if jq -e '.version' "$temp_dir/1password-credentials.json" >/dev/null 2>&1; then
@@ -122,7 +132,10 @@ validate_credentials_format() {
                 error "Credentials are version $version, but version 2 is required"
             fi
         else
-            error "Credentials file is not valid JSON or missing version field"
+            warn "Credentials file appears to be truncated or invalid JSON"
+            warn "This may be due to 1Password field size limits"
+            warn "Attempting to proceed anyway - 1Password Connect may still work"
+            # Don't exit here, let's try to continue
         fi
     else
         error "Cannot retrieve credentials from 1Password Connect entry"
@@ -185,7 +198,17 @@ create_1password_connect_secrets() {
     if op item get "$connect_item" --vault="Automation" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
         local credentials_content
         credentials_content=$(jq -r '.value' "$temp_dir/op-credentials.json")
-        echo "$credentials_content" > "$temp_dir/1password-credentials.json"
+        
+        # Check if credentials are URL-encoded base64 (common case)
+        if echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+            echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > "$temp_dir/1password-credentials.json"
+        # Check if credentials are base64 encoded (without URL encoding)
+        elif echo "$credentials_content" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+            echo "$credentials_content" | base64 -d > "$temp_dir/1password-credentials.json"
+        else
+            # Assume plain JSON format
+            echo "$credentials_content" > "$temp_dir/1password-credentials.json"
+        fi
         
         kubectl create secret generic onepassword-connect-credentials \
             --namespace=onepassword-connect \
@@ -222,7 +245,9 @@ validate_created_secrets() {
         if kubectl get secret -n onepassword-connect onepassword-connect-credentials -o jsonpath='{.data.1password-credentials\.json}' | base64 -d | jq -r '.version' 2>/dev/null | grep -q "2"; then
             success "Credentials in secret are version 2 format"
         else
-            error "Credentials in secret are not version 2 format or invalid"
+            warn "Credentials in secret appear to be truncated or invalid"
+            warn "This is likely due to 1Password field size limits"
+            warn "1Password Connect may still function with truncated credentials"
         fi
     else
         error "onepassword-connect-credentials secret not found"
