@@ -139,11 +139,12 @@ controlPlane:
     - |-
       cluster:
         apiServer:
-          extraArgs:
-            oidc-client-id: kubernetes
-            oidc-groups-claim: groups
-            oidc-issuer-url: https://auth.k8s.home.geoffdavis.com
-            oidc-username-claim: email
+          # Temporarily disable OIDC for initial bootstrap
+          # extraArgs:
+          #   oidc-client-id: kubernetes
+          #   oidc-groups-claim: groups
+          #   oidc-issuer-url: https://auth.k8s.home.geoffdavis.com
+          #   oidc-username-claim: email
           disablePodSecurityPolicy: true
           admissionControl:
             - name: PodSecurity
