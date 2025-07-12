@@ -18,6 +18,26 @@ This repository contains the configuration and automation for managing a Talos K
   - **IPv4**: 172.29.51.0/24 (VLAN 51)
   - **IPv6**: fd47:25e1:2f96:51::/64 (ULA, VLAN 51)
 
+## ⚠️ CRITICAL SAFETY WARNING ⚠️
+
+**BEFORE PERFORMING ANY CLUSTER OPERATIONS, READ THE SAFETY DOCUMENTATION:**
+
+🚨 **[CLUSTER RESET SAFETY GUIDE](docs/CLUSTER_RESET_SAFETY.md)** - **MANDATORY READING**
+
+🛡️ **[SUBTASK SAFETY GUIDELINES](docs/SUBTASK_SAFETY_GUIDELINES.md)** - **REQUIRED FOR ALL OPERATIONS**
+
+### Safe Operations Available:
+- [`task cluster:safe-reset`](Taskfile.yml:829) - Safe partition-only reset (preserves OS)
+- [`task cluster:safe-reboot`](Taskfile.yml:883) - Safe cluster reboot
+- [`task cluster:emergency-recovery`](Taskfile.yml:861) - Emergency recovery procedures
+- [`task cluster:verify-safety`](Taskfile.yml:913) - Verify safety before operations
+
+### ❌ NEVER USE THESE DANGEROUS COMMANDS:
+- `talosctl reset` (without partition specifications) - **WILL WIPE ENTIRE OS**
+- Any reset command that doesn't specify partitions
+
+**The safety framework prevents accidental OS wipes that require USB drive reinstallation.**
+
 ## All-Control-Plane Architecture
 
 This cluster is configured with all three nodes functioning as both control plane and worker nodes, providing:

@@ -1,17 +1,13 @@
 # LLDPD extension service configuration patch
 machine:
+  env:
+    LLDPD_OPTS: "-c -e -f -s -r"
   files:
-    - path: /var/etc/extension-services/lldpd.yaml
+    - path: /etc/lldpd.conf
       permissions: 0644
       op: create
       content: |
-        apiVersion: v1alpha1
-        kind: ExtensionServiceConfig
-        name: lldpd
-        configFiles:
-          - content: |
-              configure lldp portidsubtype ifname
-              unconfigure lldp management-addresses-advertisements
-              unconfigure lldp capabilities-advertisements
-              configure system description "Talos Node"
-            mountPath: /usr/local/etc/lldpd/lldpd.conf
+        configure lldp portidsubtype ifname
+        unconfigure lldp management-addresses-advertisements
+        unconfigure lldp capabilities-advertisements
+        configure system description "Talos Node"

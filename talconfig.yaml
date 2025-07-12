@@ -69,8 +69,6 @@ nodes:
 # Control plane patches
 controlPlane:
   patches:
-    # LLDPD service configuration
-    - "@talos/patches/lldpd.yaml"
     # Install configuration
     - |-
       machine:
