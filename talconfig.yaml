@@ -161,7 +161,7 @@ controlPlane:
                 exemptions:
                   usernames: []
                   runtimeClasses: []
-                  namespaces: [kube-system]
+                  namespaces: []
           auditPolicy:
             apiVersion: audit.k8s.io/v1
             kind: Policy
