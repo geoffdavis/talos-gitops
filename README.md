@@ -181,9 +181,78 @@ Before deploying, set up your Cloudflare tunnel:
    - Your existing setup should already resolve `*.home.geoffdavis.com`
    - Add `*.k8s.home.geoffdavis.com → 172.29.51.200` to your local DNS
 
+## 1Password Connect Setup
+
+This cluster uses 1Password Connect for secure secret management. The bootstrap process has been streamlined to automatically handle 1Password Connect credentials during cluster initialization.
+
+### Prerequisites for 1Password Connect
+
+Before bootstrapping, ensure you have a **"1password connect"** entry in your **Automation vault** with:
+- **credentials** field: Contains your 1password-credentials.json file (version 2 format)
+- **token** field: Contains your Connect token
+
+### Streamlined Bootstrap Process
+
+The new bootstrap process automatically:
+1. Retrieves credentials from your "1password connect" entry
+2. Validates the credentials format (ensures version 2)
+3. Creates the necessary Kubernetes secrets
+4. Validates the created secrets
+
+```bash
+# Streamlined bootstrap (includes 1Password Connect setup)
+task bootstrap:cluster
+
+# Or manually bootstrap just 1Password Connect secrets
+task bootstrap:1password-secrets
+
+# Validate 1Password Connect secrets
+task bootstrap:validate-1password-secrets
+```
+
+### 1Password Item Structure
+- **Automation Vault**: BGP auth, Longhorn credentials, **1Password Connect credentials**
+- **Services Vault**: API tokens, tunnel credentials
+
+For detailed setup instructions, see:
+📖 **[1Password Connect Setup Guide](docs/1PASSWORD_CONNECT_SETUP.md)**
+
 ## Quick Start
 
-### For New All-Control-Plane Clusters
+### For New All-Control-Plane Clusters (Streamlined Bootstrap)
+
+1. Install dependencies:
+   ```bash
+   mise install
+   ```
+
+2. **Complete cluster bootstrap** (includes 1Password secrets):
+   ```bash
+   task bootstrap:cluster
+   ```
+   This single command will:
+   - Bootstrap all secrets from 1Password
+   - Generate Talos configuration
+   - Apply configuration to nodes
+   - Bootstrap the cluster
+   - Create 1Password Connect secrets
+   - Validate the setup
+   - Deploy GitOps stack
+   - Deploy core applications
+
+3. If USB devices aren't detected, perform hard reboot:
+   ```bash
+   task talos:reboot
+   ```
+
+4. Configure BGP on Unifi UDM Pro:
+   ```bash
+   task bgp:configure-unifi
+   ```
+
+### Manual Step-by-Step Bootstrap (Alternative)
+
+If you prefer manual control over each step:
 
 1. Install dependencies:
    ```bash
@@ -210,20 +279,30 @@ Before deploying, set up your Cloudflare tunnel:
    task talos:bootstrap
    ```
 
-6. If USB devices aren't detected, perform hard reboot:
+6. **Bootstrap 1Password Connect secrets** (for fresh cluster):
+   ```bash
+   task bootstrap:1password-secrets
+   ```
+
+7. **Validate 1Password secrets**:
+   ```bash
+   task bootstrap:validate-1password-secrets
+   ```
+
+8. If USB devices aren't detected, perform hard reboot:
    ```bash
    task talos:reboot
    ```
 
-7. Configure BGP on Unifi UDM Pro:
+9. Configure BGP on Unifi UDM Pro:
    ```bash
    task bgp:configure-unifi
    ```
 
-8. Deploy GitOps stack:
-   ```bash
-   task flux:bootstrap
-   ```
+10. Deploy GitOps stack:
+    ```bash
+    task flux:bootstrap
+    ```
 
 ### Converting Existing Cluster to All-Control-Plane
 

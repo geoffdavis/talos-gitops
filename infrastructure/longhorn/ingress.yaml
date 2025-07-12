@@ -56,5 +56,5 @@ spec:
   data:
     - secretKey: auth
       remoteRef:
-        key: "Longhorn UI Credentials"
+        key: "Longhorn UI Credentials - home-ops"
         property: "auth"

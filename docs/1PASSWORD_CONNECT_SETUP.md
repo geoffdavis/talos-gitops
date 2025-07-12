@@ -1,115 +1,163 @@
-# 1Password Connect Credentials Setup
+# 1Password Connect Setup
 
-## Regenerating 1Password Connect Credentials (Version 2)
+This guide provides instructions for setting up 1Password Connect for secure secret management in your Talos Kubernetes cluster.
 
-The 1Password Connect server requires credentials in the newer version 2 format. If you're seeing the error "credentials file is not version 2", follow these steps:
+## Overview
 
-### Prerequisites
+1Password Connect enables secure secret synchronization from 1Password vaults to Kubernetes secrets using the External Secrets Operator. This setup uses a streamlined bootstrap process that automatically handles credential validation and secret creation.
 
-1. Access to your 1Password account with administrative privileges
-2. 1Password CLI installed locally (optional but recommended)
+## Prerequisites
 
-### Steps to Generate New Credentials
+- Access to your 1Password account with administrative privileges
+- 1Password CLI installed and authenticated (`op signin`)
+- `kubectl` access to your Kubernetes cluster
+- `OP_ACCOUNT` environment variable set
 
-1. **Log into your 1Password account** at https://my.1password.com/
+## 1Password Setup
 
-2. **Navigate to Integrations**:
-   - Click on your account name in the top right
-   - Select "Integrations" from the dropdown
-   - Or go directly to: https://my.1password.com/integrations/directory/
+### Step 1: Create Connect Server
 
-3. **Set up 1Password Connect Server**:
-   - Find "1Password Connect Server" in the integrations list
-   - Click "Set Up" or "Manage" if already configured
+1. Log into your 1Password account at https://my.1password.com/
+2. Navigate to **Integrations** → **Directory**
+3. Find "1Password Connect Server" and click **"Set Up"**
+4. Give it a descriptive name: `Kubernetes Cluster - home-ops`
+5. Select the vaults to access:
+   - **Automation** (for infrastructure secrets)
+   - **Services** (for API tokens and service credentials)
+6. Click **"Save"** to create the Connect Server
 
-4. **Create New Credentials**:
-   - Click "New Connect Server" or "Add Connect Server"
-   - Give it a descriptive name (e.g., "Kubernetes Cluster")
-   - Select the vaults you want to access:
-     - "Automation" (vault ID: 1)
-     - "Shared" (vault ID: 2)
-   - Click "Save" or "Create"
+### Step 2: Download Credentials and Token
 
-5. **Download Credentials**:
-   - After creation, you'll see options to download:
-     - `1password-credentials.json` - This is what we need
-     - A token file (we don't need this for Kubernetes setup)
-   - Download the `1password-credentials.json` file
+1. Download the `1password-credentials.json` file (version 2 format)
+2. Copy the Connect Token (starts with `eyJ...`)
+3. Verify the credentials file contains `"version": "2"` in the JSON structure
 
-6. **Verify the Credentials Format**:
-   The file should look similar to this structure:
-   ```json
-   {
-     "verifier": {
-       "salt": "...",
-       "localHash": "..."
-     },
-     "encCredentials": {
-       "kid": "...",
-       "enc": "A256GCM",
-       "cty": "b5+jwk+json",
-       "iv": "...",
-       "data": "..."
-     },
-     "version": "2",
-     "deviceUuid": "...",
-     "uniqueKey": {
-       "alg": "A256GCM",
-       "ext": true,
-       "k": "...",
-       "key_ops": ["encrypt", "decrypt"],
-       "kty": "oct",
-       "kid": "..."
-     }
-   }
-   ```
-   Note the `"version": "2"` field.
+### Step 3: Store in 1Password
 
-### Updating the Kubernetes Secret
+Create a **"1password connect"** entry in your **Automation vault** with:
+- **credentials** field: Upload/paste your `1password-credentials.json` file content
+- **token** field: Paste your Connect token
 
-Once you have the new credentials file:
+## Vault Structure
 
-1. **Backup the existing secret** (optional):
+### Automation Vault
+Infrastructure and cluster secrets:
+- `1password connect` - Connect credentials and token
+- `BGP Authentication - home-ops` - BGP authentication password
+- `Longhorn UI Credentials - home-ops` - Longhorn UI authentication
+- `Talos Secrets - home-ops` - Talos cluster secrets
+
+### Services Vault
+External service credentials:
+- `Cloudflare API Token` - DNS management token
+- `Cloudflared homeops kubernetes tunnel` - Tunnel credentials
+
+## Bootstrap Process
+
+The streamlined bootstrap process automatically:
+1. Retrieves credentials from your "1password connect" entry
+2. Validates the credentials format (ensures version 2)
+3. Creates the necessary Kubernetes secrets
+4. Validates the created secrets
+
+### Complete Cluster Bootstrap
+```bash
+# Bootstrap entire cluster (includes 1Password Connect setup)
+task bootstrap:cluster
+```
+
+### Manual 1Password Connect Bootstrap
+```bash
+# Bootstrap just 1Password Connect secrets
+task bootstrap:1password-secrets
+
+# Validate 1Password Connect secrets
+task bootstrap:validate-1password-secrets
+```
+
+## Validation
+
+After bootstrap, validate the setup:
+
+```bash
+# Simple validation of created secrets
+task bootstrap:validate-1password-secrets
+
+# Check if 1Password Connect deployment is ready
+kubectl get deployment -n onepassword-connect onepassword-connect
+
+# Test API connectivity (after deployment)
+kubectl port-forward -n onepassword-connect svc/onepassword-connect 8080:8080 &
+curl -H "Authorization: Bearer $(kubectl get secret -n onepassword-connect onepassword-connect-token -o jsonpath='{.data.token}' | base64 -d)" http://localhost:8080/v1/health
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### "credentials file is not version 2"
+- **Cause**: Using old version 1 credentials
+- **Solution**: Generate new version 2 credentials from 1Password web interface
+
+#### "failed to FindCredentialsUniqueKey"
+- **Cause**: Corrupted or incomplete credentials file
+- **Solution**: Re-download credentials file from 1Password web interface
+
+#### "connection timeout" or "connection refused"
+- **Cause**: 1Password Connect service not running or misconfigured
+- **Solution**: Check deployment status and restart if needed
+
+#### ExternalSecret shows "SecretSyncError"
+- **Cause**: Item name mismatch or missing vault access
+- **Solution**: Verify item names match exactly and vault permissions are correct
+
+### Validation Commands
+
+```bash
+# Check 1Password Connect pod logs
+kubectl logs -n onepassword-connect deployment/onepassword-connect
+
+# Check External Secrets Operator logs
+kubectl logs -n external-secrets-system deployment/external-secrets
+
+# List all external secrets and their status
+kubectl get externalsecrets -A
+
+# Check specific external secret details
+kubectl describe externalsecret -n NAMESPACE SECRET_NAME
+```
+
+## Security Notes
+
+- Keep the `1password-credentials.json` file secure
+- Don't commit credentials to Git
+- Rotate Connect tokens periodically
+- Use least-privilege vault access
+- Monitor External Secrets for unauthorized access attempts
+
+## Next Steps After Setup
+
+1. **Deploy 1Password Connect**:
    ```bash
-   kubectl get secret -n onepassword-connect onepassword-connect-credentials -o yaml > onepassword-credentials-backup.yaml
+   kubectl apply -k infrastructure/onepassword-connect/
    ```
 
-2. **Delete the existing secret**:
+2. **Wait for deployment**:
    ```bash
-   kubectl delete secret -n onepassword-connect onepassword-connect-credentials
+   kubectl rollout status deployment -n onepassword-connect onepassword-connect
    ```
 
-3. **Create the new secret**:
+3. **Deploy External Secrets Operator**:
    ```bash
-   kubectl create secret generic onepassword-connect-credentials \
-     --from-file=1password-credentials.json=/path/to/your/downloaded/1password-credentials.json \
-     --namespace=onepassword-connect
+   kubectl apply -k infrastructure/external-secrets/
    ```
 
-4. **Restart the 1Password Connect deployment**:
+4. **Verify External Secrets sync**:
    ```bash
-   kubectl rollout restart deployment -n onepassword-connect onepassword-connect
+   kubectl get externalsecrets -A
    ```
 
-### Alternative: Using the Bootstrap Script
+---
 
-If you have the bootstrap script set up, you can also update it:
-
-1. Place the new `1password-credentials.json` file in the expected location
-2. Run the bootstrap script:
-   ```bash
-   ./scripts/bootstrap-k8s-secrets.sh
-   ```
-
-### Troubleshooting
-
-- **"credentials file is not version 2" error**: The credentials are from an older 1Password Connect setup. You must regenerate them.
-- **"failed to FindCredentialsUniqueKey" error**: The credentials file is corrupted or incomplete.
-- **Connection timeouts**: Check that the vaults selected during credential creation match what's configured in the ClusterSecretStore.
-
-### Security Notes
-
-- Keep the `1password-credentials.json` file secure - it provides access to your vaults
-- Don't commit this file to Git
-- Consider using a secure method to transfer the file to your cluster
-- Rotate credentials periodically
+**Cluster**: home-ops  
+**1Password Vaults**: Automation, Services
