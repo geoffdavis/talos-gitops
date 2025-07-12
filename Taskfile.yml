@@ -363,6 +363,7 @@ tasks:
     desc: Deploy core applications
     cmds:
       - task: apps:deploy-cilium
+      - task: apps:deploy-external-secrets
       - task: apps:deploy-onepassword-connect
       - task: apps:deploy-longhorn
       - task: apps:deploy-ingress
@@ -402,6 +403,15 @@ tasks:
       - echo "Waiting for Cilium to be ready..."
       - sleep 30
       - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=cilium-agent -n kube-system --timeout=300s || true
+
+  apps:deploy-external-secrets:
+    desc: Deploy External Secrets Operator
+    cmds:
+      - helm repo add external-secrets https://charts.external-secrets.io || true
+      - helm repo update
+      - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait
+      - echo "Waiting for External Secrets CRDs to be ready..."
+      - sleep 10
 
   apps:deploy-onepassword-connect:
     desc: Deploy 1Password Connect
