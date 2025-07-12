@@ -179,16 +179,36 @@ tasks:
     cmds:
       - echo "Applying Talos configuration to all control plane nodes..."
       - |
-        # Try with talosconfig first, fall back to insecure if needed
-        talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml || \
-        talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
+        echo "Applying configuration to mini01 ({{.NODE_1_IP}})..."
+        if talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml; then
+          echo "✓ mini01 configuration applied successfully"
+        elif talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml; then
+          echo "✓ mini01 configuration applied successfully (insecure mode)"
+        else
+          echo "✗ Failed to apply configuration to mini01"
+          exit 1
+        fi
       - |
-        talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml || \
-        talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
+        echo "Applying configuration to mini02 ({{.NODE_2_IP}})..."
+        if talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml; then
+          echo "✓ mini02 configuration applied successfully"
+        elif talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml; then
+          echo "✓ mini02 configuration applied successfully (insecure mode)"
+        else
+          echo "✗ Failed to apply configuration to mini02"
+          exit 1
+        fi
       - |
-        talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml || \
-        talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
-      - echo "Configuration applied to all nodes"
+        echo "Applying configuration to mini03 ({{.NODE_3_IP}})..."
+        if talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml; then
+          echo "✓ mini03 configuration applied successfully"
+        elif talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml; then
+          echo "✓ mini03 configuration applied successfully (insecure mode)"
+        else
+          echo "✗ Failed to apply configuration to mini03"
+          exit 1
+        fi
+      - echo "✓ Configuration successfully applied to all nodes"
 
   talos:apply-config-only:
     desc: Apply Talos configuration to nodes (without regenerating)
