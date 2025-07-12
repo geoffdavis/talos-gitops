@@ -110,6 +110,9 @@ controlPlane:
           net.ipv4.ip_forward: "1"
           net.ipv6.conf.all.forwarding: "1"
           kernel.kexec_load_disabled: "1"  # Disable kexec for Mac mini USB support
+        services:
+          lldpd:
+            enabled: true
         systemDiskEncryption:
           state:
             provider: luks2
