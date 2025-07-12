@@ -2,7 +2,7 @@ apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: default
-  namespace: cilium-system
+  namespace: kube-system
 spec:
   blocks:
     - start: "172.29.51.100"
@@ -15,7 +15,7 @@ apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: ingress
-  namespace: cilium-system
+  namespace: kube-system
 spec:
   blocks:
     - start: "172.29.51.200"
@@ -28,11 +28,11 @@ apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
 metadata:
   name: default
-  namespace: cilium-system
+  namespace: kube-system
 spec:
   loadBalancerIPs: true
   nodeSelector:
     matchLabels:
       kubernetes.io/os: linux
   interfaces:
-    - "eth0"
+    - "enp3s0f0"

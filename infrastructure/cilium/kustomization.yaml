@@ -2,7 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - namespace.yaml
-  - helmrelease.yaml
+  # Cilium is now deployed via bootstrap task, not Flux
+  # - namespace.yaml  # Cilium runs in kube-system, not cilium-system
+  # - helmrelease.yaml  # Deployed via bootstrap task
   - loadbalancer-pool.yaml
   - loadbalancer-pool-ipv6.yaml

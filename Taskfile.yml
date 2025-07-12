@@ -374,21 +374,34 @@ tasks:
       - helm repo update
       - |
         helm upgrade --install cilium cilium/cilium \
-            --version 1.15.6 \
+            --version 1.16.1 \
             --namespace kube-system \
             --set ipam.mode=cluster-pool \
-            --set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16" \
+            --set ipam.operator.clusterPoolIPv4PodCIDRList="10.0.0.0/8" \
             --set ipam.operator.clusterPoolIPv4MaskSize=24 \
-            --set kubeProxyReplacement=true \
-            --set securityContext.capabilities.ciliumAgent="{CHOWN,KILL,NET_ADMIN,NET_RAW,IPC_LOCK,SYS_ADMIN,SYS_RESOURCE,DAC_OVERRIDE,FOWNER,SETGID,SETUID}" \
-            --set securityContext.capabilities.cleanCiliumState="{NET_ADMIN,SYS_ADMIN,SYS_RESOURCE}" \
-            --set cgroup.autoMount.enabled=false \
-            --set cgroup.hostRoot=/sys/fs/cgroup \
+            --set kubeProxyReplacement=false \
+            --set securityContext.privileged=true \
+            --set cni.install=true \
+            --set cni.exclusive=false \
+            --set hubble.enabled=true \
+            --set hubble.relay.enabled=true \
+            --set hubble.ui.enabled=true \
+            --set operator.replicas=1 \
+            --set operator.rollOutPods=true \
             --set k8sServiceHost=localhost \
-            --set k8sServicePort=7445
+            --set k8sServicePort=7445 \
+            --set tolerations[0].key=node-role.kubernetes.io/control-plane \
+            --set tolerations[0].operator=Exists \
+            --set tolerations[0].effect=NoSchedule \
+            --set tolerations[1].key=node-role.kubernetes.io/master \
+            --set tolerations[1].operator=Exists \
+            --set tolerations[1].effect=NoSchedule \
+            --set tolerations[2].key=node.kubernetes.io/not-ready \
+            --set tolerations[2].operator=Exists \
+            --set tolerations[2].effect=NoSchedule
       - echo "Waiting for Cilium to be ready..."
       - sleep 30
-      - kubectl wait --for=condition=ready pods -l k8s-app=cilium -n kube-system --timeout=300s || true
+      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=cilium-agent -n kube-system --timeout=300s || true
 
   apps:deploy-onepassword-connect:
     desc: Deploy 1Password Connect
