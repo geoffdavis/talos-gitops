@@ -35,12 +35,27 @@ tasks:
       - sh: 'kubectl get namespaces &> /dev/null'
         msg: 'Kubernetes cluster must be accessible'
 
+  bootstrap:1password-secrets:
+    desc: Bootstrap 1Password Connect secrets for fresh cluster (requires OP_ACCOUNT environment variable)
+    cmds:
+      - ./scripts/bootstrap-1password-secrets.sh
+    preconditions:
+      - sh: '[ -n "$OP_ACCOUNT" ]'
+        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
+
+  bootstrap:validate-1password-secrets:
+    desc: Validate 1Password Connect secrets were created correctly
+    cmds:
+      - ./scripts/validate-1password-secrets.sh
+
   bootstrap:cluster:
-    desc: Bootstrap the entire cluster
+    desc: Bootstrap the entire cluster from scratch
     deps: [bootstrap:secrets, talos:generate-config]
     cmds:
       - task: talos:apply-config
       - task: talos:bootstrap
+      - task: bootstrap:1password-secrets
+      - task: bootstrap:validate-1password-secrets
       - task: flux:bootstrap
       - task: apps:deploy-core
 
