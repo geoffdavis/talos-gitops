@@ -40,7 +40,7 @@ data:
   # This will be populated by External Secrets from 1Password
   auth: ""
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: longhorn-auth

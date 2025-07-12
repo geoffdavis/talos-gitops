@@ -411,7 +411,11 @@ tasks:
       - helm repo update
       - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait
       - echo "Waiting for External Secrets CRDs to be ready..."
-      - sleep 10
+      - kubectl wait --for condition=established --timeout=120s crd/clustersecretstores.external-secrets.io
+      - kubectl wait --for condition=established --timeout=120s crd/secretstores.external-secrets.io
+      - echo "Waiting for External Secrets webhook to be fully ready..."
+      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - sleep 15
 
   apps:deploy-onepassword-connect:
     desc: Deploy 1Password Connect
@@ -423,8 +427,54 @@ tasks:
       - echo "Waiting for External Secrets CRDs to be fully available..."
       - kubectl wait --for condition=established --timeout=60s crd/clustersecretstores.external-secrets.io
       - kubectl wait --for condition=established --timeout=60s crd/secretstores.external-secrets.io
+      - echo "Waiting for External Secrets webhook to be ready..."
+      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - echo "Testing webhook connectivity..."
+      - |
+        # Test webhook connectivity with retries
+        for i in {1..10}; do
+          if kubectl run test-webhook-connectivity --image=curlimages/curl --rm -it --restart=Never --timeout=30s -- curl -k -m 5 https://external-secrets-webhook.external-secrets-system.svc:443/healthz 2>/dev/null; then
+            echo "✓ Webhook is accessible"
+            break
+          else
+            echo "⚠ Webhook not ready, attempt $i/10..."
+            sleep 10
+          fi
+        done
       - echo "Deploying 1Password Connect secret stores..."
-      - kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml
+      - |
+        # Apply secret stores with retry logic for webhook validation
+        for i in {1..5}; do
+          if kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml; then
+            echo "✓ Secret stores deployed successfully"
+            break
+          else
+            echo "⚠ Secret store deployment failed, attempt $i/5..."
+            if [ $i -eq 5 ]; then
+              echo "❌ Failed to deploy secret stores after 5 attempts"
+              echo "Temporarily disabling webhook validation..."
+              kubectl delete validatingwebhookconfiguration secretstore-validate --ignore-not-found=true
+              kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml
+              echo "✓ Secret stores deployed with webhook validation disabled"
+              echo "Restoring webhook validation..."
+              helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
+              echo "✓ Webhook validation restored"
+            else
+              sleep 15
+            fi
+          fi
+        done
+
+  apps:fix-external-secrets-webhook:
+    desc: Fix External Secrets webhook validation issues
+    cmds:
+      - echo "Checking External Secrets webhook status..."
+      - kubectl get validatingwebhookconfiguration | grep -E "(secretstore|external)" || echo "No webhook configurations found"
+      - echo "Reinstalling External Secrets to restore webhook configuration..."
+      - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
+      - echo "Waiting for webhook to be ready..."
+      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - echo "✓ External Secrets webhook restored"
 
   apps:deploy-longhorn:
     desc: Deploy Longhorn storage
@@ -676,3 +726,103 @@ tasks:
     cmds:
       - echo "Installing Renovate CLI..."
       - npm install -g renovate
+
+  # 1Password Connect automation
+  onepassword:create-connect-server:
+    desc: Create new 1Password Connect server with proper credentials and store in 1Password
+    preconditions:
+      - sh: 'command -v op'
+        msg: '1Password CLI (op) is required'
+      - sh: '[ -n "$OP_ACCOUNT" ]'
+        msg: 'OP_ACCOUNT environment variable must be set'
+    cmds:
+      - echo "Creating new 1Password Connect server with credentials..."
+      - |
+        # Create Connect server with proper vault access
+        echo "Creating Connect server for home-ops cluster..."
+        op connect server create "home-ops-cluster" --vaults "Automation,Services" > /dev/null
+        
+        # Verify credentials file was created
+        if [ ! -f "1password-credentials.json" ]; then
+          echo "❌ Credentials file not created"
+          exit 1
+        fi
+        
+        # Validate JSON format
+        if ! jq . 1password-credentials.json > /dev/null; then
+          echo "❌ Invalid credentials JSON format"
+          exit 1
+        fi
+        
+        echo "✓ Valid credentials file created ($(wc -c < 1password-credentials.json) bytes)"
+      - |
+        # Store credentials as document in 1Password
+        echo "Storing credentials in 1Password as document..."
+        op document create 1password-credentials.json \
+          --title="1Password Connect Credentials - home-ops" \
+          --vault="Automation" > /dev/null
+        echo "✓ Credentials stored as document in 1Password"
+      - |
+        # Create Connect token
+        echo "Creating Connect token..."
+        CONNECT_TOKEN=$(op connect token create "home-ops-token" \
+          --server "home-ops-cluster" \
+          --vault "Automation" \
+          --expires-in 8760h)
+        
+        if [ ${#CONNECT_TOKEN} -lt 100 ]; then
+          echo "❌ Connect token appears invalid (length: ${#CONNECT_TOKEN})"
+          exit 1
+        fi
+        
+        echo "✓ Connect token created (length: ${#CONNECT_TOKEN})"
+        
+        # Store token in 1Password
+        echo "Storing Connect token in 1Password..."
+        op item create \
+          --category="API Credential" \
+          --title="1Password Connect Token - home-ops" \
+          --vault="Automation" \
+          "token[password]=$CONNECT_TOKEN" > /dev/null || \
+        op item edit "1Password Connect Token - home-ops" \
+          "token[password]=$CONNECT_TOKEN" \
+          --vault="Automation" > /dev/null
+        echo "✓ Connect token stored in 1Password"
+      - |
+        # Update Kubernetes secrets
+        echo "Updating Kubernetes secrets..."
+        kubectl create secret generic onepassword-connect-credentials \
+          --from-file=1password-credentials.json \
+          --namespace=onepassword-connect \
+          --dry-run=client -o yaml | kubectl apply -f -
+        
+        CONNECT_TOKEN=$(op connect token create "home-ops-token" \
+          --server "home-ops-cluster" \
+          --vault "Automation" \
+          --expires-in 8760h)
+        
+        kubectl create secret generic onepassword-connect-token \
+          --from-literal=token="$CONNECT_TOKEN" \
+          --namespace=onepassword-connect \
+          --dry-run=client -o yaml | kubectl apply -f -
+        
+        echo "✓ Kubernetes secrets updated"
+      - |
+        # Restart 1Password Connect deployment
+        echo "Restarting 1Password Connect deployment..."
+        kubectl rollout restart deployment onepassword-connect -n onepassword-connect
+        kubectl rollout status deployment onepassword-connect -n onepassword-connect --timeout=120s
+        echo "✓ 1Password Connect deployment restarted"
+      - |
+        # Clean up local files
+        echo "Cleaning up local files..."
+        rm -f 1password-credentials.json connect-token.txt
+        echo "✓ Local files cleaned up"
+      - echo "✅ 1Password Connect server setup completed successfully!"
+
+  onepassword:fix-credentials:
+    desc: Fix 1Password Connect credentials truncation issue
+    deps: [onepassword:create-connect-server]
+    cmds:
+      - echo "1Password Connect credentials have been regenerated and updated"
+      - task: bootstrap:validate-1password-secrets

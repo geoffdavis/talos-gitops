@@ -45,3 +45,4 @@ cluster:
       oidc-client-id: kubernetes
       oidc-username-claim: email
       oidc-groups-claim: groups
+      enable-admission-plugins: NodeRestriction,ValidatingAdmissionWebhook,MutatingAdmissionWebhook

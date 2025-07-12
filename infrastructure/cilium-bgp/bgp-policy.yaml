@@ -66,7 +66,7 @@ data:
   # This will be populated by External Secrets from 1Password
   password: ""
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: cilium-bgp-auth
