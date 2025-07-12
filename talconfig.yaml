@@ -145,6 +145,8 @@ controlPlane:
           #   oidc-groups-claim: groups
           #   oidc-issuer-url: https://auth.k8s.home.geoffdavis.com
           #   oidc-username-claim: email
+          extraArgs:
+            enable-admission-plugins: NodeRestriction,ValidatingAdmissionWebhook,MutatingAdmissionWebhook
           disablePodSecurityPolicy: true
           admissionControl:
             - name: PodSecurity
