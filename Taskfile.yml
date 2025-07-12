@@ -416,7 +416,15 @@ tasks:
   apps:deploy-onepassword-connect:
     desc: Deploy 1Password Connect
     cmds:
-      - kubectl apply -f infrastructure/onepassword-connect/
+      - echo "Deploying 1Password Connect basic resources..."
+      - kubectl apply -f infrastructure/onepassword-connect/namespace.yaml
+      - kubectl apply -f infrastructure/onepassword-connect/deployment.yaml
+      - kubectl apply -f infrastructure/onepassword-connect/service.yaml
+      - echo "Waiting for External Secrets CRDs to be fully available..."
+      - kubectl wait --for condition=established --timeout=60s crd/clustersecretstores.external-secrets.io
+      - kubectl wait --for condition=established --timeout=60s crd/secretstores.external-secrets.io
+      - echo "Deploying 1Password Connect secret stores..."
+      - kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml
 
   apps:deploy-longhorn:
     desc: Deploy Longhorn storage
