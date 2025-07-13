@@ -417,9 +417,9 @@ tasks:
             --version 1.16.1 \
             --namespace kube-system \
             --set ipam.mode=cluster-pool \
-            --set ipam.operator.clusterPoolIPv4PodCIDRList="10.0.0.0/8" \
+            --set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16" \
             --set ipam.operator.clusterPoolIPv4MaskSize=24 \
-            --set kubeProxyReplacement=false \
+            --set kubeProxyReplacement=true \
             --set securityContext.privileged=true \
             --set cni.install=true \
             --set cni.exclusive=false \
@@ -644,6 +644,51 @@ tasks:
       - mise exec -- kubectl get pods -n longhorn-system
       - mise exec -- kubectl get nodes -o custom-columns=NAME:.metadata.name,LONGHORN-READY:.status.conditions[?(@.type=="LonghornReady")].status
 
+  storage:check-usb-ssd:
+    desc: Check USB SSD detection and mounting on all nodes
+    cmds:
+      - echo "Checking USB SSD detection on {{.NODE_1_IP}}..."
+      - mise exec -- talosctl get disks --nodes {{.NODE_1_IP}}
+      - mise exec -- talosctl ls /dev/disk/by-id/ --nodes {{.NODE_1_IP}} | grep usb || echo "No USB devices found"
+      - echo "Checking USB SSD detection on {{.NODE_2_IP}}..."
+      - mise exec -- talosctl get disks --nodes {{.NODE_2_IP}}
+      - mise exec -- talosctl ls /dev/disk/by-id/ --nodes {{.NODE_2_IP}} | grep usb || echo "No USB devices found"
+      - echo "Checking USB SSD detection on {{.NODE_3_IP}}..."
+      - mise exec -- talosctl get disks --nodes {{.NODE_3_IP}}
+      - mise exec -- talosctl ls /dev/disk/by-id/ --nodes {{.NODE_3_IP}} | grep usb || echo "No USB devices found"
+
+  storage:validate-usb-ssd:
+    desc: Validate USB SSD storage configuration
+    cmds:
+      - ./scripts/validate-usb-ssd-storage.sh
+    preconditions:
+      - sh: '[ -x scripts/validate-usb-ssd-storage.sh ]'
+        msg: 'USB SSD validation script must be executable'
+
+  storage:deploy-usb-ssd:
+    desc: Deploy USB SSD storage configuration
+    cmds:
+      - ./scripts/deploy-usb-ssd-storage.sh
+    preconditions:
+      - sh: '[ -x scripts/deploy-usb-ssd-storage.sh ]'
+        msg: 'USB SSD deployment script must be executable'
+
+  storage:validate-complete-usb-ssd:
+    desc: Run comprehensive USB SSD validation
+    cmds:
+      - ./scripts/validate-complete-usb-ssd-setup.sh
+    preconditions:
+      - sh: '[ -x scripts/validate-complete-usb-ssd-setup.sh ]'
+        msg: 'Complete USB SSD validation script must be executable'
+
+  storage:validate-longhorn-usb-ssd:
+    desc: Validate Longhorn USB SSD integration
+    cmds:
+      - ./scripts/validate-longhorn-usb-ssd.sh
+    preconditions:
+      - sh: '[ -x scripts/validate-longhorn-usb-ssd.sh ]'
+        msg: 'Longhorn USB SSD validation script must be executable'
+
   # Testing tasks
   test:all:
     desc: Run all tests
@@ -651,6 +696,7 @@ tasks:
       - mise exec -- task test:config
       - mise exec -- task test:connectivity
       - mise exec -- task test:extensions
+      - mise exec -- task test:usb-storage
       - mise exec -- task test:recovery
 
   test:config:
@@ -676,6 +722,17 @@ tasks:
       - mise exec -- task network:verify-lldpd-config
       - mise exec -- task network:check-usb
       - mise exec -- task storage:check-iscsi
+      - mise exec -- task storage:validate-usb-ssd
+
+  test:usb-storage:
+    desc: Test USB SSD storage configuration and functionality
+    cmds:
+      - echo "Testing USB SSD storage configuration..."
+      - ./scripts/validate-complete-usb-ssd-setup.sh --quick
+      - mise exec -- task storage:check-usb-ssd
+    preconditions:
+      - sh: '[ -x scripts/validate-complete-usb-ssd-setup.sh ]'
+        msg: 'USB SSD validation script must be executable'
 
   test:ipv6:
     desc: Test IPv6 configuration and connectivity

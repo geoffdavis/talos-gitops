@@ -9,7 +9,7 @@ This repository contains the configuration and automation for managing a Talos K
 - **External Domain**: geoffdavis.com
 - **Architecture**: All-Control-Plane cluster - 3 Intel Mac mini devices functioning as both control plane and worker nodes
 - **High Availability**: etcd cluster spans all 3 nodes for maximum resilience
-- **Storage**: Internal disks for OS, 1TB USB SSDs for Longhorn storage
+- **Storage**: Internal disks for OS, 1TB USB SSDs for Longhorn distributed storage
 - **CNI**: Cilium with BGP peering to Unifi UDM Pro
 - **GitOps**: Flux with Kustomize
 - **Secrets**: 1Password (local op command + onepassword-connect)
@@ -62,12 +62,16 @@ This configuration is optimized for Intel Mac mini devices with:
   - `ext-lldpd`: LLDP daemon for network discovery
   - `usb-modem-drivers`: Enhanced USB device support
   - `thunderbolt`: Thunderbolt device support
-- **USB SSD support**: External USB SSDs for Longhorn distributed storage
+- **USB SSD support**: External 1TB USB SSDs for Longhorn distributed storage with automatic detection and configuration
 - **Network discovery**: LLDP configuration for network topology visibility
 
 **Storage Layout**:
 - **OS**: Apple internal storage (automatically detected by model selector)
 - **Longhorn Storage**: External 1TB USB SSDs for distributed storage
+  - **Total Capacity**: 3TB raw (3x 1TB USB SSDs)
+  - **Usable Capacity**: ~2.7TB with Longhorn overhead
+  - **Replica Factor**: 2 (effective capacity ~1.35TB)
+  - **Storage Classes**: `longhorn-ssd` for high-performance workloads
 
 ## DNS Architecture (Fits Existing Home Domain)
 
@@ -427,7 +431,168 @@ Specific test categories:
 task test:config       # Configuration validation
 task test:connectivity # Network connectivity
 task test:extensions   # Talos extensions
+task test:usb-storage  # USB SSD storage validation
 ```
+
+## USB SSD Storage Management
+
+This cluster uses external USB SSDs for distributed storage via Longhorn. The storage system provides high availability and performance for persistent workloads.
+
+### Storage Architecture
+
+- **3x 1TB USB SSDs**: One per node for distributed storage
+- **Longhorn Storage Engine**: Provides replication and high availability
+- **Storage Classes**:
+  - `longhorn-ssd`: High-performance storage for applications
+  - `longhorn`: Standard storage (if available)
+- **Automatic Detection**: USB SSDs are automatically detected and configured
+
+### USB SSD Operations
+
+#### Deployment and Validation
+
+```bash
+# Deploy USB SSD storage configuration
+./scripts/deploy-usb-ssd-storage.sh
+
+# Comprehensive validation of USB SSD setup
+./scripts/validate-complete-usb-ssd-setup.sh
+
+# Quick health check
+./scripts/validate-usb-ssd-storage.sh
+
+# Longhorn-specific validation
+./scripts/validate-longhorn-usb-ssd.sh
+```
+
+#### Daily Operations
+
+```bash
+# Check storage health
+kubectl get nodes.longhorn.io -n longhorn-system
+kubectl get volumes.longhorn.io -n longhorn-system
+
+# Monitor storage usage
+kubectl get pv | grep longhorn-ssd
+kubectl top nodes
+
+# Access Longhorn UI
+# Internal: https://longhorn.k8s.home.geoffdavis.com
+# External: https://longhorn.geoffdavis.com
+```
+
+#### Maintenance Procedures
+
+```bash
+# USB SSD replacement (planned)
+# 1. Drain node replicas
+kubectl patch node.longhorn.io $NODE_NAME -p '{"spec":{"allowScheduling":false}}' --type=merge
+
+# 2. Shutdown node
+talosctl -n $NODE_IP shutdown
+
+# 3. Replace USB SSD hardware
+# 4. Boot node and verify detection
+talosctl -n $NODE_IP get disks
+
+# 5. Re-enable scheduling
+kubectl patch node.longhorn.io $NODE_NAME -p '{"spec":{"allowScheduling":true}}' --type=merge
+```
+
+### Storage Classes and Usage
+
+#### Using USB SSD Storage
+
+```yaml
+# Example PVC using USB SSD storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+#### Storage Class Features
+
+- **High Performance**: Optimized for SSD performance
+- **Replication**: 2-replica default for high availability
+- **Expansion**: Supports volume expansion
+- **Snapshots**: Supports volume snapshots and backups
+- **Node Affinity**: Automatically uses SSD-tagged nodes
+
+### Troubleshooting USB SSD Issues
+
+#### USB Device Not Detected
+
+```bash
+# Check USB device detection
+talosctl -n $NODE_IP get disks
+talosctl -n $NODE_IP dmesg | grep -i usb
+
+# Hard reboot if needed (ensures USB detection)
+talosctl -n $NODE_IP reboot --mode=hard
+```
+
+#### Storage Performance Issues
+
+```bash
+# Run performance validation
+./scripts/validate-complete-usb-ssd-setup.sh --performance
+
+# Check Longhorn replica distribution
+kubectl get replicas.longhorn.io -n longhorn-system -o wide
+
+# Monitor I/O statistics
+kubectl top nodes
+```
+
+#### Volume Attachment Issues
+
+```bash
+# Check volume status
+kubectl get volumes.longhorn.io -n longhorn-system
+kubectl describe volume $VOLUME_NAME -n longhorn-system
+
+# Restart Longhorn manager if needed
+kubectl rollout restart daemonset/longhorn-manager -n longhorn-system
+```
+
+### Capacity Management
+
+#### Current Capacity
+
+- **Total Raw**: 3TB (3x 1TB USB SSDs)
+- **Usable**: ~2.7TB (with overhead)
+- **Effective**: ~1.35TB (with 2-replica factor)
+- **Reserved**: 10% for operations
+
+#### Expansion Options
+
+1. **Vertical Scaling**: Replace with larger USB SSDs (2TB, 4TB)
+2. **Horizontal Scaling**: Add more nodes with USB SSDs
+3. **Additional Storage**: Add more USB SSDs per node
+
+### Backup and Recovery
+
+```bash
+# Configure backup target (via GitOps)
+vim infrastructure/longhorn/helmrelease.yaml
+
+# Create volume backup
+kubectl create backup $VOLUME_NAME -n longhorn-system
+
+# Restore from backup
+kubectl apply -f restore-from-backup.yaml
+```
+
+For comprehensive USB SSD operational procedures, see:
+📖 **[USB SSD Operational Procedures](docs/USB_SSD_OPERATIONAL_PROCEDURES.md)**
 
 ## Troubleshooting
 

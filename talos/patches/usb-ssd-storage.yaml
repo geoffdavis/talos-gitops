@@ -1,0 +1,115 @@
+# Samsung Portable SSD T5 storage configuration patch for Longhorn
+# Configures Samsung Portable SSD T5 drives for high-performance storage on Mac mini nodes
+machine:
+  # Configure Samsung Portable SSD T5 using Talos machine disk configuration
+  disks:
+    - device: /dev/disk/by-id/usb-Samsung_Portable_SSD_T5*
+      partitions:
+        - mountpoint: /var/lib/longhorn-ssd
+          size: 0  # Use entire disk
+          format: ext4
+          options:
+            - defaults
+            - noatime
+            - nodiratime
+            - discard
+          label: longhorn-ssd
+  # Create Longhorn disk directory structure and tagging
+  files:
+    - path: /usr/local/bin/setup-longhorn-ssd-tags.sh
+      permissions: 0755
+      op: create
+      content: |
+        #!/bin/bash
+        # Setup Longhorn disk tags for Samsung Portable SSD T5
+        
+        # Wait for mount point to be available
+        timeout=60
+        elapsed=0
+        while [[ $elapsed -lt $timeout ]]; do
+          if mountpoint -q /var/lib/longhorn-ssd; then
+            echo "Samsung Portable SSD T5 mounted at /var/lib/longhorn-ssd"
+            break
+          fi
+          sleep 2
+          elapsed=$((elapsed + 2))
+        done
+        
+        if ! mountpoint -q /var/lib/longhorn-ssd; then
+          echo "Samsung Portable SSD T5 not mounted, skipping Longhorn tag setup"
+          exit 0
+        fi
+        
+        # Find the device name for the mounted SSD
+        device_path=$(findmnt -n -o SOURCE /var/lib/longhorn-ssd 2>/dev/null || echo "")
+        if [[ -n "$device_path" ]]; then
+          device_name=$(basename "$device_path")
+          
+          # Verify it's a Samsung Portable SSD T5
+          model=$(cat "/sys/block/$device_name/device/model" 2>/dev/null | tr -d ' ' || echo "")
+          if [[ "$model" == *"PortableSSDT5"* ]] || [[ "$model" == *"T5"* ]]; then
+            echo "Confirmed Samsung Portable SSD T5 model: $model"
+            
+            # Create Longhorn disk tag directory
+            mkdir -p "/var/lib/longhorn/disks/$device_name"
+            echo "ssd" > "/var/lib/longhorn/disks/$device_name/tags"
+            echo "Created Longhorn SSD tag for device: $device_name"
+            
+            # Set optimal I/O scheduler for SSD
+            echo "mq-deadline" > "/sys/block/$device_name/queue/scheduler" 2>/dev/null || true
+            echo "0" > "/sys/block/$device_name/queue/rotational" 2>/dev/null || true
+            echo "Applied SSD optimizations for device: $device_name"
+          else
+            echo "Warning: Device model '$model' is not a Samsung Portable SSD T5"
+          fi
+        else
+          echo "Could not determine device path for /var/lib/longhorn-ssd"
+        fi
+    # Systemd service for Longhorn SSD tag setup
+    - path: /etc/systemd/system/setup-longhorn-ssd-tags.service
+      permissions: 0644
+      op: create
+      content: |
+        [Unit]
+        Description=Setup Longhorn SSD tags for Samsung Portable SSD T5
+        After=local-fs.target
+        Before=kubelet.service
+        
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/setup-longhorn-ssd-tags.sh
+        RemainAfterExit=yes
+        StandardOutput=journal
+        StandardError=journal
+        
+        [Install]
+        WantedBy=multi-user.target
+  # System configuration for SSD optimization
+  sysctls:
+    # Optimize for SSD performance
+    vm.dirty_ratio: "5"
+    vm.dirty_background_ratio: "2"
+    vm.dirty_expire_centisecs: "3000"
+    vm.dirty_writeback_centisecs: "500"
+  # Enable Longhorn SSD tag setup service
+  services:
+    setup-longhorn-ssd-tags:
+      enabled: true
+  # Udev rules for Samsung Portable SSD T5 detection and optimization
+  udev:
+    rules:
+      # Trigger Longhorn SSD tag setup when Samsung Portable SSD T5 devices are added
+      - |
+        SUBSYSTEM=="block", ATTRS{removable}=="0", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", ATTRS{product}=="Portable SSD T5", ACTION=="add", RUN+="/bin/systemctl start setup-longhorn-ssd-tags.service"
+      # Set optimal settings for Samsung Portable SSD T5 drives
+      - |
+        SUBSYSTEM=="block", ATTRS{removable}=="0", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", ATTRS{product}=="Portable SSD T5", ATTR{queue/scheduler}="mq-deadline"
+      - |
+        SUBSYSTEM=="block", ATTRS{removable}=="0", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", ATTRS{product}=="Portable SSD T5", ATTR{queue/rotational}="0"
+      # Alternative rule for different T5 product string variations
+      - |
+        SUBSYSTEM=="block", ATTRS{removable}=="0", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", ATTRS{product}=="T5", ACTION=="add", RUN+="/bin/systemctl start setup-longhorn-ssd-tags.service"
+      - |
+        SUBSYSTEM=="block", ATTRS{removable}=="0", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", ATTRS{product}=="T5", ATTR{queue/scheduler}="mq-deadline"
+      - |
+        SUBSYSTEM=="block", ATTRS{removable}=="0", ENV{ID_BUS}=="usb", ENV{DEVTYPE}=="disk", ATTRS{product}=="T5", ATTR{queue/rotational}="0"

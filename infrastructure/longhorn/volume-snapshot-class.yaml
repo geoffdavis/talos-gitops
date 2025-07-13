@@ -17,3 +17,16 @@ driver: driver.longhorn.io
 deletionPolicy: Delete
 parameters:
   type: "bak"
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: longhorn-ssd-snapshot-vsc
+  annotations:
+    snapshot.storage.kubernetes.io/is-default-class: "false"
+driver: driver.longhorn.io
+deletionPolicy: Delete
+parameters:
+  type: "snap"
+  # SSD-specific snapshot optimizations
+  diskSelector: "ssd"

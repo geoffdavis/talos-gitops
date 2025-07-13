@@ -33,13 +33,13 @@ spec:
       backupTarget: ""
       backupTargetCredentialSecret: ""
       allowRecurringJobWhileVolumeDetached: true
-      createDefaultDiskLabeledNodes: true
+      createDefaultDiskLabeledNodes: false
       defaultDataPath: "/var/lib/longhorn"
       defaultDataLocality: "best-effort"
       replicaSoftAntiAffinity: true
       replicaAutoBalance: "best-effort"
-      storageOverProvisioningPercentage: 200
-      storageMinimalAvailablePercentage: 25
+      storageOverProvisioningPercentage: 150
+      storageMinimalAvailablePercentage: 15
       upgradeChecker: true
       defaultReplicaCount: 3
       defaultLonghornStaticStorageClass: "longhorn"

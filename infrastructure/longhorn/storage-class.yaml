@@ -16,6 +16,12 @@ parameters:
   dataLocality: "strict-local"
   replicaAutoBalance: "best-effort"
   diskSelector: "ssd"
+  # SSD-specific optimizations
+  mkfsExt4Parameters: "-O ^64bit,^metadata_csum -F"
+  # Disable unused features for better SSD performance
+  disableRevisionCounter: "true"
+  # Enable fast replica rebuild for SSDs
+  replicaReplenishmentWaitInterval: "600"
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
