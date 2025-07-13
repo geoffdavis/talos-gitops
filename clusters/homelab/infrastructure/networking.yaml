@@ -2,6 +2,28 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: infrastructure-cilium
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./infrastructure/cilium
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      name: cilium
+      namespace: cilium-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cilium-operator
+      namespace: cilium-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: infrastructure-ingress-nginx
   namespace: flux-system
 spec:
@@ -53,6 +75,7 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
+    - name: infrastructure-cilium
     - name: infrastructure-onepassword
   healthChecks:
     - apiVersion: apps/v1

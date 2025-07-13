@@ -58,7 +58,7 @@ spec:
     
     # BGP Configuration
     bgpControlPlane:
-      enabled: true
+      enabled: false
     
     # Load Balancer Configuration
     loadBalancer:

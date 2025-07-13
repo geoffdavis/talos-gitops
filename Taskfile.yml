@@ -426,9 +426,7 @@ tasks:
             --set hubble.enabled=true \
             --set hubble.relay.enabled=true \
             --set hubble.ui.enabled=true \
-            --set bgpControlPlane.enabled=true \
-            --set loadBalancer.algorithm=maglev \
-            --set loadBalancer.mode=dsr \
+            --set bgpControlPlane.enabled=false \
             --set operator.replicas=1 \
             --set operator.rollOutPods=true \
             --set k8sServiceHost=localhost \
