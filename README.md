@@ -534,4 +534,86 @@ task renovate:run
 
 Renovate runs automatically on schedule and creates PRs for updates. Check the dependency dashboard issue in your repository for current status.
 
-For detailed deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+## Bootstrap vs GitOps Architecture
+
+This cluster uses a carefully designed separation between **Bootstrap Script Deployment** and **Flux GitOps Deployment** phases. Understanding this separation is crucial for operational success and day-to-day cluster management.
+
+### 🎯 **[Day-to-Day Operations Guide](docs/BOOTSTRAP_VS_GITOPS_PHASES.md)** - **PRIMARY OPERATIONAL REFERENCE**
+
+**Your go-to guide for daily cluster operations, troubleshooting, and decision-making.**
+
+### 📚 **Complete Documentation Suite**
+
+1. **[📋 Day-to-Day Operations Guide](docs/BOOTSTRAP_VS_GITOPS_PHASES.md)** - **START HERE** for operational decisions
+2. **[📖 Executive Summary](docs/BOOTSTRAP_GITOPS_SUMMARY.md)** - Quick reference and decision matrix
+3. **[🏗️ Architectural Guide](docs/BOOTSTRAP_VS_GITOPS_ARCHITECTURE.md)** - Comprehensive technical details
+4. **[⚡ Operational Workflows](docs/OPERATIONAL_WORKFLOWS.md)** - Step-by-step procedures for common tasks
+5. **[🔄 Component Migration Guide](docs/COMPONENT_MIGRATION_GUIDE.md)** - Moving components between phases
+
+### 🚀 5-Second Decision Rules
+
+**Use Bootstrap Phase when**:
+- ✅ Node configuration changes → `task talos:*`
+- ✅ Cluster won't start → `task bootstrap:*`
+- ✅ Network/CNI issues → `task apps:deploy-cilium`
+- ✅ System-level problems → `talosctl` commands
+
+**Use GitOps Phase when**:
+- ✅ Application deployments → Git commit to `apps/`
+- ✅ Infrastructure services → Git commit to `infrastructure/`
+- ✅ Configuration updates → Git commit + Flux reconcile
+- ✅ Scaling operations → Update manifests + Git commit
+
+### 📊 Quick Decision Matrix
+
+| Change Type | Bootstrap | GitOps | Command |
+|-------------|-----------|---------|---------|
+| Add new application | ❌ | ✅ | `git commit && git push` |
+| Change node networking | ✅ | ❌ | `task talos:apply-config` |
+| Update infrastructure service | ❌ | ✅ | `git commit && git push` |
+| Modify cluster CIDR | ✅ | ❌ | `task talos:generate-config` |
+| Configure monitoring | ❌ | ✅ | `git commit && git push` |
+| Add node labels | ✅ | ❌ | `task talos:apply-config` |
+
+### 🎯 Architecture Overview
+
+**Bootstrap Phase** (Direct Deployment):
+- **Talos OS Configuration** - Node operating system setup
+- **Kubernetes Cluster** - Control plane initialization
+- **Cilium CNI Core** - Pod networking foundation
+- **1Password Connect** - Secret management foundation
+- **Flux GitOps System** - GitOps operator deployment
+
+**GitOps Phase** (Git-Managed):
+- **Infrastructure Services** - cert-manager, ingress, monitoring
+- **Cilium BGP Configuration** - Load balancer IP advertisement
+- **Application Deployments** - User applications and services
+- **Storage Configuration** - Longhorn settings, storage classes
+- **Certificate Management** - TLS certificate automation
+
+### 🔧 Common Operations
+
+**Daily Health Check**:
+```bash
+task cluster:status                    # Overall cluster status
+flux get kustomizations               # GitOps health
+kubectl get pods -A | grep -v Running # Check for issues
+```
+
+**Deploy New Application** (GitOps):
+```bash
+mkdir apps/my-app
+# Create manifests
+git add apps/my-app/
+git commit -m "Add my-app"
+git push
+```
+
+**Update Node Configuration** (Bootstrap):
+```bash
+vim talconfig.yaml
+task talos:generate-config
+task talos:apply-config
+```
+
+For detailed operational procedures, see the **[Day-to-Day Operations Guide](docs/BOOTSTRAP_VS_GITOPS_PHASES.md)**.

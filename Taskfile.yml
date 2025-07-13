@@ -400,13 +400,12 @@ tasks:
 
   # Application deployment
   apps:deploy-core:
-    desc: Deploy core applications
+    desc: Deploy core applications (before Flux)
     cmds:
       - mise exec -- task apps:deploy-cilium
       - mise exec -- task apps:deploy-external-secrets
       - mise exec -- task apps:deploy-onepassword-connect
       - mise exec -- task apps:deploy-longhorn
-      - mise exec -- task apps:deploy-ingress
 
   apps:deploy-cilium:
     desc: Deploy Cilium CNI for Talos (with kube-proxy replacement)
@@ -464,46 +463,26 @@ tasks:
       - mise exec -- kubectl apply -f infrastructure/onepassword-connect/namespace.yaml
       - mise exec -- kubectl apply -f infrastructure/onepassword-connect/deployment.yaml
       - mise exec -- kubectl apply -f infrastructure/onepassword-connect/service.yaml
+      - echo "Waiting for 1Password Connect to be ready..."
+      - mise exec -- kubectl rollout status deployment onepassword-connect -n onepassword-connect --timeout=120s
       - echo "Waiting for External Secrets CRDs to be fully available..."
       - mise exec -- kubectl wait --for condition=established --timeout=60s crd/clustersecretstores.external-secrets.io
       - mise exec -- kubectl wait --for condition=established --timeout=60s crd/secretstores.external-secrets.io
-      - echo "Waiting for External Secrets webhook to be ready..."
-      - mise exec -- kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
-      - echo "Testing webhook connectivity..."
-      - |
-        # Test webhook connectivity with retries
-        for i in {1..10}; do
-          if mise exec -- kubectl run test-webhook-connectivity --image=curlimages/curl --rm -it --restart=Never --timeout=30s -- curl -k -m 5 https://external-secrets-webhook.external-secrets-system.svc:443/healthz 2>/dev/null; then
-            echo "✓ Webhook is accessible"
-            break
-          else
-            echo "⚠ Webhook not ready, attempt $i/10..."
-            sleep 10
-          fi
-        done
+      - echo "Fixing External Secrets webhook if needed..."
+      - mise exec -- task apps:fix-external-secrets-webhook
       - echo "Deploying 1Password Connect secret stores..."
       - |
-        # Apply secret stores with retry logic for webhook validation
-        for i in {1..5}; do
-          if mise exec -- kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml; then
-            echo "✓ Secret stores deployed successfully"
-            break
-          else
-            echo "⚠ Secret store deployment failed, attempt $i/5..."
-            if [ $i -eq 5 ]; then
-              echo "❌ Failed to deploy secret stores after 5 attempts"
-              echo "Temporarily disabling webhook validation..."
-              mise exec -- kubectl delete validatingwebhookconfiguration secretstore-validate --ignore-not-found=true
-              mise exec -- kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml
-              echo "✓ Secret stores deployed with webhook validation disabled"
-              echo "Restoring webhook validation..."
-              mise exec -- helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
-              echo "✓ Webhook validation restored"
-            else
-              sleep 15
-            fi
-          fi
-        done
+        # Apply secret stores with proper webhook validation
+        echo "Applying secret stores..."
+        if mise exec -- kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml; then
+          echo "✓ Secret stores deployed successfully"
+        else
+          echo "⚠ Secret store deployment failed, fixing webhook and retrying..."
+          mise exec -- task apps:fix-external-secrets-webhook
+          sleep 10
+          mise exec -- kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml
+          echo "✓ Secret stores deployed after webhook fix"
+        fi
 
   apps:fix-external-secrets-webhook:
     desc: Fix External Secrets webhook validation issues
@@ -521,12 +500,17 @@ tasks:
     cmds:
       - mise exec -- helm repo add longhorn https://charts.longhorn.io
       - mise exec -- helm repo update
-      - mise exec -- helm upgrade --install longhorn longhorn/longhorn -n longhorn-system --create-namespace -f infrastructure/longhorn/values.yaml
+      - mise exec -- helm upgrade --install longhorn longhorn/longhorn -n longhorn-system --create-namespace
 
-  apps:deploy-ingress:
-    desc: Deploy ingress controller
+  apps:verify-core-idempotency:
+    desc: Verify that apps:deploy-core is idempotent and can be run multiple times safely
     cmds:
-      - mise exec -- kubectl apply -f infrastructure/ingress-nginx/
+      - ./scripts/verify-core-idempotency.sh
+    preconditions:
+      - sh: 'mise exec -- kubectl get namespaces &> /dev/null'
+        msg: 'Kubernetes cluster must be accessible'
+      - sh: '[ -x scripts/verify-core-idempotency.sh ]'
+        msg: 'Idempotency verification script must be executable'
 
   # BGP Configuration (Multiple Methods)
   bgp:configure-unifi:

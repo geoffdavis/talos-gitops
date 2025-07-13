@@ -468,7 +468,8 @@ This architecture enables both robust cluster operations and collaborative devel
 
 ## Related Documentation
 
-- [Deployment Guide](./DEPLOYMENT.md) - Step-by-step deployment instructions
+- [Day-to-Day Operations Guide](./BOOTSTRAP_VS_GITOPS_PHASES.md) - Primary operational reference
+- [Operational Workflows](./OPERATIONAL_WORKFLOWS.md) - Step-by-step deployment procedures
 - [LLDPD Configuration Fix](./LLDPD_CONFIGURATION_FIX.md) - Node stability improvements
 - [BGP Configuration](./BGP_CONFIGURATION.md) - Network architecture details
 - [Cluster Reset Safety](./CLUSTER_RESET_SAFETY.md) - Safe operational procedures

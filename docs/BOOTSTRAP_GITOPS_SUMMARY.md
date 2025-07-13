@@ -237,7 +237,7 @@ This architectural separation is documented across several guides:
 2. **[Operational Workflows](./OPERATIONAL_WORKFLOWS.md)** - Step-by-step procedures for common tasks
 3. **[Component Migration Guide](./COMPONENT_MIGRATION_GUIDE.md)** - Moving components between phases
 4. **[Core Idempotency Verification](./CORE_IDEMPOTENCY_VERIFICATION.md)** - Verify core deployment safety
-5. **[Bootstrap Integration Summary](./BOOTSTRAP_INTEGRATION_SUMMARY.md)** - LLDPD integration example
+5. **[LLDPD Configuration Fix](./LLDPD_CONFIGURATION_FIX.md)** - Node stability improvements
 6. **This Summary** - Quick reference and decision-making guide
 
 ## Success Metrics
