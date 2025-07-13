@@ -56,6 +56,15 @@ spec:
       ui:
         enabled: true
     
+    # BGP Configuration
+    bgpControlPlane:
+      enabled: true
+    
+    # Load Balancer Configuration
+    loadBalancer:
+      algorithm: maglev
+      mode: dsr
+    
     # Operator configuration
     operator:
       replicas: 1
