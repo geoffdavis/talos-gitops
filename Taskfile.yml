@@ -32,7 +32,7 @@ tasks:
     preconditions:
       - sh: '[ -n "$OP_ACCOUNT" ]'
         msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
-      - sh: 'kubectl get namespaces &> /dev/null'
+      - sh: 'mise exec -- kubectl get namespaces &> /dev/null'
         msg: 'Kubernetes cluster must be accessible'
 
   bootstrap:1password-secrets:
@@ -52,13 +52,13 @@ tasks:
     desc: Bootstrap the entire cluster from scratch with LLDPD stability fix
     deps: [bootstrap:secrets, talos:generate-config]
     cmds:
-      - task: talos:apply-config
-      - task: talos:apply-lldpd-config
-      - task: talos:bootstrap
-      - task: bootstrap:1password-secrets
-      - task: bootstrap:validate-1password-secrets
-      - task: flux:bootstrap
-      - task: apps:deploy-core
+      - mise exec -- task talos:apply-config
+      - mise exec -- task talos:apply-lldpd-config
+      - mise exec -- task talos:bootstrap
+      - mise exec -- task bootstrap:1password-secrets
+      - mise exec -- task bootstrap:validate-1password-secrets
+      - mise exec -- task flux:bootstrap
+      - mise exec -- task apps:deploy-core
 
   # Talos tasks
   talos:generate-schematic:
@@ -127,8 +127,8 @@ tasks:
   talos:generate-config:
     desc: Generate Talos configuration using talhelper with 1Password integration
     preconditions:
-      - sh: 'command -v talhelper'
-        msg: 'talhelper is required. Install with: go install github.com/budimanjojo/talhelper/cmd/talhelper@latest'
+      - sh: 'mise exec -- talhelper --version'
+        msg: 'talhelper is required and managed by mise'
       - sh: '[ -n "${OP_ACCOUNT:-}" ]'
         msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
     cmds:
@@ -139,7 +139,7 @@ tasks:
         # First check for "talos - home-ops" (legacy entry)
         if op --account {{.OP_ACCOUNT}} item get "talos - {{.CLUSTER_NAME}}" --vault="Automation" &> /dev/null; then
           echo "Found legacy secrets entry 'talos - {{.CLUSTER_NAME}}', restoring..."
-          task talos:restore-secrets
+          mise exec -- task talos:restore-secrets
         # Then check for "Talos Secrets - home-ops" (new format)
         elif op item get "Talos Secrets - {{.CLUSTER_NAME}}" &> /dev/null; then
           echo "Retrieving existing secrets from 1Password..."
@@ -149,7 +149,7 @@ tasks:
           echo "Using existing local secrets file..."
         else
           echo "Generating new Talos secrets..."
-          talhelper gensecret > talos/talsecret.yaml
+          mise exec -- talhelper gensecret > talos/talsecret.yaml
           
           # Store new secrets in 1Password
           echo "Storing new secrets in 1Password..."
@@ -168,7 +168,7 @@ tasks:
       - |
         # Generate configuration files
         echo "Generating Talos configuration files..."
-        talhelper genconfig --secret-file talos/talsecret.yaml
+        mise exec -- talhelper genconfig --secret-file talos/talsecret.yaml
       - echo "Generated Talos configuration with talhelper"
       - echo "Configuration files created in clusterconfig/"
 
@@ -182,11 +182,11 @@ tasks:
       - echo "NOTE - Certificate errors are expected for nodes in maintenance mode - will retry with insecure mode"
       - |
         echo "Applying configuration to mini01 ({{.NODE_1_IP}})..."
-        if talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml 2>/dev/null; then
+        if mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml 2>/dev/null; then
           echo "✓ mini01 configuration applied successfully"
         else
           echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml; then
+          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml; then
             echo "✓ mini01 configuration applied successfully (insecure mode - normal for maintenance)"
           else
             echo "✗ Failed to apply configuration to mini01"
@@ -195,11 +195,11 @@ tasks:
         fi
       - |
         echo "Applying configuration to mini02 ({{.NODE_2_IP}})..."
-        if talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml 2>/dev/null; then
+        if mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml 2>/dev/null; then
           echo "✓ mini02 configuration applied successfully"
         else
           echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml; then
+          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml; then
             echo "✓ mini02 configuration applied successfully (insecure mode - normal for maintenance)"
           else
             echo "✗ Failed to apply configuration to mini02"
@@ -208,16 +208,16 @@ tasks:
         fi
       - |
         echo "Applying configuration to mini03 ({{.NODE_3_IP}})..."
-        if talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml 2>/dev/null; then
+        if mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml 2>/dev/null; then
           echo "✓ mini03 configuration applied successfully"
         else
           echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml; then
+          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml; then
             echo "✓ mini03 configuration applied successfully (insecure mode - normal for maintenance)"
           else
             echo "✗ Failed to apply configuration to mini03 at {{.NODE_3_IP}}"
             echo "Checking if node is reachable..."
-            if talosctl version --nodes {{.NODE_3_IP}} --timeout 10s 2>/dev/null; then
+            if mise exec -- talosctl version --nodes {{.NODE_3_IP}} --timeout 10s 2>/dev/null; then
               echo "Node is reachable but configuration failed"
             else
               echo "Node is not reachable - check network connectivity"
@@ -235,14 +235,14 @@ tasks:
       - echo "Applying Talos configuration to all control plane nodes..."
       - |
         # Try with talosconfig first, fall back to insecure if needed
-        talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml || \
-        talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
+        mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml || \
+        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
       - |
-        talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml || \
-        talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
+        mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml || \
+        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
       - |
-        talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml || \
-        talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
+        mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml || \
+        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
       - echo "Configuration applied to all nodes"
 
   talos:apply-lldpd-config:
@@ -256,7 +256,7 @@ tasks:
       - echo "Applying LLDPD ExtensionServiceConfig to all nodes..."
       - echo "This prevents LLDPD service startup failures that cause periodic reboots"
       - |
-        talosctl patch machineconfig \
+        mise exec -- talosctl patch machineconfig \
           --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} \
           --patch-file talos/manifests/lldpd-extension-config.yaml
       - echo "Waiting for LLDPD configuration to be applied..."
@@ -264,7 +264,7 @@ tasks:
       - echo "Verifying LLDPD ExtensionServiceConfig is loaded..."
       - |
         echo "Checking ExtensionServiceConfig on all nodes..."
-        talosctl get extensionserviceconfigs --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} || echo "ExtensionServiceConfigs will be visible after next reboot"
+        mise exec -- talosctl get extensionserviceconfigs --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} || echo "ExtensionServiceConfigs will be visible after next reboot"
       - echo "✓ LLDPD configuration applied successfully to all nodes"
       - echo "✓ This prevents the periodic reboot issues caused by LLDPD service failures"
 
@@ -274,11 +274,11 @@ tasks:
       TALOSCONFIG: clusterconfig/talosconfig
     cmds:
       - echo "Bootstrapping first control plane node..."
-      - talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}
+      - mise exec -- talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}
       - echo "Waiting for cluster to initialize..."
       - sleep 30
       - echo "Getting kubeconfig from cluster..."
-      - talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
+      - mise exec -- talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
       - echo "All three nodes are now functioning as control plane nodes"
 
   talos:convert-to-all-controlplane:
@@ -287,21 +287,21 @@ tasks:
     cmds:
       - echo "Converting cluster to all-control-plane setup..."
       - echo "Applying control plane configuration to all nodes..."
-      - talosctl apply-config --nodes {{.NODE_1_IP}} --file talos/generated/controlplane.yaml
-      - talosctl apply-config --nodes {{.NODE_2_IP}} --file talos/generated/controlplane.yaml
-      - talosctl apply-config --nodes {{.NODE_3_IP}} --file talos/generated/controlplane.yaml
+      - mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file talos/generated/controlplane.yaml
+      - mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file talos/generated/controlplane.yaml
+      - mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file talos/generated/controlplane.yaml
       - echo "Waiting for nodes to restart and join as control planes..."
       - sleep 60
       - echo "Verifying cluster status..."
-      - kubectl get nodes -o wide
+      - mise exec -- kubectl get nodes -o wide
       - echo "All nodes should now show as control planes with 'control-plane' role"
 
   talos:upgrade:
     desc: Upgrade Talos nodes
     cmds:
-      - talosctl upgrade --nodes {{.NODE_1_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
-      - talosctl upgrade --nodes {{.NODE_2_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
-      - talosctl upgrade --nodes {{.NODE_3_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
+      - mise exec -- talosctl upgrade --nodes {{.NODE_1_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
+      - mise exec -- talosctl upgrade --nodes {{.NODE_2_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
+      - mise exec -- talosctl upgrade --nodes {{.NODE_3_IP}} --image ghcr.io/siderolabs/talos:{{.TALOS_VERSION}}
 
   talos:reboot:
     desc: Reboot specified nodes or all nodes (for USB detection)
@@ -313,26 +313,26 @@ tasks:
       - |
         if [ "{{.NODES}}" = "all" ]; then
           echo "Rebooting all nodes for USB device detection..."
-          talosctl reboot --nodes {{.NODE_1_IP}}
+          mise exec -- talosctl reboot --nodes {{.NODE_1_IP}}
           sleep 30
-          talosctl reboot --nodes {{.NODE_2_IP}}
+          mise exec -- talosctl reboot --nodes {{.NODE_2_IP}}
           sleep 30
-          talosctl reboot --nodes {{.NODE_3_IP}}
+          mise exec -- talosctl reboot --nodes {{.NODE_3_IP}}
           echo "All nodes rebooted. Wait for cluster to come back online."
         else
           echo "Rebooting node(s): {{.NODES}}"
-          talosctl reboot --nodes {{.NODES}}
+          mise exec -- talosctl reboot --nodes {{.NODES}}
         fi
 
   talos:check-extensions:
     desc: Check if extensions are loaded on nodes
     cmds:
       - echo "Checking extensions on {{.NODE_1_IP}}..."
-      - talosctl get extensions --nodes {{.NODE_1_IP}}
+      - mise exec -- talosctl get extensions --nodes {{.NODE_1_IP}}
       - echo "Checking extensions on {{.NODE_2_IP}}..."
-      - talosctl get extensions --nodes {{.NODE_2_IP}}
+      - mise exec -- talosctl get extensions --nodes {{.NODE_2_IP}}
       - echo "Checking extensions on {{.NODE_3_IP}}..."
-      - talosctl get extensions --nodes {{.NODE_3_IP}}
+      - mise exec -- talosctl get extensions --nodes {{.NODE_3_IP}}
 
   talos:recover-kubeconfig:
     desc: Recover kubeconfig after cluster restart or certificate issues
@@ -340,17 +340,17 @@ tasks:
       TALOSCONFIG: clusterconfig/talosconfig
     cmds:
       - echo "Recovering kubeconfig from cluster..."
-      - talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
+      - mise exec -- talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
       - echo "Testing connection..."
-      - kubectl get nodes || echo "If connection fails, check if nodes are powered on and reachable"
+      - mise exec -- kubectl get nodes || echo "If connection fails, check if nodes are powered on and reachable"
 
   talos:fix-cilium:
     desc: Fix Cilium CNI after cluster issues (for Talos without kube-proxy)
     cmds:
       - echo "Redeploying Cilium with correct Talos configuration..."
-      - task: apps:deploy-cilium
+      - mise exec -- task apps:deploy-cilium
       - echo "Checking Cilium status..."
-      - kubectl get pods -n kube-system | grep cilium
+      - mise exec -- kubectl get pods -n kube-system | grep cilium
       - echo "Nodes should become Ready within a few minutes"
 
   cluster:recover:
@@ -361,18 +361,18 @@ tasks:
       - 'test -f .env || (echo "ERROR: .env file missing. Copy from .env.example and set OP_ACCOUNT" && exit 1)'
       - source .env
       - echo "Step 2 - Restoring secrets from 1Password..."
-      - task: talos:restore-secrets
+      - mise exec -- task talos:restore-secrets
       - echo "Step 3 - Regenerating Talos configuration..."
-      - task: talos:generate-config
+      - mise exec -- task talos:generate-config
       - echo "Step 4 - Recovering kubeconfig..."
-      - task: talos:recover-kubeconfig
+      - mise exec -- task talos:recover-kubeconfig
       - echo "Step 5 - Checking cluster status..."
-      - kubectl get nodes || echo "Nodes not ready yet"
+      - mise exec -- kubectl get nodes || echo "Nodes not ready yet"
       - echo "Step 6 - Fixing Cilium if needed..."
-      - task: talos:fix-cilium
+      - mise exec -- task talos:fix-cilium
       - echo "Step 7 - Final status check..."
       - sleep 60
-      - kubectl get nodes
+      - mise exec -- kubectl get nodes
       - echo "Recovery process complete. All nodes should be Ready."
 
   # Flux tasks
@@ -385,7 +385,7 @@ tasks:
       - echo "Bootstrapping Flux GitOps..."
       - |
         export GITHUB_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") && \
-        flux bootstrap github \
+        mise exec -- flux bootstrap github \
           --owner=geoffdavis \
           --repository=talos-gitops \
           --branch=main \
@@ -395,26 +395,26 @@ tasks:
   flux:reconcile:
     desc: Force Flux reconciliation
     cmds:
-      - flux reconcile source git flux-system
-      - flux reconcile kustomization flux-system
+      - mise exec -- flux reconcile source git flux-system
+      - mise exec -- flux reconcile kustomization flux-system
 
   # Application deployment
   apps:deploy-core:
     desc: Deploy core applications
     cmds:
-      - task: apps:deploy-cilium
-      - task: apps:deploy-external-secrets
-      - task: apps:deploy-onepassword-connect
-      - task: apps:deploy-longhorn
-      - task: apps:deploy-ingress
+      - mise exec -- task apps:deploy-cilium
+      - mise exec -- task apps:deploy-external-secrets
+      - mise exec -- task apps:deploy-onepassword-connect
+      - mise exec -- task apps:deploy-longhorn
+      - mise exec -- task apps:deploy-ingress
 
   apps:deploy-cilium:
     desc: Deploy Cilium CNI for Talos (with kube-proxy replacement)
     cmds:
-      - helm repo add cilium https://helm.cilium.io/ || true
-      - helm repo update
+      - mise exec -- helm repo add cilium https://helm.cilium.io/ || true
+      - mise exec -- helm repo update
       - |
-        helm upgrade --install cilium cilium/cilium \
+        mise exec -- helm upgrade --install cilium cilium/cilium \
             --version 1.16.1 \
             --namespace kube-system \
             --set ipam.mode=cluster-pool \
@@ -442,38 +442,38 @@ tasks:
             --set tolerations[2].effect=NoSchedule
       - echo "Waiting for Cilium to be ready..."
       - sleep 30
-      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=cilium-agent -n kube-system --timeout=300s || true
+      - mise exec -- kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=cilium-agent -n kube-system --timeout=300s || true
 
   apps:deploy-external-secrets:
     desc: Deploy External Secrets Operator
     cmds:
-      - helm repo add external-secrets https://charts.external-secrets.io || true
-      - helm repo update
-      - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait
+      - mise exec -- helm repo add external-secrets https://charts.external-secrets.io || true
+      - mise exec -- helm repo update
+      - mise exec -- helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait
       - echo "Waiting for External Secrets CRDs to be ready..."
-      - kubectl wait --for condition=established --timeout=120s crd/clustersecretstores.external-secrets.io
-      - kubectl wait --for condition=established --timeout=120s crd/secretstores.external-secrets.io
+      - mise exec -- kubectl wait --for condition=established --timeout=120s crd/clustersecretstores.external-secrets.io
+      - mise exec -- kubectl wait --for condition=established --timeout=120s crd/secretstores.external-secrets.io
       - echo "Waiting for External Secrets webhook to be fully ready..."
-      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - mise exec -- kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
       - sleep 15
 
   apps:deploy-onepassword-connect:
     desc: Deploy 1Password Connect
     cmds:
       - echo "Deploying 1Password Connect basic resources..."
-      - kubectl apply -f infrastructure/onepassword-connect/namespace.yaml
-      - kubectl apply -f infrastructure/onepassword-connect/deployment.yaml
-      - kubectl apply -f infrastructure/onepassword-connect/service.yaml
+      - mise exec -- kubectl apply -f infrastructure/onepassword-connect/namespace.yaml
+      - mise exec -- kubectl apply -f infrastructure/onepassword-connect/deployment.yaml
+      - mise exec -- kubectl apply -f infrastructure/onepassword-connect/service.yaml
       - echo "Waiting for External Secrets CRDs to be fully available..."
-      - kubectl wait --for condition=established --timeout=60s crd/clustersecretstores.external-secrets.io
-      - kubectl wait --for condition=established --timeout=60s crd/secretstores.external-secrets.io
+      - mise exec -- kubectl wait --for condition=established --timeout=60s crd/clustersecretstores.external-secrets.io
+      - mise exec -- kubectl wait --for condition=established --timeout=60s crd/secretstores.external-secrets.io
       - echo "Waiting for External Secrets webhook to be ready..."
-      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - mise exec -- kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
       - echo "Testing webhook connectivity..."
       - |
         # Test webhook connectivity with retries
         for i in {1..10}; do
-          if kubectl run test-webhook-connectivity --image=curlimages/curl --rm -it --restart=Never --timeout=30s -- curl -k -m 5 https://external-secrets-webhook.external-secrets-system.svc:443/healthz 2>/dev/null; then
+          if mise exec -- kubectl run test-webhook-connectivity --image=curlimages/curl --rm -it --restart=Never --timeout=30s -- curl -k -m 5 https://external-secrets-webhook.external-secrets-system.svc:443/healthz 2>/dev/null; then
             echo "✓ Webhook is accessible"
             break
           else
@@ -485,7 +485,7 @@ tasks:
       - |
         # Apply secret stores with retry logic for webhook validation
         for i in {1..5}; do
-          if kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml; then
+          if mise exec -- kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml; then
             echo "✓ Secret stores deployed successfully"
             break
           else
@@ -493,11 +493,11 @@ tasks:
             if [ $i -eq 5 ]; then
               echo "❌ Failed to deploy secret stores after 5 attempts"
               echo "Temporarily disabling webhook validation..."
-              kubectl delete validatingwebhookconfiguration secretstore-validate --ignore-not-found=true
-              kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml
+              mise exec -- kubectl delete validatingwebhookconfiguration secretstore-validate --ignore-not-found=true
+              mise exec -- kubectl apply -f infrastructure/onepassword-connect/secret-store.yaml
               echo "✓ Secret stores deployed with webhook validation disabled"
               echo "Restoring webhook validation..."
-              helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
+              mise exec -- helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
               echo "✓ Webhook validation restored"
             else
               sleep 15
@@ -509,24 +509,24 @@ tasks:
     desc: Fix External Secrets webhook validation issues
     cmds:
       - echo "Checking External Secrets webhook status..."
-      - kubectl get validatingwebhookconfiguration | grep -E "(secretstore|external)" || echo "No webhook configurations found"
+      - mise exec -- kubectl get validatingwebhookconfiguration | grep -E "(secretstore|external)" || echo "No webhook configurations found"
       - echo "Reinstalling External Secrets to restore webhook configuration..."
-      - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
+      - mise exec -- helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
       - echo "Waiting for webhook to be ready..."
-      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - mise exec -- kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
       - echo "✓ External Secrets webhook restored"
 
   apps:deploy-longhorn:
     desc: Deploy Longhorn storage
     cmds:
-      - helm repo add longhorn https://charts.longhorn.io
-      - helm repo update
-      - helm upgrade --install longhorn longhorn/longhorn -n longhorn-system --create-namespace -f infrastructure/longhorn/values.yaml
+      - mise exec -- helm repo add longhorn https://charts.longhorn.io
+      - mise exec -- helm repo update
+      - mise exec -- helm upgrade --install longhorn longhorn/longhorn -n longhorn-system --create-namespace -f infrastructure/longhorn/values.yaml
 
   apps:deploy-ingress:
     desc: Deploy ingress controller
     cmds:
-      - kubectl apply -f infrastructure/ingress-nginx/
+      - mise exec -- kubectl apply -f infrastructure/ingress-nginx/
 
   # BGP Configuration (Multiple Methods)
   bgp:configure-unifi:
@@ -579,11 +579,11 @@ tasks:
     desc: Check LLDP neighbors on all nodes
     cmds:
       - echo "Checking LLDP neighbors on {{.NODE_1_IP}}..."
-      - talosctl list /sys/class/net --nodes {{.NODE_1_IP}}
+      - mise exec -- talosctl list /sys/class/net --nodes {{.NODE_1_IP}}
       - echo "Checking LLDP neighbors on {{.NODE_2_IP}}..."
-      - talosctl list /sys/class/net --nodes {{.NODE_2_IP}}
+      - mise exec -- talosctl list /sys/class/net --nodes {{.NODE_2_IP}}
       - echo "Checking LLDP neighbors on {{.NODE_3_IP}}..."
-      - talosctl list /sys/class/net --nodes {{.NODE_3_IP}}
+      - mise exec -- talosctl list /sys/class/net --nodes {{.NODE_3_IP}}
 
   network:verify-lldpd-config:
     desc: Verify LLDPD ExtensionServiceConfig and service status on all nodes
@@ -594,20 +594,20 @@ tasks:
       - echo ""
       - echo "Checking LLDPD ExtensionServiceConfig on all nodes..."
       - |
-        talosctl get extensionserviceconfigs --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} | grep lldpd || echo "No LLDPD ExtensionServiceConfig found"
+        mise exec -- talosctl get extensionserviceconfigs --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} | grep lldpd || echo "No LLDPD ExtensionServiceConfig found"
       - echo ""
       - echo "Checking LLDPD service status on all nodes..."
       - |
-        talosctl get services --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} | grep lldpd || echo "No LLDPD service found"
+        mise exec -- talosctl get services --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} | grep lldpd || echo "No LLDPD service found"
       - echo ""
       - echo "Checking for LLDPD configuration file on all nodes..."
       - |
         echo "Node {{.NODE_1_IP}}:"
-        talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_1_IP}} 2>/dev/null || echo "  LLDPD config file not found"
+        mise exec -- talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_1_IP}} 2>/dev/null || echo "  LLDPD config file not found"
         echo "Node {{.NODE_2_IP}}:"
-        talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_2_IP}} 2>/dev/null || echo "  LLDPD config file not found"
+        mise exec -- talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_2_IP}} 2>/dev/null || echo "  LLDPD config file not found"
         echo "Node {{.NODE_3_IP}}:"
-        talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_3_IP}} 2>/dev/null || echo "  LLDPD config file not found"
+        mise exec -- talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_3_IP}} 2>/dev/null || echo "  LLDPD config file not found"
       - echo ""
       - echo "✓ LLDPD verification complete"
       - echo "Note - HEALTHY=false is normal for LLDPD (no health checks). RUNNING=true indicates success."
@@ -616,89 +616,89 @@ tasks:
     desc: Check USB device detection on all nodes
     cmds:
       - echo "Checking USB devices on {{.NODE_1_IP}}..."
-      - talosctl list /sys/bus/usb/devices --nodes {{.NODE_1_IP}}
+      - mise exec -- talosctl list /sys/bus/usb/devices --nodes {{.NODE_1_IP}}
       - echo "Checking USB devices on {{.NODE_2_IP}}..."
-      - talosctl list /sys/bus/usb/devices --nodes {{.NODE_2_IP}}
+      - mise exec -- talosctl list /sys/bus/usb/devices --nodes {{.NODE_2_IP}}
       - echo "Checking USB devices on {{.NODE_3_IP}}..."
-      - talosctl list /sys/bus/usb/devices --nodes {{.NODE_3_IP}}
+      - mise exec -- talosctl list /sys/bus/usb/devices --nodes {{.NODE_3_IP}}
 
   network:check-ipv6:
     desc: Check IPv6 configuration on all nodes
     cmds:
       - echo "Checking IPv6 addresses on {{.NODE_1_IP}}..."
-      - talosctl read /proc/net/if_inet6 --nodes {{.NODE_1_IP}}
+      - mise exec -- talosctl read /proc/net/if_inet6 --nodes {{.NODE_1_IP}}
       - echo "Checking IPv6 addresses on {{.NODE_2_IP}}..."
-      - talosctl read /proc/net/if_inet6 --nodes {{.NODE_2_IP}}
+      - mise exec -- talosctl read /proc/net/if_inet6 --nodes {{.NODE_2_IP}}
       - echo "Checking IPv6 addresses on {{.NODE_3_IP}}..."
-      - talosctl read /proc/net/if_inet6 --nodes {{.NODE_3_IP}}
+      - mise exec -- talosctl read /proc/net/if_inet6 --nodes {{.NODE_3_IP}}
 
   network:test-ipv6:
     desc: Test IPv6 connectivity from cluster nodes
     cmds:
       - echo "Testing IPv6 connectivity from {{.NODE_1_IP}}..."
-      - talosctl read /proc/net/route --nodes {{.NODE_1_IP}}
+      - mise exec -- talosctl read /proc/net/route --nodes {{.NODE_1_IP}}
       - echo "Testing IPv6 connectivity from {{.NODE_2_IP}}..."
-      - talosctl read /proc/net/route --nodes {{.NODE_2_IP}}
+      - mise exec -- talosctl read /proc/net/route --nodes {{.NODE_2_IP}}
       - echo "Testing IPv6 connectivity from {{.NODE_3_IP}}..."
-      - talosctl read /proc/net/route --nodes {{.NODE_3_IP}}
+      - mise exec -- talosctl read /proc/net/route --nodes {{.NODE_3_IP}}
 
   # Storage diagnostics
   storage:check-iscsi:
     desc: Check iSCSI configuration on all nodes
     cmds:
       - echo "Checking iSCSI on {{.NODE_1_IP}}..."
-      - talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_1_IP}}
+      - mise exec -- talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_1_IP}}
       - echo "Checking iSCSI on {{.NODE_2_IP}}..."
-      - talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_2_IP}}
+      - mise exec -- talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_2_IP}}
       - echo "Checking iSCSI on {{.NODE_3_IP}}..."
-      - talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_3_IP}}
+      - mise exec -- talosctl read /etc/iscsi/iscsid.conf --nodes {{.NODE_3_IP}}
 
   storage:check-longhorn:
     desc: Check Longhorn storage mounts
     cmds:
-      - kubectl get pods -n longhorn-system
-      - kubectl get nodes -o custom-columns=NAME:.metadata.name,LONGHORN-READY:.status.conditions[?(@.type=="LonghornReady")].status
+      - mise exec -- kubectl get pods -n longhorn-system
+      - mise exec -- kubectl get nodes -o custom-columns=NAME:.metadata.name,LONGHORN-READY:.status.conditions[?(@.type=="LonghornReady")].status
 
   # Testing tasks
   test:all:
     desc: Run all tests
     cmds:
-      - task: test:config
-      - task: test:connectivity
-      - task: test:extensions
-      - task: test:recovery
+      - mise exec -- task test:config
+      - mise exec -- task test:connectivity
+      - mise exec -- task test:extensions
+      - mise exec -- task test:recovery
 
   test:config:
     desc: Test configuration validity
     cmds:
       - echo "Testing Talos configuration..."
-      - talosctl validate --config talos/generated/controlplane.yaml
+      - mise exec -- talosctl validate --config talos/generated/controlplane.yaml
       - echo "Testing Kubernetes manifests..."
-      - kubectl apply --dry-run=client -f clusters/homelab/
+      - mise exec -- kubectl apply --dry-run=client -f clusters/homelab/
 
   test:connectivity:
     desc: Test cluster connectivity
     cmds:
       - echo "Testing cluster connectivity..."
-      - kubectl get nodes
-      - kubectl get pods --all-namespaces
+      - mise exec -- kubectl get nodes
+      - mise exec -- kubectl get pods --all-namespaces
 
   test:extensions:
     desc: Test Talos extensions including LLDPD configuration
     cmds:
       - echo "Testing Talos extensions..."
-      - task: talos:check-extensions
-      - task: network:verify-lldpd-config
-      - task: network:check-usb
-      - task: storage:check-iscsi
+      - mise exec -- task talos:check-extensions
+      - mise exec -- task network:verify-lldpd-config
+      - mise exec -- task network:check-usb
+      - mise exec -- task storage:check-iscsi
 
   test:ipv6:
     desc: Test IPv6 configuration and connectivity
     cmds:
       - echo "Testing IPv6 configuration..."
-      - task: network:check-ipv6
-      - task: bgp:verify-peering-ipv6
-      - kubectl get svc -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,IPv4:.status.loadBalancer.ingress[*].ip,IPv6:.status.loadBalancer.ingress[*].ip
+      - mise exec -- task network:check-ipv6
+      - mise exec -- task bgp:verify-peering-ipv6
+      - mise exec -- kubectl get svc -o custom-columns=NAME:.metadata.name,TYPE:.spec.type,IPv4:.status.loadBalancer.ingress[*].ip,IPv6:.status.loadBalancer.ingress[*].ip
 
   test:recovery:
     desc: Test cluster recovery functionality
@@ -711,55 +711,55 @@ tasks:
     desc: Backup cluster configuration
     cmds:
       - mkdir -p backups/$(date +%Y%m%d-%H%M%S)
-      - kubectl get all --all-namespaces -o yaml > backups/$(date +%Y%m%d-%H%M%S)/cluster-state.yaml
-      - talosctl get machineconfig -o yaml > backups/$(date +%Y%m%d-%H%M%S)/talos-config.yaml
+      - mise exec -- kubectl get all --all-namespaces -o yaml > backups/$(date +%Y%m%d-%H%M%S)/cluster-state.yaml
+      - mise exec -- talosctl get machineconfig -o yaml > backups/$(date +%Y%m%d-%H%M%S)/talos-config.yaml
 
   maintenance:cleanup:
     desc: Cleanup old resources
     cmds:
-      - kubectl delete pods --field-selector=status.phase=Succeeded --all-namespaces
-      - kubectl delete pods --field-selector=status.phase=Failed --all-namespaces
+      - mise exec -- kubectl delete pods --field-selector=status.phase=Succeeded --all-namespaces
+      - mise exec -- kubectl delete pods --field-selector=status.phase=Failed --all-namespaces
 
   # Development tasks
   dev:port-forward:
     desc: Port forward common services
     cmds:
-      - kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80 &
-      - kubectl port-forward -n onepassword-connect svc/onepassword-connect 8081:8080 &
+      - mise exec -- kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80 &
+      - mise exec -- kubectl port-forward -n onepassword-connect svc/onepassword-connect 8081:8080 &
       - echo "Services available at localhost:8080 (Longhorn) and localhost:8081 (1Password Connect)"
 
   dev:logs:
     desc: Tail logs for debugging
     cmds:
-      - kubectl logs -f -n kube-system -l app.kubernetes.io/name=cilium
+      - mise exec -- kubectl logs -f -n kube-system -l app.kubernetes.io/name=cilium
 
   # Cluster status
   cluster:status:
     desc: Show comprehensive cluster status for all-control-plane cluster
     cmds:
       - echo "=== All-Control-Plane Cluster Nodes ==="
-      - kubectl get nodes -o wide
+      - mise exec -- kubectl get nodes -o wide
       - echo ""
       - echo "=== Node Roles (should show 'control-plane' for all nodes) ==="
-      - kubectl get nodes --show-labels | grep "node-role.kubernetes.io"
+      - mise exec -- kubectl get nodes --show-labels | grep "node-role.kubernetes.io"
       - echo ""
       - echo "=== etcd Members ==="
-      - kubectl get pods -n kube-system -l component=etcd -o wide
+      - mise exec -- kubectl get pods -n kube-system -l component=etcd -o wide
       - echo ""
       - echo "=== Control Plane Components ==="
-      - kubectl get pods -n kube-system -l tier=control-plane -o wide
+      - mise exec -- kubectl get pods -n kube-system -l tier=control-plane -o wide
       - echo ""
       - echo "=== System Pods ==="
-      - kubectl get pods -n kube-system
+      - mise exec -- kubectl get pods -n kube-system
       - echo ""
       - echo "=== Longhorn Status ==="
-      - kubectl get pods -n longhorn-system
+      - mise exec -- kubectl get pods -n longhorn-system
       - echo ""
       - echo "=== BGP Status ==="
-      - kubectl get ciliumbgpclusterconfig
+      - mise exec -- kubectl get ciliumbgpclusterconfig
       - echo ""
       - echo "=== LoadBalancer Services ==="
-      - kubectl get svc --all-namespaces | grep LoadBalancer
+      - mise exec -- kubectl get svc --all-namespaces | grep LoadBalancer
 
   # Renovate tasks
   renovate:dry-run:
@@ -859,27 +859,27 @@ tasks:
       - |
         # Update Kubernetes secrets
         echo "Updating Kubernetes secrets..."
-        kubectl create secret generic onepassword-connect-credentials \
+        mise exec -- kubectl create secret generic onepassword-connect-credentials \
           --from-file=1password-credentials.json \
           --namespace=onepassword-connect \
-          --dry-run=client -o yaml | kubectl apply -f -
+          --dry-run=client -o yaml | mise exec -- kubectl apply -f -
         
         CONNECT_TOKEN=$(op connect token create "home-ops-token" \
           --server "home-ops-cluster" \
           --vault "Automation" \
           --expires-in 8760h)
         
-        kubectl create secret generic onepassword-connect-token \
+        mise exec -- kubectl create secret generic onepassword-connect-token \
           --from-literal=token="$CONNECT_TOKEN" \
           --namespace=onepassword-connect \
-          --dry-run=client -o yaml | kubectl apply -f -
+          --dry-run=client -o yaml | mise exec -- kubectl apply -f -
         
         echo "✓ Kubernetes secrets updated"
       - |
         # Restart 1Password Connect deployment
         echo "Restarting 1Password Connect deployment..."
-        kubectl rollout restart deployment onepassword-connect -n onepassword-connect
-        kubectl rollout status deployment onepassword-connect -n onepassword-connect --timeout=120s
+        mise exec -- kubectl rollout restart deployment onepassword-connect -n onepassword-connect
+        mise exec -- kubectl rollout status deployment onepassword-connect -n onepassword-connect --timeout=120s
         echo "✓ 1Password Connect deployment restarted"
       - |
         # Clean up local files
@@ -893,7 +893,7 @@ tasks:
     deps: [onepassword:create-connect-server]
     cmds:
       - echo "1Password Connect credentials have been regenerated and updated"
-      - task: bootstrap:validate-1password-secrets
+      - mise exec -- task bootstrap:validate-1password-secrets
 
   # Cluster Safety Tasks - CRITICAL SAFETY MEASURES
   cluster:safe-reset:
@@ -916,17 +916,17 @@ tasks:
       - echo "Performing SAFE reset on all nodes (EPHEMERAL and STATE partitions only)..."
       - |
         echo "Resetting node {{.NODE_1_IP}} (SAFE - partitions only)..."
-        talosctl reset --nodes {{.NODE_1_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
+        mise exec -- talosctl reset --nodes {{.NODE_1_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
       - sleep 30
       - |
         echo "Resetting node {{.NODE_2_IP}} (SAFE - partitions only)..."
-        talosctl reset --nodes {{.NODE_2_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
+        mise exec -- talosctl reset --nodes {{.NODE_2_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
       - sleep 30
       - |
         echo "Resetting node {{.NODE_3_IP}} (SAFE - partitions only)..."
-        talosctl reset --nodes {{.NODE_3_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
+        mise exec -- talosctl reset --nodes {{.NODE_3_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
       - echo "✅ SAFE reset completed. OS preserved. Cluster will need re-bootstrap."
-      - echo "Next steps - Run 'task bootstrap:cluster' to rebuild the cluster"
+      - echo "Next steps - Run 'mise exec -- task bootstrap:cluster' to rebuild the cluster"
 
   cluster:emergency-recovery:
     desc: Emergency cluster recovery with comprehensive safety checks
@@ -940,14 +940,14 @@ tasks:
         read -p "Confirm emergency recovery (y/N): " confirm
         [ "$confirm" = "y" ]
       - echo "Step 1 - Verifying cluster safety..."
-      - task: cluster:verify-safety
+      - mise exec -- task cluster:verify-safety
       - echo "Step 2 - Attempting kubeconfig recovery..."
-      - task: talos:recover-kubeconfig
+      - mise exec -- task talos:recover-kubeconfig
       - echo "Step 3 - Checking node status..."
-      - kubectl get nodes || echo "Nodes not accessible - may need safe reset"
+      - mise exec -- kubectl get nodes || echo "Nodes not accessible - may need safe reset"
       - echo "Step 4 - Checking critical pods..."
-      - kubectl get pods -n kube-system || echo "Control plane not accessible"
-      - echo "Step 5 - If cluster is unrecoverable, use task cluster safe-reset"
+      - mise exec -- kubectl get pods -n kube-system || echo "Control plane not accessible"
+      - echo "Step 5 - If cluster is unrecoverable, use mise exec -- task cluster:safe-reset"
       - echo "✅ Emergency recovery assessment complete"
 
   cluster:safe-reboot:
@@ -964,20 +964,20 @@ tasks:
       - echo "Rebooting all nodes safely..."
       - |
         echo "Rebooting {{.NODE_1_IP}}..."
-        talosctl reboot --nodes {{.NODE_1_IP}}
+        mise exec -- talosctl reboot --nodes {{.NODE_1_IP}}
         sleep 45
       - |
         echo "Rebooting {{.NODE_2_IP}}..."
-        talosctl reboot --nodes {{.NODE_2_IP}}
+        mise exec -- talosctl reboot --nodes {{.NODE_2_IP}}
         sleep 45
       - |
         echo "Rebooting {{.NODE_3_IP}}..."
-        talosctl reboot --nodes {{.NODE_3_IP}}
+        mise exec -- talosctl reboot --nodes {{.NODE_3_IP}}
         sleep 45
       - echo "Waiting for cluster to come back online..."
       - sleep 60
-      - task: talos:recover-kubeconfig
-      - kubectl get nodes
+      - mise exec -- task talos:recover-kubeconfig
+      - mise exec -- kubectl get nodes
       - echo "✅ Safe reboot completed"
 
   cluster:verify-safety:
@@ -997,7 +997,7 @@ tasks:
       - echo "   - Any reset command that doesn't specify partitions"
       - echo ""
       - echo "📋 CURRENT CLUSTER STATUS:"
-      - kubectl get nodes -o wide || echo "Cluster not accessible"
+      - mise exec -- kubectl get nodes -o wide || echo "Cluster not accessible"
       - echo ""
       - echo "📖 For detailed safety information, see:"
       - echo "   - docs/CLUSTER_RESET_SAFETY.md"
