@@ -1,25 +1,6 @@
 ---
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-cilium
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  path: ./infrastructure/cilium
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  healthChecks:
-    - apiVersion: apps/v1
-      kind: DaemonSet
-      name: cilium
-      namespace: cilium-system
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: cilium-operator
-      namespace: cilium-system
+# Cilium is now managed by bootstrap (not Flux) to prevent "Dead loop on virtual device" issues
+# See Taskfile.yml apps:deploy-cilium task for bootstrap deployment
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -75,7 +56,6 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: infrastructure-cilium
     - name: infrastructure-onepassword
   healthChecks:
     - apiVersion: apps/v1
