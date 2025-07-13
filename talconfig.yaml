@@ -69,9 +69,6 @@ nodes:
 # Control plane patches
 controlPlane:
   patches:
-    # USB SSD storage configuration
-    - "@./talos/patches/usb-ssd-storage.yaml"
-    
     # Install configuration
     - |-
       machine:
@@ -79,6 +76,21 @@ controlPlane:
           extraKernelArgs:
             - talos.logging.kernel=udp://172.29.51.1:514/
           wipe: false
+
+    # LLDPD extension service configuration
+    - |-
+      machine:
+        env:
+          LLDPD_OPTS: "-c -e -f -s -r"
+        files:
+          - path: /etc/lldpd.conf
+            permissions: 0644
+            op: create
+            content: |
+              configure lldp portidsubtype ifname
+              unconfigure lldp management-addresses-advertisements
+              unconfigure lldp capabilities-advertisements
+              configure system description "Talos Node"
 
     # Network configuration
     - |-
