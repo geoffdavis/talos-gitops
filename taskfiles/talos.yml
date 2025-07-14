@@ -94,9 +94,9 @@ tasks:
             "talsecret[password]=$(cat talos/talsecret.yaml)"
         fi
       - |
-        # Generate configuration files with force flag to handle existing files
+        # Generate configuration files (talhelper doesn't have --force flag)
         echo "Generating Talos configuration files..."
-        if  talhelper genconfig --secret-file talos/talsecret.yaml --force; then
+        if  talhelper genconfig --secret-file talos/talsecret.yaml; then
           echo "✓ Configuration generated successfully"
         else
           echo "⚠ Configuration generation failed, cleaning up and retrying..."
@@ -117,9 +117,9 @@ tasks:
         msg: 'Node configuration files must exist'
     cmds:
       - echo "Validating Talos configurations..."
-      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
-      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
-      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml --mode metal
+      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml --mode metal
+      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml --mode metal
       - touch {{.BOOTSTRAP_STATE_DIR}}/configs-validated
       - echo "All configurations are valid"
 

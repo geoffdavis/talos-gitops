@@ -1064,9 +1064,9 @@ tasks:
         echo "Attempting reset with partition specifications..."
         RESET_SUCCESS=false
         
-        # Try simultaneous reset first (without --reboot flag as reset auto-reboots)
+        # Try simultaneous reset first (without --wait flag to avoid conflicts)
         echo "Attempting simultaneous reset..."
-        if mise exec -- talosctl reset --nodes $RESET_NODES --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
+        if mise exec -- talosctl reset --nodes $RESET_NODES --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false; then
           echo "✅ Simultaneous reset command executed successfully"
           RESET_SUCCESS=true
         else
@@ -1080,21 +1080,21 @@ tasks:
           for node in $NODES_LIST; do
             echo "Resetting node $node (SAFE - partitions only)..."
             
-            # Try with talosconfig first (without --reboot as reset auto-reboots)
-            if mise exec -- talosctl reset --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
+            # Try with talosconfig first (without --wait to avoid conflicts)
+            if mise exec -- talosctl reset --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false; then
               echo "✅ Reset command sent to $node (authenticated)"
               INDIVIDUAL_SUCCESS=$((INDIVIDUAL_SUCCESS + 1))
             else
               echo "⚠ Authenticated reset failed for $node, trying insecure mode..."
-              # Try insecure mode for nodes with certificate issues
-              if mise exec -- talosctl reset --insecure --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
+              # Try insecure mode for nodes with certificate issues (cannot use --wait with --insecure)
+              if mise exec -- talosctl reset --insecure --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false; then
                 echo "✅ Reset command sent to $node (insecure mode)"
                 INDIVIDUAL_SUCCESS=$((INDIVIDUAL_SUCCESS + 1))
               else
                 echo "❌ Failed to reset $node in both authenticated and insecure modes"
                 # Show the actual error for debugging
                 echo "Debug: Attempting reset with error output..."
-                mise exec -- talosctl reset --insecure --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false 2>&1 || true
+                mise exec -- talosctl reset --insecure --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false 2>&1 || true
               fi
             fi
             sleep 5
