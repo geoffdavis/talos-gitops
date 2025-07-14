@@ -106,11 +106,19 @@ create_1password_items() {
     fi
     
     # Check if 1Password Connect credentials exist
-    if ! op item get "1Password Connect" &> /dev/null; then
-        warn "1Password Connect item not found. Please create it manually with your Connect credentials."
-        echo "  This should include the 1password-credentials.json file and Connect token"
+    if ! op item get "1Password Connect Credentials - $CLUSTER_NAME" &> /dev/null; then
+        warn "1Password Connect Credentials - $CLUSTER_NAME item not found. Please create it manually with your Connect credentials."
+        echo "  This should include the 1password-credentials.json file as a document"
     else
-        success "1Password Connect item exists"
+        success "1Password Connect Credentials - $CLUSTER_NAME item exists"
+    fi
+    
+    # Check if 1Password Connect token exists
+    if ! op item get "1Password Connect Token - $CLUSTER_NAME" &> /dev/null; then
+        warn "1Password Connect Token - $CLUSTER_NAME item not found. Please create it manually with your Connect token."
+        echo "  This should include the Connect token in the 'token' field"
+    else
+        success "1Password Connect Token - $CLUSTER_NAME item exists"
     fi
     
     # Check if Longhorn UI credentials exist
@@ -154,19 +162,19 @@ bootstrap_cluster_secrets() {
         # Create 1Password Connect secrets
         kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
         
-        # Get 1Password Connect credentials
-        if op item get "1Password Connect" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
+        # Get 1Password Connect credentials from document
+        if op document get "1Password Connect Credentials - $CLUSTER_NAME" --vault="Automation" --out-file="$temp_dir/1password-credentials.json" 2>/dev/null; then
             kubectl create secret generic onepassword-connect-credentials \
                 --namespace=onepassword-connect \
-                --from-file=1password-credentials.json="$temp_dir/op-credentials.json" \
+                --from-file=1password-credentials.json="$temp_dir/1password-credentials.json" \
                 --dry-run=client -o yaml | kubectl apply -f -
             success "Created 1Password Connect credentials secret"
         else
-            warn "1Password Connect credentials not found"
+            warn "1Password Connect credentials document not found"
         fi
         
         # Get 1Password Connect token
-        if op item get "1Password Connect" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
+        if op item get "1Password Connect Token - $CLUSTER_NAME" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
             local token
             token=$(jq -r '.value' "$temp_dir/op-token.json")
             kubectl create secret generic onepassword-connect-token \

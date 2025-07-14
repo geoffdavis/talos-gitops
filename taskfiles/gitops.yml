@@ -1,0 +1,329 @@
+version: '3'
+
+# GitOps Tasks - Flux Deployment and Management
+# Handles Flux bootstrap, GitOps sync, and infrastructure deployment
+
+vars:
+  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  GIT_OWNER: '{{.GIT_OWNER | default "geoffdavis"}}'
+  GIT_REPO: '{{.GIT_REPO | default "talos-gitops"}}'
+  GIT_BRANCH: '{{.GIT_BRANCH | default "main"}}'
+  GIT_PATH: '{{.GIT_PATH | default "clusters/homelab"}}'
+
+env:
+  TALOSCONFIG: clusterconfig/talosconfig
+
+tasks:
+  # Main GitOps deployment orchestration
+  bootstrap-flux:
+    desc: Bootstrap Flux GitOps system
+    deps:
+      - validate-prerequisites
+      - bootstrap-flux-github
+      - wait-flux-ready
+      - verify-gitops-sync
+    cmds:
+      - echo "✓ Flux GitOps bootstrap completed successfully"
+
+  # Validate prerequisites for GitOps
+  validate-prerequisites:
+    desc: Validate prerequisites for GitOps deployment
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/gitops-prerequisites-validated
+    preconditions:
+      - sh: ' kubectl get pods -n onepassword-connect | grep -q "Running"'
+        msg: '1Password Connect must be running for GitOps secrets'
+      - sh: ' kubectl get pods -n external-secrets-system | grep -q "Running"'
+        msg: 'External Secrets Operator must be running'
+      - sh: ' kubectl get clustersecretstore onepassword-connect >/dev/null 2>&1'
+        msg: '1Password Connect secret store must be configured'
+      - sh: ' flux version >/dev/null 2>&1'
+        msg: 'Flux CLI must be available'
+      - sh: 'command -v op >/dev/null 2>&1'
+        msg: '1Password CLI is required to retrieve GitHub token'
+      - sh: ' op account list >/dev/null 2>&1'
+        msg: '1Password CLI must be authenticated'
+    cmds:
+      - echo "Validating GitOps prerequisites..."
+      - echo "✓ 1Password Connect is running"
+      - echo "✓ External Secrets Operator is running"
+      - echo "✓ Flux CLI is available"
+      - echo "✓ 1Password CLI is authenticated"
+      - touch {{.BOOTSTRAP_STATE_DIR}}/gitops-prerequisites-validated
+
+  # Bootstrap Flux with GitHub integration
+  bootstrap-flux-github:
+    desc: Bootstrap Flux GitOps with GitHub integration
+    deps: [validate-prerequisites]
+    status:
+      -  kubectl get pods -n flux-system | grep -q "Running"
+      -  flux get kustomizations | grep -q "flux-system"
+    preconditions:
+      - sh: ' op item get "GitHub Personal Access Token" >/dev/null 2>&1'
+        msg: 'GitHub Personal Access Token must exist in 1Password'
+    cmds:
+      - echo "Bootstrapping Flux GitOps with GitHub integration..."
+      - |
+        # Get GitHub token from 1Password
+        export GITHUB_TOKEN=$( op read "op://Private/GitHub Personal Access Token/token")
+        
+        # Bootstrap Flux
+         flux bootstrap github \
+          --owner={{.GIT_OWNER}} \
+          --repository={{.GIT_REPO}} \
+          --branch={{.GIT_BRANCH}} \
+          --path={{.GIT_PATH}} \
+          --personal=true
+      - echo "Flux GitOps bootstrap initiated"
+
+  # Wait for Flux system to be ready
+  wait-flux-ready:
+    desc: Wait for Flux system pods to be ready
+    deps: [bootstrap-flux-github]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/flux-ready
+    cmds:
+      - echo "Waiting for Flux system to be ready..."
+      - |
+        max_wait=300  # 5 minutes
+        wait_interval=15
+        elapsed=0
+        
+        while [ $elapsed -lt $max_wait ]; do
+          flux_pods_ready=$( kubectl get pods -n flux-system --no-headers | grep -c "Running" || echo "0")
+          flux_pods_total=$( kubectl get pods -n flux-system --no-headers | wc -l)
+          
+          if [ "$flux_pods_ready" -eq "$flux_pods_total" ] && [ "$flux_pods_total" -gt 0 ]; then
+            echo "✓ All $flux_pods_ready Flux pods are ready"
+            break
+          fi
+          
+          echo "Waiting for Flux pods... ($flux_pods_ready/$flux_pods_total ready)"
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $elapsed -ge $max_wait ]; then
+          echo "✗ Timeout waiting for Flux pods to be ready"
+          exit 1
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/flux-ready
+
+  # Verify GitOps synchronization
+  verify-gitops-sync:
+    desc: Verify GitOps synchronization is working
+    deps: [wait-flux-ready]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/gitops-sync-verified
+    preconditions:
+      - sh: ' flux get kustomizations | grep -q "flux-system"'
+        msg: 'Flux kustomizations must be present'
+    cmds:
+      - echo "Verifying GitOps synchronization..."
+      - |
+        # Wait for initial sync
+        echo "Waiting for initial GitOps sync..."
+        sleep 30
+        
+        # Check Flux status
+        if  flux get all; then
+          echo "✓ Flux GitOps sync is operational"
+        else
+          echo "⚠ Flux sync may have issues"
+           flux get all --all-namespaces
+        fi
+      - |
+        # Check for infrastructure kustomizations
+        echo "Checking for infrastructure deployments..."
+        if  flux get kustomizations | grep -E "(infrastructure|core|networking|storage)"; then
+          echo "✓ Infrastructure kustomizations are being synced"
+        else
+          echo "⚠ Infrastructure kustomizations not yet synced"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/gitops-sync-verified
+
+  # Comprehensive GitOps validation
+  validate:
+    desc: Validate GitOps deployment and synchronization
+    deps:
+      - validate-flux-system
+      - validate-infrastructure-sync
+      - validate-secret-management
+    cmds:
+      - echo "✓ GitOps validation completed successfully"
+
+  # Validate Flux system
+  validate-flux-system:
+    desc: Validate Flux system components
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/flux-system-validated
+    preconditions:
+      - sh: ' kubectl get pods -n flux-system | grep -q "Running"'
+        msg: 'Flux system pods must be running'
+      - sh: ' flux check >/dev/null 2>&1'
+        msg: 'Flux system must pass health checks'
+    cmds:
+      - echo "Validating Flux system components..."
+      -  flux check
+      -  kubectl get pods -n flux-system
+      - touch {{.BOOTSTRAP_STATE_DIR}}/flux-system-validated
+      - echo "✓ Flux system is healthy"
+
+  # Validate infrastructure synchronization
+  validate-infrastructure-sync:
+    desc: Validate infrastructure synchronization
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/infrastructure-sync-validated
+    preconditions:
+      - sh: ' flux get kustomizations | grep -q "Ready"'
+        msg: 'Flux kustomizations must be ready'
+    cmds:
+      - echo "Validating infrastructure synchronization..."
+      -  flux get kustomizations
+      -  flux get helmreleases --all-namespaces
+      - |
+        # Check for common infrastructure components
+        echo "Checking infrastructure components..."
+        components=("cert-manager" "ingress-nginx" "external-dns")
+        for component in "${components[@]}"; do
+          if  kubectl get pods --all-namespaces | grep -q "$component"; then
+            echo "✓ $component is deployed"
+          else
+            echo "⚠ $component not found (may not be configured)"
+          fi
+        done
+      - touch {{.BOOTSTRAP_STATE_DIR}}/infrastructure-sync-validated
+      - echo "✓ Infrastructure synchronization is operational"
+
+  # Validate secret management
+  validate-secret-management:
+    desc: Validate GitOps secret management
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/secret-management-validated
+    preconditions:
+      - sh: ' kubectl get clustersecretstore onepassword-connect >/dev/null 2>&1'
+        msg: '1Password Connect secret store must be available'
+    cmds:
+      - echo "Validating GitOps secret management..."
+      -  kubectl get clustersecretstores
+      -  kubectl get externalsecrets --all-namespaces || echo "No external secrets found yet"
+      - |
+        # Test secret store connectivity
+        if  kubectl get clustersecretstore onepassword-connect -o jsonpath='{.status.conditions[0].status}' | grep -q "True"; then
+          echo "✓ 1Password Connect secret store is ready for GitOps"
+        else
+          echo "⚠ 1Password Connect secret store may have issues"
+           kubectl describe clustersecretstore onepassword-connect
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/secret-management-validated
+      - echo "✓ Secret management is operational"
+
+  # Force reconciliation
+  reconcile:
+    desc: Force Flux reconciliation
+    cmds:
+      - echo "Forcing Flux reconciliation..."
+      -  flux reconcile source git flux-system
+      -  flux reconcile kustomization flux-system
+      - echo "Reconciliation triggered"
+
+  # Suspend/resume GitOps
+  suspend:
+    desc: Suspend GitOps reconciliation
+    prompt: This will suspend GitOps reconciliation. Continue?
+    cmds:
+      - echo "Suspending GitOps reconciliation..."
+      -  flux suspend kustomization flux-system
+      - echo "GitOps reconciliation suspended"
+
+  resume:
+    desc: Resume GitOps reconciliation
+    cmds:
+      - echo "Resuming GitOps reconciliation..."
+      -  flux resume kustomization flux-system
+      - echo "GitOps reconciliation resumed"
+
+  # Status and diagnostics
+  status:
+    desc: Show GitOps status
+    cmds:
+      - echo "=== GitOps Status ==="
+      - echo "Flux System:"
+      -  kubectl get pods -n flux-system || echo "Flux not deployed"
+      - echo ""
+      - echo "Flux Resources:"
+      -  flux get all || echo "Flux not available"
+      - echo ""
+      - echo "Infrastructure Sync:"
+      -  flux get kustomizations || echo "No kustomizations found"
+      - echo ""
+      - echo "Helm Releases:"
+      -  flux get helmreleases --all-namespaces || echo "No helm releases found"
+
+  # Troubleshooting tasks
+  logs:
+    desc: Show GitOps logs for troubleshooting
+    cmds:
+      - echo "=== Flux Controller Logs ==="
+      -  kubectl logs -n flux-system -l app=source-controller --tail=20 || echo "No source controller logs"
+      - echo ""
+      - echo "=== Kustomize Controller Logs ==="
+      -  kubectl logs -n flux-system -l app=kustomize-controller --tail=20 || echo "No kustomize controller logs"
+      - echo ""
+      - echo "=== Helm Controller Logs ==="
+      -  kubectl logs -n flux-system -l app=helm-controller --tail=20 || echo "No helm controller logs"
+
+  debug:
+    desc: Run GitOps debugging commands
+    cmds:
+      - echo "=== GitOps Debug Information ==="
+      - echo "Flux Check:"
+      -  flux check || echo "Flux check failed"
+      - echo ""
+      - echo "Git Source Status:"
+      -  flux get sources git || echo "No git sources"
+      - echo ""
+      - echo "Kustomization Status:"
+      -  flux get kustomizations --all-namespaces || echo "No kustomizations"
+      - echo ""
+      - echo "Recent Events:"
+      -  kubectl get events -n flux-system --sort-by='.lastTimestamp' | tail -10 || echo "No events"
+
+  # Reset GitOps state
+  reset-state:
+    desc: Reset GitOps bootstrap state
+    prompt: This will reset GitOps state. Continue?
+    cmds:
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/gitops-prerequisites-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/flux-ready
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/gitops-sync-verified
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/flux-system-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/infrastructure-sync-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/secret-management-validated
+      - echo "GitOps state reset"
+
+  # Uninstall Flux (dangerous)
+  uninstall:
+    desc: Uninstall Flux GitOps system
+    prompt: This will completely remove Flux. Continue?
+    cmds:
+      - echo "Uninstalling Flux GitOps system..."
+      -  flux uninstall --silent
+      - task: reset-state
+      - echo "Flux GitOps system uninstalled"
+
+  # Individual component management
+  check-sources:
+    desc: Check Git sources
+    cmds:
+      -  flux get sources git
+
+  check-kustomizations:
+    desc: Check kustomizations
+    cmds:
+      -  flux get kustomizations --all-namespaces
+
+  check-helmreleases:
+    desc: Check Helm releases
+    cmds:
+      -  flux get helmreleases --all-namespaces

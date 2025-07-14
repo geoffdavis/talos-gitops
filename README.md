@@ -243,7 +243,61 @@ For detailed setup instructions, see:
 
 ## Quick Start
 
-### For New All-Control-Plane Clusters (Streamlined Bootstrap)
+### 🚀 Recommended: Phased Bootstrap (New Approach)
+
+The phased bootstrap approach provides systematic, resumable cluster deployment with comprehensive validation at each step.
+
+1. **Install dependencies**:
+   ```bash
+   mise install
+   ```
+
+2. **Start phased bootstrap**:
+   ```bash
+   task bootstrap:phased
+   ```
+   This will execute all phases systematically:
+   - **Phase 1**: Environment validation (mise, tools, connectivity)
+   - **Phase 2**: Talos cluster initialization (etcd bootstrap)
+   - **Phase 3**: CNI deployment (Cilium)
+   - **Phase 4**: Core services validation
+   - **Phase 5**: GitOps deployment (Flux)
+   - **Phase 6**: Application deployment
+
+3. **If bootstrap fails, resume from the failed phase**:
+   ```bash
+   # Resume from last failed phase
+   task bootstrap:resume
+   
+   # Or resume from specific phase
+   task bootstrap:resume-from PHASE=3
+   ```
+
+4. **Monitor progress**:
+   ```bash
+   # Check current status
+   task bootstrap:status
+   
+   # View logs for specific phase
+   task bootstrap:logs PHASE=2
+   ```
+
+5. **Configure BGP on Unifi UDM Pro**:
+   ```bash
+   task bgp:configure-unifi
+   ```
+
+### 📖 Phased Bootstrap Benefits
+
+- **🚫 No More Cluster Resets**: Resume from any failed phase
+- **🔍 Clear Failure Points**: Know exactly where and why bootstrap failed
+- **🛠️ Robust Environment**: Comprehensive mise validation and setup
+- **📊 Progress Tracking**: Real-time status and detailed logging
+- **🔄 Operational Confidence**: Tested procedures with clear recovery paths
+
+For detailed information, see: **[Phased Bootstrap Guide](docs/PHASED_BOOTSTRAP_GUIDE.md)**
+
+### 🔧 Legacy: Streamlined Bootstrap (Original Approach)
 
 1. Install dependencies:
    ```bash

@@ -1,0 +1,345 @@
+version: '3'
+
+# Talos Cluster Management Tasks
+# Handles Talos configuration, node setup, and cluster bootstrap
+
+vars:
+  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  CLUSTER_NAME: '{{.CLUSTER_NAME | default "home-ops"}}'
+  NODE_1_IP: '{{.NODE_1_IP | default "172.29.51.11"}}'
+  NODE_2_IP: '{{.NODE_2_IP | default "172.29.51.12"}}'
+  NODE_3_IP: '{{.NODE_3_IP | default "172.29.51.13"}}'
+  CLUSTER_ENDPOINT: '{{.CLUSTER_ENDPOINT | default "https://172.29.51.10:6443"}}'
+
+env:
+  TALOSCONFIG: clusterconfig/talosconfig
+
+tasks:
+  # Complete cluster bootstrap orchestration
+  bootstrap-cluster:
+    desc: Complete Talos cluster bootstrap process
+    deps:
+      - bootstrap-secrets
+      - generate-config
+      - validate-configs
+      - apply-configs
+      - wait-nodes-ready
+      - bootstrap-etcd
+      - wait-cluster-ready
+      - verify-health
+    cmds:
+      - echo "✓ Talos cluster bootstrap completed successfully"
+
+  # Bootstrap secrets from 1Password
+  bootstrap-secrets:
+    desc: Bootstrap secrets from 1Password
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/secrets-bootstrapped
+    preconditions:
+      - sh: '[ -n "$OP_ACCOUNT" ]'
+        msg: 'OP_ACCOUNT environment variable must be set'
+      - sh: ' op account list >/dev/null 2>&1'
+        msg: '1Password CLI must be authenticated (run: op signin)'
+      - sh: 'test -f scripts/bootstrap-secrets.sh'
+        msg: 'bootstrap-secrets.sh script must exist'
+    cmds:
+      - echo "Bootstrapping secrets from 1Password..."
+      - bash scripts/bootstrap-secrets.sh
+      - touch {{.BOOTSTRAP_STATE_DIR}}/secrets-bootstrapped
+      - echo "Secrets bootstrapped successfully"
+
+  # Generate Talos configuration
+  generate-config:
+    desc: Generate Talos configuration using talhelper
+    deps: [bootstrap-secrets]
+    status:
+      - test -f clusterconfig/talosconfig
+      - test -f clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
+      - test -f clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
+      - test -f clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+    sources:
+      - talconfig.yaml
+      - talos/patches/*.yaml
+      - talos/talsecret.yaml
+    generates:
+      - clusterconfig/talosconfig
+      - clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
+      - clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
+      - clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+    preconditions:
+      - sh: ' talhelper --version >/dev/null 2>&1'
+        msg: 'talhelper is required and managed by mise'
+      - sh: 'test -f talconfig.yaml'
+        msg: 'talconfig.yaml must exist'
+    cmds:
+      - echo "Generating Talos configuration..."
+      - mkdir -p clusterconfig
+      - |
+        # Handle secrets - check multiple sources as per bootstrap-config.yaml
+        if  op item get "Talos Secrets - {{.CLUSTER_NAME}}" --vault="Automation" >/dev/null 2>&1; then
+          echo "Using existing secrets from 1Password..."
+           op item get "Talos Secrets - {{.CLUSTER_NAME}}" --vault="Automation" --fields label=talsecret --format json | jq -r '.value' > talos/talsecret.yaml
+        elif test -f talos/talsecret.yaml; then
+          echo "Using existing local secrets file..."
+        else
+          echo "Generating new Talos secrets..."
+           talhelper gensecret > talos/talsecret.yaml
+          echo "Storing new secrets in 1Password..."
+           op item create \
+            --category="Secure Note" \
+            --title="Talos Secrets - {{.CLUSTER_NAME}}" \
+            --vault="Automation" \
+            "talsecret[password]=$(cat talos/talsecret.yaml)" || \
+           op item edit "Talos Secrets - {{.CLUSTER_NAME}}" \
+            --vault="Automation" \
+            "talsecret[password]=$(cat talos/talsecret.yaml)"
+        fi
+      -  talhelper genconfig --secret-file talos/talsecret.yaml
+      - echo "Talos configuration generated successfully"
+
+  # Validate Talos configurations
+  validate-configs:
+    desc: Validate generated Talos configurations
+    deps: [generate-config]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/configs-validated
+    preconditions:
+      - sh: 'test -f clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml'
+        msg: 'Node configuration files must exist'
+    cmds:
+      - echo "Validating Talos configurations..."
+      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
+      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
+      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+      - touch {{.BOOTSTRAP_STATE_DIR}}/configs-validated
+      - echo "All configurations are valid"
+
+  # Apply configurations to nodes
+  apply-configs:
+    desc: Apply Talos configurations to all nodes
+    deps: [validate-configs]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/configs-applied
+    preconditions:
+      - sh: 'ping -c 1 {{.NODE_1_IP}} >/dev/null 2>&1'
+        msg: 'Node {{.NODE_1_IP}} must be reachable'
+      - sh: 'ping -c 1 {{.NODE_2_IP}} >/dev/null 2>&1'
+        msg: 'Node {{.NODE_2_IP}} must be reachable'
+      - sh: 'ping -c 1 {{.NODE_3_IP}} >/dev/null 2>&1'
+        msg: 'Node {{.NODE_3_IP}} must be reachable'
+    cmds:
+      - echo "Applying Talos configurations to nodes..."
+      - echo "Applying configuration to {{.NODE_1_IP}}..."
+      - |
+        if  talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml 2>/dev/null; then
+          echo "✓ {{.NODE_1_IP}} configuration applied successfully"
+        else
+          echo "⚠ Certificate error expected - retrying with insecure mode..."
+           talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
+          echo "✓ {{.NODE_1_IP}} configuration applied (insecure mode)"
+        fi
+      - echo "Applying configuration to {{.NODE_2_IP}}..."
+      - |
+        if  talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml 2>/dev/null; then
+          echo "✓ {{.NODE_2_IP}} configuration applied successfully"
+        else
+          echo "⚠ Certificate error expected - retrying with insecure mode..."
+           talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
+          echo "✓ {{.NODE_2_IP}} configuration applied (insecure mode)"
+        fi
+      - echo "Applying configuration to {{.NODE_3_IP}}..."
+      - |
+        if  talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml 2>/dev/null; then
+          echo "✓ {{.NODE_3_IP}} configuration applied successfully"
+        else
+          echo "⚠ Certificate error expected - retrying with insecure mode..."
+           talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+          echo "✓ {{.NODE_3_IP}} configuration applied (insecure mode)"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/configs-applied
+      - echo "All node configurations applied successfully"
+
+  # Wait for nodes to be ready for bootstrap
+  wait-nodes-ready:
+    desc: Wait for nodes to be ready for etcd bootstrap
+    deps: [apply-configs]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/nodes-ready
+    cmds:
+      - echo "Waiting for nodes to be ready for bootstrap..."
+      - |
+        max_wait=300  # 5 minutes
+        wait_interval=10
+        elapsed=0
+        
+        while [ $elapsed -lt $max_wait ]; do
+          nodes_ready=0
+          
+          for node_ip in {{.NODE_1_IP}} {{.NODE_2_IP}} {{.NODE_3_IP}}; do
+            if  talosctl version --nodes "$node_ip" >/dev/null 2>&1; then
+              nodes_ready=$((nodes_ready + 1))
+            fi
+          done
+          
+          if [ $nodes_ready -eq 3 ]; then
+            echo "✓ All nodes are ready for bootstrap"
+            break
+          fi
+          
+          echo "Waiting for nodes to be ready... ($nodes_ready/3 ready)"
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $elapsed -ge $max_wait ]; then
+          echo "✗ Timeout waiting for nodes to be ready"
+          exit 1
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/nodes-ready
+
+  # Bootstrap etcd cluster
+  bootstrap-etcd:
+    desc: Bootstrap etcd cluster on first node
+    deps: [wait-nodes-ready]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped
+    cmds:
+      - echo "Bootstrapping etcd cluster on {{.NODE_1_IP}}..."
+      -  talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}
+      - touch {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped
+      - echo "etcd cluster bootstrapped successfully"
+
+  # Wait for cluster to be ready
+  wait-cluster-ready:
+    desc: Wait for cluster to become ready and retrieve kubeconfig
+    deps: [bootstrap-etcd]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/cluster-ready
+      -  kubectl get nodes >/dev/null 2>&1
+    cmds:
+      - echo "Waiting for cluster to become ready..."
+      - |
+        max_wait=300  # 5 minutes
+        wait_interval=15
+        elapsed=0
+        
+        while [ $elapsed -lt $max_wait ]; do
+          # Try to get kubeconfig
+          if  talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force >/dev/null 2>&1; then
+            echo "✓ Kubeconfig retrieved successfully"
+            
+            # Test cluster connectivity
+            if  kubectl get nodes >/dev/null 2>&1; then
+              echo "✓ Cluster is responding to kubectl commands"
+              break
+            fi
+          fi
+          
+          echo "Waiting for cluster to be ready... (${elapsed}s elapsed)"
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $elapsed -ge $max_wait ]; then
+          echo "✗ Timeout waiting for cluster to be ready"
+          exit 1
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/cluster-ready
+
+  # Verify cluster health
+  verify-health:
+    desc: Verify cluster health and readiness
+    deps: [wait-cluster-ready]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/health-verified
+    preconditions:
+      - sh: ' kubectl get nodes >/dev/null 2>&1'
+        msg: 'Cluster must be accessible via kubectl'
+    cmds:
+      - echo "Verifying cluster health..."
+      - |
+        # Check node count
+        node_count=$( kubectl get nodes --no-headers | wc -l)
+        if [ "$node_count" -eq 3 ]; then
+          echo "✓ All 3 nodes are present in cluster"
+        else
+          echo "✗ Expected 3 nodes, found $node_count"
+          exit 1
+        fi
+      - |
+        # Check control plane pods
+        control_plane_pods=$( kubectl get pods -n kube-system -l tier=control-plane --no-headers | grep -c "Running" || echo "0")
+        if [ "$control_plane_pods" -gt 0 ]; then
+          echo "✓ $control_plane_pods control plane pods are running"
+        else
+          echo "✗ No control plane pods are running"
+          exit 1
+        fi
+      - |
+        # Check etcd pods
+        etcd_pods=$( kubectl get pods -n kube-system -l component=etcd --no-headers | grep -c "Running" || echo "0")
+        if [ "$etcd_pods" -eq 3 ]; then
+          echo "✓ All 3 etcd pods are running"
+        else
+          echo "⚠ Expected 3 etcd pods, found $etcd_pods running"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/health-verified
+      - echo "Cluster health verification completed"
+
+  # Utility tasks
+  status:
+    desc: Show Talos cluster status
+    cmds:
+      - echo "=== Talos Cluster Status ==="
+      - echo "Nodes:"
+      -  kubectl get nodes -o wide || echo "Cluster not accessible"
+      - echo ""
+      - echo "Control Plane Pods:"
+      -  kubectl get pods -n kube-system -l tier=control-plane || echo "Control plane not accessible"
+      - echo ""
+      - echo "etcd Pods:"
+      -  kubectl get pods -n kube-system -l component=etcd || echo "etcd not accessible"
+
+  # Recovery tasks
+  recover-kubeconfig:
+    desc: Recover kubeconfig after cluster restart
+    cmds:
+      - echo "Recovering kubeconfig from cluster..."
+      -  talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
+      - echo "Testing connection..."
+      -  kubectl get nodes || echo "If connection fails, check if nodes are powered on and reachable"
+
+  # Reset tasks
+  reset-state:
+    desc: Reset Talos bootstrap state
+    prompt: This will reset Talos bootstrap state. Continue?
+    cmds:
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/secrets-bootstrapped
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/configs-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/configs-applied
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/nodes-ready
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/cluster-ready
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/health-verified
+      - echo "Talos bootstrap state reset"
+
+  # Individual task execution for debugging
+  secrets-only:
+    desc: Bootstrap secrets only
+    cmds:
+      - task: bootstrap-secrets
+
+  config-only:
+    desc: Generate configuration only
+    cmds:
+      - task: generate-config
+
+  apply-only:
+    desc: Apply configurations only
+    cmds:
+      - task: apply-configs
+
+  bootstrap-only:
+    desc: Bootstrap etcd only
+    cmds:
+      - task: bootstrap-etcd

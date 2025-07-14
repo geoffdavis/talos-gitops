@@ -1,0 +1,262 @@
+version: '3'
+
+# Bootstrap Phase Orchestration
+# Uses native Taskfile dependencies, preconditions, and status checks
+
+vars:
+  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  CLUSTER_NAME: '{{.CLUSTER_NAME | default "home-ops"}}'
+  NODE_1_IP: '{{.NODE_1_IP | default "172.29.51.11"}}'
+  NODE_2_IP: '{{.NODE_2_IP | default "172.29.51.12"}}'
+  NODE_3_IP: '{{.NODE_3_IP | default "172.29.51.13"}}'
+  VIP: '{{.VIP | default "172.29.51.10"}}'
+  CLUSTER_ENDPOINT: '{{.CLUSTER_ENDPOINT | default "https://172.29.51.10:6443"}}'
+
+env:
+  TALOSCONFIG: clusterconfig/talosconfig
+
+tasks:
+  # Main phased bootstrap entry point
+  phased:
+    desc: Execute complete phased bootstrap process using native Taskfile dependencies
+    deps:
+      - init-state
+      - phase-1-environment
+      - phase-2-cluster
+      - phase-3-networking
+      - phase-4-services
+      - phase-5-gitops
+      - phase-6-applications
+    cmds:
+      - echo "Phased bootstrap completed successfully!"
+      - echo "Cluster {{.CLUSTER_NAME}} is ready for production use"
+      - task: status
+
+  # Initialize bootstrap state directory
+  init-state:
+    desc: Initialize bootstrap state tracking
+    status:
+      - test -d {{.BOOTSTRAP_STATE_DIR}}
+    cmds:
+      - mkdir -p {{.BOOTSTRAP_STATE_DIR}}
+      - echo "Bootstrap state directory initialized"
+
+  # Phase 1: Environment Validation
+  phase-1-environment:
+    desc: "Phase 1 Environment Validation"
+    deps: [init-state]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete
+    preconditions:
+      - sh: 'command -v mise'
+        msg: 'mise is required for tool management. Install from https://mise.jdx.dev'
+      - sh: '[ -f .mise.toml ]'
+        msg: '.mise.toml configuration file must exist'
+    cmds:
+      - task: validation:environment
+      - touch {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete
+      - "echo 'Phase 1: Environment validation completed'"
+
+  # Phase 2: Talos Cluster Initialization
+  phase-2-cluster:
+    desc: "Phase 2 Talos Cluster Initialization"
+    deps: [phase-1-environment]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-2-complete
+      - test -f clusterconfig/talosconfig
+      - kubectl get nodes --no-headers | grep -q "{{.CLUSTER_NAME}}"
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete'
+        msg: 'Phase 1 must be completed first'
+      - sh: '[ -n "$OP_ACCOUNT" ]'
+        msg: 'OP_ACCOUNT environment variable must be set'
+    cmds:
+      - task: talos:bootstrap-cluster
+      - touch {{.BOOTSTRAP_STATE_DIR}}/phase-2-complete
+      - "echo 'Phase 2: Talos cluster initialization completed'"
+
+  # Phase 3: CNI Deployment (Cilium)
+  phase-3-networking:
+    desc: "Phase 3 CNI Deployment (Cilium)"
+    deps: [phase-2-cluster]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-3-complete
+      - kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"
+      - kubectl get pods -n kube-system -l k8s-app=cilium | grep -q "Running"
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-2-complete'
+        msg: 'Phase 2 must be completed first'
+      - sh: 'kubectl get nodes --no-headers | wc -l | grep -q "3"'
+        msg: 'All 3 nodes must be present in cluster'
+    cmds:
+      - task: networking:deploy-cilium
+      - task: networking:wait-ready
+      - task: networking:validate
+      - touch {{.BOOTSTRAP_STATE_DIR}}/phase-3-complete
+      - "echo 'Phase 3: CNI deployment completed'"
+
+  # Phase 4: Core Services
+  phase-4-services:
+    desc: "Phase 4 Core Services Deployment"
+    deps: [phase-3-networking]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-4-complete
+      - kubectl get pods -n external-secrets-system | grep -q "Running"
+      - kubectl get pods -n onepassword-connect | grep -q "Running"
+      - kubectl get pods -n longhorn-system | grep -q "Running"
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-3-complete'
+        msg: 'Phase 3 must be completed first'
+      - sh: 'kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"'
+        msg: 'All nodes must be Ready with CNI'
+    cmds:
+      - task: services:deploy-core
+      - task: services:validate
+      - touch {{.BOOTSTRAP_STATE_DIR}}/phase-4-complete
+      - "echo 'Phase 4: Core services deployment completed'"
+
+  # Phase 5: GitOps Deployment (Flux)
+  phase-5-gitops:
+    desc: "Phase 5 GitOps Deployment (Flux)"
+    deps: [phase-4-services]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-5-complete
+      - kubectl get pods -n flux-system | grep -q "Running"
+      - flux get kustomizations | grep -q "flux-system"
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-4-complete'
+        msg: 'Phase 4 must be completed first'
+      - sh: 'kubectl get pods -n onepassword-connect | grep -q "Running"'
+        msg: '1Password Connect must be running for GitOps secrets'
+    cmds:
+      - task: gitops:bootstrap-flux
+      - task: gitops:validate
+      - touch {{.BOOTSTRAP_STATE_DIR}}/phase-5-complete
+      - "echo 'Phase 5: GitOps deployment completed'"
+
+  # Phase 6: Application Deployment
+  phase-6-applications:
+    desc: "Phase 6 Application Deployment"
+    deps: [phase-5-gitops]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-6-complete
+      - kubectl get pods --all-namespaces | grep -v "kube-system\|flux-system\|external-secrets-system\|onepassword-connect\|longhorn-system" | grep -q "Running"
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-5-complete'
+        msg: 'Phase 5 must be completed first'
+      - sh: 'flux get kustomizations | grep -q "Ready"'
+        msg: 'Flux must be ready and syncing'
+    cmds:
+      - task: applications:deploy
+      - task: applications:validate
+      - touch {{.BOOTSTRAP_STATE_DIR}}/phase-6-complete
+      - "echo 'Phase 6: Application deployment completed'"
+
+  # Status and utility tasks
+  status:
+    desc: Show comprehensive bootstrap status
+    cmds:
+      - echo "=== Bootstrap Status Report ==="
+      - echo "Cluster {{.CLUSTER_NAME}}"
+      - echo "Endpoint {{.CLUSTER_ENDPOINT}}"
+      - echo ""
+      - |
+        echo "Phase Status:"
+        for phase in 1 2 3 4 5 6; do
+          if [ -f {{.BOOTSTRAP_STATE_DIR}}/phase-${phase}-complete ]; then
+            echo "  Phase ${phase}: COMPLETED"
+          else
+            echo "  Phase ${phase}: PENDING"
+          fi
+        done
+      - echo ""
+      - echo "=== Cluster Status ==="
+      - kubectl get nodes -o wide || echo "Cluster not accessible"
+      - echo ""
+      - echo "=== Pod Status ==="
+      - kubectl get pods --all-namespaces | grep -v "Completed" || echo "No pods found"
+
+  reset:
+    desc: Reset bootstrap state (start over)
+    prompt: This will reset all bootstrap state. Continue?
+    cmds:
+      - rm -rf {{.BOOTSTRAP_STATE_DIR}}
+      - echo "Bootstrap state reset. Run 'task bootstrap:phased' to start over."
+
+  resume:
+    desc: Resume bootstrap from current state
+    cmds:
+      - echo "Resuming bootstrap from current state..."
+      - task: phased
+
+  # Individual phase execution (for debugging/recovery)
+  phase-1:
+    desc: Execute Phase 1 only
+    cmds:
+      - task: phase-1-environment
+
+  phase-2:
+    desc: Execute Phase 2 only
+    cmds:
+      - task: phase-2-cluster
+
+  phase-3:
+    desc: Execute Phase 3 only
+    cmds:
+      - task: phase-3-networking
+
+  phase-4:
+    desc: Execute Phase 4 only
+    cmds:
+      - task: phase-4-services
+
+  phase-5:
+    desc: Execute Phase 5 only
+    cmds:
+      - task: phase-5-gitops
+
+  phase-6:
+    desc: Execute Phase 6 only
+    cmds:
+      - task: phase-6-applications
+
+  # Validation tasks
+  validate:
+    desc: Validate all completed phases
+    cmds:
+      - task: validation:all-phases
+
+  validate-phase:
+    desc: Validate specific phase (usage - task bootstrap:validate-phase PHASE=3)
+    vars:
+      PHASE: '{{.PHASE | default "1"}}'
+    cmds:
+      - task: validation:phase-{{.PHASE}}
+
+  # Force rebuild tasks
+  force-phase:
+    desc: Force rebuild specific phase (usage - task bootstrap:force-phase PHASE=3)
+    vars:
+      PHASE: '{{.PHASE | default "1"}}'
+    cmds:
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/phase-{{.PHASE}}-complete
+      - task: phase-{{.PHASE}}
+
+  # Cleanup tasks
+  cleanup:
+    desc: Clean up temporary files and failed resources
+    cmds:
+      - echo "Cleaning up temporary files..."
+      - rm -f /tmp/mise-install.log
+      - rm -f /tmp/bootstrap-*.log
+      - kubectl delete pods --field-selector=status.phase=Failed --all-namespaces || true
+      - kubectl delete pods --field-selector=status.phase=Succeeded --all-namespaces || true
+      - echo "Cleanup completed"
+
+includes:
+  validation: ./validation.yml
+  talos: ./talos.yml
+  networking: ./networking.yml
+  services: ./services.yml
+  gitops: ./gitops.yml
+  applications: ./applications.yml

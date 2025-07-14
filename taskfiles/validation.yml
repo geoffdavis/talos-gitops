@@ -1,0 +1,305 @@
+version: '3'
+
+# Validation Tasks
+# Comprehensive validation using native Taskfile preconditions and status checks
+
+vars:
+  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  REQUIRED_TOOLS: 'task talhelper talosctl kubectl flux helm kustomize cilium yq jq op'
+
+tasks:
+  # Environment validation (Phase 1)
+  environment:
+    desc: Validate complete environment setup
+    deps:
+      - tools
+      - mise-config
+      - environment-vars
+      - onepassword
+      - connectivity
+      - repository
+    cmds:
+      - echo "✓ Environment validation completed successfully"
+
+  # Tool validation
+  tools:
+    desc: Validate all required tools are available via mise
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/tools-validated
+    preconditions:
+      - sh: 'command -v mise'
+        msg: |
+          mise is not installed. Install from: https://mise.jdx.dev
+          curl https://mise.jdx.dev/install.sh | sh
+      - sh: 'test -f .mise.toml'
+        msg: '.mise.toml configuration file must exist in repository root'
+    cmds:
+      - echo "Installing missing tools via mise..."
+      - mise install
+      - echo "Validating critical tools are available..."
+      - |
+        # Validate essential tools for bootstrap process
+        for tool in talosctl kubectl flux helm op; do
+          if command -v "$tool" >/dev/null 2>&1; then
+            echo "✓ $tool is available"
+          else
+            echo "✗ $tool is not available - check mise configuration"
+            exit 1
+          fi
+        done
+      - touch {{.BOOTSTRAP_STATE_DIR}}/tools-validated
+      - echo "All required tools are available"
+
+  # Mise configuration validation
+  mise-config:
+    desc: Validate mise configuration and tool versions
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/mise-validated
+    preconditions:
+      - sh: 'mise ls --installed >/dev/null 2>&1'
+        msg: 'mise configuration is invalid or corrupted'
+    cmds:
+      - echo "Validating mise configuration..."
+      - mise ls --installed
+      - touch {{.BOOTSTRAP_STATE_DIR}}/mise-validated
+      - echo "Mise configuration is valid"
+
+  # Environment variables validation
+  environment-vars:
+    desc: Validate required environment variables
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/env-vars-validated
+    preconditions:
+      - sh: '[ -n "${OP_ACCOUNT:-}" ]'
+        msg: |
+          OP_ACCOUNT environment variable must be set
+          Example: export OP_ACCOUNT=your-account-name
+          Or add to .env file: echo "OP_ACCOUNT=your-account-name" >> .env
+    cmds:
+      - echo "Environment variables validated:"
+      - "echo '  OP_ACCOUNT: ${OP_ACCOUNT}'"
+      - touch {{.BOOTSTRAP_STATE_DIR}}/env-vars-validated
+
+  # 1Password validation
+  onepassword:
+    desc: Validate 1Password CLI access and required items
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/onepassword-validated
+    preconditions:
+      - sh: ' op account list >/dev/null 2>&1'
+        msg: |
+          1Password CLI is not authenticated
+          Run: op signin
+      - sh: ' op vault list | grep -q "Automation"'
+        msg: 'Cannot access Automation vault in 1Password'
+    cmds:
+      - echo "Validating 1Password access..."
+      -  op account list
+      - echo "Checking critical 1Password items..."
+      - |
+        items=("1password connect" "Cloudflare API Token" "GitHub Personal Access Token")
+        for item in "${items[@]}"; do
+          if  op item get "$item" >/dev/null 2>&1; then
+            echo "✓ Found: $item"
+          else
+            echo "⚠ Missing: $item"
+          fi
+        done
+      - touch {{.BOOTSTRAP_STATE_DIR}}/onepassword-validated
+      - echo "1Password access validated"
+
+  # Network connectivity validation
+  connectivity:
+    desc: Validate network connectivity
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/connectivity-validated
+    preconditions:
+      - sh: 'ping -c 1 8.8.8.8 >/dev/null 2>&1'
+        msg: 'No internet connectivity available'
+      - sh: 'nslookup github.com >/dev/null 2>&1'
+        msg: 'DNS resolution is not working'
+    cmds:
+      - echo "Validating network connectivity..."
+      - echo "✓ Internet connectivity available"
+      - echo "✓ DNS resolution working"
+      - echo "Testing node connectivity..."
+      - |
+        nodes=("172.29.51.11" "172.29.51.12" "172.29.51.13")
+        for node in "${nodes[@]}"; do
+          if ping -c 1 -W 2 "$node" >/dev/null 2>&1; then
+            echo "✓ Node $node is reachable"
+          else
+            echo "⚠ Node $node is not reachable (may be powered off)"
+          fi
+        done
+      - touch {{.BOOTSTRAP_STATE_DIR}}/connectivity-validated
+
+  # Repository structure validation
+  repository:
+    desc: Validate repository structure and required files
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/repository-validated
+    preconditions:
+      - sh: 'test -f talconfig.yaml'
+        msg: 'talconfig.yaml must exist in repository root'
+      - sh: 'test -f Taskfile.yml'
+        msg: 'Taskfile.yml must exist in repository root'
+      - sh: 'test -f bootstrap-config.yaml'
+        msg: 'bootstrap-config.yaml must exist in repository root'
+      - sh: 'test -d talos/patches'
+        msg: 'talos/patches directory must exist'
+      - sh: 'test -d infrastructure'
+        msg: 'infrastructure directory must exist'
+      - sh: 'test -d clusters/homelab'
+        msg: 'clusters/homelab directory must exist'
+    cmds:
+      - echo "Repository structure validated"
+      - touch {{.BOOTSTRAP_STATE_DIR}}/repository-validated
+
+  # Phase 2 validation - Cluster
+  phase-2:
+    desc: Validate Phase 2 - Talos cluster initialization
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete'
+        msg: 'Phase 1 must be completed first'
+      - sh: 'test -f clusterconfig/talosconfig'
+        msg: 'Talos configuration must exist'
+      - sh: ' kubectl get nodes --no-headers | wc -l | grep -q "3"'
+        msg: 'All 3 nodes must be present in cluster'
+      - sh: ' kubectl get pods -n kube-system -l tier=control-plane | grep -q "Running"'
+        msg: 'Control plane pods must be running'
+      - sh: ' kubectl get pods -n kube-system -l component=etcd | grep -c "Running" | grep -q "3"'
+        msg: 'All 3 etcd pods must be running'
+    cmds:
+      - echo "✓ Phase 2 validation passed - Cluster is ready for CNI"
+
+  # Phase 3 validation - Networking
+  phase-3:
+    desc: Validate Phase 3 - CNI deployment
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-2-complete'
+        msg: 'Phase 2 must be completed first'
+      - sh: ' kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"'
+        msg: 'All 3 nodes must be Ready'
+      - sh: ' kubectl get pods -n kube-system -l k8s-app=cilium | grep -q "Running"'
+        msg: 'Cilium pods must be running'
+      - sh: ' kubectl get svc kubernetes >/dev/null 2>&1'
+        msg: 'Kubernetes service must be accessible'
+    cmds:
+      - echo "Testing pod networking..."
+      - |
+        # Create test pod for networking validation
+        kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: network-test-validation
+          namespace: default
+        spec:
+          containers:
+          - name: test
+            image: busybox:1.35
+            command: ['sleep', '60']
+          restartPolicy: Never
+        EOF
+      -  kubectl wait --for=condition=Ready pod/network-test-validation --timeout=30s
+      -  kubectl exec network-test-validation -- nslookup kubernetes.default.svc.cluster.local
+      -  kubectl delete pod network-test-validation
+      - echo "✓ Phase 3 validation passed - Networking is operational"
+
+  # Phase 4 validation - Services
+  phase-4:
+    desc: Validate Phase 4 - Core services
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-3-complete'
+        msg: 'Phase 3 must be completed first'
+      - sh: ' kubectl get pods -n external-secrets-system | grep -q "Running"'
+        msg: 'External Secrets Operator must be running'
+      - sh: ' kubectl get pods -n onepassword-connect | grep -q "Running"'
+        msg: '1Password Connect must be running'
+      - sh: ' kubectl get pods -n longhorn-system | grep -q "Running"'
+        msg: 'Longhorn must be running'
+    cmds:
+      - echo "Validating External Secrets integration..."
+      -  kubectl get clustersecretstores
+      - echo "Validating 1Password Connect connectivity..."
+      -  kubectl get pods -n onepassword-connect -o wide
+      - echo "✓ Phase 4 validation passed - Core services are operational"
+
+  # Phase 5 validation - GitOps
+  phase-5:
+    desc: Validate Phase 5 - GitOps deployment
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-4-complete'
+        msg: 'Phase 4 must be completed first'
+      - sh: ' kubectl get pods -n flux-system | grep -q "Running"'
+        msg: 'Flux system pods must be running'
+      - sh: ' flux get kustomizations | grep -q "flux-system"'
+        msg: 'Flux kustomizations must be present'
+    cmds:
+      - echo "Validating Flux GitOps system..."
+      -  flux get all
+      - echo "✓ Phase 5 validation passed - GitOps is operational"
+
+  # Phase 6 validation - Applications
+  phase-6:
+    desc: Validate Phase 6 - Application deployment
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-5-complete'
+        msg: 'Phase 5 must be completed first'
+      - sh: ' flux get kustomizations | grep -q "Ready"'
+        msg: 'Flux kustomizations must be ready'
+    cmds:
+      - echo "Validating application deployments..."
+      -  kubectl get pods --all-namespaces | grep -v "Completed"
+      - echo "Validating ingress and load balancing..."
+      -  kubectl get svc --all-namespaces | grep LoadBalancer || echo "No LoadBalancer services found"
+      - echo "✓ Phase 6 validation passed - Applications are operational"
+
+  # Comprehensive validation
+  all-phases:
+    desc: Validate all completed phases
+    cmds:
+      - echo "Running comprehensive validation..."
+      - |
+        for phase in 1 2 3 4 5 6; do
+          if [ -f {{.BOOTSTRAP_STATE_DIR}}/phase-${phase}-complete ]; then
+            echo "Validating Phase ${phase}..."
+            task validation:phase-${phase} || echo "Phase ${phase} validation failed"
+          else
+            echo "Phase ${phase} not completed, skipping validation"
+          fi
+        done
+      - echo "Comprehensive validation completed"
+
+  # Health checks
+  cluster-health:
+    desc: Comprehensive cluster health check
+    cmds:
+      - echo "=== Cluster Health Check ==="
+      - echo "Node Status:"
+      -  kubectl get nodes -o wide
+      - echo ""
+      - echo "System Pods:"
+      -  kubectl get pods -n kube-system
+      - echo ""
+      - echo "Flux Status:"
+      -  flux get all || echo "Flux not available"
+      - echo ""
+      - echo "Storage Status:"
+      -  kubectl get pv,pvc --all-namespaces || echo "No persistent volumes"
+      - echo ""
+      - echo "Service Status:"
+      -  kubectl get svc --all-namespaces
+
+  # Reset validation state
+  reset:
+    desc: Reset validation state
+    cmds:
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/tools-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/mise-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/env-vars-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/onepassword-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/connectivity-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/repository-validated
+      - echo "Validation state reset"

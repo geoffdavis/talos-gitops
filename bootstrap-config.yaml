@@ -1,0 +1,149 @@
+# Bootstrap Configuration
+# This file contains all configurable settings for the phased bootstrap process
+
+cluster:
+  name: "home-ops"
+  endpoint: "https://172.29.51.10:6443"
+  domain: "k8s.home.geoffdavis.com"
+  
+network:
+  vip: "172.29.51.10"
+  nodes:
+    - ip: "172.29.51.11"
+      name: "mini01"
+    - ip: "172.29.51.12"
+      name: "mini02"
+    - ip: "172.29.51.13"
+      name: "mini03"
+  
+  # Pod and service networks
+  pod_cidr: "10.244.0.0/16"
+  service_cidr: "10.96.0.0/12"
+  
+  # BGP configuration
+  bgp:
+    cluster_asn: 64512
+    router_asn: 64513
+    loadbalancer_pool_ipv4: "172.29.51.100-199"
+    loadbalancer_pool_ipv6: "fd47:25e1:2f96:51:100::/120"
+
+onepassword:
+  account: "${OP_ACCOUNT}"
+  vaults:
+    automation: "Automation"
+    services: "Services"
+    private: "Private"
+  
+  # 1Password Connect credentials (two separate entries for different formats)
+  connect:
+    # Legacy entry with combined credentials and token (may have truncation issues)
+    legacy_entry: "1password connect"
+    
+    # Separate entries for newer format (recommended)
+    credentials_entry: "1Password Connect Credentials - ${cluster.name}"
+    token_entry: "1Password Connect Token - ${cluster.name}"
+    
+    # Credential format preferences (try in order)
+    credential_sources:
+      - type: "separate_entries"  # Try separate entries first
+        credentials_item: "1Password Connect Credentials - ${cluster.name}"
+        token_item: "1Password Connect Token - ${cluster.name}"
+      - type: "legacy_entry"      # Fallback to legacy single entry
+        item: "1password connect"
+        credentials_field: "credentials"
+        token_field: "token"
+  
+  # Other required 1Password items
+  items:
+    cloudflare_token: "Cloudflare API Token"
+    github_token: "GitHub Personal Access Token"
+    talos_secrets: "Talos Secrets - ${cluster.name}"
+
+talos:
+  version: "v1.10.5"
+  kubernetes_version: "v1.31.1"
+  
+  # Talos configuration files
+  config_dir: "clusterconfig"
+  patches_dir: "talos/patches"
+  
+  # Node configuration templates
+  node_configs:
+    - "${cluster.name}-mini01.yaml"
+    - "${cluster.name}-mini02.yaml"
+    - "${cluster.name}-mini03.yaml"
+
+gitops:
+  repository:
+    owner: "geoffdavis"
+    name: "talos-gitops"
+    branch: "main"
+    path: "clusters/homelab"
+  
+  # Flux configuration
+  flux:
+    namespace: "flux-system"
+    version: "v2.4.0"
+
+bootstrap:
+  # Phase configuration
+  phases:
+    1:
+      name: "Environment Validation"
+      timeout: 300  # 5 minutes
+    2:
+      name: "Talos Cluster Initialization"
+      timeout: 600  # 10 minutes
+    3:
+      name: "CNI Deployment (Cilium)"
+      timeout: 600  # 10 minutes
+    4:
+      name: "Core Services Validation"
+      timeout: 900  # 15 minutes
+    5:
+      name: "GitOps Deployment (Flux)"
+      timeout: 600  # 10 minutes
+    6:
+      name: "Application Deployment"
+      timeout: 1200 # 20 minutes
+  
+  # Logging configuration
+  logging:
+    dir: "logs/bootstrap"
+    level: "info"  # debug, info, warn, error
+    retention_days: 30
+  
+  # State management
+  state_file: ".bootstrap-state.json"
+  
+  # Validation settings
+  validation:
+    retry_attempts: 3
+    retry_delay: 10  # seconds
+    health_check_interval: 15  # seconds
+
+# Tool requirements
+tools:
+  required:
+    - name: "task"
+      min_version: "3.38.0"
+    - name: "talhelper"
+      version: "latest"
+    - name: "talosctl"
+      min_version: "1.10.5"
+    - name: "kubectl"
+      min_version: "1.31.1"
+    - name: "flux"
+      min_version: "2.4.0"
+    - name: "helm"
+      min_version: "3.16.1"
+    - name: "kustomize"
+      min_version: "5.4.3"
+    - name: "cilium"
+      min_version: "0.16.16"
+    - name: "yq"
+      min_version: "4.44.3"
+    - name: "jq"
+      min_version: "1.7.1"
+    - name: "op"
+      min_version: "2.0.0"

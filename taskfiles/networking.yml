@@ -1,0 +1,350 @@
+version: '3'
+
+# Networking Tasks - CNI Deployment and Validation
+# Handles Cilium deployment, networking validation, and connectivity testing
+
+vars:
+  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  NODE_1_IP: '{{.NODE_1_IP | default "172.29.51.11"}}'
+  NODE_2_IP: '{{.NODE_2_IP | default "172.29.51.12"}}'
+  NODE_3_IP: '{{.NODE_3_IP | default "172.29.51.13"}}'
+
+env:
+  TALOSCONFIG: clusterconfig/talosconfig
+
+tasks:
+  # Main CNI deployment orchestration
+  deploy-cilium:
+    desc: Deploy Cilium CNI with Talos-specific configuration
+    deps:
+      - deploy-cilium-helm
+      - wait-cilium-ready
+    cmds:
+      - echo "✓ Cilium CNI deployment completed successfully"
+
+  # Deploy Cilium using Helm
+  deploy-cilium-helm:
+    desc: Deploy Cilium using Helm with Talos configuration
+    status:
+      -  kubectl get pods -n kube-system -l k8s-app=cilium | grep -q "Running"
+    preconditions:
+      - sh: ' kubectl get nodes --no-headers | wc -l | grep -q "3"'
+        msg: 'All 3 nodes must be present in cluster'
+      - sh: ' helm version >/dev/null 2>&1'
+        msg: 'Helm must be available'
+    cmds:
+      - echo "Adding Cilium Helm repository..."
+      -  helm repo add cilium https://helm.cilium.io/ || true
+      -  helm repo update
+      - echo "Deploying Cilium with Talos-specific configuration..."
+      - |
+         helm upgrade --install cilium cilium/cilium \
+          --version 1.16.1 \
+          --namespace kube-system \
+          --set ipam.mode=cluster-pool \
+          --set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16" \
+          --set ipam.operator.clusterPoolIPv4MaskSize=24 \
+          --set kubeProxyReplacement=true \
+          --set securityContext.privileged=true \
+          --set cni.install=true \
+          --set cni.exclusive=false \
+          --set hubble.enabled=true \
+          --set hubble.relay.enabled=true \
+          --set hubble.ui.enabled=true \
+          --set bgpControlPlane.enabled=false \
+          --set operator.replicas=1 \
+          --set operator.rollOutPods=true \
+          --set k8sServiceHost=localhost \
+          --set k8sServicePort=7445 \
+          --set tolerations[0].key=node-role.kubernetes.io/control-plane \
+          --set tolerations[0].operator=Exists \
+          --set tolerations[0].effect=NoSchedule \
+          --set tolerations[1].key=node-role.kubernetes.io/master \
+          --set tolerations[1].operator=Exists \
+          --set tolerations[1].effect=NoSchedule \
+          --set tolerations[2].key=node.kubernetes.io/not-ready \
+          --set tolerations[2].operator=Exists \
+          --set tolerations[2].effect=NoSchedule
+      - echo "Cilium deployment initiated"
+
+  # Wait for Cilium pods to be ready
+  wait-cilium-ready:
+    desc: Wait for Cilium pods to be ready
+    deps: [deploy-cilium-helm]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/cilium-ready
+    cmds:
+      - echo "Waiting for Cilium pods to be ready..."
+      - |
+        max_wait=300  # 5 minutes
+        wait_interval=10
+        elapsed=0
+        
+        while [ $elapsed -lt $max_wait ]; do
+          cilium_pods_ready=$( kubectl get pods -n kube-system -l k8s-app=cilium --no-headers | grep -c "Running" || echo "0")
+          cilium_pods_total=$( kubectl get pods -n kube-system -l k8s-app=cilium --no-headers | wc -l)
+          
+          if [ "$cilium_pods_ready" -eq "$cilium_pods_total" ] && [ "$cilium_pods_total" -gt 0 ]; then
+            echo "✓ All $cilium_pods_ready Cilium pods are ready"
+            break
+          fi
+          
+          echo "Waiting for Cilium pods... ($cilium_pods_ready/$cilium_pods_total ready)"
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $elapsed -ge $max_wait ]; then
+          echo "✗ Timeout waiting for Cilium pods to be ready"
+          exit 1
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/cilium-ready
+
+  # Wait for nodes to become Ready with CNI
+  wait-ready:
+    desc: Wait for all nodes to become Ready with CNI
+    deps: [wait-cilium-ready]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/nodes-cni-ready
+      -  kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"
+    cmds:
+      - echo "Waiting for nodes to become Ready with CNI..."
+      - |
+        max_wait=300  # 5 minutes
+        wait_interval=15
+        elapsed=0
+        
+        while [ $elapsed -lt $max_wait ]; do
+          ready_nodes=$( kubectl get nodes --no-headers | grep -c "Ready" || echo "0")
+          
+          if [ "$ready_nodes" -eq 3 ]; then
+            echo "✓ All 3 nodes are Ready"
+            break
+          fi
+          
+          echo "Waiting for nodes to be Ready... ($ready_nodes/3 ready)"
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $elapsed -ge $max_wait ]; then
+          echo "✗ Timeout waiting for nodes to be Ready"
+          exit 1
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/nodes-cni-ready
+
+  # Comprehensive networking validation
+  validate:
+    desc: Validate networking functionality
+    deps:
+      - test-pod-networking
+      - verify-cilium-status
+      - verify-kube-proxy-replacement
+      - test-service-connectivity
+    cmds:
+      - echo "✓ Networking validation completed successfully"
+
+  # Test pod networking
+  test-pod-networking:
+    desc: Test pod networking with DNS resolution
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/pod-networking-tested
+    preconditions:
+      - sh: ' kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"'
+        msg: 'All nodes must be Ready'
+    cmds:
+      - echo "Testing pod networking..."
+      - |
+        # Create test pod
+        test_pod_name="network-test-$(date +%s)"
+        
+        cat <<EOF |  kubectl apply -f -
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: $test_pod_name
+          namespace: default
+        spec:
+          containers:
+          - name: test
+            image: busybox:1.35
+            command: ['sleep', '300']
+          restartPolicy: Never
+        EOF
+        
+        # Wait for pod to be ready
+        echo "Waiting for test pod to be ready..."
+        if  kubectl wait --for=condition=Ready pod/$test_pod_name --timeout=60s; then
+          echo "✓ Test pod is ready"
+        else
+          echo "✗ Test pod failed to become ready"
+           kubectl delete pod $test_pod_name --ignore-not-found=true
+          exit 1
+        fi
+        
+        # Test DNS resolution
+        echo "Testing DNS resolution from pod..."
+        if  kubectl exec $test_pod_name -- nslookup kubernetes.default.svc.cluster.local; then
+          echo "✓ DNS resolution working from pod"
+        else
+          echo "✗ DNS resolution failed from pod"
+           kubectl delete pod $test_pod_name --ignore-not-found=true
+          exit 1
+        fi
+        
+        # Test internet connectivity (optional)
+        echo "Testing internet connectivity from pod..."
+        if  kubectl exec $test_pod_name -- ping -c 1 8.8.8.8; then
+          echo "✓ Internet connectivity working from pod"
+        else
+          echo "⚠ Internet connectivity failed from pod (may be expected)"
+        fi
+        
+        # Clean up test pod
+         kubectl delete pod $test_pod_name --ignore-not-found=true
+        echo "✓ Test pod cleaned up"
+      - touch {{.BOOTSTRAP_STATE_DIR}}/pod-networking-tested
+
+  # Verify Cilium status
+  verify-cilium-status:
+    desc: Verify Cilium status and functionality
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/cilium-status-verified
+    preconditions:
+      - sh: ' kubectl get pods -n kube-system -l k8s-app=cilium | grep -q "Running"'
+        msg: 'Cilium pods must be running'
+    cmds:
+      - echo "Verifying Cilium status..."
+      - |
+        # Check Cilium CLI if available
+        if command -v cilium >/dev/null 2>&1; then
+          if  cilium status; then
+            echo "✓ Cilium status check passed"
+          else
+            echo "⚠ Cilium status check failed (may be expected in some configurations)"
+          fi
+        else
+          echo "⚠ Cilium CLI not available for status check"
+        fi
+      - |
+        # Check Cilium pods
+        cilium_pods=$( kubectl get pods -n kube-system -l k8s-app=cilium --no-headers)
+        
+        if echo "$cilium_pods" | grep -q "Running"; then
+          echo "✓ Cilium pods are running"
+          echo "$cilium_pods"
+        else
+          echo "✗ Cilium pods are not running properly"
+          exit 1
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/cilium-status-verified
+
+  # Verify kube-proxy replacement
+  verify-kube-proxy-replacement:
+    desc: Verify kube-proxy replacement by Cilium
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/kube-proxy-verified
+    cmds:
+      - echo "Verifying kube-proxy replacement..."
+      - |
+        # Check that kube-proxy is not running (should be replaced by Cilium)
+        kube_proxy_pods=$( kubectl get pods -n kube-system -l k8s-app=kube-proxy --no-headers | wc -l)
+        
+        if [ "$kube_proxy_pods" -eq 0 ]; then
+          echo "✓ kube-proxy is not running (replaced by Cilium)"
+        else
+          echo "⚠ $kube_proxy_pods kube-proxy pods found (may be expected in some configurations)"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/kube-proxy-verified
+
+  # Test service connectivity
+  test-service-connectivity:
+    desc: Test Kubernetes service connectivity
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/service-connectivity-tested
+    preconditions:
+      - sh: ' kubectl get svc kubernetes >/dev/null 2>&1'
+        msg: 'Kubernetes service must be accessible'
+    cmds:
+      - echo "Testing service connectivity..."
+      - |
+        # Test kubernetes service
+        if  kubectl get svc kubernetes; then
+          echo "✓ Kubernetes service is accessible"
+        else
+          echo "✗ Kubernetes service is not accessible"
+          exit 1
+        fi
+      - |
+        # Test service endpoints
+        kubernetes_endpoints=$( kubectl get endpoints kubernetes -o jsonpath='{.subsets[*].addresses[*].ip}' | wc -w)
+        
+        if [ "$kubernetes_endpoints" -gt 0 ]; then
+          echo "✓ Kubernetes service has $kubernetes_endpoints endpoints"
+        else
+          echo "✗ Kubernetes service has no endpoints"
+          exit 1
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/service-connectivity-tested
+
+  # Status and diagnostics
+  status:
+    desc: Show networking status
+    cmds:
+      - echo "=== Networking Status ==="
+      - echo "Node Status:"
+      -  kubectl get nodes -o wide
+      - echo ""
+      - echo "Cilium Pods:"
+      -  kubectl get pods -n kube-system -l k8s-app=cilium -o wide
+      - echo ""
+      - echo "Network Policies:"
+      -  kubectl get networkpolicies --all-namespaces || echo "No network policies found"
+      - echo ""
+      - echo "Services:"
+      -  kubectl get svc --all-namespaces
+
+  # Troubleshooting tasks
+  cilium-logs:
+    desc: Show Cilium logs for troubleshooting
+    cmds:
+      - echo "=== Cilium Logs ==="
+      -  kubectl logs -n kube-system -l k8s-app=cilium --tail=50
+
+  network-debug:
+    desc: Run network debugging commands
+    cmds:
+      - echo "=== Network Debug Information ==="
+      - echo "Cilium Status:"
+      -  kubectl get pods -n kube-system -l k8s-app=cilium
+      - echo ""
+      - echo "Node Network Status:"
+      -  kubectl describe nodes | grep -A 5 "Network"
+      - echo ""
+      - echo "CNI Configuration:"
+      -  kubectl get ds -n kube-system cilium || echo "Cilium DaemonSet not found"
+
+  # Reset networking state
+  reset-state:
+    desc: Reset networking bootstrap state
+    prompt: This will reset networking state. Continue?
+    cmds:
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/cilium-ready
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/nodes-cni-ready
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/pod-networking-tested
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/cilium-status-verified
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/kube-proxy-verified
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/service-connectivity-tested
+      - echo "Networking state reset"
+
+  # Force redeploy Cilium
+  redeploy:
+    desc: Force redeploy Cilium CNI
+    prompt: This will redeploy Cilium. Continue?
+    cmds:
+      - echo "Redeploying Cilium..."
+      -  helm uninstall cilium -n kube-system || true
+      - sleep 30
+      - task: reset-state
+      - task: deploy-cilium
+      - echo "Cilium redeployed successfully"

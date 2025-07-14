@@ -49,16 +49,83 @@ tasks:
       - ./scripts/validate-1password-secrets.sh
 
   bootstrap:cluster:
-    desc: Bootstrap the entire cluster from scratch with LLDPD stability fix
+    desc: Bootstrap the entire cluster from scratch with integrated LLDPD configuration (legacy - use bootstrap:phased for new approach)
     deps: [bootstrap:secrets, talos:generate-config]
     cmds:
       - mise exec -- task talos:apply-config
-      - mise exec -- task talos:apply-lldpd-config
       - mise exec -- task talos:bootstrap
       - mise exec -- task bootstrap:1password-secrets
       - mise exec -- task bootstrap:validate-1password-secrets
       - mise exec -- task flux:bootstrap
       - mise exec -- task apps:deploy-core
+
+  # Phased Bootstrap Tasks - Native Taskfile Implementation
+  bootstrap:phased:
+    desc: Execute complete phased bootstrap using native Taskfile dependencies
+    cmds:
+      - task: :bootstrap:phased
+
+  bootstrap:status:
+    desc: Show comprehensive bootstrap status
+    cmds:
+      - task: :bootstrap:status
+
+  bootstrap:reset:
+    desc: Reset bootstrap state (start over)
+    cmds:
+      - task: :bootstrap:reset
+
+  bootstrap:resume:
+    desc: Resume bootstrap from current state
+    cmds:
+      - task: :bootstrap:resume
+
+  bootstrap:validate:
+    desc: Validate all completed phases
+    cmds:
+      - task: :bootstrap:validate
+
+  bootstrap:cleanup:
+    desc: Clean up temporary files and failed resources
+    cmds:
+      - task: :bootstrap:cleanup
+
+  # Individual Phase Tasks (Native Taskfile Implementation)
+  bootstrap:phase-1:
+    desc: Run Phase 1 - Environment Validation
+    cmds:
+      - task: bootstrap:phase-1
+
+  bootstrap:phase-2:
+    desc: Run Phase 2 - Talos Cluster Initialization
+    cmds:
+      - task: bootstrap:phase-2
+
+  bootstrap:phase-3:
+    desc: Run Phase 3 - CNI Deployment (Cilium)
+    cmds:
+      - task: bootstrap:phase-3
+
+  # Phase Validation Tasks (Native Taskfile Implementation)
+  validate:phase-1:
+    desc: Validate Phase 1 - Environment
+    cmds:
+      - task: validation:phase-1
+
+  validate:phase-2:
+    desc: Validate Phase 2 - Cluster
+    cmds:
+      - task: validation:phase-2
+
+  validate:phase-3:
+    desc: Validate Phase 3 - Networking
+    cmds:
+      - task: validation:phase-3
+
+  validate:all-phases:
+    desc: Validate all completed phases
+    cmds:
+      - task: validation:all-phases
 
   # Talos tasks
   talos:generate-schematic:
@@ -173,12 +240,12 @@ tasks:
       - echo "Configuration files created in clusterconfig/"
 
   talos:apply-config:
-    desc: Apply Talos configuration to nodes
+    desc: Apply Talos configuration to nodes (includes LLDPD configuration)
     deps: [talos:generate-config]
     env:
       TALOSCONFIG: clusterconfig/talosconfig
     cmds:
-      - echo "Applying Talos configuration to all control plane nodes..."
+      - echo "Applying Talos configuration with integrated LLDPD to all control plane nodes..."
       - echo "NOTE - Certificate errors are expected for nodes in maintenance mode - will retry with insecure mode"
       - |
         echo "Applying configuration to mini01 ({{.NODE_1_IP}})..."
@@ -217,7 +284,7 @@ tasks:
           else
             echo "✗ Failed to apply configuration to mini03 at {{.NODE_3_IP}}"
             echo "Checking if node is reachable..."
-            if mise exec -- talosctl version --nodes {{.NODE_3_IP}} --timeout 10s 2>/dev/null; then
+            if mise exec -- talosctl version --nodes {{.NODE_3_IP}} 2>/dev/null; then
               echo "Node is reachable but configuration failed"
             else
               echo "Node is not reachable - check network connectivity"
@@ -246,13 +313,17 @@ tasks:
       - echo "Configuration applied to all nodes"
 
   talos:apply-lldpd-config:
-    desc: Apply LLDPD ExtensionServiceConfig to all nodes for stability
+    desc: "[DEPRECATED] Apply LLDPD ExtensionServiceConfig - now integrated into main Talos config"
     env:
       TALOSCONFIG: clusterconfig/talosconfig
     preconditions:
       - sh: '[ -f talos/manifests/lldpd-extension-config.yaml ]'
         msg: 'LLDPD ExtensionServiceConfig manifest not found at talos/manifests/lldpd-extension-config.yaml'
     cmds:
+      - 'echo "WARNING: DEPRECATED - LLDPD configuration is now integrated into the main Talos configuration"'
+      - 'echo "WARNING: Use task talos:apply-config instead, which includes LLDPD configuration"'
+      - 'echo "WARNING: This task is kept for backward compatibility only"'
+      - echo ""
       - echo "Applying LLDPD ExtensionServiceConfig to all nodes..."
       - echo "This prevents LLDPD service startup failures that cause periodic reboots"
       - |
@@ -571,15 +642,12 @@ tasks:
       - mise exec -- talosctl list /sys/class/net --nodes {{.NODE_3_IP}}
 
   network:verify-lldpd-config:
-    desc: Verify LLDPD ExtensionServiceConfig and service status on all nodes
+    desc: Verify LLDPD configuration and service status (now integrated into main Talos config)
     env:
       TALOSCONFIG: clusterconfig/talosconfig
     cmds:
       - echo "=== Verifying LLDPD Configuration and Service Status ==="
-      - echo ""
-      - echo "Checking LLDPD ExtensionServiceConfig on all nodes..."
-      - |
-        mise exec -- talosctl get extensionserviceconfigs --nodes {{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}} | grep lldpd || echo "No LLDPD ExtensionServiceConfig found"
+      - 'echo "NOTE: LLDPD configuration is now integrated into the main Talos configuration"'
       - echo ""
       - echo "Checking LLDPD service status on all nodes..."
       - |
@@ -588,11 +656,20 @@ tasks:
       - echo "Checking for LLDPD configuration file on all nodes..."
       - |
         echo "Node {{.NODE_1_IP}}:"
-        mise exec -- talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_1_IP}} 2>/dev/null || echo "  LLDPD config file not found"
+        mise exec -- talosctl read /etc/lldpd.conf --nodes {{.NODE_1_IP}} 2>/dev/null || echo "  LLDPD config file not found"
         echo "Node {{.NODE_2_IP}}:"
-        mise exec -- talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_2_IP}} 2>/dev/null || echo "  LLDPD config file not found"
+        mise exec -- talosctl read /etc/lldpd.conf --nodes {{.NODE_2_IP}} 2>/dev/null || echo "  LLDPD config file not found"
         echo "Node {{.NODE_3_IP}}:"
-        mise exec -- talosctl read /usr/local/etc/lldpd/lldpd.conf --nodes {{.NODE_3_IP}} 2>/dev/null || echo "  LLDPD config file not found"
+        mise exec -- talosctl read /etc/lldpd.conf --nodes {{.NODE_3_IP}} 2>/dev/null || echo "  LLDPD config file not found"
+      - echo ""
+      - echo "Checking LLDPD environment variables..."
+      - |
+        echo "Node {{.NODE_1_IP}}:"
+        mise exec -- talosctl read /proc/1/environ --nodes {{.NODE_1_IP}} 2>/dev/null | tr '\0' '\n' | grep LLDPD_OPTS || echo "  LLDPD_OPTS not found"
+        echo "Node {{.NODE_2_IP}}:"
+        mise exec -- talosctl read /proc/1/environ --nodes {{.NODE_2_IP}} 2>/dev/null | tr '\0' '\n' | grep LLDPD_OPTS || echo "  LLDPD_OPTS not found"
+        echo "Node {{.NODE_3_IP}}:"
+        mise exec -- talosctl read /proc/1/environ --nodes {{.NODE_3_IP}} 2>/dev/null | tr '\0' '\n' | grep LLDPD_OPTS || echo "  LLDPD_OPTS not found"
       - echo ""
       - echo "✓ LLDPD verification complete"
       - echo "Note - HEALTHY=false is normal for LLDPD (no health checks). RUNNING=true indicates success."
@@ -942,6 +1019,9 @@ tasks:
     desc: SAFE cluster reset - only resets EPHEMERAL and STATE partitions (preserves OS)
     env:
       TALOSCONFIG: clusterconfig/talosconfig
+    vars:
+      CONFIRM: '{{.CONFIRM | default ""}}'
+      NODES: '{{.NODES | default "all"}}'
     cmds:
       - echo "⚠️  CLUSTER SAFE RESET - This will reset EPHEMERAL and STATE partitions only"
       - echo "⚠️  This operation will:"
@@ -953,20 +1033,38 @@ tasks:
       - echo "❌ That command WILL WIPE THE ENTIRE OS and require USB reinstallation!"
       - echo ""
       - |
-        read -p "Type 'SAFE-RESET' to confirm this safe reset operation: " confirm
-        [ "$confirm" = "SAFE-RESET" ]
-      - echo "Performing SAFE reset on all nodes (EPHEMERAL and STATE partitions only)..."
+        if [ "{{.CONFIRM}}" != "SAFE-RESET" ]; then
+          echo "❌ Safety confirmation required. Run with: task cluster:safe-reset CONFIRM=SAFE-RESET"
+          echo "   Optional: Specify nodes with NODES=node1,node2 (default: all nodes)"
+          exit 1
+        fi
       - |
-        echo "Resetting node {{.NODE_1_IP}} (SAFE - partitions only)..."
-        mise exec -- talosctl reset --nodes {{.NODE_1_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
-      - sleep 30
-      - |
-        echo "Resetting node {{.NODE_2_IP}} (SAFE - partitions only)..."
-        mise exec -- talosctl reset --nodes {{.NODE_2_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
-      - sleep 30
-      - |
-        echo "Resetting node {{.NODE_3_IP}} (SAFE - partitions only)..."
-        mise exec -- talosctl reset --nodes {{.NODE_3_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot
+        # Determine which nodes to reset
+        if [ "{{.NODES}}" = "all" ]; then
+          RESET_NODES="{{.NODE_1_IP}},{{.NODE_2_IP}},{{.NODE_3_IP}}"
+          echo "Performing SAFE reset on ALL nodes (EPHEMERAL and STATE partitions only)..."
+        else
+          RESET_NODES="{{.NODES}}"
+          echo "Performing SAFE reset on specified nodes: {{.NODES}} (EPHEMERAL and STATE partitions only)..."
+        fi
+        
+        echo "Target nodes: $RESET_NODES"
+        
+        # Try simultaneous reset first using proper talosconfig
+        echo "Attempting simultaneous reset using talosconfig..."
+        if mise exec -- talosctl reset --nodes $RESET_NODES --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot --graceful=false --wait=false; then
+          echo "✅ Simultaneous reset successful"
+        else
+          echo "Simultaneous reset failed, trying individual resets..."
+          
+          # Parse nodes and reset individually using shell parameter expansion
+          NODES_LIST=$(echo "$RESET_NODES" | tr ',' ' ')
+          for node in $NODES_LIST; do
+            echo "Resetting node $node (SAFE - partitions only)..."
+            mise exec -- talosctl reset --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot --graceful=false --wait=false || true
+            sleep 10
+          done
+        fi
       - echo "✅ SAFE reset completed. OS preserved. Cluster will need re-bootstrap."
       - echo "Next steps - Run 'mise exec -- task bootstrap:cluster' to rebuild the cluster"
 
@@ -1044,3 +1142,13 @@ tasks:
       - echo "📖 For detailed safety information, see:"
       - echo "   - docs/CLUSTER_RESET_SAFETY.md"
       - echo "   - docs/SUBTASK_SAFETY_GUIDELINES.md"
+
+# Include modular taskfiles for phased bootstrap system
+includes:
+  bootstrap: ./taskfiles/bootstrap.yml
+  validation: ./taskfiles/validation.yml
+  talos: ./taskfiles/talos.yml
+  networking: ./taskfiles/networking.yml
+  services: ./taskfiles/services.yml
+  gitops: ./taskfiles/gitops.yml
+  applications: ./taskfiles/applications.yml

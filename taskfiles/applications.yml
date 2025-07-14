@@ -1,0 +1,390 @@
+version: '3'
+
+# Applications Tasks - Application Deployment and Validation
+# Handles application deployment via GitOps and end-to-end validation
+
+vars:
+  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+
+env:
+  TALOSCONFIG: clusterconfig/talosconfig
+
+tasks:
+  # Main application deployment orchestration
+  deploy:
+    desc: Deploy applications via GitOps
+    deps:
+      - wait-infrastructure-ready
+      - deploy-applications
+      - wait-applications-ready
+    cmds:
+      - echo "✓ Application deployment completed successfully"
+
+  # Wait for infrastructure to be ready
+  wait-infrastructure-ready:
+    desc: Wait for infrastructure components to be ready
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/infrastructure-ready
+    preconditions:
+      - sh: ' flux get kustomizations | grep -q "Ready"'
+        msg: 'Flux kustomizations must be ready'
+    cmds:
+      - echo "Waiting for infrastructure components to be ready..."
+      - |
+        max_wait=600  # 10 minutes
+        wait_interval=30
+        elapsed=0
+        
+        while [ $elapsed -lt $max_wait ]; do
+          # Check critical infrastructure components
+          infrastructure_ready=true
+          
+          # Check cert-manager if deployed
+          if  kubectl get namespace cert-manager >/dev/null 2>&1; then
+            if !  kubectl get pods -n cert-manager | grep -q "Running"; then
+              infrastructure_ready=false
+              echo "Waiting for cert-manager..."
+            fi
+          fi
+          
+          # Check ingress-nginx if deployed
+          if  kubectl get namespace ingress-nginx >/dev/null 2>&1; then
+            if !  kubectl get pods -n ingress-nginx | grep -q "Running"; then
+              infrastructure_ready=false
+              echo "Waiting for ingress-nginx..."
+            fi
+          fi
+          
+          # Check external-dns if deployed
+          if  kubectl get namespace external-dns >/dev/null 2>&1; then
+            if !  kubectl get pods -n external-dns | grep -q "Running"; then
+              infrastructure_ready=false
+              echo "Waiting for external-dns..."
+            fi
+          fi
+          
+          if [ "$infrastructure_ready" = true ]; then
+            echo "✓ Infrastructure components are ready"
+            break
+          fi
+          
+          echo "Waiting for infrastructure components... (${elapsed}s elapsed)"
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $elapsed -ge $max_wait ]; then
+          echo "⚠ Timeout waiting for infrastructure - proceeding anyway"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/infrastructure-ready
+
+  # Deploy applications via GitOps
+  deploy-applications:
+    desc: Deploy applications via GitOps synchronization
+    deps: [wait-infrastructure-ready]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/applications-deployed
+    preconditions:
+      - sh: ' flux get kustomizations | grep -q "flux-system"'
+        msg: 'Flux must be operational'
+    cmds:
+      - echo "Deploying applications via GitOps..."
+      - |
+        # Force reconciliation to ensure latest applications are deployed
+        echo "Forcing GitOps reconciliation..."
+         flux reconcile source git flux-system
+         flux reconcile kustomization flux-system
+        
+        # Wait for application kustomizations to appear
+        echo "Waiting for application kustomizations..."
+        sleep 30
+        
+        # Check for application deployments
+        if  flux get kustomizations | grep -E "(apps|applications)"; then
+          echo "✓ Application kustomizations found"
+        else
+          echo "⚠ No application kustomizations found yet"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/applications-deployed
+
+  # Wait for applications to be ready
+  wait-applications-ready:
+    desc: Wait for applications to be ready
+    deps: [deploy-applications]
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/applications-ready
+    cmds:
+      - echo "Waiting for applications to be ready..."
+      - |
+        max_wait=900  # 15 minutes
+        wait_interval=30
+        elapsed=0
+        
+        while [ $elapsed -lt $max_wait ]; do
+          # Count running application pods (excluding system namespaces)
+          app_pods=$( kubectl get pods --all-namespaces --no-headers | \
+            grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" | \
+            grep -c "Running" || echo "0")
+          
+          if [ "$app_pods" -gt 0 ]; then
+            echo "✓ Found $app_pods running application pods"
+            break
+          fi
+          
+          echo "Waiting for application pods... (${elapsed}s elapsed)"
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $elapsed -ge $max_wait ]; then
+          echo "⚠ Timeout waiting for applications - may not be configured yet"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/applications-ready
+
+  # Comprehensive application validation
+  validate:
+    desc: Validate application deployments and health
+    deps:
+      - validate-application-pods
+      - validate-ingress-services
+      - validate-monitoring
+      - validate-end-to-end
+    cmds:
+      - echo "✓ Application validation completed successfully"
+
+  # Validate application pods
+  validate-application-pods:
+    desc: Validate application pods are running
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/application-pods-validated
+    cmds:
+      - echo "Validating application pods..."
+      - |
+        # Get all pods excluding system namespaces
+        echo "Application Pods:"
+         kubectl get pods --all-namespaces --no-headers | \
+          grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" || \
+          echo "No application pods found"
+        
+        # Count running vs total application pods
+        total_app_pods=$( kubectl get pods --all-namespaces --no-headers | \
+          grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" | \
+          wc -l || echo "0")
+        
+        running_app_pods=$( kubectl get pods --all-namespaces --no-headers | \
+          grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" | \
+          grep -c "Running" || echo "0")
+        
+        if [ "$total_app_pods" -gt 0 ]; then
+          echo "✓ Application pods: $running_app_pods/$total_app_pods running"
+        else
+          echo "⚠ No application pods found (applications may not be configured)"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/application-pods-validated
+
+  # Validate ingress and services
+  validate-ingress-services:
+    desc: Validate ingress and load balancer services
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/ingress-services-validated
+    cmds:
+      - echo "Validating ingress and services..."
+      - |
+        echo "Ingress Resources:"
+         kubectl get ingress --all-namespaces || echo "No ingress resources found"
+        
+        echo ""
+        echo "LoadBalancer Services:"
+         kubectl get svc --all-namespaces | grep LoadBalancer || echo "No LoadBalancer services found"
+        
+        echo ""
+        echo "Service Status:"
+         kubectl get svc --all-namespaces | grep -v ClusterIP | grep -v NodePort || echo "Only ClusterIP/NodePort services found"
+      - touch {{.BOOTSTRAP_STATE_DIR}}/ingress-services-validated
+
+  # Validate monitoring (if deployed)
+  validate-monitoring:
+    desc: Validate monitoring stack if deployed
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/monitoring-validated
+    cmds:
+      - echo "Validating monitoring stack..."
+      - |
+        # Check for common monitoring components
+        monitoring_components=("prometheus" "grafana" "alertmanager")
+        monitoring_found=false
+        
+        for component in "${monitoring_components[@]}"; do
+          if  kubectl get pods --all-namespaces | grep -q "$component"; then
+            echo "✓ $component is deployed"
+            monitoring_found=true
+          fi
+        done
+        
+        if [ "$monitoring_found" = false ]; then
+          echo "⚠ No monitoring components found (may not be configured)"
+        else
+          echo "✓ Monitoring stack is deployed"
+        fi
+      - touch {{.BOOTSTRAP_STATE_DIR}}/monitoring-validated
+
+  # End-to-end validation
+  validate-end-to-end:
+    desc: Perform end-to-end system validation
+    status:
+      - test -f {{.BOOTSTRAP_STATE_DIR}}/end-to-end-validated
+    cmds:
+      - echo "Performing end-to-end validation..."
+      - |
+        echo "=== Cluster Health Summary ==="
+        
+        # Node status
+        echo "Nodes:"
+         kubectl get nodes -o wide
+        
+        echo ""
+        echo "System Pods:"
+        system_pods_ready=$( kubectl get pods -n kube-system --no-headers | grep -c "Running" || echo "0")
+        system_pods_total=$( kubectl get pods -n kube-system --no-headers | wc -l)
+        echo "  kube-system: $system_pods_ready/$system_pods_total running"
+        
+        flux_pods_ready=$( kubectl get pods -n flux-system --no-headers | grep -c "Running" || echo "0")
+        flux_pods_total=$( kubectl get pods -n flux-system --no-headers | wc -l)
+        echo "  flux-system: $flux_pods_ready/$flux_pods_total running"
+        
+        # Storage status
+        echo ""
+        echo "Storage:"
+         kubectl get pv | grep -c "Bound" || echo "0 bound persistent volumes"
+        
+        # GitOps status
+        echo ""
+        echo "GitOps:"
+        if  flux get kustomizations | grep -q "Ready"; then
+          echo "  ✓ GitOps is operational"
+        else
+          echo "  ⚠ GitOps may have issues"
+        fi
+        
+        # Secret management
+        echo ""
+        echo "Secret Management:"
+        if  kubectl get clustersecretstore onepassword-connect -o jsonpath='{.status.conditions[0].status}' | grep -q "True"; then
+          echo "  ✓ 1Password Connect is operational"
+        else
+          echo "  ⚠ 1Password Connect may have issues"
+        fi
+        
+        echo ""
+        echo "✓ End-to-end validation completed"
+      - touch {{.BOOTSTRAP_STATE_DIR}}/end-to-end-validated
+
+  # Status and diagnostics
+  status:
+    desc: Show application deployment status
+    cmds:
+      - echo "=== Application Status ==="
+      - echo "Application Pods:"
+      - |
+         kubectl get pods --all-namespaces --no-headers | \
+          grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" || \
+          echo "No application pods found"
+      - echo ""
+      - echo "Application Services:"
+      - |
+         kubectl get svc --all-namespaces --no-headers | \
+          grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" || \
+          echo "No application services found"
+      - echo ""
+      - echo "Ingress Resources:"
+      -  kubectl get ingress --all-namespaces || echo "No ingress resources found"
+
+  # Health check
+  health:
+    desc: Comprehensive cluster health check
+    cmds:
+      - echo "=== Comprehensive Cluster Health Check ==="
+      - echo "Node Status:"
+      -  kubectl get nodes -o wide
+      - echo ""
+      - echo "Pod Status by Namespace:"
+      - |
+        for ns in $( kubectl get namespaces -o name | cut -d/ -f2); do
+          pod_count=$( kubectl get pods -n "$ns" --no-headers 2>/dev/null | wc -l)
+          if [ "$pod_count" -gt 0 ]; then
+            running_count=$( kubectl get pods -n "$ns" --no-headers | grep -c "Running" || echo "0")
+            echo "  $ns: $running_count/$pod_count running"
+          fi
+        done
+      - echo ""
+      - echo "Storage Status:"
+      -  kubectl get pv,pvc --all-namespaces || echo "No persistent volumes"
+      - echo ""
+      - echo "Network Status:"
+      -  kubectl get svc --all-namespaces | grep -E "(LoadBalancer|NodePort)" || echo "No external services"
+
+  # Troubleshooting tasks
+  logs:
+    desc: Show application logs for troubleshooting
+    vars:
+      NAMESPACE: '{{.NAMESPACE | default "default"}}'
+      APP: '{{.APP | default ""}}'
+    cmds:
+      - |
+        if [ -n "{{.APP}}" ]; then
+          echo "=== Logs for {{.APP}} in {{.NAMESPACE}} ==="
+           kubectl logs -n {{.NAMESPACE}} -l app={{.APP}} --tail=50
+        else
+          echo "=== Recent Application Logs ==="
+          echo "Usage: task applications:logs NAMESPACE=<namespace> APP=<app-label>"
+          echo ""
+          echo "Available applications:"
+           kubectl get pods --all-namespaces --no-headers | \
+            grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" | \
+            awk '{print $1 "/" $2}' || echo "No application pods found"
+        fi
+
+  debug:
+    desc: Debug application deployment issues
+    cmds:
+      - echo "=== Application Debug Information ==="
+      - echo "GitOps Status:"
+      -  flux get all || echo "Flux not available"
+      - echo ""
+      - echo "Failed Pods:"
+      -  kubectl get pods --all-namespaces | grep -v "Running\|Completed" || echo "No failed pods"
+      - echo ""
+      - echo "Recent Events:"
+      -  kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20 || echo "No events"
+
+  # Reset application state
+  reset-state:
+    desc: Reset application deployment state
+    prompt: This will reset application state. Continue?
+    cmds:
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/infrastructure-ready
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/applications-deployed
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/applications-ready
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/application-pods-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/ingress-services-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/monitoring-validated
+      - rm -f {{.BOOTSTRAP_STATE_DIR}}/end-to-end-validated
+      - echo "Application state reset"
+
+  # Force application redeployment
+  redeploy:
+    desc: Force application redeployment via GitOps
+    cmds:
+      - echo "Forcing application redeployment..."
+      -  flux reconcile source git flux-system
+      -  flux reconcile kustomization flux-system
+      - |
+        # Restart application deployments if they exist
+        for ns in $( kubectl get namespaces -o name | cut -d/ -f2 | grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)"); do
+          deployments=$( kubectl get deployments -n "$ns" -o name 2>/dev/null || echo "")
+          if [ -n "$deployments" ]; then
+            echo "Restarting deployments in namespace $ns..."
+             kubectl rollout restart deployment -n "$ns" || true
+          fi
+        done
+      - echo "Application redeployment triggered"
