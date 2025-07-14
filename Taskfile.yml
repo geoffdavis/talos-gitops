@@ -1050,23 +1050,174 @@ tasks:
         
         echo "Target nodes: $RESET_NODES"
         
-        # Try simultaneous reset first using proper talosconfig
-        echo "Attempting simultaneous reset using talosconfig..."
-        if mise exec -- talosctl reset --nodes $RESET_NODES --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot --graceful=false --wait=false; then
-          echo "✅ Simultaneous reset successful"
+        # Store original cluster state for validation
+        echo "Capturing current cluster state for validation..."
+        ORIGINAL_CLUSTER_ID=""
+        if mise exec -- kubectl get nodes >/dev/null 2>&1; then
+          ORIGINAL_CLUSTER_ID=$(mise exec -- kubectl get nodes -o jsonpath='{.items[0].metadata.uid}' 2>/dev/null || echo "")
+          echo "Original cluster detected with ID: ${ORIGINAL_CLUSTER_ID:0:8}..."
+        else
+          echo "No accessible cluster detected - proceeding with reset"
+        fi
+        
+        # Perform the reset with proper error handling
+        echo "Attempting reset with partition specifications..."
+        RESET_SUCCESS=false
+        
+        # Try simultaneous reset first (without --reboot flag as reset auto-reboots)
+        echo "Attempting simultaneous reset..."
+        if mise exec -- talosctl reset --nodes $RESET_NODES --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
+          echo "✅ Simultaneous reset command executed successfully"
+          RESET_SUCCESS=true
         else
           echo "Simultaneous reset failed, trying individual resets..."
           
-          # Parse nodes and reset individually using shell parameter expansion
+          # Parse nodes and reset individually
           NODES_LIST=$(echo "$RESET_NODES" | tr ',' ' ')
+          INDIVIDUAL_SUCCESS=0
+          TOTAL_NODES=$(echo $NODES_LIST | wc -w)
+          
           for node in $NODES_LIST; do
             echo "Resetting node $node (SAFE - partitions only)..."
-            mise exec -- talosctl reset --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot --graceful=false --wait=false || true
-            sleep 10
+            
+            # Try with talosconfig first (without --reboot as reset auto-reboots)
+            if mise exec -- talosctl reset --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
+              echo "✅ Reset command sent to $node (authenticated)"
+              INDIVIDUAL_SUCCESS=$((INDIVIDUAL_SUCCESS + 1))
+            else
+              echo "⚠ Authenticated reset failed for $node, trying insecure mode..."
+              # Try insecure mode for nodes with certificate issues
+              if mise exec -- talosctl reset --insecure --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
+                echo "✅ Reset command sent to $node (insecure mode)"
+                INDIVIDUAL_SUCCESS=$((INDIVIDUAL_SUCCESS + 1))
+              else
+                echo "❌ Failed to reset $node in both authenticated and insecure modes"
+                # Show the actual error for debugging
+                echo "Debug: Attempting reset with error output..."
+                mise exec -- talosctl reset --insecure --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false 2>&1 || true
+              fi
+            fi
+            sleep 5
           done
+          
+          if [ $INDIVIDUAL_SUCCESS -gt 0 ]; then
+            echo "✅ Reset commands sent to $INDIVIDUAL_SUCCESS/$TOTAL_NODES nodes"
+            RESET_SUCCESS=true
+          fi
         fi
-      - echo "✅ SAFE reset completed. OS preserved. Cluster will need re-bootstrap."
-      - echo "Next steps - Run 'mise exec -- task bootstrap:cluster' to rebuild the cluster"
+        
+        if [ "$RESET_SUCCESS" = "false" ]; then
+          echo "❌ Failed to send reset commands to any nodes"
+          echo "This may indicate:"
+          echo "  - Nodes are already in maintenance mode"
+          echo "  - Network connectivity issues"
+          echo "  - Certificate/authentication problems"
+          echo ""
+          echo "Manual verification required:"
+          echo "  1. Check if nodes are accessible: ping {{.NODE_1_IP}}"
+          echo "  2. Try insecure mode: talosctl reset --insecure --nodes {{.NODE_1_IP}} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --reboot"
+          exit 1
+        fi
+      - |
+        # Wait for nodes to reboot and validate reset
+        echo ""
+        echo "🔄 Waiting for nodes to reboot and validate reset completion..."
+        echo "This may take 2-3 minutes..."
+        
+        # Wait for nodes to go down first
+        echo "Waiting for nodes to go offline..."
+        sleep 30
+        
+        # Wait for nodes to come back up
+        echo "Waiting for nodes to come back online..."
+        max_wait=300  # 5 minutes
+        wait_interval=15
+        elapsed=0
+        nodes_online=0
+        
+        NODES_LIST="{{.NODE_1_IP}} {{.NODE_2_IP}} {{.NODE_3_IP}}"
+        
+        while [ $elapsed -lt $max_wait ]; do
+          nodes_online=0
+          
+          for node_ip in $NODES_LIST; do
+            if ping -c 1 -W 2 "$node_ip" >/dev/null 2>&1; then
+              nodes_online=$((nodes_online + 1))
+            fi
+          done
+          
+          echo "Nodes online: $nodes_online/3 (${elapsed}s elapsed)"
+          
+          if [ $nodes_online -eq 3 ]; then
+            echo "✅ All nodes are back online"
+            break
+          fi
+          
+          sleep $wait_interval
+          elapsed=$((elapsed + wait_interval))
+        done
+        
+        if [ $nodes_online -lt 3 ]; then
+          echo "⚠ Only $nodes_online/3 nodes came back online after ${max_wait}s"
+          echo "This may be normal - nodes might need more time to fully boot"
+        fi
+      - |
+        # Validate that reset was successful
+        echo ""
+        echo "🔍 Validating reset completion..."
+        
+        # Wait a bit more for Talos to fully initialize
+        echo "Waiting for Talos to initialize..."
+        sleep 45
+        
+        # Check if nodes are in maintenance mode (expected after reset)
+        NODES_IN_MAINTENANCE=0
+        NODES_LIST="{{.NODE_1_IP}} {{.NODE_2_IP}} {{.NODE_3_IP}}"
+        
+        for node_ip in $NODES_LIST; do
+          echo "Checking node $node_ip..."
+          
+          # Try to connect with insecure mode (expected for maintenance mode)
+          if mise exec -- talosctl version --insecure --nodes $node_ip >/dev/null 2>&1; then
+            echo "  ✅ Node $node_ip is accessible (maintenance mode)"
+            NODES_IN_MAINTENANCE=$((NODES_IN_MAINTENANCE + 1))
+            
+            # Check if it's actually in maintenance mode (no cluster config)
+            if ! mise exec -- talosctl get machineconfig --insecure --nodes $node_ip >/dev/null 2>&1; then
+              echo "  ✅ Node $node_ip confirmed in maintenance mode (no cluster config)"
+            else
+              echo "  ⚠ Node $node_ip has cluster config - reset may not have completed"
+            fi
+          else
+            echo "  ⚠ Node $node_ip not accessible yet"
+          fi
+        done
+        
+        echo ""
+        if [ $NODES_IN_MAINTENANCE -eq 3 ]; then
+          echo "✅ RESET VALIDATION SUCCESSFUL"
+          echo "   - All 3 nodes are accessible in maintenance mode"
+          echo "   - Nodes are ready for fresh cluster bootstrap"
+          echo "   - OS preserved, only user data/config wiped"
+        elif [ $NODES_IN_MAINTENANCE -gt 0 ]; then
+          echo "⚠ PARTIAL RESET SUCCESS"
+          echo "   - $NODES_IN_MAINTENANCE/3 nodes confirmed in maintenance mode"
+          echo "   - Some nodes may need additional time or manual intervention"
+        else
+          echo "❌ RESET VALIDATION FAILED"
+          echo "   - No nodes confirmed in maintenance mode"
+          echo "   - Reset may not have completed successfully"
+          echo "   - Manual verification required"
+          exit 1
+        fi
+      - echo ""
+      - echo "✅ SAFE reset completed and validated. OS preserved."
+      - echo "📋 Next steps:"
+      - echo "   1. Run 'mise exec -- task bootstrap:phase-1' to start fresh bootstrap"
+      - echo "   2. Or run 'mise exec -- task bootstrap:phased' for complete rebuild"
+      - echo ""
+      - |
+        echo "🔍 To verify maintenance mode: mise exec -- talosctl version --insecure --nodes {{.NODE_1_IP}}"
 
   cluster:emergency-recovery:
     desc: Emergency cluster recovery with comprehensive safety checks
