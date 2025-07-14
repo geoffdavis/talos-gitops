@@ -94,17 +94,17 @@ tasks:
   bootstrap:phase-1:
     desc: Run Phase 1 - Environment Validation
     cmds:
-      - task: bootstrap:phase-1
+      - task: :bootstrap:phase-1
 
   bootstrap:phase-2:
     desc: Run Phase 2 - Talos Cluster Initialization
     cmds:
-      - task: bootstrap:phase-2
+      - task: :bootstrap:phase-2
 
   bootstrap:phase-3:
     desc: Run Phase 3 - CNI Deployment (Cilium)
     cmds:
-      - task: bootstrap:phase-3
+      - task: :bootstrap:phase-3
 
   # Phase Validation Tasks (Native Taskfile Implementation)
   validate:phase-1:
