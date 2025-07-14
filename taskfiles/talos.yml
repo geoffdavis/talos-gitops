@@ -19,7 +19,6 @@ tasks:
   bootstrap-cluster:
     desc: Complete Talos cluster bootstrap process
     deps:
-      - bootstrap-secrets
       - generate-config
       - validate-configs
       - apply-configs
@@ -94,7 +93,17 @@ tasks:
             --vault="Automation" \
             "talsecret[password]=$(cat talos/talsecret.yaml)"
         fi
-      -  talhelper genconfig --secret-file talos/talsecret.yaml
+      - |
+        # Generate configuration files with force flag to handle existing files
+        echo "Generating Talos configuration files..."
+        if  talhelper genconfig --secret-file talos/talsecret.yaml --force; then
+          echo "✓ Configuration generated successfully"
+        else
+          echo "⚠ Configuration generation failed, cleaning up and retrying..."
+          rm -f clusterconfig/*.yaml
+           talhelper genconfig --secret-file talos/talsecret.yaml
+          echo "✓ Configuration generated successfully on retry"
+        fi
       - echo "Talos configuration generated successfully"
 
   # Validate Talos configurations
