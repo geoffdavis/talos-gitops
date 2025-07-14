@@ -43,3 +43,7 @@ backups/
 # Flux decryption keys (should not be committed)
 sops.yaml
 age.key
+
+# Runtime state directories
+.bootstrap-state/
+.task/
