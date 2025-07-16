@@ -13,12 +13,12 @@ tasks:
     desc: Validate complete environment setup
     deps:
       - tools
-      - mise-config
-      - environment-vars
-      - onepassword
-      - connectivity
-      - repository
     cmds:
+      - task: mise-config
+      - task: environment-vars
+      - task: onepassword
+      - task: connectivity
+      - task: repository
       - echo "✓ Environment validation completed successfully"
 
   # Tool validation
@@ -162,7 +162,7 @@ tasks:
     preconditions:
       - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete'
         msg: 'Phase 1 must be completed first'
-      - sh: 'test -f clusterconfig/talosconfig'
+      - sh: 'test -f talos/generated/talosconfig'
         msg: 'Talos configuration must exist'
       - sh: ' kubectl get nodes --no-headers | wc -l | grep -q "3"'
         msg: 'All 3 nodes must be present in cluster'

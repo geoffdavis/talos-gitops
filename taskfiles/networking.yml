@@ -10,7 +10,7 @@ vars:
   NODE_3_IP: '{{.NODE_3_IP | default "172.29.51.13"}}'
 
 env:
-  TALOSCONFIG: clusterconfig/talosconfig
+  TALOSCONFIG: talos/generated/talosconfig
 
 tasks:
   # Main CNI deployment orchestration

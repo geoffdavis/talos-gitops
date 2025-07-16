@@ -7,7 +7,7 @@ vars:
   BOOTSTRAP_STATE_DIR: '.bootstrap-state'
 
 env:
-  TALOSCONFIG: clusterconfig/talosconfig
+  TALOSCONFIG: talos/generated/talosconfig
 
 tasks:
   # Main application deployment orchestration

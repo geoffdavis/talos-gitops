@@ -11,7 +11,7 @@ vars:
   GIT_PATH: '{{.GIT_PATH | default "clusters/homelab"}}'
 
 env:
-  TALOSCONFIG: clusterconfig/talosconfig
+  TALOSCONFIG: talos/generated/talosconfig
 
 tasks:
   # Main GitOps deployment orchestration

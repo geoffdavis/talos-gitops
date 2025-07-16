@@ -12,21 +12,21 @@ vars:
   CLUSTER_ENDPOINT: '{{.CLUSTER_ENDPOINT | default "https://172.29.51.10:6443"}}'
 
 env:
-  TALOSCONFIG: clusterconfig/talosconfig
+  TALOSCONFIG: talos/generated/talosconfig
 
 tasks:
   # Complete cluster bootstrap orchestration
   bootstrap-cluster:
     desc: Complete Talos cluster bootstrap process
-    deps:
-      - generate-config
-      - validate-configs
-      - apply-configs
-      - wait-nodes-ready
-      - bootstrap-etcd
-      - wait-cluster-ready
-      - verify-health
     cmds:
+      - task: bootstrap-secrets
+      - task: generate-config
+      - task: validate-configs
+      - task: apply-configs
+      - task: wait-nodes-ready
+      - task: bootstrap-etcd
+      - task: wait-cluster-ready
+      - task: verify-health
       - echo "✓ Talos cluster bootstrap completed successfully"
 
   # Bootstrap secrets from 1Password
@@ -50,29 +50,30 @@ tasks:
   # Generate Talos configuration
   generate-config:
     desc: Generate Talos configuration using talhelper
-    deps: [bootstrap-secrets]
     status:
-      - test -f clusterconfig/talosconfig
-      - test -f clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
-      - test -f clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
-      - test -f clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+      - test -f talos/generated/talosconfig
+      - test -f talos/generated/{{.CLUSTER_NAME}}-mini01.yaml
+      - test -f talos/generated/{{.CLUSTER_NAME}}-mini02.yaml
+      - test -f talos/generated/{{.CLUSTER_NAME}}-mini03.yaml
     sources:
       - talconfig.yaml
       - talos/patches/*.yaml
       - talos/talsecret.yaml
     generates:
-      - clusterconfig/talosconfig
-      - clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
-      - clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
-      - clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+      - talos/generated/talosconfig
+      - talos/generated/{{.CLUSTER_NAME}}-mini01.yaml
+      - talos/generated/{{.CLUSTER_NAME}}-mini02.yaml
+      - talos/generated/{{.CLUSTER_NAME}}-mini03.yaml
     preconditions:
       - sh: ' talhelper --version >/dev/null 2>&1'
         msg: 'talhelper is required and managed by mise'
       - sh: 'test -f talconfig.yaml'
         msg: 'talconfig.yaml must exist'
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/secrets-bootstrapped'
+        msg: 'Secrets must be bootstrapped first'
     cmds:
       - echo "Generating Talos configuration..."
-      - mkdir -p clusterconfig
+      - mkdir -p talos/generated
       - |
         # Handle secrets - check multiple sources as per bootstrap-config.yaml
         if  op item get "Talos Secrets - {{.CLUSTER_NAME}}" --vault="Automation" >/dev/null 2>&1; then
@@ -100,7 +101,7 @@ tasks:
           echo "✓ Configuration generated successfully"
         else
           echo "⚠ Configuration generation failed, cleaning up and retrying..."
-          rm -f clusterconfig/*.yaml
+          rm -f talos/generated/*.yaml
            talhelper genconfig --secret-file talos/talsecret.yaml
           echo "✓ Configuration generated successfully on retry"
         fi
@@ -109,27 +110,27 @@ tasks:
   # Validate Talos configurations
   validate-configs:
     desc: Validate generated Talos configurations
-    deps: [generate-config]
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/configs-validated
     preconditions:
-      - sh: 'test -f clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml'
+      - sh: 'test -f talos/generated/{{.CLUSTER_NAME}}-mini01.yaml'
         msg: 'Node configuration files must exist'
     cmds:
       - echo "Validating Talos configurations..."
-      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml --mode metal
-      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml --mode metal
-      -  talosctl validate --config clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml --mode metal
+      -  talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini01.yaml --mode metal
+      -  talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini02.yaml --mode metal
+      -  talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini03.yaml --mode metal
       - touch {{.BOOTSTRAP_STATE_DIR}}/configs-validated
       - echo "All configurations are valid"
 
   # Apply configurations to nodes
   apply-configs:
     desc: Apply Talos configurations to all nodes
-    deps: [validate-configs]
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/configs-applied
     preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/configs-validated'
+        msg: 'Configurations must be validated first'
       - sh: 'ping -c 1 {{.NODE_1_IP}} >/dev/null 2>&1'
         msg: 'Node {{.NODE_1_IP}} must be reachable'
       - sh: 'ping -c 1 {{.NODE_2_IP}} >/dev/null 2>&1'
@@ -140,29 +141,29 @@ tasks:
       - echo "Applying Talos configurations to nodes..."
       - echo "Applying configuration to {{.NODE_1_IP}}..."
       - |
-        if  talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml 2>/dev/null; then
+        if  talosctl apply-config --nodes {{.NODE_1_IP}} --file talos/generated/{{.CLUSTER_NAME}}-mini01.yaml 2>/dev/null; then
           echo "✓ {{.NODE_1_IP}} configuration applied successfully"
         else
           echo "⚠ Certificate error expected - retrying with insecure mode..."
-           talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini01.yaml
+           talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file talos/generated/{{.CLUSTER_NAME}}-mini01.yaml
           echo "✓ {{.NODE_1_IP}} configuration applied (insecure mode)"
         fi
       - echo "Applying configuration to {{.NODE_2_IP}}..."
       - |
-        if  talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml 2>/dev/null; then
+        if  talosctl apply-config --nodes {{.NODE_2_IP}} --file talos/generated/{{.CLUSTER_NAME}}-mini02.yaml 2>/dev/null; then
           echo "✓ {{.NODE_2_IP}} configuration applied successfully"
         else
           echo "⚠ Certificate error expected - retrying with insecure mode..."
-           talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini02.yaml
+           talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file talos/generated/{{.CLUSTER_NAME}}-mini02.yaml
           echo "✓ {{.NODE_2_IP}} configuration applied (insecure mode)"
         fi
       - echo "Applying configuration to {{.NODE_3_IP}}..."
       - |
-        if  talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml 2>/dev/null; then
+        if  talosctl apply-config --nodes {{.NODE_3_IP}} --file talos/generated/{{.CLUSTER_NAME}}-mini03.yaml 2>/dev/null; then
           echo "✓ {{.NODE_3_IP}} configuration applied successfully"
         else
           echo "⚠ Certificate error expected - retrying with insecure mode..."
-           talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/{{.CLUSTER_NAME}}-mini03.yaml
+           talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file talos/generated/{{.CLUSTER_NAME}}-mini03.yaml
           echo "✓ {{.NODE_3_IP}} configuration applied (insecure mode)"
         fi
       - touch {{.BOOTSTRAP_STATE_DIR}}/configs-applied
@@ -171,9 +172,11 @@ tasks:
   # Wait for nodes to be ready for bootstrap
   wait-nodes-ready:
     desc: Wait for nodes to be ready for etcd bootstrap
-    deps: [apply-configs]
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/nodes-ready
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/configs-applied'
+        msg: 'Configurations must be applied first'
     cmds:
       - echo "Waiting for nodes to be ready for bootstrap..."
       - |
@@ -208,23 +211,46 @@ tasks:
 
   # Bootstrap etcd cluster
   bootstrap-etcd:
-    desc: Bootstrap etcd cluster on first node
-    deps: [wait-nodes-ready]
+    desc: Bootstrap etcd cluster on first node (only run once per cluster)
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/nodes-ready'
+        msg: 'Nodes must be ready first'
     cmds:
-      - echo "Bootstrapping etcd cluster on {{.NODE_1_IP}}..."
-      -  talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}
+      - echo "Checking if etcd cluster needs bootstrapping..."
+      - |
+        # Check if cluster is already bootstrapped by trying to get cluster status
+        if  kubectl get nodes >/dev/null 2>&1; then
+          echo "✓ Cluster is already bootstrapped and accessible"
+        else
+          echo "Bootstrapping etcd cluster on {{.NODE_1_IP}} (this can only be done once)..."
+          if  talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}; then
+            echo "✓ etcd cluster bootstrapped successfully"
+          else
+            echo "⚠ Bootstrap failed - cluster may already be bootstrapped"
+            echo "Checking if cluster is accessible..."
+            sleep 30
+            if  kubectl get nodes >/dev/null 2>&1; then
+              echo "✓ Cluster is accessible - bootstrap was already completed"
+            else
+              echo "✗ Cluster is not accessible and bootstrap failed"
+              exit 1
+            fi
+          fi
+        fi
       - touch {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped
-      - echo "etcd cluster bootstrapped successfully"
+      - echo "etcd cluster is ready"
 
   # Wait for cluster to be ready
   wait-cluster-ready:
     desc: Wait for cluster to become ready and retrieve kubeconfig
-    deps: [bootstrap-etcd]
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/cluster-ready
       -  kubectl get nodes >/dev/null 2>&1
+    preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped'
+        msg: 'etcd must be bootstrapped first'
     cmds:
       - echo "Waiting for cluster to become ready..."
       - |
@@ -258,10 +284,11 @@ tasks:
   # Verify cluster health
   verify-health:
     desc: Verify cluster health and readiness
-    deps: [wait-cluster-ready]
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/health-verified
     preconditions:
+      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/cluster-ready'
+        msg: 'Cluster must be ready first'
       - sh: ' kubectl get nodes >/dev/null 2>&1'
         msg: 'Cluster must be accessible via kubectl'
     cmds:

@@ -237,23 +237,23 @@ tasks:
         echo "Generating Talos configuration files..."
         mise exec -- talhelper genconfig --secret-file talos/talsecret.yaml
       - echo "Generated Talos configuration with talhelper"
-      - echo "Configuration files created in clusterconfig/"
+      - echo "Configuration files created in talos/generated/"
 
   talos:apply-config:
     desc: Apply Talos configuration to nodes (includes LLDPD configuration)
     deps: [talos:generate-config]
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     cmds:
       - echo "Applying Talos configuration with integrated LLDPD to all control plane nodes..."
       - echo "NOTE - Certificate errors are expected for nodes in maintenance mode - will retry with insecure mode"
       - |
         echo "Applying configuration to mini01 ({{.NODE_1_IP}})..."
-        if mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml 2>/dev/null; then
+        if mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file talos/generated/home-ops-mini01.yaml 2>/dev/null; then
           echo "✓ mini01 configuration applied successfully"
         else
           echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml; then
+          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file talos/generated/home-ops-mini01.yaml; then
             echo "✓ mini01 configuration applied successfully (insecure mode - normal for maintenance)"
           else
             echo "✗ Failed to apply configuration to mini01"
@@ -262,11 +262,11 @@ tasks:
         fi
       - |
         echo "Applying configuration to mini02 ({{.NODE_2_IP}})..."
-        if mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml 2>/dev/null; then
+        if mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file talos/generated/home-ops-mini02.yaml 2>/dev/null; then
           echo "✓ mini02 configuration applied successfully"
         else
           echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml; then
+          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file talos/generated/home-ops-mini02.yaml; then
             echo "✓ mini02 configuration applied successfully (insecure mode - normal for maintenance)"
           else
             echo "✗ Failed to apply configuration to mini02"
@@ -275,11 +275,11 @@ tasks:
         fi
       - |
         echo "Applying configuration to mini03 ({{.NODE_3_IP}})..."
-        if mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml 2>/dev/null; then
+        if mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file talos/generated/home-ops-mini03.yaml 2>/dev/null; then
           echo "✓ mini03 configuration applied successfully"
         else
           echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml; then
+          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file talos/generated/home-ops-mini03.yaml; then
             echo "✓ mini03 configuration applied successfully (insecure mode - normal for maintenance)"
           else
             echo "✗ Failed to apply configuration to mini03 at {{.NODE_3_IP}}"
@@ -297,25 +297,25 @@ tasks:
   talos:apply-config-only:
     desc: Apply Talos configuration to nodes (without regenerating)
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     cmds:
       - echo "Applying Talos configuration to all control plane nodes..."
       - |
         # Try with talosconfig first, fall back to insecure if needed
-        mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml || \
-        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file clusterconfig/home-ops-mini01.yaml
+        mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file talos/generated/home-ops-mini01.yaml || \
+        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file talos/generated/home-ops-mini01.yaml
       - |
-        mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml || \
-        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file clusterconfig/home-ops-mini02.yaml
+        mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file talos/generated/home-ops-mini02.yaml || \
+        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file talos/generated/home-ops-mini02.yaml
       - |
-        mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml || \
-        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file clusterconfig/home-ops-mini03.yaml
+        mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file talos/generated/home-ops-mini03.yaml || \
+        mise exec -- talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file talos/generated/home-ops-mini03.yaml
       - echo "Configuration applied to all nodes"
 
   talos:apply-lldpd-config:
     desc: "[DEPRECATED] Apply LLDPD ExtensionServiceConfig - now integrated into main Talos config"
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     preconditions:
       - sh: '[ -f talos/manifests/lldpd-extension-config.yaml ]'
         msg: 'LLDPD ExtensionServiceConfig manifest not found at talos/manifests/lldpd-extension-config.yaml'
@@ -342,7 +342,7 @@ tasks:
   talos:bootstrap:
     desc: Bootstrap Talos cluster with all control plane nodes
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     cmds:
       - echo "Bootstrapping first control plane node..."
       - mise exec -- talosctl bootstrap --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}}
@@ -377,7 +377,7 @@ tasks:
   talos:reboot:
     desc: Reboot specified nodes or all nodes (for USB detection)
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     vars:
       NODES: '{{.NODES | default "all"}}'
     cmds:
@@ -408,7 +408,7 @@ tasks:
   talos:recover-kubeconfig:
     desc: Recover kubeconfig after cluster restart or certificate issues
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     cmds:
       - echo "Recovering kubeconfig from cluster..."
       - mise exec -- talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
@@ -644,7 +644,7 @@ tasks:
   network:verify-lldpd-config:
     desc: Verify LLDPD configuration and service status (now integrated into main Talos config)
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     cmds:
       - echo "=== Verifying LLDPD Configuration and Service Status ==="
       - 'echo "NOTE: LLDPD configuration is now integrated into the main Talos configuration"'
@@ -1018,7 +1018,7 @@ tasks:
   cluster:safe-reset:
     desc: SAFE cluster reset - only resets EPHEMERAL and STATE partitions (preserves OS)
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     vars:
       CONFIRM: '{{.CONFIRM | default ""}}'
       NODES: '{{.NODES | default "all"}}'
@@ -1222,7 +1222,7 @@ tasks:
   cluster:emergency-recovery:
     desc: Emergency cluster recovery with comprehensive safety checks
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     cmds:
       - echo "🚨 EMERGENCY CLUSTER RECOVERY PROCEDURE"
       - echo "This will attempt to recover the cluster using safe methods only"
@@ -1244,7 +1244,7 @@ tasks:
   cluster:safe-reboot:
     desc: Safe cluster reboot (alternative to reset operations)
     env:
-      TALOSCONFIG: clusterconfig/talosconfig
+      TALOSCONFIG: talos/generated/talosconfig
     cmds:
       - echo "🔄 SAFE CLUSTER REBOOT"
       - echo "This will reboot all nodes safely without data loss"

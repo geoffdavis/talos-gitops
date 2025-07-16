@@ -392,7 +392,7 @@ update_secret_references() {
     
     # Update 1Password Connect auth secret
     local connect_token
-    if connect_token=$(op item get "1Password Connect" --fields label=token --format json | jq -r '.value' 2>/dev/null); then
+    if connect_token=$(op item get "1Password Connect Token - $CLUSTER_NAME" --fields label=token --format json | jq -r '.value' 2>/dev/null); then
         # Update the secret-store.yaml with the actual token
         if [[ -f "infrastructure/onepassword-connect/secret-store.yaml" ]]; then
             # The secret will be created by the bootstrap process
