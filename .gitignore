@@ -26,6 +26,13 @@ Thumbs.db
 *.pem
 secrets.yaml
 credentials.json
+1password-credentials.json
+*-credentials.json
+*.token
+*.secret
+talsecret.yaml
+talosconfig
+kubeconfig
 
 # Test results
 test-results/
