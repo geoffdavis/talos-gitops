@@ -69,28 +69,16 @@ nodes:
 # Control plane patches
 controlPlane:
   patches:
-    # Install configuration
+    # Install configuration - SECURITY RESET: Force wipe of STATE and EPHEMERAL partitions
     - |-
       machine:
         install:
           extraKernelArgs:
             - talos.logging.kernel=udp://172.29.51.1:514/
-          wipe: false
+          wipe: true
 
-    # LLDPD extension service configuration
-    - |-
-      machine:
-        env:
-          LLDPD_OPTS: "-c -e -f -s -r"
-        files:
-          - path: /etc/lldpd.conf
-            permissions: 0644
-            op: create
-            content: |
-              configure lldp portidsubtype ifname
-              unconfigure lldp management-addresses-advertisements
-              unconfigure lldp capabilities-advertisements
-              configure system description "Talos Node"
+    # LLDPD configuration removed - will be applied separately as ExtensionServiceConfig
+    # See docs/LLDPD_CONFIGURATION_FIX.md for details
 
     # Network configuration
     - |-

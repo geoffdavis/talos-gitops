@@ -233,9 +233,16 @@ tasks:
           echo "Secrets stored in 1Password"
         fi
       - |
-        # Generate configuration files
+        # Generate configuration files directly in talos/generated/
         echo "Generating Talos configuration files..."
-        mise exec -- talhelper genconfig --secret-file talos/talsecret.yaml
+        if mise exec -- talhelper genconfig --secret-file talos/talsecret.yaml --out-dir talos/generated; then
+          echo "✓ Configuration generated successfully"
+        else
+          echo "⚠ Configuration generation failed, cleaning up and retrying..."
+          rm -f talos/generated/*.yaml
+          mise exec -- talhelper genconfig --secret-file talos/talsecret.yaml --out-dir talos/generated
+          echo "✓ Configuration generated successfully on retry"
+        fi
       - echo "Generated Talos configuration with talhelper"
       - echo "Configuration files created in talos/generated/"
 

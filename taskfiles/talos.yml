@@ -97,12 +97,12 @@ tasks:
       - |
         # Generate configuration files (talhelper doesn't have --force flag)
         echo "Generating Talos configuration files..."
-        if  talhelper genconfig --secret-file talos/talsecret.yaml; then
+        if  talhelper genconfig --secret-file talos/talsecret.yaml --out-dir talos/generated; then
           echo "✓ Configuration generated successfully"
         else
           echo "⚠ Configuration generation failed, cleaning up and retrying..."
           rm -f talos/generated/*.yaml
-           talhelper genconfig --secret-file talos/talsecret.yaml
+           talhelper genconfig --secret-file talos/talsecret.yaml --out-dir talos/generated
           echo "✓ Configuration generated successfully on retry"
         fi
       - echo "Talos configuration generated successfully"
