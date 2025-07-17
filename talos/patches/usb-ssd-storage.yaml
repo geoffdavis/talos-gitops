@@ -1,0 +1,33 @@
+# Samsung Portable SSD T5 Storage Configuration Patch
+# This patch configures Samsung Portable SSD T5 drives for Longhorn storage
+machine:
+  disks:
+    # Samsung Portable SSD T5 detection and configuration
+    - device: /dev/disk/by-id/usb-Samsung_Portable_SSD_T5*
+      partitions:
+        - mountpoint: /var/lib/longhorn-ssd
+          size: 0  # Use entire disk
+          format: ext4
+
+  # Udev rules for Samsung Portable SSD T5 optimization
+  udev:
+    rules:
+      # Samsung Portable SSD T5 identification and SSD optimization
+      - |
+        SUBSYSTEM=="block", ATTRS{idVendor}=="04e8", ATTRS{idProduct}=="61f5", ATTRS{model}=="Portable SSD T5*", ENV{ID_SSD}="1"
+      # Set I/O scheduler to mq-deadline for Samsung T5 SSDs
+      - |
+        SUBSYSTEM=="block", ATTRS{model}=="Portable SSD T5*", ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/scheduler}="mq-deadline"
+      # Mark Samsung T5 as non-rotational (SSD)
+      - |
+        SUBSYSTEM=="block", ATTRS{model}=="Portable SSD T5*", ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}="0"
+
+  # System optimizations for SSD performance
+  sysctls:
+    # Reduce dirty page ratio for better SSD performance
+    vm.dirty_ratio: "5"
+    vm.dirty_background_ratio: "2"
+    vm.dirty_expire_centisecs: "3000"
+    vm.dirty_writeback_centisecs: "500"
+    # Optimize for SSD random I/O
+    vm.swappiness: "1"

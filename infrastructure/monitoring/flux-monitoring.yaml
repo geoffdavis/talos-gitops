@@ -1,0 +1,175 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-system-source-controller
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: source-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: source-controller
+  endpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-system-kustomize-controller
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: kustomize-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: kustomize-controller
+  endpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-system-helm-controller
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: helm-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: helm-controller
+  endpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-system-notification-controller
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: notification-controller
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: notification-controller
+  endpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flux-system-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-system
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: flux-system.rules
+      interval: 30s
+      rules:
+        # GitRepository reconciliation failures
+        - alert: FluxGitRepositoryReconciliationFailure
+          expr: increase(gotk_reconcile_condition{type="Ready",status="False",kind="GitRepository"}[10m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: flux
+          annotations:
+            summary: "Flux GitRepository reconciliation failing"
+            description: "GitRepository {{ $labels.name }} in namespace {{ $labels.namespace }} has been failing reconciliation for more than 5 minutes."
+            
+        # HelmRepository reconciliation failures
+        - alert: FluxHelmRepositoryReconciliationFailure
+          expr: increase(gotk_reconcile_condition{type="Ready",status="False",kind="HelmRepository"}[10m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+            component: flux
+          annotations:
+            summary: "Flux HelmRepository reconciliation failing"
+            description: "HelmRepository {{ $labels.name }} in namespace {{ $labels.namespace }} has been failing reconciliation for more than 5 minutes."
+            
+        # HelmRelease reconciliation failures
+        - alert: FluxHelmReleaseReconciliationFailure
+          expr: increase(gotk_reconcile_condition{type="Ready",status="False",kind="HelmRelease"}[10m]) > 0
+          for: 5m
+          labels:
+            severity: critical
+            component: flux
+          annotations:
+            summary: "Flux HelmRelease reconciliation failing"
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.namespace }} has been failing reconciliation for more than 5 minutes."
+            
+        # Kustomization reconciliation failures
+        - alert: FluxKustomizationReconciliationFailure
+          expr: increase(gotk_reconcile_condition{type="Ready",status="False",kind="Kustomization"}[10m]) > 0
+          for: 5m
+          labels:
+            severity: critical
+            component: flux
+          annotations:
+            summary: "Flux Kustomization reconciliation failing"
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.namespace }} has been failing reconciliation for more than 5 minutes."
+            
+        # Reconciliation duration alerts (timeout warnings)
+        - alert: FluxReconciliationDurationHigh
+          expr: gotk_reconcile_duration_seconds{quantile="0.99"} > 300
+          for: 10m
+          labels:
+            severity: warning
+            component: flux
+          annotations:
+            summary: "Flux reconciliation duration high"
+            description: "Flux {{ $labels.kind }} {{ $labels.name }} reconciliation duration is high ({{ $value }}s) for more than 10 minutes."
+            
+        # Suspended resources alert
+        - alert: FluxResourceSuspended
+          expr: gotk_suspend_status == 1
+          for: 10m
+          labels:
+            severity: info
+            component: flux
+          annotations:
+            summary: "Flux resource suspended"
+            description: "Flux {{ $labels.kind }} {{ $labels.name }} in namespace {{ $labels.namespace }} has been suspended for more than 10 minutes."
+            
+        # Controller not ready
+        - alert: FluxControllerNotReady
+          expr: up{job=~"flux-system.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: flux
+          annotations:
+            summary: "Flux controller not ready"
+            description: "Flux controller {{ $labels.job }} has been down for more than 5 minutes."

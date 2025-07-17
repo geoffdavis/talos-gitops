@@ -68,7 +68,29 @@ nodes:
 
 # Control plane patches
 controlPlane:
+  # Samsung Portable SSD T5 user volumes configuration
+  userVolumes:
+    - name: longhorn-ssd
+      provisioning:
+        diskSelector:
+          match: disk.model == "Portable SSD T5"
+        maxSize: 1TB
+      filesystem:
+        type: xfs
   patches:
+    # Samsung Portable SSD T5 optimization
+    - |-
+      machine:
+        udev:
+          rules:
+            - |
+              SUBSYSTEM=="block", ATTRS{model}=="Portable SSD T5*", ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/scheduler}="mq-deadline"
+            - |
+              SUBSYSTEM=="block", ATTRS{model}=="Portable SSD T5*", ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}="0"
+        sysctls:
+          vm.dirty_ratio: "5"
+          vm.dirty_background_ratio: "2"
+
     # Install configuration - SECURITY RESET: Force wipe of STATE and EPHEMERAL partitions
     - |-
       machine:

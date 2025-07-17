@@ -6,12 +6,14 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  timeout: 15m0s  # Extended timeout for Longhorn deployment
+  timeout: 20m0s  # Extended timeout for Longhorn deployment
   path: ./infrastructure/longhorn
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
+  retryInterval: 3m0s
+  wait: true
   # Removed cilium dependency as it's managed by Talos bootstrap
   healthChecks:
     - apiVersion: apps/v1
@@ -30,6 +32,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 15m0s
   path: ./infrastructure/monitoring
   prune: true
   sourceRef:
@@ -37,6 +40,8 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-sources
+  retryInterval: 2m0s
+  wait: true
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
@@ -50,6 +55,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 15m0s
   path: ./infrastructure/cert-manager
   prune: true
   sourceRef:
@@ -57,6 +63,8 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-onepassword
+  retryInterval: 2m0s
+  wait: true
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
@@ -70,6 +78,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 10m0s
   path: ./infrastructure/cert-manager-issuers
   prune: true
   sourceRef:
@@ -77,3 +86,5 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-cert-manager
+  retryInterval: 2m0s
+  wait: true

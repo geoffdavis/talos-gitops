@@ -5,6 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://helm.cilium.io/
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -14,6 +15,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://charts.longhorn.io
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -23,6 +25,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://charts.jetstack.io
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -32,6 +35,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://kubernetes.github.io/ingress-nginx
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -41,6 +45,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://charts.external-secrets.io
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -50,6 +55,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://kubernetes-sigs.github.io/external-dns
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -59,6 +65,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://prometheus-community.github.io/helm-charts
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -68,6 +75,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://grafana.github.io/helm-charts
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -77,6 +85,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://charts.bitnami.com/bitnami
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -86,6 +95,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://kubernetes.github.io/dashboard
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -95,6 +105,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://cloudflare.github.io/helm-charts
 ---
 apiVersion: source.toolkit.fluxcd.io/v1beta2
@@ -104,4 +115,5 @@ metadata:
   namespace: flux-system
 spec:
   interval: 12h
+  timeout: 5m
   url: https://stakater.github.io/stakater-charts

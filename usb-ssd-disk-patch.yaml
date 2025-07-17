@@ -1,0 +1,7 @@
+machine:
+  disks:
+    - device: /dev/disk/by-id/usb-Samsung_Portable_SSD_T5*
+      partitions:
+        - mountpoint: /var/lib/longhorn-ssd
+          size: 0
+          format: ext4

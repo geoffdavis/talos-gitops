@@ -36,7 +36,7 @@ tasks:
       -  helm repo add external-secrets https://charts.external-secrets.io || true
       -  helm repo update
       - echo "Deploying External Secrets Operator..."
-      -  helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait
+      -  helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait --version 0.18.2
       - echo "Waiting for External Secrets CRDs to be ready..."
       -  kubectl wait --for condition=established --timeout=120s crd/clustersecretstores.external-secrets.io
       -  kubectl wait --for condition=established --timeout=120s crd/secretstores.external-secrets.io

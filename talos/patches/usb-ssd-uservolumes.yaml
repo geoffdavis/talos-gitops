@@ -1,0 +1,11 @@
+# USB SSD User Volumes Patch for Samsung Portable SSD T5
+# This patch adds userVolumes configuration for USB SSDs
+machine:
+  userVolumes:
+    - name: longhorn-ssd
+      provisioning:
+        diskSelector:
+          match: disk.model == "Portable SSD T5"
+        maxSize: 1TB
+      filesystem:
+        type: ext4

@@ -6,6 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 10m0s
   path: ./apps/monitoring
   prune: true
   sourceRef:
@@ -14,6 +15,8 @@ spec:
   dependsOn:
     - name: infrastructure-ingress-nginx
     - name: infrastructure-longhorn
+  retryInterval: 2m0s
+  wait: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -22,6 +25,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 5m0s
   path: ./apps/dashboard
   prune: true
   sourceRef:
@@ -29,3 +33,5 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-ingress-nginx
+  retryInterval: 1m0s
+  wait: true

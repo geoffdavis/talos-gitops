@@ -168,7 +168,7 @@ verify_component_health() {
     # Check Longhorn
     if kubectl get namespace longhorn-system &> /dev/null; then
         local longhorn_ready
-        longhorn_ready=$(kubectl get pods -n longhorn-system --no-headers | awk '{print $2}' | grep -c "1/1\|2/2" || echo "0")
+        longhorn_ready=$(kubectl get pods -n longhorn-system --no-headers | awk '{print $2}' | grep -c "1/1\|2/2\|3/3" || echo "0")
         local longhorn_total
         longhorn_total=$(kubectl get pods -n longhorn-system --no-headers | wc -l)
         

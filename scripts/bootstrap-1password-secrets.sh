@@ -58,21 +58,40 @@ check_prerequisites() {
     success "All prerequisites met"
 }
 
-# Validate 1Password Connect entry exists
+# Validate 1Password Connect entries exist
 validate_1password_connect_entry() {
-    log "Validating 1Password Connect entry..." >&2
+    log "Validating 1Password Connect entries..." >&2
     
-    # Check if the entry exists (case-insensitive search)
+    # Check for separate entries first (new format)
+    local credentials_item=""
+    local token_item=""
+    
+    if op item get "1Password Connect Credentials - $CLUSTER_NAME" --vault="Automation" &> /dev/null; then
+        credentials_item="1Password Connect Credentials - $CLUSTER_NAME"
+    fi
+    
+    if op item get "1Password Connect Token - $CLUSTER_NAME" --vault="Automation" &> /dev/null; then
+        token_item="1Password Connect Token - $CLUSTER_NAME"
+    fi
+    
+    # If separate entries exist, use them
+    if [[ -n "$credentials_item" && -n "$token_item" ]]; then
+        success "Found separate 1Password Connect entries" >&2
+        echo "SEPARATE:$credentials_item:$token_item"
+        return 0
+    fi
+    
+    # Fall back to legacy combined entry
     local connect_item=""
     if op item get "1password connect" --vault="Automation" &> /dev/null; then
         connect_item="1password connect"
     elif op item get "1Password Connect" --vault="Automation" &> /dev/null; then
         connect_item="1Password Connect"
     else
-        error "1Password Connect entry not found in Automation vault. Please create it with your Connect credentials."
+        error "1Password Connect entries not found in Automation vault. Please create them."
     fi
     
-    # Validate required fields exist
+    # Validate required fields exist in combined entry
     local has_credentials=false
     local has_token=false
     
@@ -93,12 +112,12 @@ validate_1password_connect_entry() {
     fi
     
     success "1Password Connect entry validated: $connect_item" >&2
-    echo "$connect_item"
+    echo "COMBINED:$connect_item"
 }
 
 # Validate credentials format
 validate_credentials_format() {
-    local connect_item="$1"
+    local entry_info="$1"
     log "Validating credentials format..."
     
     # Create temporary directory for validation
@@ -106,45 +125,63 @@ validate_credentials_format() {
     temp_dir=$(mktemp -d)
     trap "rm -rf $temp_dir" EXIT
     
-    # Extract credentials and validate format
-    if op item get "$connect_item" --vault="Automation" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
-        local credentials_content
-        credentials_content=$(jq -r '.value' "$temp_dir/op-credentials.json")
+    local credentials_content=""
+    
+    if [[ "$entry_info" == SEPARATE:* ]]; then
+        # Extract credentials item from separate entries
+        local credentials_item
+        credentials_item=$(echo "$entry_info" | cut -d: -f2)
         
-        # Check if credentials are URL-encoded base64 (common case)
-        if echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
-            echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > "$temp_dir/1password-credentials.json"
-        # Check if credentials are base64 encoded (without URL encoding)
-        elif echo "$credentials_content" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
-            echo "$credentials_content" | base64 -d > "$temp_dir/1password-credentials.json"
+        # For separate entries, get the document content directly
+        if op document get "$credentials_item" --vault="Automation" > "$temp_dir/1password-credentials.json" 2>/dev/null; then
+            credentials_content="document"
         else
-            # Assume plain JSON format
-            echo "$credentials_content" > "$temp_dir/1password-credentials.json"
-        fi
-        
-        # Validate it's proper JSON and has version field
-        if jq -e '.version' "$temp_dir/1password-credentials.json" >/dev/null 2>&1; then
-            local version
-            version=$(jq -r '.version' "$temp_dir/1password-credentials.json")
-            if [[ "$version" == "2" ]]; then
-                success "Credentials are valid version 2 format"
-            else
-                error "Credentials are version $version, but version 2 is required"
-            fi
-        else
-            warn "Credentials file appears to be truncated or invalid JSON"
-            warn "This may be due to 1Password field size limits"
-            warn "Attempting to proceed anyway - 1Password Connect may still work"
-            # Don't exit here, let's try to continue
+            error "Cannot retrieve credentials document from $credentials_item"
         fi
     else
-        error "Cannot retrieve credentials from 1Password Connect entry"
+        # Handle combined entry (legacy)
+        local connect_item
+        connect_item=$(echo "$entry_info" | cut -d: -f2)
+        
+        # Extract credentials and validate format
+        if op item get "$connect_item" --vault="Automation" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
+            credentials_content=$(jq -r '.value' "$temp_dir/op-credentials.json")
+            
+            # Check if credentials are URL-encoded base64 (common case)
+            if echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+                echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > "$temp_dir/1password-credentials.json"
+            # Check if credentials are base64 encoded (without URL encoding)
+            elif echo "$credentials_content" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+                echo "$credentials_content" | base64 -d > "$temp_dir/1password-credentials.json"
+            else
+                # Assume plain JSON format
+                echo "$credentials_content" > "$temp_dir/1password-credentials.json"
+            fi
+        else
+            error "Cannot retrieve credentials from 1Password Connect entry"
+        fi
+    fi
+    
+    # Validate it's proper JSON and has version field
+    if jq -e '.version' "$temp_dir/1password-credentials.json" >/dev/null 2>&1; then
+        local version
+        version=$(jq -r '.version' "$temp_dir/1password-credentials.json")
+        if [[ "$version" == "2" ]]; then
+            success "Credentials are valid version 2 format"
+        else
+            error "Credentials are version $version, but version 2 is required"
+        fi
+    else
+        warn "Credentials file appears to be truncated or invalid JSON"
+        warn "This may be due to 1Password field size limits"
+        warn "Attempting to proceed anyway - 1Password Connect may still work"
+        # Don't exit here, let's try to continue
     fi
 }
 
 # Validate token format
 validate_token_format() {
-    local connect_item="$1"
+    local entry_info="$1"
     log "Validating token format..."
     
     # Create temporary directory for validation
@@ -152,18 +189,36 @@ validate_token_format() {
     temp_dir=$(mktemp -d)
     trap "rm -rf $temp_dir" EXIT
     
-    if op item get "$connect_item" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
-        local token
-        token=$(jq -r '.value' "$temp_dir/op-token.json")
+    local token=""
+    
+    if [[ "$entry_info" == SEPARATE:* ]]; then
+        # Extract token item from separate entries
+        local token_item
+        token_item=$(echo "$entry_info" | cut -d: -f3)
         
-        # Basic token validation (should be a long JWT-like string)
-        if [[ ${#token} -gt 100 ]]; then
-            success "Connect token appears valid (length: ${#token})"
+        # For separate entries, get the token field
+        if op item get "$token_item" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
+            token=$(jq -r '.value' "$temp_dir/op-token.json")
         else
-            error "Connect token appears invalid or too short (length: ${#token})"
+            error "Cannot retrieve token from $token_item"
         fi
     else
-        error "Cannot retrieve token from 1Password Connect entry"
+        # Handle combined entry (legacy)
+        local connect_item
+        connect_item=$(echo "$entry_info" | cut -d: -f2)
+        
+        if op item get "$connect_item" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
+            token=$(jq -r '.value' "$temp_dir/op-token.json")
+        else
+            error "Cannot retrieve token from 1Password Connect entry"
+        fi
+    fi
+    
+    # Basic token validation (should be a long JWT-like string)
+    if [[ ${#token} -gt 100 ]]; then
+        success "Connect token appears valid (length: ${#token})"
+    else
+        error "Connect token appears invalid or too short (length: ${#token})"
     fi
 }
 
@@ -182,7 +237,7 @@ check_cluster_accessibility() {
 
 # Create 1Password Connect secrets
 create_1password_connect_secrets() {
-    local connect_item="$1"
+    local entry_info="$1"
     log "Creating 1Password Connect secrets..."
     
     # Create temporary directory for secrets
@@ -194,42 +249,77 @@ create_1password_connect_secrets() {
     kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
     success "Created/verified onepassword-connect namespace"
     
-    # Get and create 1Password Connect credentials secret
-    if op item get "$connect_item" --vault="Automation" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
-        local credentials_content
-        credentials_content=$(jq -r '.value' "$temp_dir/op-credentials.json")
+    if [[ "$entry_info" == SEPARATE:* ]]; then
+        # Handle separate entries
+        local credentials_item token_item
+        credentials_item=$(echo "$entry_info" | cut -d: -f2)
+        token_item=$(echo "$entry_info" | cut -d: -f3)
         
-        # Check if credentials are URL-encoded base64 (common case)
-        if echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
-            echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > "$temp_dir/1password-credentials.json"
-        # Check if credentials are base64 encoded (without URL encoding)
-        elif echo "$credentials_content" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
-            echo "$credentials_content" | base64 -d > "$temp_dir/1password-credentials.json"
+        # Get credentials from document
+        if op document get "$credentials_item" --vault="Automation" > "$temp_dir/1password-credentials.json" 2>/dev/null; then
+            kubectl create secret generic onepassword-connect-credentials \
+                --namespace=onepassword-connect \
+                --from-file=1password-credentials.json="$temp_dir/1password-credentials.json" \
+                --dry-run=client -o yaml | kubectl apply -f -
+            success "Created 1Password Connect credentials secret from document"
         else
-            # Assume plain JSON format
-            echo "$credentials_content" > "$temp_dir/1password-credentials.json"
+            error "Failed to retrieve 1Password Connect credentials document"
         fi
         
-        kubectl create secret generic onepassword-connect-credentials \
-            --namespace=onepassword-connect \
-            --from-file=1password-credentials.json="$temp_dir/1password-credentials.json" \
-            --dry-run=client -o yaml | kubectl apply -f -
-        success "Created 1Password Connect credentials secret"
+        # Get token from separate item
+        if op item get "$token_item" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
+            local token
+            token=$(jq -r '.value' "$temp_dir/op-token.json")
+            kubectl create secret generic onepassword-connect-token \
+                --namespace=onepassword-connect \
+                --from-literal=token="$token" \
+                --dry-run=client -o yaml | kubectl apply -f -
+            success "Created 1Password Connect token secret from separate item"
+        else
+            error "Failed to retrieve 1Password Connect token from separate item"
+        fi
     else
-        error "Failed to retrieve 1Password Connect credentials"
-    fi
-    
-    # Get and create 1Password Connect token secret
-    if op item get "$connect_item" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
-        local token
-        token=$(jq -r '.value' "$temp_dir/op-token.json")
-        kubectl create secret generic onepassword-connect-token \
-            --namespace=onepassword-connect \
-            --from-literal=token="$token" \
-            --dry-run=client -o yaml | kubectl apply -f -
-        success "Created 1Password Connect token secret"
-    else
-        error "Failed to retrieve 1Password Connect token"
+        # Handle combined entry (legacy)
+        local connect_item
+        connect_item=$(echo "$entry_info" | cut -d: -f2)
+        
+        # Get and create 1Password Connect credentials secret
+        if op item get "$connect_item" --vault="Automation" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
+            local credentials_content
+            credentials_content=$(jq -r '.value' "$temp_dir/op-credentials.json")
+            
+            # Check if credentials are URL-encoded base64 (common case)
+            if echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+                echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > "$temp_dir/1password-credentials.json"
+            # Check if credentials are base64 encoded (without URL encoding)
+            elif echo "$credentials_content" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
+                echo "$credentials_content" | base64 -d > "$temp_dir/1password-credentials.json"
+            else
+                # Assume plain JSON format
+                echo "$credentials_content" > "$temp_dir/1password-credentials.json"
+            fi
+            
+            kubectl create secret generic onepassword-connect-credentials \
+                --namespace=onepassword-connect \
+                --from-file=1password-credentials.json="$temp_dir/1password-credentials.json" \
+                --dry-run=client -o yaml | kubectl apply -f -
+            success "Created 1Password Connect credentials secret"
+        else
+            error "Failed to retrieve 1Password Connect credentials"
+        fi
+        
+        # Get and create 1Password Connect token secret
+        if op item get "$connect_item" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
+            local token
+            token=$(jq -r '.value' "$temp_dir/op-token.json")
+            kubectl create secret generic onepassword-connect-token \
+                --namespace=onepassword-connect \
+                --from-literal=token="$token" \
+                --dry-run=client -o yaml | kubectl apply -f -
+            success "Created 1Password Connect token secret"
+        else
+            error "Failed to retrieve 1Password Connect token"
+        fi
     fi
 }
 

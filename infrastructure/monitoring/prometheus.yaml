@@ -1,4 +1,4 @@
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
+apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: kube-prometheus-stack
@@ -62,6 +62,31 @@ spec:
         enabled: true
         storageClassName: longhorn
         size: 10Gi
+      
+      # Fix pod security policy violations
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      
+      # Disable the problematic init container and use fsGroup instead
+      initChownData:
+        enabled: false
         
       nodeSelector:
         kubernetes.io/os: linux

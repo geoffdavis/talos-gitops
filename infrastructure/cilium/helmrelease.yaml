@@ -5,6 +5,20 @@ metadata:
   namespace: kube-system
 spec:
   interval: 30m
+  timeout: 20m
+  install:
+    timeout: 20m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 20m
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  rollback:
+    timeout: 10m
+    cleanupOnFail: true
   chart:
     spec:
       chart: cilium

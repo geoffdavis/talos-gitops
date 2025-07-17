@@ -6,11 +6,14 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 5m0s
   path: ./infrastructure/sources
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
+  retryInterval: 2m0s
+  wait: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -19,6 +22,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 10m0s
   path: ./infrastructure/external-secrets
   prune: true
   sourceRef:
@@ -26,6 +30,8 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-sources
+  retryInterval: 2m0s
+  wait: true
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
@@ -47,6 +53,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  timeout: 10m0s
   path: ./infrastructure/onepassword-connect
   prune: true
   sourceRef:
@@ -54,6 +61,8 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-external-secrets
+  retryInterval: 2m0s
+  wait: true
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment

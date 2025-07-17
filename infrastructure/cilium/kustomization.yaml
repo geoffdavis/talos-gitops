@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   # Cilium deployed via GitOps (Flux HelmRelease)
-  - namespace.yaml
   - helmrelease.yaml
   - loadbalancer-pool.yaml
   - loadbalancer-pool-ipv6.yaml
