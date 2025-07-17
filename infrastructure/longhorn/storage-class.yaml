@@ -9,7 +9,7 @@ allowVolumeExpansion: true
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 parameters:
-  numberOfReplicas: "3"  # Matches GitOps defaultClassReplicaCount
+  numberOfReplicas: "2"  # Matches available SSD storage (1 SSD per node, 3 nodes max)
   staleReplicaTimeout: "2880"
   fromBackup: ""
   fsType: "ext4"
