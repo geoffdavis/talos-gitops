@@ -220,16 +220,38 @@ tasks:
         msg: 'All nodes must be Ready'
       - sh: ' helm version >/dev/null 2>&1'
         msg: 'Helm must be available'
+      - sh: ' kubectl get crd helmreleases.helm.toolkit.fluxcd.io >/dev/null 2>&1'
+        msg: 'Flux CRDs must be installed for HelmRelease support'
+      - sh: ' kubectl get helmrepository longhorn -n flux-system >/dev/null 2>&1'
+        msg: 'Longhorn Helm repository must be available'
     cmds:
-      - echo "Adding Longhorn Helm repository..."
-      -  helm repo add longhorn https://charts.longhorn.io
-      -  helm repo update
-      - echo "Deploying Longhorn storage..."
-      -  helm upgrade --install longhorn longhorn/longhorn -n longhorn-system --create-namespace
-      - echo "Waiting for Longhorn to be ready..."
-      - sleep 30
+      - echo "Ensuring Flux CRDs are installed for HelmRelease support..."
+      - |
+        if ! kubectl get crd helmreleases.helm.toolkit.fluxcd.io >/dev/null 2>&1; then
+          echo "Installing Flux CRDs..."
+           flux install --components-extra=image-reflector-controller,image-automation-controller --export > /tmp/flux-crds.yaml
+           kubectl apply -f /tmp/flux-crds.yaml
+          echo "Waiting for Flux controllers to be ready..."
+           kubectl wait --for=condition=ready pods -n flux-system --all --timeout=120s
+        else
+          echo "Flux CRDs already installed"
+        fi
+      - echo "Deploying Helm repository sources..."
+      -  kubectl apply -f infrastructure/sources/helm-repositories.yaml
+      - echo "Deploying Longhorn namespace..."
+      -  kubectl apply -f infrastructure/longhorn/namespace.yaml
+      - echo "Deploying Longhorn via HelmRelease (v1.9.0)..."
+      -  kubectl apply -f infrastructure/longhorn/helmrelease.yaml
+      - echo "Waiting for Longhorn HelmRelease to be ready..."
+      - sleep 60
       -  kubectl wait --for=condition=ready pods -l app=longhorn-manager -n longhorn-system --timeout=300s
-      - echo "Longhorn storage deployed successfully"
+      - echo "Deploying Longhorn storage classes..."
+      -  kubectl apply -f infrastructure/longhorn/storage-class.yaml
+      - echo "Deploying Longhorn ingress..."
+      -  kubectl apply -f infrastructure/longhorn/ingress.yaml
+      - echo "Deploying volume snapshot classes..."
+      -  kubectl apply -f infrastructure/longhorn/volume-snapshot-class.yaml
+      - echo "Longhorn storage upgraded successfully to v1.9.0 with all resources"
 
   # Comprehensive services validation
   validate:
