@@ -1,5 +1,5 @@
 # Default longhorn StorageClass is managed by Longhorn itself
-# Only custom StorageClasses are defined here
+# longhorn-ssd StorageClass now managed by GitOps with proper configuration
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -9,19 +9,18 @@ allowVolumeExpansion: true
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 parameters:
-  numberOfReplicas: "3"
+  numberOfReplicas: "3"  # Matches GitOps defaultClassReplicaCount
   staleReplicaTimeout: "2880"
   fromBackup: ""
   fsType: "ext4"
-  dataLocality: "strict-local"
-  replicaAutoBalance: "best-effort"
+  dataLocality: "best-effort"
   diskSelector: "ssd"
-  # SSD-specific optimizations
-  mkfsExt4Parameters: "-O ^64bit,^metadata_csum -F"
-  # Disable unused features for better SSD performance
-  disableRevisionCounter: "true"
-  # Enable fast replica rebuild for SSDs
+  dataEngine: "v1"
+  replicaAutoBalance: "best-effort"
   replicaReplenishmentWaitInterval: "600"
+  disableRevisionCounter: "true"
+  mkfsExt4Parameters: "-O ^64bit,^metadata_csum -F"
+  backupTargetName: "default"
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
