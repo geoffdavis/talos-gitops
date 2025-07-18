@@ -5,6 +5,7 @@ namespace: external-dns-internal-system
 
 resources:
   - namespace.yaml
+  - external-secret.yaml
   - helmrelease.yaml
 
 commonLabels:
