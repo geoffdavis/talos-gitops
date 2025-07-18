@@ -10,8 +10,9 @@ metadata:
     # Certificate management
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     
-    # External DNS configuration
-    external-dns.alpha.kubernetes.io/hostname: "flux-webhook.geoffdavis.com"
+    # External DNS configuration - Exclude from External-DNS management
+    # This domain is handled by Cloudflare tunnel
+    external-dns.alpha.kubernetes.io/exclude: "true"
     
     # Security configurations - Rate limiting
     nginx.ingress.kubernetes.io/rate-limit: "10"
