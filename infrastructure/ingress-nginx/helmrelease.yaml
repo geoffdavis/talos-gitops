@@ -38,7 +38,7 @@ spec:
           io.cilium/lb-ipam-pool: "ingress"
           external-dns.alpha.kubernetes.io/hostname: "*.homelab.local"
           external-dns.alpha.kubernetes.io/target: "172.29.51.200"
-        externalTrafficPolicy: Local
+        externalTrafficPolicy: Cluster
         
       # Enable metrics
       metrics:
