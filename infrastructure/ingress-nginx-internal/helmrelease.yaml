@@ -50,8 +50,6 @@ spec:
         annotations:
           # Use the ingress pool for L2 announcement
           io.cilium/lb-ipam-pool: "ingress"
-        labels:
-          type: LoadBalancer
         externalTrafficPolicy: Local
         ipFamilyPolicy: SingleStack
         ipFamilies:

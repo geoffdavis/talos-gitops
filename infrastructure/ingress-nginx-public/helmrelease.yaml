@@ -51,8 +51,6 @@ spec:
         annotations:
           # Mark this service for external-dns tunnel routing
           external-dns.alpha.kubernetes.io/exclude: "false"
-        labels:
-          type: ClusterIP
         ports:
           http: 80
           https: 443
