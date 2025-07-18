@@ -11,28 +11,28 @@ data:
     no-autoupdate: true
     
     ingress:
-      # Grafana - monitoring dashboard
+      # Grafana - monitoring dashboard (public access)
       - hostname: grafana.geoffdavis.com
         service: http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
         
-      # Prometheus - metrics collection
-      - hostname: prometheus.geoffdavis.com
+      # Prometheus - metrics collection (public access)
+      - hostname: prometheus.k8s.geoffdavis.com
         service: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
         
-      # Longhorn - storage management (secured with basic auth)
-      - hostname: longhorn.geoffdavis.com
+      # Longhorn - storage management (public access, secured with basic auth)
+      - hostname: longhorn.k8s.geoffdavis.com
         service: http://longhorn-frontend.longhorn-system.svc.cluster.local:80
         
-      # Kubernetes Dashboard (secured) - use HTTP since Cloudflare handles TLS
-      - hostname: k8s.geoffdavis.com
+      # Kubernetes Dashboard (public access, secured)
+      - hostname: dashboard.k8s.geoffdavis.com
         service: http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000
         
-      # AlertManager - alert management
-      - hostname: alerts.geoffdavis.com
+      # AlertManager - alert management (public access)
+      - hostname: alertmanager.k8s.geoffdavis.com
         service: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
         
-      # Hubble UI - network observability
-      - hostname: hubble.geoffdavis.com
+      # Hubble UI - network observability (public access)
+      - hostname: hubble.k8s.geoffdavis.com
         service: http://hubble-ui.cilium-system.svc.cluster.local:80
         
       # Default rule - catch all

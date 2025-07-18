@@ -21,3 +21,4 @@ task = "3.38.0"
 talhelper = "latest"
 # renovate: datasource=node-version depName=node
 node = "20.18.0"
+cloudflared = "2025.7.0"

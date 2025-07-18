@@ -12,7 +12,7 @@ metadata:
     external-dns.alpha.kubernetes.io/hostname: "longhorn.k8s.home.geoffdavis.com"
     external-dns.alpha.kubernetes.io/target: "172.29.51.200"
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx-internal
   tls:
     - hosts:
         - longhorn.k8s.home.geoffdavis.com

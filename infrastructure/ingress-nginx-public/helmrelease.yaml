@@ -1,0 +1,170 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ingress-nginx-public
+  namespace: ingress-nginx-public
+spec:
+  interval: 30m
+  timeout: 15m
+  install:
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  rollback:
+    timeout: 5m
+    cleanupOnFail: true
+  chart:
+    spec:
+      chart: ingress-nginx
+      version: "4.8.3"
+      sourceRef:
+        kind: HelmRepository
+        name: ingress-nginx
+        namespace: flux-system
+      interval: 12h
+  values:
+    controller:
+      # Public controller configuration for tunnel services
+      ingressClassResource:
+        name: nginx-public
+        enabled: true
+        default: false
+        controllerValue: "k8s.io/ingress-nginx-public"
+      
+      # Use different election ID to avoid conflicts
+      electionID: "ingress-controller-leader-public"
+      
+      # Public controller specific configuration
+      ingressClass: nginx-public
+      
+      # Service configuration - ClusterIP only (no LoadBalancer)
+      # This avoids IP conflicts and allows external-dns to create CNAME records
+      service:
+        enabled: true
+        type: ClusterIP
+        annotations:
+          # Mark this service for external-dns tunnel routing
+          external-dns.alpha.kubernetes.io/exclude: "false"
+        labels:
+          app.kubernetes.io/component: controller-public
+          type: ClusterIP
+        ports:
+          http: 80
+          https: 443
+        targetPorts:
+          http: http
+          https: https
+      
+      # Metrics configuration
+      metrics:
+        enabled: true
+        port: 10254
+        service:
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "10254"
+      
+      # Resource configuration
+      resources:
+        limits:
+          cpu: 200m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      
+      # Node selector and tolerations
+      nodeSelector:
+        kubernetes.io/os: linux
+      
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      
+      # Security context
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 82
+        fsGroup: 82
+      
+      # Additional configuration optimized for tunnel traffic
+      config:
+        # Performance tuning
+        worker-processes: "2"
+        worker-connections: "1024"
+        
+        # Security headers for public access
+        force-ssl-redirect: "true"
+        ssl-redirect: "true"
+        
+        # Additional security for public ingress
+        hide-headers: "Server,X-Powered-By"
+        server-tokens: "false"
+        
+        # Proxy settings for tunnel traffic
+        proxy-real-ip-cidr: "0.0.0.0/0"
+        use-forwarded-headers: "true"
+        compute-full-forwarded-for: "true"
+        
+        # Logging
+        log-format-escape-json: "true"
+        log-format-upstream: >
+          {"time": "$time_iso8601", "remote_addr": "$proxy_protocol_addr",
+          "x_forwarded_for": "$proxy_add_x_forwarded_for", "request_id": "$req_id",
+          "remote_user": "$remote_user", "bytes_sent": $bytes_sent, "request_time": $request_time,
+          "status": $status, "vhost": "$host", "request_proto": "$server_protocol",
+          "path": "$uri", "request_query": "$args", "request_length": $request_length,
+          "duration": $request_time,"method": "$request_method", "http_referrer": "$http_referer",
+          "http_user_agent": "$http_user_agent", "tunnel": "cloudflare"}
+      
+      # Admission webhooks
+      admissionWebhooks:
+        enabled: true
+        patch:
+          enabled: true
+          image:
+            registry: registry.k8s.io
+            image: ingress-nginx/kube-webhook-certgen
+            tag: v20231011-8b53cabe0
+            digest: sha256:a7943503b45d552785aa3b5e457f169a5661fb94d82b8a3373bcd9ebaf9aac80
+        
+    # Default backend configuration
+    defaultBackend:
+      enabled: true
+      image:
+        registry: registry.k8s.io
+        image: defaultbackend-amd64
+        tag: "1.5"
+      resources:
+        limits:
+          cpu: 10m
+          memory: 20Mi
+        requests:
+          cpu: 10m
+          memory: 20Mi
+      
+    # Service account
+    serviceAccount:
+      create: true
+      name: ingress-nginx-public
+      
+    # RBAC
+    rbac:
+      create: true
+      scope: false
+      
+    # Pod disruption budget
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
