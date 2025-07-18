@@ -1,0 +1,334 @@
+# Database backup examples and templates
+# Ready-to-use configurations for common database deployments
+---
+# PostgreSQL deployment example with backup integration
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql
+  namespace: database
+  labels:
+    app: postgresql
+    backup-tier: critical
+spec:
+  serviceName: postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        backup-tier: critical
+    spec:
+      containers:
+      - name: postgresql
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_DB
+          value: "myapp"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /var/lib/postgresql/data
+        - name: backup-scripts
+          mountPath: /backup-scripts
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: backup-scripts
+        configMap:
+          name: postgresql-backup-scripts
+          defaultMode: 0755
+  volumeClaimTemplates:
+  - metadata:
+      name: postgresql-data
+      labels:
+        app: postgresql
+        backup-tier: critical
+        backup-group: database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: longhorn
+      resources:
+        requests:
+          storage: 20Gi
+---
+# PostgreSQL backup scripts ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-backup-scripts
+  namespace: database
+data:
+  pre-backup.sh: |
+    #!/bin/bash
+    # Pre-backup hook for PostgreSQL
+    # Creates a consistent database dump before snapshot
+    set -euo pipefail
+    
+    echo "Starting PostgreSQL pre-backup at $(date)"
+    
+    # Create backup directory
+    mkdir -p /var/lib/postgresql/data/backup
+    
+    # Create database dump
+    pg_dump -U postgres -d myapp -f /var/lib/postgresql/data/backup/dump_$(date +%Y%m%d_%H%M%S).sql
+    
+    # Keep only last 3 dumps to save space
+    cd /var/lib/postgresql/data/backup
+    ls -t dump_*.sql | tail -n +4 | xargs -r rm
+    
+    echo "PostgreSQL pre-backup completed at $(date)"
+  
+  post-backup.sh: |
+    #!/bin/bash
+    # Post-backup hook for PostgreSQL
+    # Cleanup after backup completion
+    set -euo pipefail
+    
+    echo "Starting PostgreSQL post-backup cleanup at $(date)"
+    
+    # Optional: Remove backup files after successful snapshot
+    # Uncomment if you want to save space and rely on snapshots only
+    # rm -f /var/lib/postgresql/data/backup/dump_*.sql
+    
+    echo "PostgreSQL post-backup cleanup completed at $(date)"
+---
+# MySQL/MariaDB deployment example
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+  namespace: database
+  labels:
+    app: mariadb
+    backup-tier: critical
+spec:
+  serviceName: mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+        backup-tier: critical
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:10.11
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mariadb-secret
+              key: root-password
+        - name: MYSQL_DATABASE
+          value: "myapp"
+        - name: MYSQL_USER
+          value: "appuser"
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mariadb-secret
+              key: user-password
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mariadb-data
+          mountPath: /var/lib/mysql
+        - name: backup-scripts
+          mountPath: /backup-scripts
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: backup-scripts
+        configMap:
+          name: mariadb-backup-scripts
+          defaultMode: 0755
+  volumeClaimTemplates:
+  - metadata:
+      name: mariadb-data
+      labels:
+        app: mariadb
+        backup-tier: critical
+        backup-group: database
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: longhorn
+      resources:
+        requests:
+          storage: 20Gi
+---
+# MariaDB backup scripts ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-backup-scripts
+  namespace: database
+data:
+  pre-backup.sh: |
+    #!/bin/bash
+    # Pre-backup hook for MariaDB
+    set -euo pipefail
+    
+    echo "Starting MariaDB pre-backup at $(date)"
+    
+    # Create backup directory
+    mkdir -p /var/lib/mysql/backup
+    
+    # Create database dump
+    mysqldump -u root -p${MYSQL_ROOT_PASSWORD} --all-databases --single-transaction --routines --triggers > /var/lib/mysql/backup/dump_$(date +%Y%m%d_%H%M%S).sql
+    
+    # Keep only last 3 dumps
+    cd /var/lib/mysql/backup
+    ls -t dump_*.sql | tail -n +4 | xargs -r rm
+    
+    echo "MariaDB pre-backup completed at $(date)"
+  
+  post-backup.sh: |
+    #!/bin/bash
+    # Post-backup hook for MariaDB
+    set -euo pipefail
+    
+    echo "Starting MariaDB post-backup cleanup at $(date)"
+    echo "MariaDB post-backup cleanup completed at $(date)"
+---
+# Application-consistent backup CronJob for databases
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: database-consistent-backup
+  namespace: database
+spec:
+  schedule: "0 1 * * *"  # Daily at 1 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: database-backup
+          containers:
+          - name: database-backup
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              
+              echo "Starting application-consistent database backup at $(date)"
+              
+              # Function to create snapshot with pre/post hooks
+              create_consistent_snapshot() {
+                  local app=$1
+                  local namespace=$2
+                  local pvc_name=$3
+                  
+                  echo "Creating consistent snapshot for $app"
+                  
+                  # Execute pre-backup hook
+                  kubectl exec -n $namespace deployment/$app -- /backup-scripts/pre-backup.sh || true
+                  
+                  # Wait a moment for dump to complete
+                  sleep 30
+                  
+                  # Create snapshot
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  cat <<EOF | kubectl apply -f -
+              apiVersion: snapshot.storage.k8s.io/v1
+              kind: VolumeSnapshot
+              metadata:
+                name: ${app}-consistent-${TIMESTAMP}
+                namespace: ${namespace}
+                labels:
+                  app: ${app}
+                  backup-tier: critical
+                  backup-type: consistent
+              spec:
+                source:
+                  persistentVolumeClaimName: ${pvc_name}
+                volumeSnapshotClassName: longhorn-snapshot-vsc
+              EOF
+                  
+                  # Execute post-backup hook
+                  kubectl exec -n $namespace deployment/$app -- /backup-scripts/post-backup.sh || true
+                  
+                  echo "Consistent snapshot created for $app: ${app}-consistent-${TIMESTAMP}"
+              }
+              
+              # Create consistent snapshots for all databases
+              if kubectl get deployment postgresql -n database >/dev/null 2>&1; then
+                  create_consistent_snapshot "postgresql" "database" "postgresql-data-postgresql-0"
+              fi
+              
+              if kubectl get deployment mariadb -n database >/dev/null 2>&1; then
+                  create_consistent_snapshot "mariadb" "database" "mariadb-data-mariadb-0"
+              fi
+              
+              echo "Application-consistent database backup completed at $(date)"
+          restartPolicy: OnFailure
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+---
+# ServiceAccount for database backups
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: database-backup
+  namespace: database
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: database-backup
+  namespace: database
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list"]
+- apiGroups: ["snapshot.storage.k8s.io"]
+  resources: ["volumesnapshots"]
+  verbs: ["create", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: database-backup
+  namespace: database
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: database-backup
+subjects:
+- kind: ServiceAccount
+  name: database-backup
+  namespace: database

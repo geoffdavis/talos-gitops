@@ -1,0 +1,189 @@
+# Backup monitoring and verification configurations
+# Integrates with existing Prometheus/Grafana stack
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-verification-script
+  namespace: longhorn-system
+data:
+  verify-backups.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    
+    # Backup verification script for Longhorn
+    # Checks backup health and reports metrics to Prometheus
+    
+    NAMESPACE=${NAMESPACE:-"longhorn-system"}
+    PROMETHEUS_GATEWAY=${PROMETHEUS_GATEWAY:-"http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"}
+    
+    echo "Starting backup verification at $(date)"
+    
+    # Function to push metrics to Prometheus
+    push_metric() {
+        local metric_name=$1
+        local metric_value=$2
+        local labels=$3
+        
+        cat <<EOF | curl -X POST --data-binary @- "${PROMETHEUS_GATEWAY}/metrics/job/backup-verification/instance/$(hostname)"
+    # HELP ${metric_name} Backup verification metric
+    # TYPE ${metric_name} gauge
+    ${metric_name}${labels} ${metric_value}
+    EOF
+    }
+    
+    # Check Longhorn backup target health
+    echo "Checking backup target health..."
+    BACKUP_TARGET_HEALTHY=0
+    if kubectl get backuptarget default -n ${NAMESPACE} -o jsonpath='{.status.available}' | grep -q "true"; then
+        BACKUP_TARGET_HEALTHY=1
+        echo "✓ Backup target is healthy"
+    else
+        echo "✗ Backup target is not healthy"
+    fi
+    push_metric "longhorn_backup_target_healthy" "${BACKUP_TARGET_HEALTHY}" "{target=\"default\"}"
+    
+    # Check recent backup success
+    echo "Checking recent backup success..."
+    RECENT_BACKUP_COUNT=$(kubectl get backups -n ${NAMESPACE} --sort-by=.metadata.creationTimestamp -o jsonpath='{range .items[*]}{.metadata.creationTimestamp}{" "}{.status.state}{"\n"}{end}' | awk -v date="$(date -d '24 hours ago' -u +%Y-%m-%dT%H:%M:%SZ)" '$1 > date && $2 == "Completed"' | wc -l)
+    echo "Recent successful backups (24h): ${RECENT_BACKUP_COUNT}"
+    push_metric "longhorn_recent_backup_success_count" "${RECENT_BACKUP_COUNT}" "{period=\"24h\"}"
+    
+    # Check snapshot count by tier
+    for tier in critical important; do
+        SNAPSHOT_COUNT=$(kubectl get volumesnapshots --all-namespaces -l backup-tier=${tier} --field-selector=status.readyToUse=true -o name | wc -l)
+        echo "Ready snapshots for ${tier} tier: ${SNAPSHOT_COUNT}"
+        push_metric "longhorn_snapshots_ready_count" "${SNAPSHOT_COUNT}" "{tier=\"${tier}\"}"
+    done
+    
+    # Check storage usage
+    echo "Checking storage usage..."
+    STORAGE_USAGE=$(kubectl get nodes -o jsonpath='{range .items[*]}{.status.allocatable.storage}{"\n"}{end}' | head -1 | numfmt --from=iec)
+    if [ -n "${STORAGE_USAGE}" ]; then
+        push_metric "longhorn_storage_available_bytes" "${STORAGE_USAGE}" "{}"
+    fi
+    
+    echo "Backup verification completed at $(date)"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-verification
+  namespace: longhorn-system
+spec:
+  schedule: "0 8 * * *"  # Daily at 8 AM (after backups complete)
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: backup-verifier
+          containers:
+          - name: backup-verifier
+            image: bitnami/kubectl:latest
+            command: ["/bin/bash", "/scripts/verify-backups.sh"]
+            env:
+            - name: NAMESPACE
+              value: "longhorn-system"
+            volumeMounts:
+            - name: verification-script
+              mountPath: /scripts
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "50m"
+              limits:
+                memory: "128Mi"
+                cpu: "100m"
+          volumes:
+          - name: verification-script
+            configMap:
+              name: backup-verification-script
+              defaultMode: 0755
+          restartPolicy: OnFailure
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+---
+# ServiceAccount for backup verification
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-verifier
+  namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: backup-verifier
+rules:
+- apiGroups: ["longhorn.io"]
+  resources: ["backups", "backuptargets", "volumes"]
+  verbs: ["get", "list"]
+- apiGroups: ["snapshot.storage.k8s.io"]
+  resources: ["volumesnapshots"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["nodes", "persistentvolumes", "persistentvolumeclaims"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backup-verifier
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: backup-verifier
+subjects:
+- kind: ServiceAccount
+  name: backup-verifier
+  namespace: longhorn-system
+---
+# Prometheus monitoring rules for backup alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: longhorn-backup-alerts
+  namespace: longhorn-system
+  labels:
+    app: longhorn
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: longhorn.backup.rules
+    rules:
+    - alert: LonghornBackupTargetDown
+      expr: longhorn_backup_target_healthy == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Longhorn backup target is not healthy"
+        description: "The Longhorn backup target {{ $labels.target }} has been unhealthy for more than 5 minutes."
+    
+    - alert: LonghornNoRecentBackups
+      expr: longhorn_recent_backup_success_count < 1
+      for: 25h  # Alert if no backups in 25 hours (allowing for schedule variance)
+      labels:
+        severity: warning
+      annotations:
+        summary: "No recent successful Longhorn backups"
+        description: "No successful backups have been completed in the last 24 hours. Current count: {{ $value }}"
+    
+    - alert: LonghornSnapshotCreationFailed
+      expr: increase(longhorn_snapshots_ready_count[1h]) == 0 and hour() == 2  # Check at 2 AM when snapshots should be created
+      for: 30m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Longhorn snapshot creation may have failed"
+        description: "No new snapshots detected during scheduled backup window for tier {{ $labels.tier }}"
+    
+    - alert: LonghornStorageLow
+      expr: longhorn_storage_available_bytes < 10737418240  # Less than 10GB available
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Longhorn storage space is low"
+        description: "Available storage is below 10GB: {{ $value | humanize1024 }}B remaining"

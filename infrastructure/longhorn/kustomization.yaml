@@ -9,3 +9,8 @@ resources:
   - ingress.yaml
   - external-secret-s3.yaml
   - backup-target-patch.yaml
+  - recurring-jobs.yaml
+  - volume-snapshots-critical.yaml
+  - backup-monitoring.yaml
+  - backup-restore-procedures.yaml
+  - database-backup-examples.yaml
