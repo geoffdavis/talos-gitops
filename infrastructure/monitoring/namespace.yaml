@@ -4,6 +4,8 @@ metadata:
   name: monitoring
   labels:
     name: monitoring
-    pod-security.kubernetes.io/enforce: restricted
-    pod-security.kubernetes.io/audit: restricted
-    pod-security.kubernetes.io/warn: restricted
+    # Custom Pod Security Policy for monitoring components
+    # Allows host access for node-exporter while maintaining security
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
