@@ -59,73 +59,8 @@ tasks:
       - mise exec -- task flux:bootstrap
       - mise exec -- task apps:deploy-core
 
-  # Phased Bootstrap Tasks - Native Taskfile Implementation
-  bootstrap:phased:
-    desc: Execute complete phased bootstrap using native Taskfile dependencies
-    cmds:
-      - task: :bootstrap:phased
-
-  bootstrap:status:
-    desc: Show comprehensive bootstrap status
-    cmds:
-      - task: :bootstrap:status
-
-  bootstrap:reset:
-    desc: Reset bootstrap state (start over)
-    cmds:
-      - task: :bootstrap:reset
-
-  bootstrap:resume:
-    desc: Resume bootstrap from current state
-    cmds:
-      - task: :bootstrap:resume
-
-  bootstrap:validate:
-    desc: Validate all completed phases
-    cmds:
-      - task: :bootstrap:validate
-
-  bootstrap:cleanup:
-    desc: Clean up temporary files and failed resources
-    cmds:
-      - task: :bootstrap:cleanup
-
-  # Individual Phase Tasks (Native Taskfile Implementation)
-  bootstrap:phase-1:
-    desc: Run Phase 1 - Environment Validation
-    cmds:
-      - task: :bootstrap:phase-1
-
-  bootstrap:phase-2:
-    desc: Run Phase 2 - Talos Cluster Initialization
-    cmds:
-      - task: :bootstrap:phase-2
-
-  bootstrap:phase-3:
-    desc: Run Phase 3 - CNI Deployment (Cilium)
-    cmds:
-      - task: :bootstrap:phase-3
-
-  # Phase Validation Tasks (Native Taskfile Implementation)
-  validate:phase-1:
-    desc: Validate Phase 1 - Environment
-    cmds:
-      - task: validation:phase-1
-
-  validate:phase-2:
-    desc: Validate Phase 2 - Cluster
-    cmds:
-      - task: validation:phase-2
-
-  validate:phase-3:
-    desc: Validate Phase 3 - Networking
-    cmds:
-      - task: validation:phase-3
-
-  validate:all-phases:
-    desc: Validate all completed phases
-    cmds:
-      - task: validation:all-phases
+  # Bootstrap tasks moved to taskfiles/bootstrap.yml to avoid duplication
+  # Phase validation tasks moved to taskfiles/validation.yml to avoid duplication
 
   # Talos tasks
   talos:generate-schematic:
@@ -191,115 +126,9 @@ tasks:
         }' | yq -P > talos/talsecret.yaml
       - echo "Secrets restored from 1Password"
 
-  talos:generate-config:
-    desc: Generate Talos configuration using talhelper with 1Password integration
-    preconditions:
-      - sh: 'mise exec -- talhelper --version'
-        msg: 'talhelper is required and managed by mise'
-      - sh: '[ -n "${OP_ACCOUNT:-}" ]'
-        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
-    cmds:
-      - echo "Generating Talos configuration with talhelper and 1Password integration..."
-      - mkdir -p talos/generated
-      - |
-        # Check for existing secrets in multiple locations
-        # First check for "talos - home-ops" (legacy entry)
-        if op --account {{.OP_ACCOUNT}} item get "talos - {{.CLUSTER_NAME}}" --vault="Automation" &> /dev/null; then
-          echo "Found legacy secrets entry 'talos - {{.CLUSTER_NAME}}', restoring..."
-          mise exec -- task talos:restore-secrets
-        # Then check for "Talos Secrets - home-ops" (new format)
-        elif op item get "Talos Secrets - {{.CLUSTER_NAME}}" &> /dev/null; then
-          echo "Retrieving existing secrets from 1Password..."
-          op item get "Talos Secrets - {{.CLUSTER_NAME}}" --fields label=talsecret --format json | jq -r '.value' > talos/talsecret.yaml
-          echo "Using existing secrets from 1Password"
-        elif [[ -f talos/talsecret.yaml ]]; then
-          echo "Using existing local secrets file..."
-        else
-          echo "Generating new Talos secrets..."
-          mise exec -- talhelper gensecret > talos/talsecret.yaml
-          
-          # Store new secrets in 1Password
-          echo "Storing new secrets in 1Password..."
-          if ! op item get "Talos Secrets - {{.CLUSTER_NAME}}" &> /dev/null; then
-            op item create \
-              --category="Secure Note" \
-              --title="Talos Secrets - {{.CLUSTER_NAME}}" \
-              --vault="Automation" \
-              "talsecret[password]=$(cat talos/talsecret.yaml)"
-          else
-            op item edit "Talos Secrets - {{.CLUSTER_NAME}}" \
-              "talsecret[password]=$(cat talos/talsecret.yaml)"
-          fi
-          echo "Secrets stored in 1Password"
-        fi
-      - |
-        # Generate configuration files directly in talos/generated/
-        echo "Generating Talos configuration files..."
-        if mise exec -- talhelper genconfig --secret-file talos/talsecret.yaml --out-dir talos/generated; then
-          echo "✓ Configuration generated successfully"
-        else
-          echo "⚠ Configuration generation failed, cleaning up and retrying..."
-          rm -f talos/generated/*.yaml
-          mise exec -- talhelper genconfig --secret-file talos/talsecret.yaml --out-dir talos/generated
-          echo "✓ Configuration generated successfully on retry"
-        fi
-      - echo "Generated Talos configuration with talhelper"
-      - echo "Configuration files created in talos/generated/"
+  # talos:generate-config task moved to taskfiles/talos.yml to avoid duplication
 
-  talos:apply-config:
-    desc: Apply Talos configuration to nodes (includes LLDPD configuration)
-    deps: [talos:generate-config]
-    env:
-      TALOSCONFIG: talos/generated/talosconfig
-    cmds:
-      - echo "Applying Talos configuration with integrated LLDPD to all control plane nodes..."
-      - echo "NOTE - Certificate errors are expected for nodes in maintenance mode - will retry with insecure mode"
-      - |
-        echo "Applying configuration to mini01 ({{.NODE_1_IP}})..."
-        if mise exec -- talosctl apply-config --nodes {{.NODE_1_IP}} --file talos/generated/home-ops-mini01.yaml 2>/dev/null; then
-          echo "✓ mini01 configuration applied successfully"
-        else
-          echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_1_IP}} --file talos/generated/home-ops-mini01.yaml; then
-            echo "✓ mini01 configuration applied successfully (insecure mode - normal for maintenance)"
-          else
-            echo "✗ Failed to apply configuration to mini01"
-            exit 1
-          fi
-        fi
-      - |
-        echo "Applying configuration to mini02 ({{.NODE_2_IP}})..."
-        if mise exec -- talosctl apply-config --nodes {{.NODE_2_IP}} --file talos/generated/home-ops-mini02.yaml 2>/dev/null; then
-          echo "✓ mini02 configuration applied successfully"
-        else
-          echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_2_IP}} --file talos/generated/home-ops-mini02.yaml; then
-            echo "✓ mini02 configuration applied successfully (insecure mode - normal for maintenance)"
-          else
-            echo "✗ Failed to apply configuration to mini02"
-            exit 1
-          fi
-        fi
-      - |
-        echo "Applying configuration to mini03 ({{.NODE_3_IP}})..."
-        if mise exec -- talosctl apply-config --nodes {{.NODE_3_IP}} --file talos/generated/home-ops-mini03.yaml 2>/dev/null; then
-          echo "✓ mini03 configuration applied successfully"
-        else
-          echo "⚠ Certificate error expected for maintenance mode - retrying with insecure mode..."
-          if mise exec -- talosctl apply-config --insecure --nodes {{.NODE_3_IP}} --file talos/generated/home-ops-mini03.yaml; then
-            echo "✓ mini03 configuration applied successfully (insecure mode - normal for maintenance)"
-          else
-            echo "✗ Failed to apply configuration to mini03 at {{.NODE_3_IP}}"
-            echo "Checking if node is reachable..."
-            if mise exec -- talosctl version --nodes {{.NODE_3_IP}} 2>/dev/null; then
-              echo "Node is reachable but configuration failed"
-            else
-              echo "Node is not reachable - check network connectivity"
-            fi
-            exit 1
-          fi
-        fi
-      - echo "✓ Configuration successfully applied to all nodes"
+  # talos:apply-config task moved to taskfiles/talos.yml to avoid duplication
 
   talos:apply-config-only:
     desc: Apply Talos configuration to nodes (without regenerating)
@@ -412,15 +241,7 @@ tasks:
       - echo "Checking extensions on {{.NODE_3_IP}}..."
       - mise exec -- talosctl get extensions --nodes {{.NODE_3_IP}}
 
-  talos:recover-kubeconfig:
-    desc: Recover kubeconfig after cluster restart or certificate issues
-    env:
-      TALOSCONFIG: talos/generated/talosconfig
-    cmds:
-      - echo "Recovering kubeconfig from cluster..."
-      - mise exec -- talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
-      - echo "Testing connection..."
-      - mise exec -- kubectl get nodes || echo "If connection fails, check if nodes are powered on and reachable"
+  # talos:recover-kubeconfig task moved to taskfiles/talos.yml to avoid duplication
 
   talos:fix-cilium:
     desc: Fix Cilium CNI after cluster issues (for Talos without kube-proxy)

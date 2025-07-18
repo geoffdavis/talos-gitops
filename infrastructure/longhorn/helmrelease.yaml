@@ -88,19 +88,9 @@ spec:
       replicaFileSyncHttpClientTimeout: 30
       logLevel: "Info"
       
-    # Ingress configuration
+    # Ingress configuration - disabled in favor of separate ingress resource
     ingress:
-      enabled: true
-      ingressClassName: "nginx"
-      host: "longhorn.homelab.local"
-      tls: true
-      tlsSecret: "longhorn-tls"
-      annotations:
-        cert-manager.io/cluster-issuer: "letsencrypt-prod"
-        nginx.ingress.kubernetes.io/auth-type: basic
-        nginx.ingress.kubernetes.io/auth-secret: longhorn-auth
-        nginx.ingress.kubernetes.io/auth-realm: "Longhorn Authentication Required"
-        nginx.ingress.kubernetes.io/proxy-body-size: "10000m"
+      enabled: false
         
     # Service configuration
     service:

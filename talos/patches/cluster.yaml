@@ -6,10 +6,11 @@ machine:
       - interface: eth0
         dhcp: true
         dhcpOptions:
-          ipv6: true
+          ipv4: true
+          ipv6: false  # Disable DHCPv6 to prevent operator failures
         vip:
           ip: 172.29.51.10
-        # Enable IPv6 Router Advertisement
+        # Enable IPv6 Router Advertisement for SLAAC
         routes:
           - network: "::/0"
             gateway: "fe80::1"

@@ -114,7 +114,8 @@ controlPlane:
               dhcp: true
               dhcpOptions:
                 routeMetric: 1024
-                ipv6: true
+                ipv4: true
+                ipv6: false  # Disable DHCPv6 to prevent operator failures
               vip:
                 ip: 172.29.51.10
 

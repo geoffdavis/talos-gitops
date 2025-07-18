@@ -15,6 +15,9 @@ machine:
     interfaces:
       - interface: eth0
         dhcp: true
+        dhcpOptions:
+          ipv4: true
+          ipv6: false  # Disable DHCPv6 to prevent operator failures
   kubelet:
     extraArgs:
       feature-gates: GracefulNodeShutdown=true

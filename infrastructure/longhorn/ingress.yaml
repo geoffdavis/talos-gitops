@@ -36,8 +36,8 @@ metadata:
   namespace: longhorn-system
 type: Opaque
 data:
-  # Generated via: htpasswd -nb admin <password> | base64
-  # This will be populated by External Secrets from 1Password
+  # Generated via: htpasswd -nb admin <password>
+  # This will be populated by External Secrets from 1Password (stored as plain text)
   auth: ""
 ---
 apiVersion: external-secrets.io/v1
