@@ -4,7 +4,6 @@ metadata:
   name: ingress-nginx-public
   labels:
     app.kubernetes.io/name: ingress-nginx-public
-    app.kubernetes.io/component: ingress-controller
     app.kubernetes.io/part-of: ingress-nginx
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/audit: baseline
