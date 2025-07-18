@@ -1,8 +1,8 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: external-dns
-  namespace: external-dns-system
+  name: external-dns-internal
+  namespace: external-dns-internal-system
 spec:
   interval: 30m
   timeout: 10m
@@ -29,17 +29,16 @@ spec:
         namespace: flux-system
       interval: 12h
   values:
-    # Configure multiple providers
-    provider: cloudflare
+    # Configure webhook provider for UniFi
+    provider: webhook
     
-    # Cloudflare configuration
-    cloudflare:
-      apiToken: ""
-      secretName: cloudflare-api-token
+    # Webhook configuration
+    webhook:
+      url: "http://external-dns-unifi-webhook.external-dns-unifi-system.svc.cluster.local:8888"
       
-    # Domain configuration - only manage Cloudflare tunnel domains
+    # Domain configuration - only manage internal domains
     domainFilters:
-      - geoffdavis.com
+      - k8s.home.geoffdavis.com
       
     # Zone ID filters (optional)
     zoneIdFilters: []
@@ -49,8 +48,8 @@ spec:
     
     # Registry configuration
     registry: txt
-    txtOwnerId: "home-ops"
-    txtPrefix: "external-dns-"
+    txtOwnerId: "home-ops-internal"
+    txtPrefix: "external-dns-internal-"
     
     # Deployment configuration
     replicas: 1
@@ -98,7 +97,7 @@ spec:
     # ServiceAccount configuration
     serviceAccount:
       create: true
-      name: external-dns
+      name: external-dns-internal
       
     # RBAC configuration
     rbac:
@@ -122,23 +121,14 @@ spec:
       - ingress
       - crd
       
-    # Annotation filters
-    annotationFilter: "external-dns.alpha.kubernetes.io/hostname"
+    # Annotation filters - use different annotation for internal
+    annotationFilter: "external-dns-internal.alpha.kubernetes.io/hostname"
     
     # Extra arguments
     extraArgs:
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      - --cloudflare-dns-records-per-page=5000
       
-    # Environment variables
-    env:
-      - name: CF_API_TOKEN
-        valueFrom:
-          secretKeyRef:
-            name: cloudflare-api-token
-            key: api-token
-            
     # Probes configuration
     livenessProbe:
       enabled: true
@@ -176,12 +166,12 @@ spec:
       
     # Pod labels
     podLabels:
-      app.kubernetes.io/component: dns-controller
+      app.kubernetes.io/component: dns-controller-internal
       
     # Configure monitoring
     serviceMonitor:
       enabled: true
-      namespace: external-dns-system
+      namespace: external-dns-internal-system
       interval: 30s
       scrapeTimeout: 10s
       
