@@ -13,7 +13,7 @@ data:
     ingress:
       # Flux webhook endpoint
       - hostname: flux-webhook.geoffdavis.com
-        service: https://ingress-nginx-public-controller.ingress-nginx-public.svc.cluster.local:443
+        service: http://ingress-nginx-public-controller.ingress-nginx-public.svc.cluster.local:80
         originRequest:
           noTLSVerify: false
           connectTimeout: 30s

@@ -1,4 +1,4 @@
-apiVersion: networking.k8s.io/v1
+rapiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: flux-webhook
@@ -14,6 +14,7 @@ metadata:
     # External-DNS will automatically create CNAME record pointing to Cloudflare tunnel
     external-dns.alpha.kubernetes.io/hostname: "flux-webhook.geoffdavis.com"
     external-dns.alpha.kubernetes.io/target: "16c18922-4cba-49e5-b463-d41dde8f8f2d.cfargotunnel.com"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
     
     # Security configurations - Rate limiting
     nginx.ingress.kubernetes.io/rate-limit: "10"
