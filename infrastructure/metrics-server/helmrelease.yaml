@@ -23,9 +23,9 @@ spec:
     timeout: 10m
     crds: CreateReplace
   values:
-    defaultArgs:
+    args:
       - --cert-dir=/tmp
-      - --secure-port=4443
+      - --secure-port=10250
       - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
       - --kubelet-use-node-status-port
       - --kubelet-insecure-tls
