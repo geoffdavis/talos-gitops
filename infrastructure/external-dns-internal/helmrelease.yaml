@@ -30,16 +30,14 @@ spec:
       interval: 12h
   values:
     # Configure webhook provider for UniFi
-    provider:
-      name: webhook
-      webhook:
-        url: "http://external-dns-unifi-webhook.external-dns-unifi-system.svc.cluster.local:8888"
-        serviceMonitor:
-          enabled: true
-          namespace: external-dns-internal-system
-          interval: 30s
-          scrapeTimeout: 10s
-      
+    provider: webhook
+    
+    # Image configuration required for webhook provider
+    image:
+      repository: registry.k8s.io/external-dns/external-dns
+      tag: v0.14.2
+      pullPolicy: IfNotPresent
+    
     # Domain configuration - only manage internal domains
     domainFilters:
       - k8s.home.geoffdavis.com
@@ -130,6 +128,7 @@ spec:
     
     # Extra arguments
     extraArgs:
+      - --webhook-provider-url=http://external-dns-unifi-webhook.external-dns-unifi-system.svc.cluster.local:8888
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
       
