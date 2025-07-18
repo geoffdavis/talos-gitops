@@ -13,4 +13,4 @@ resources:
   - volume-snapshots-critical.yaml
   - backup-monitoring.yaml
   - backup-restore-procedures.yaml
-  - database-backup-examples.yaml
+  # - database-backup-examples.yaml  # Commented out until database namespace is created
