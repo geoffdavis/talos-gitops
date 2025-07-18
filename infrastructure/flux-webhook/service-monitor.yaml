@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-webhook-receiver
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: webhook-receiver
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchLabels:
+      app: notification-controller
+  endpoints:
+    - port: http-prom
+      interval: 30s
+      path: /metrics
+      scrapeTimeout: 10s

@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: flux-webhook
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+resources:
+  - external-secret.yaml
+  - receiver.yaml
+  - service-monitor.yaml
+  - prometheus-rule.yaml
+  - ingress.yaml
+
+commonLabels:
+  app.kubernetes.io/name: flux-webhook
+  app.kubernetes.io/part-of: flux-system
+
+namespace: flux-system

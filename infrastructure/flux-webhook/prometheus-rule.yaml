@@ -1,0 +1,69 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flux-webhook-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: webhook-receiver
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: flux-webhook.rules
+      interval: 30s
+      rules:
+        # Webhook receiver availability
+        - alert: FluxWebhookReceiverDown
+          expr: up{job="flux-system-notification-controller"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: flux-webhook
+          annotations:
+            summary: "Flux webhook receiver is down"
+            description: "Flux webhook receiver has been down for more than 2 minutes."
+            
+        # Webhook authentication failures
+        - alert: FluxWebhookAuthFailures
+          expr: increase(gotk_webhook_receiver_requests_total{status_code!~"2.."}[5m]) > 5
+          for: 1m
+          labels:
+            severity: warning
+            component: flux-webhook
+          annotations:
+            summary: "High webhook authentication failures"
+            description: "More than 5 webhook authentication failures in the last 5 minutes."
+            
+        # Webhook processing errors
+        - alert: FluxWebhookProcessingErrors
+          expr: increase(gotk_webhook_receiver_errors_total[5m]) > 3
+          for: 1m
+          labels:
+            severity: warning
+            component: flux-webhook
+          annotations:
+            summary: "Webhook processing errors detected"
+            description: "More than 3 webhook processing errors in the last 5 minutes."
+            
+        # High webhook latency
+        - alert: FluxWebhookHighLatency
+          expr: histogram_quantile(0.95, rate(gotk_webhook_receiver_duration_seconds_bucket[5m])) > 5
+          for: 2m
+          labels:
+            severity: warning
+            component: flux-webhook
+          annotations:
+            summary: "High webhook processing latency"
+            description: "95th percentile webhook processing latency is above 5 seconds."
+            
+        # Ingress availability
+        - alert: FluxWebhookIngressDown
+          expr: nginx_ingress_controller_requests{ingress="flux-webhook"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: flux-webhook
+          annotations:
+            summary: "Flux webhook ingress not receiving traffic"
+            description: "Flux webhook ingress has not received traffic for 5 minutes."

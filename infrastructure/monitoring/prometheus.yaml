@@ -33,6 +33,11 @@ spec:
       prometheusSpec:
         storageSpec:
           volumeClaimTemplate:
+            metadata:
+              labels:
+                backup-tier: "critical"
+                backup-group: "monitoring"
+                app: "prometheus"
             spec:
               storageClassName: longhorn
               accessModes: ["ReadWriteOnce"]
@@ -62,6 +67,10 @@ spec:
         enabled: true
         storageClassName: longhorn
         size: 10Gi
+        annotations:
+          backup-tier: "critical"
+          backup-group: "monitoring"
+          app: "grafana"
       
       # Fix pod security policy violations
       securityContext:

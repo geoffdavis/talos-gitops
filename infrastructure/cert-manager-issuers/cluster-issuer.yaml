@@ -19,6 +19,8 @@ spec:
           dnsZones:
             - "k8s.home.geoffdavis.com"
             - "*.k8s.home.geoffdavis.com"
+            - "geoffdavis.com"
+            - "*.geoffdavis.com"
       - http01:
           ingress:
             class: nginx
@@ -55,6 +57,8 @@ spec:
           dnsZones:
             - "k8s.home.geoffdavis.com"
             - "*.k8s.home.geoffdavis.com"
+            - "geoffdavis.com"
+            - "*.geoffdavis.com"
       - http01:
           ingress:
             class: nginx

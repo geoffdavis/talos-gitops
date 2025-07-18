@@ -1,0 +1,22 @@
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Receiver
+metadata:
+  name: github-webhook
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/name: flux-system
+    app.kubernetes.io/component: webhook-receiver
+spec:
+  type: github
+  events:
+    - "ping"
+    - "push"
+    - "pull_request"
+  resources:
+    - apiVersion: source.toolkit.fluxcd.io/v1
+      kind: GitRepository
+      name: flux-system
+      namespace: flux-system
+  secretRef:
+    name: github-webhook-secret
+  suspend: false

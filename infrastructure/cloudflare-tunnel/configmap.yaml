@@ -11,5 +11,15 @@ data:
     no-autoupdate: true
     
     ingress:
+      # Flux webhook endpoint
+      - hostname: flux-webhook.geoffdavis.com
+        service: https://ingress-nginx-public.ingress-nginx-public.svc.cluster.local:443
+        originRequest:
+          noTLSVerify: false
+          connectTimeout: 30s
+          tlsTimeout: 10s
+          keepAliveTimeout: 90s
+          httpHostHeader: flux-webhook.geoffdavis.com
+      
       # Default rule - catch all
       - service: http_status:404
