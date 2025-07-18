@@ -30,22 +30,23 @@ spec:
   volumeSnapshotClassName: longhorn-snapshot-vsc
 ---
 # Example database snapshot template (for future PostgreSQL deployment)
-apiVersion: snapshot.storage.k8s.io/v1
-kind: VolumeSnapshot
-metadata:
-  name: postgresql-manual-snapshot
-  namespace: database
-  labels:
-    app: postgresql
-    backup-tier: critical
-    backup-type: manual
-  annotations:
-    backup.longhorn.io/pre-hook: "pg_dump -U postgres -d mydb > /backup/dump.sql"
-    backup.longhorn.io/post-hook: "rm -f /backup/dump.sql"
-spec:
-  source:
-    persistentVolumeClaimName: postgresql-data
-  volumeSnapshotClassName: longhorn-snapshot-vsc
+# Commented out until database namespace is created
+# apiVersion: snapshot.storage.k8s.io/v1
+# kind: VolumeSnapshot
+# metadata:
+#   name: postgresql-manual-snapshot
+#   namespace: database
+#   labels:
+#     app: postgresql
+#     backup-tier: critical
+#     backup-type: manual
+#   annotations:
+#     backup.longhorn.io/pre-hook: "pg_dump -U postgres -d mydb > /backup/dump.sql"
+#     backup.longhorn.io/post-hook: "rm -f /backup/dump.sql"
+# spec:
+#   source:
+#     persistentVolumeClaimName: postgresql-data
+#   volumeSnapshotClassName: longhorn-snapshot-vsc
 ---
 # Scheduled VolumeSnapshot using CronJob for automation
 apiVersion: batch/v1
