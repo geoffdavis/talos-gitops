@@ -148,8 +148,8 @@ spec:
       - ingress
       - crd
       
-    # Annotation filters - use different annotation for internal
-    annotationFilter: "external-dns-internal.alpha.kubernetes.io/hostname"
+    # Annotation filters - process all ingresses (domain filtering handles scope)
+    # annotationFilter: ""  # Process all ingresses matching domainFilters
     
     # Extra arguments
     extraArgs:
