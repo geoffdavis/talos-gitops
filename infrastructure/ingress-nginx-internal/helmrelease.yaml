@@ -50,6 +50,9 @@ spec:
         annotations:
           # Use the ingress pool for L2 announcement
           io.cilium/lb-ipam-pool: "ingress"
+        labels:
+          # Required label for Cilium LoadBalancer IP pool selector
+          io.cilium/lb-ipam-pool: "ingress"
         externalTrafficPolicy: Local
         ipFamilyPolicy: SingleStack
         ipFamilies:
