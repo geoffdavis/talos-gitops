@@ -10,9 +10,10 @@ metadata:
     # Certificate management
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     
-    # External DNS configuration - Exclude from External-DNS management
-    # This domain is handled by Cloudflare tunnel
-    external-dns.alpha.kubernetes.io/exclude: "true"
+    # External DNS configuration - Let External-DNS create CNAME to tunnel
+    # External-DNS will automatically create CNAME record pointing to Cloudflare tunnel
+    external-dns.alpha.kubernetes.io/hostname: "flux-webhook.geoffdavis.com"
+    external-dns.alpha.kubernetes.io/target: "home-ops-tunnel.cfargotunnel.com"
     
     # Security configurations - Rate limiting
     nginx.ingress.kubernetes.io/rate-limit: "10"
