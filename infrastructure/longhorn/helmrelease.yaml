@@ -44,8 +44,8 @@ spec:
       
     # Default settings optimized for USB SSDs
     defaultSettings:
-      backupTarget: ""
-      backupTargetCredentialSecret: ""
+      backupTarget: "s3://longhorn-backups-home-ops@us-west-2/"
+      backupTargetCredentialSecret: "longhorn-s3-backup-credentials"
       allowRecurringJobWhileVolumeDetached: true
       createDefaultDiskLabeledNodes: false
       defaultDataPath: "/var/lib/longhorn"

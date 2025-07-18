@@ -7,3 +7,4 @@ resources:
   - storage-class.yaml
   # volume-snapshot-class.yaml temporarily disabled - CRDs not yet available
   - ingress.yaml
+  - external-secret-s3.yaml
