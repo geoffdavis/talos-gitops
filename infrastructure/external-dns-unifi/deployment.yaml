@@ -53,6 +53,10 @@ spec:
             secretKeyRef:
               name: external-dns-unifi-secret
               key: api-key
+        - name: UNIFI_USER
+          value: ""  # Empty for API key auth
+        - name: UNIFI_PASS
+          value: ""  # Empty for API key auth
         - name: UNIFI_PORT
           value: "443"
         - name: UNIFI_VERSION
@@ -62,7 +66,7 @@ spec:
         - name: SERVER_HOST
           value: "0.0.0.0"
         - name: SERVER_PORT
-          value: "8080"
+          value: "8888"
         - name: SERVER_READ_TIMEOUT
           value: "60s"
         - name: SERVER_WRITE_TIMEOUT
