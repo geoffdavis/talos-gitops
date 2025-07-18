@@ -13,7 +13,7 @@ metadata:
     # External DNS configuration - Let External-DNS create CNAME to tunnel
     # External-DNS will automatically create CNAME record pointing to Cloudflare tunnel
     external-dns.alpha.kubernetes.io/hostname: "flux-webhook.geoffdavis.com"
-    external-dns.alpha.kubernetes.io/target: "home-ops-tunnel.cfargotunnel.com"
+    external-dns.alpha.kubernetes.io/target: "16c18922-4cba-49e5-b463-d41dde8f8f2d.cfargotunnel.com"
     
     # Security configurations - Rate limiting
     nginx.ingress.kubernetes.io/rate-limit: "10"
