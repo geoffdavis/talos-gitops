@@ -51,7 +51,6 @@ spec:
           # Use the ingress pool for L2 announcement
           io.cilium/lb-ipam-pool: "ingress"
         labels:
-          app.kubernetes.io/component: controller-internal
           type: LoadBalancer
         externalTrafficPolicy: Local
         ipFamilyPolicy: SingleStack

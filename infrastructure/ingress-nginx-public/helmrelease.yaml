@@ -52,7 +52,6 @@ spec:
           # Mark this service for external-dns tunnel routing
           external-dns.alpha.kubernetes.io/exclude: "false"
         labels:
-          app.kubernetes.io/component: controller-public
           type: ClusterIP
         ports:
           http: 80
