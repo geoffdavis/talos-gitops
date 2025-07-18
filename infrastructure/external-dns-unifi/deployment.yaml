@@ -24,7 +24,7 @@ spec:
         fsGroup: 65534
       containers:
       - name: webhook
-        image: ghcr.io/kashalls/external-dns-unifi-webhook:v0.2.0
+        image: ghcr.io/kashalls/external-dns-unifi-webhook:v0.6.0
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
@@ -53,10 +53,6 @@ spec:
             secretKeyRef:
               name: external-dns-unifi-secret
               key: api-key
-        - name: UNIFI_USER
-          value: ""  # Empty for API key auth
-        - name: UNIFI_PASS
-          value: ""  # Empty for API key auth
         - name: UNIFI_PORT
           value: "443"
         - name: UNIFI_VERSION
