@@ -36,7 +36,6 @@ spec:
         image:
           repository: ghcr.io/kashalls/external-dns-unifi-webhook
           tag: v0.6.0
-        url: http://127.0.0.1:8888
         env:
           - name: UNIFI_HOST
             value: "https://172.29.51.1"
@@ -156,6 +155,11 @@ spec:
     extraArgs:
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
+      
+    # Environment variables to fix IPv6 localhost resolution
+    env:
+      - name: GODEBUG
+        value: "netdns=go+2"
       
     # Probes configuration
     livenessProbe:
