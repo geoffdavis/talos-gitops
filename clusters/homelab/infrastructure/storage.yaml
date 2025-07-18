@@ -2,6 +2,33 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
+  name: infrastructure-volume-snapshots
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 15m0s
+  path: ./infrastructure/volume-snapshots
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-sources
+  retryInterval: 2m0s
+  wait: true
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: snapshot-controller
+      namespace: volume-snapshot-system
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: snapshot-controller
+      namespace: volume-snapshot-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
   name: infrastructure-longhorn
   namespace: flux-system
 spec:
@@ -12,6 +39,8 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  dependsOn:
+    - name: infrastructure-volume-snapshots
   retryInterval: 3m0s
   wait: true
   # Removed cilium dependency as it's managed by Talos bootstrap

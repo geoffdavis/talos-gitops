@@ -5,7 +5,7 @@ resources:
   - namespace.yaml
   - helmrelease.yaml
   - storage-class.yaml
-  # volume-snapshot-class.yaml temporarily disabled - CRDs not yet available
+  - volume-snapshot-class.yaml
   - ingress.yaml
   - external-secret-s3.yaml
   - backup-target-patch.yaml
