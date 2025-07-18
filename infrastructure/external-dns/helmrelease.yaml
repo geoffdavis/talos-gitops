@@ -131,7 +131,7 @@ spec:
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
       - --cloudflare-dns-records-per-page=5000
-      - --prefer-cname
+      - --cloudflare-prefer-cname
       
     # Environment variables
     env:
