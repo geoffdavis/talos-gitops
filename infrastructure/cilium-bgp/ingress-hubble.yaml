@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns-internal.alpha.kubernetes.io/hostname: "hubble.k8s.home.geoffdavis.com"
+    external-dns-internal.alpha.kubernetes.io/target: "172.29.51.200"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - hubble.k8s.home.geoffdavis.com
+      secretName: hubble-ui-tls
+  rules:
+    - host: hubble.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hubble-ui
+                port:
+                  number: 80

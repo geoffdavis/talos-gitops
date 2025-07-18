@@ -6,5 +6,3 @@ resources:
   - deployment.yaml
   - configmap.yaml
   - external-secret.yaml
-  - ingress-grafana-public.yaml
-  - ingress-longhorn-public.yaml

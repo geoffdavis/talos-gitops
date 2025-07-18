@@ -7,8 +7,8 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    external-dns.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
-    external-dns.alpha.kubernetes.io/target: "172.29.51.200"
+    external-dns-internal.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
+    external-dns-internal.alpha.kubernetes.io/target: "172.29.51.200"
 spec:
   ingressClassName: nginx
   tls:
