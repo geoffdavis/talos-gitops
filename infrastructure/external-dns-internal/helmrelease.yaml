@@ -38,10 +38,6 @@ spec:
       tag: v0.14.2
       pullPolicy: IfNotPresent
     
-    # Webhook provider configuration
-    webhook:
-      url: http://external-dns-unifi-webhook.external-dns-unifi-system.svc.cluster.local:8888
-    
     # Domain configuration - only manage internal domains
     domainFilters:
       - k8s.home.geoffdavis.com
@@ -132,6 +128,7 @@ spec:
     
     # Extra arguments
     extraArgs:
+      - --webhook-provider-url=http://external-dns-unifi-webhook.external-dns-unifi-system.svc.cluster.local:8888
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
       
