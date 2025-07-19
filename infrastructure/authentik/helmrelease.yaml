@@ -98,10 +98,28 @@ spec:
       
       containerSecurityContext:
         allowPrivilegeEscalation: false
-        readOnlyRootFilesystem: false
+        readOnlyRootFilesystem: true
         capabilities:
           drop:
             - ALL
+      
+      # Volume mounts for writable directories
+      volumeMounts:
+        - name: media
+          mountPath: /media
+        - name: tmp
+          mountPath: /tmp
+        - name: authentik-tmp
+          mountPath: /authentik/tmp
+      
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: authentik-media
+        - name: tmp
+          emptyDir: {}
+        - name: authentik-tmp
+          emptyDir: {}
       
       # Node selector and tolerations
       nodeSelector:
@@ -167,10 +185,28 @@ spec:
       
       containerSecurityContext:
         allowPrivilegeEscalation: false
-        readOnlyRootFilesystem: false
+        readOnlyRootFilesystem: true
         capabilities:
           drop:
             - ALL
+      
+      # Volume mounts for writable directories
+      volumeMounts:
+        - name: media
+          mountPath: /media
+        - name: tmp
+          mountPath: /tmp
+        - name: authentik-tmp
+          mountPath: /authentik/tmp
+      
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: authentik-media
+        - name: tmp
+          emptyDir: {}
+        - name: authentik-tmp
+          emptyDir: {}
       
       # Node selector and tolerations
       nodeSelector:

@@ -9,6 +9,9 @@ resources:
   # Core namespace
   - namespace.yaml
   
+  # Storage
+  - pvc-media.yaml
+  
   # External secrets for configuration and database
   - external-secret-config.yaml
   - external-secret-db.yaml
