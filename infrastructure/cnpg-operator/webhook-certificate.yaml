@@ -11,6 +11,7 @@ spec:
   privateKey:
     algorithm: ECDSA
     size: 256
+    rotationPolicy: Always
   dnsNames:
     - cnpg-webhook-service
     - cnpg-webhook-service.cnpg-system
