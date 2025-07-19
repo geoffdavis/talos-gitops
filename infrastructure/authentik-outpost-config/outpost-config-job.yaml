@@ -75,13 +75,29 @@ spec:
               # Get admin token (using bootstrap token for initial setup)
               ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
               
+              # Test authentication first
+              echo "Testing authentication..."
+              AUTH_TEST=$(curl -s -w "%{http_code}" -o /tmp/auth_test -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/core/users/me/")
+              if [ "$AUTH_TEST" != "200" ]; then
+                echo "Authentication failed with status: $AUTH_TEST"
+                cat /tmp/auth_test
+                exit 1
+              fi
+              echo "Authentication successful"
+              
               # Check if RADIUS provider already exists
-              PROVIDER_EXISTS=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                "${AUTHENTIK_HOST}/api/v3/providers/radius/" | grep -o '"name":"radius-provider"' || echo "")
+              echo "Checking for existing RADIUS provider..."
+              PROVIDER_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+              echo "Provider response: $PROVIDER_RESPONSE"
+              
+              PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o '"name":"radius-provider"' || echo "")
               
               if [ -z "$PROVIDER_EXISTS" ]; then
                 echo "Creating RADIUS provider..."
-                PROVIDER_RESPONSE=$(curl -s -X POST \
+                PROVIDER_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/provider_response \
+                  -X POST \
                   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                   -H "Content-Type: application/json" \
                   -d '{
@@ -92,21 +108,32 @@ spec:
                   }' \
                   "${AUTHENTIK_HOST}/api/v3/providers/radius/")
                 
-                PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -o '"pk":[0-9]*' | cut -d':' -f2)
-                echo "Created RADIUS provider with PK: $PROVIDER_PK"
+                if [ "$PROVIDER_CREATE_RESPONSE" = "201" ]; then
+                  PROVIDER_PK=$(cat /tmp/provider_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                  echo "Created RADIUS provider with PK: $PROVIDER_PK"
+                else
+                  echo "Failed to create RADIUS provider. Status: $PROVIDER_CREATE_RESPONSE"
+                  cat /tmp/provider_response
+                  exit 1
+                fi
               else
                 echo "RADIUS provider already exists"
-                PROVIDER_PK=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                  "${AUTHENTIK_HOST}/api/v3/providers/radius/" | grep -A5 '"name":"radius-provider"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A5 '"name":"radius-provider"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                echo "Found existing provider with PK: $PROVIDER_PK"
               fi
               
               # Check if RADIUS outpost already exists
-              OUTPOST_EXISTS=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                "${AUTHENTIK_HOST}/api/v3/outposts/instances/" | grep -o '"name":"radius-outpost"' || echo "")
+              echo "Checking for existing RADIUS outpost..."
+              OUTPOST_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
+              echo "Outpost response: $OUTPOST_RESPONSE"
+              
+              OUTPOST_EXISTS=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"radius-outpost"' || echo "")
               
               if [ -z "$OUTPOST_EXISTS" ]; then
                 echo "Creating RADIUS outpost..."
-                curl -s -X POST \
+                OUTPOST_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/outpost_response \
+                  -X POST \
                   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                   -H "Content-Type: application/json" \
                   -d "{
@@ -130,8 +157,16 @@ spec:
                       \"kubernetes_image_pull_secrets\": []
                     }
                   }" \
-                  "${AUTHENTIK_HOST}/api/v3/outposts/instances/"
-                echo "RADIUS outpost created successfully!"
+                  "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
+                
+                if [ "$OUTPOST_CREATE_RESPONSE" = "201" ]; then
+                  echo "RADIUS outpost created successfully!"
+                  cat /tmp/outpost_response
+                else
+                  echo "Failed to create RADIUS outpost. Status: $OUTPOST_CREATE_RESPONSE"
+                  cat /tmp/outpost_response
+                  exit 1
+                fi
               else
                 echo "RADIUS outpost already exists"
               fi
