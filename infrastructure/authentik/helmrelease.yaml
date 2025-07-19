@@ -31,9 +31,7 @@ spec:
         name: authentik
         namespace: flux-system
       interval: 12h
-  dependsOn:
-    - name: authentik-database-init
-      namespace: authentik
+  # Database init job runs independently as a Kubernetes Job
   values:
     # Global configuration
     global:
