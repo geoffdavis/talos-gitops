@@ -22,7 +22,7 @@ spec:
   chart:
     spec:
       chart: cloudnative-pg
-      version: "0.22.1"
+      version: "0.21.6"
       sourceRef:
         kind: HelmRepository
         name: cnpg
@@ -162,8 +162,3 @@ spec:
     # Configure CRD management
     crds:
       create: true
-      
-    # Configure additional arguments
-    additionalArgs:
-      - --enable-instance-manager-inplace-updates=true
-      - --log-level=info
