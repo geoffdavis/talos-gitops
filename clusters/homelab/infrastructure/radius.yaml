@@ -16,8 +16,3 @@ spec:
   path: ./infrastructure/authentik-radius
   prune: true
   wait: true
-  healthChecks:
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: authentik-radius
-      namespace: authentik
