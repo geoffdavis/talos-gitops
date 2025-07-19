@@ -64,7 +64,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: authentik-config
-                  key: secret_key
+                  key: AUTHENTIK_SECRET_KEY
           command:
             - /bin/sh
             - -c
