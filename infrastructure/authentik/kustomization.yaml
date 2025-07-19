@@ -17,8 +17,8 @@ resources:
   - external-secret-db.yaml
   - external-secret-postgresql-superuser.yaml
   
-  # Database initialization
-  - database-init-job-final.yaml
+  # Database initialization - temporarily disabled since migration completed manually
+  # - database-init-job-final.yaml
   
   # Main Authentik application
   - helmrelease.yaml
