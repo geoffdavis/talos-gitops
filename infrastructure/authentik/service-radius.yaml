@@ -67,6 +67,28 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: wait-for-authentik
+          image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Authentik server to be ready..."
+              until curl -f -s http://authentik-server.authentik.svc.cluster.local/if/flow/default-authentication-flow/ > /dev/null 2>&1; do
+                echo "Authentik server not ready yet, waiting 10 seconds..."
+                sleep 10
+              done
+              echo "Authentik server is ready!"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: radius
           image: ghcr.io/goauthentik/radius:2024.8.3
@@ -106,18 +128,26 @@ spec:
             httpGet:
               path: /outpost.goauthentik.io/ping
               port: 9300
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 5
-            failureThreshold: 3
+            timeoutSeconds: 10
+            failureThreshold: 5
           readinessProbe:
+            httpGet:
+              path: /outpost.goauthentik.io/ping
+              port: 9300
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+          startupProbe:
             httpGet:
               path: /outpost.goauthentik.io/ping
               port: 9300
             initialDelaySeconds: 10
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            timeoutSeconds: 10
+            failureThreshold: 30
           resources:
             requests:
               cpu: 50m
