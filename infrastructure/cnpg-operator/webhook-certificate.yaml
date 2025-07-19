@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: cnpg-webhook-cert
   issuerRef:
-    name: selfsigned-cluster-issuer
+    name: selfsigned-issuer
     kind: ClusterIssuer
   dnsNames:
     - cnpg-webhook-service
