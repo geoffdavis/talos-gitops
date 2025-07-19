@@ -31,20 +31,15 @@ spec:
       kind: Deployment
       name: authentik-worker
       namespace: authentik
-    # Check RADIUS deployment
-    - apiVersion: apps/v1
-      kind: Deployment
-      name: authentik-radius
-      namespace: authentik
     # Check HelmRelease
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
       name: authentik
       namespace: authentik
-    # Check database initialization job completion
+    # Check database migration job completion
     - apiVersion: batch/v1
       kind: Job
-      name: authentik-database-init
+      name: authentik-migration
       namespace: authentik
   postBuild:
     substitute:
@@ -52,11 +47,9 @@ spec:
       cluster_name: "homelab"
       domain_name: "k8s.home.geoffdavis.com"
       authentik_domain: "authentik.k8s.home.geoffdavis.com"
-      radius_domain: "radius.k8s.home.geoffdavis.com"
       
       # Network configuration
       internal_ingress_ip: "172.29.51.200"
-      radius_loadbalancer_pool: "default"
       
       # PostgreSQL configuration
       postgres_cluster_host: "postgresql-cluster-rw.postgresql-system.svc.cluster.local"
@@ -81,8 +74,3 @@ spec:
       authentik_redis_memory_request: "128Mi"
       authentik_redis_cpu_limit: "200m"
       authentik_redis_memory_limit: "256Mi"
-      
-      authentik_radius_cpu_request: "50m"
-      authentik_radius_memory_request: "128Mi"
-      authentik_radius_cpu_limit: "200m"
-      authentik_radius_memory_limit: "256Mi"
