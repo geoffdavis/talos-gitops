@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: media-storage
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: longhorn-ssd
   resources:
     requests:
