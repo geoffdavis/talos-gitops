@@ -8,4 +8,5 @@ resources:
   - infrastructure/networking.yaml
   - infrastructure/database.yaml
   - infrastructure/identity.yaml
+  - infrastructure/radius.yaml
   - infrastructure/apps.yaml
