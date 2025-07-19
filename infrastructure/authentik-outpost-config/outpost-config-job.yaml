@@ -15,9 +15,25 @@ spec:
         app.kubernetes.io/component: configuration
     spec:
       restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-authentik
           image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           command:
             - /bin/sh
             - -c
@@ -31,6 +47,16 @@ spec:
       containers:
         - name: configure-outpost
           image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
             - name: AUTHENTIK_HOST
               value: "http://authentik-server.authentik.svc.cluster.local"
