@@ -26,10 +26,6 @@ resources:
   # Networking
   - ingress-internal.yaml
   
-  # RADIUS configuration and service
-  - configmap-radius.yaml
-  - service-radius.yaml
-  
   # Monitoring dashboard
   - monitoring-dashboard.yaml
 
@@ -39,8 +35,6 @@ commonLabels:
 
 images:
   - name: ghcr.io/goauthentik/server
-    newTag: "2024.8.3"
-  - name: ghcr.io/goauthentik/radius
     newTag: "2024.8.3"
 
 patches:

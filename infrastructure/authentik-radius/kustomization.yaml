@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: authentik-radius
+  namespace: authentik
+
+resources:
+  # RADIUS configuration and service
+  - configmap-radius.yaml
+  - service-radius.yaml
+
+commonLabels:
+  app.kubernetes.io/name: authentik-radius
+  app.kubernetes.io/part-of: identity-provider
+
+images:
+  - name: ghcr.io/goauthentik/radius
+    newTag: "2024.8.3"
+
+patches:
+  # Ensure proper resource limits for homelab environment
+  - target:
+      kind: Deployment
+      name: authentik-radius
+    patch: |-
+      - op: add
+        path: /metadata/annotations/flux.weave.works~1ignore
+        value: "false"
+      - op: add
+        path: /metadata/labels/backup-tier
+        value: "important"
+      - op: add
+        path: /metadata/labels/backup-type
+        value: "application"
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/name: authentik-radius
+    app.kubernetes.io/component: radius-outpost
+  annotations:
+    config.kubernetes.io/local-config: "true"
