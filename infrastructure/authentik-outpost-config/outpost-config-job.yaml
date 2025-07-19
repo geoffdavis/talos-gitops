@@ -63,8 +63,8 @@ spec:
             - name: AUTHENTIK_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: authentik-config
-                  key: AUTHENTIK_SECRET_KEY
+                  name: authentik-radius-token
+                  key: token
           command:
             - /bin/sh
             - -c
