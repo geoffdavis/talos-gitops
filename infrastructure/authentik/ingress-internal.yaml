@@ -1,0 +1,51 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik-internal
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: identity-provider
+  annotations:
+    # Use internal nginx controller
+    kubernetes.io/ingress.class: "nginx-internal"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+    
+    # SSL configuration
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Certificate management
+    cert-manager.io/cluster-issuer: "letsencrypt-production"
+    
+    # External DNS
+    external-dns.alpha.kubernetes.io/hostname: "authentik.k8s.home.geoffdavis.com"
+    external-dns.alpha.kubernetes.io/target: "172.29.51.200"
+spec:
+  ingressClassName: nginx-internal
+  tls:
+    - hosts:
+        - authentik.k8s.home.geoffdavis.com
+      secretName: authentik-tls-certificate
+  rules:
+    - host: authentik.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-server
+                port:
+                  number: 80

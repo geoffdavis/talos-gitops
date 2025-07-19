@@ -1,0 +1,47 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-cnpg-operator
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 15m0s
+  path: ./infrastructure/cnpg-operator
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-sources
+  retryInterval: 2m0s
+  wait: true
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: cnpg-operator
+      namespace: cnpg-system
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: cnpg-operator
+      namespace: cnpg-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-postgresql-cluster
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 10m0s
+  path: ./infrastructure/postgresql-cluster
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-cnpg-operator
+    - name: infrastructure-longhorn
+  retryInterval: 2m0s
+  wait: true
+  # Health checks will be added when PostgreSQL clusters are deployed

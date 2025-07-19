@@ -1,0 +1,268 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: identity-provider
+spec:
+  interval: 30m
+  timeout: 20m
+  install:
+    timeout: 20m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 20m
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  rollback:
+    timeout: 15m
+    cleanupOnFail: true
+  chart:
+    spec:
+      chart: authentik
+      version: "2024.8.3"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: flux-system
+      interval: 12h
+  dependsOn:
+    - name: authentik-database-init
+      namespace: authentik
+  values:
+    # Global configuration
+    global:
+      deploymentAnnotations:
+        reloader.stakater.com/auto: "true"
+      envFrom:
+        - secretRef:
+            name: authentik-config
+        - secretRef:
+            name: authentik-database-credentials
+      env:
+        # Core configuration
+        - name: AUTHENTIK_DISABLE_UPDATE_CHECK
+          value: "true"
+        - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+          value: "false"
+        - name: AUTHENTIK_LOG_LEVEL
+          value: "info"
+        - name: AUTHENTIK_AVATARS
+          value: "gravatar,initials"
+        
+        # Redis configuration (use built-in Redis)
+        - name: AUTHENTIK_REDIS__HOST
+          value: "authentik-redis"
+        - name: AUTHENTIK_REDIS__PORT
+          value: "6379"
+        
+        # Web configuration
+        - name: AUTHENTIK_WEB__WORKERS
+          value: "2"
+        - name: AUTHENTIK_WEB__THREADS
+          value: "4"
+        
+        # Worker configuration
+        - name: AUTHENTIK_WORKER__CONCURRENCY
+          value: "2"
+        
+        # RADIUS configuration
+        - name: AUTHENTIK_OUTPOSTS__DISCOVER
+          value: "true"
+        
+    # Server configuration
+    server:
+      name: server
+      replicas: 2
+      
+      # Resource configuration for homelab
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      
+      # Node selector and tolerations
+      nodeSelector:
+        kubernetes.io/os: linux
+      
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      
+      # Pod disruption budget
+      podDisruptionBudget:
+        enabled: true
+        minAvailable: 1
+      
+      # Metrics
+      metrics:
+        enabled: true
+        serviceMonitor:
+          enabled: true
+          interval: 30s
+          scrapeTimeout: 3s
+      
+      # Ingress - disabled in favor of separate ingress resource
+      ingress:
+        enabled: false
+      
+      # Service configuration
+      service:
+        enabled: true
+        type: ClusterIP
+        port: 80
+        name: http
+        protocol: TCP
+        labels: {}
+        annotations: {}
+    
+    # Worker configuration
+    worker:
+      name: worker
+      replicas: 1
+      
+      # Resource configuration for homelab
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 300m
+          memory: 512Mi
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      
+      # Node selector and tolerations
+      nodeSelector:
+        kubernetes.io/os: linux
+      
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+    
+    # Redis configuration (built-in)
+    redis:
+      enabled: true
+      architecture: standalone
+      
+      auth:
+        enabled: false
+      
+      master:
+        persistence:
+          enabled: true
+          storageClass: "longhorn-ssd"
+          size: 1Gi
+        
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        
+        nodeSelector:
+          kubernetes.io/os: linux
+        
+        tolerations:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+          - key: node-role.kubernetes.io/master
+            operator: Exists
+            effect: NoSchedule
+    
+    # PostgreSQL configuration (disabled - using external CNPG cluster)
+    postgresql:
+      enabled: false
+    
+    # Service account
+    serviceAccount:
+      create: true
+      annotations: {}
+      name: "authentik"
+    
+    # RBAC
+    rbac:
+      create: true
+    
+    # Prometheus rules
+    prometheusRule:
+      enabled: true
+      rules:
+        - alert: AuthentikPodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="authentik"}[15m]) * 60 * 15 > 0
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: Authentik pod is crash looping
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
+        
+        - alert: AuthentikHighMemoryUsage
+          expr: |
+            (container_memory_working_set_bytes{namespace="authentik"} / container_spec_memory_limit_bytes{namespace="authentik"}) * 100 > 90
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: Authentik high memory usage
+            description: "Authentik container memory usage is above 90%"
+        
+        - alert: AuthentikHighCPUUsage
+          expr: |
+            (rate(container_cpu_usage_seconds_total{namespace="authentik"}[5m]) * 100) > 80
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: Authentik high CPU usage
+            description: "Authentik container CPU usage is above 80%"

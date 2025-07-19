@@ -1,0 +1,104 @@
+# Longhorn RecurringJob specifically for PostgreSQL database volumes
+# This complements the existing database recurring jobs with PostgreSQL-specific configuration
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: postgresql-cluster-snapshot
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    backup-tier: "critical"
+    backup-type: "snapshot"
+spec:
+  # Every 6 hours for critical database snapshots
+  cron: "0 */6 * * *"
+  task: "snapshot"
+  groups:
+    - database
+    - postgresql
+  retain: 12  # Keep 12 snapshots (3 days worth at 6-hour intervals)
+  concurrency: 1  # Sequential processing for database consistency
+  labels:
+    backup-tier: "critical"
+    backup-type: "snapshot"
+    application: "postgresql"
+    cluster: "postgresql-cluster"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: postgresql-cluster-backup
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+spec:
+  # Daily S3 backup at 2 AM (before general database backups)
+  cron: "0 2 * * *"
+  task: "backup"
+  groups:
+    - database
+    - postgresql
+  retain: 14  # Keep 14 daily backups (2 weeks)
+  concurrency: 1  # Sequential processing for database consistency
+  labels:
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+    application: "postgresql"
+    cluster: "postgresql-cluster"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: postgresql-cluster-weekly-backup
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+spec:
+  # Weekly S3 backup on Sunday at 1 AM
+  cron: "0 1 * * 0"
+  task: "backup"
+  groups:
+    - database
+    - postgresql
+  retain: 12  # Keep 12 weekly backups (3 months)
+  concurrency: 1  # Sequential processing for database consistency
+  labels:
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+    application: "postgresql"
+    cluster: "postgresql-cluster"
+    schedule: "weekly"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: postgresql-cluster-monthly-backup
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+spec:
+  # Monthly S3 backup on 1st of month at 12 AM
+  cron: "0 0 1 * *"
+  task: "backup"
+  groups:
+    - database
+    - postgresql
+  retain: 6  # Keep 6 monthly backups (6 months)
+  concurrency: 1  # Sequential processing for database consistency
+  labels:
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+    application: "postgresql"
+    cluster: "postgresql-cluster"
+    schedule: "monthly"

@@ -6,4 +6,6 @@ resources:
   - infrastructure/core.yaml
   - infrastructure/storage.yaml
   - infrastructure/networking.yaml
+  - infrastructure/database.yaml
+  - infrastructure/identity.yaml
   - infrastructure/apps.yaml

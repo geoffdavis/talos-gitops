@@ -1,0 +1,81 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: authentik
+  namespace: authentik
+
+resources:
+  # Core namespace
+  - namespace.yaml
+  
+  # External secrets for configuration and database
+  - external-secret-config.yaml
+  - external-secret-db.yaml
+  
+  # Database initialization
+  - database-init-job.yaml
+  
+  # Main Authentik application
+  - helmrelease.yaml
+  
+  # Networking
+  - ingress-internal.yaml
+  
+  # RADIUS configuration and service
+  - configmap-radius.yaml
+  - service-radius.yaml
+  
+  # Monitoring dashboard
+  - monitoring-dashboard.yaml
+
+commonLabels:
+  app.kubernetes.io/name: authentik
+  app.kubernetes.io/part-of: identity-provider
+
+images:
+  - name: ghcr.io/goauthentik/server
+    newTag: "2024.8.3"
+  - name: ghcr.io/goauthentik/radius
+    newTag: "2024.8.3"
+
+patches:
+  # Ensure proper resource limits for homelab environment
+  - target:
+      kind: HelmRelease
+      name: authentik
+    patch: |-
+      - op: add
+        path: /metadata/annotations/flux.weave.works~1ignore
+        value: "false"
+      - op: add
+        path: /metadata/labels/backup-tier
+        value: "important"
+      - op: add
+        path: /metadata/labels/backup-type
+        value: "application"
+
+configMapGenerator:
+  - name: authentik-environment
+    literals:
+      - AUTHENTIK_BOOTSTRAP__PASSWORD=changeme-bootstrap-password
+      - AUTHENTIK_BOOTSTRAP__EMAIL=admin@k8s.home.geoffdavis.com
+      - AUTHENTIK_BOOTSTRAP__TOKEN=changeme-bootstrap-token
+    options:
+      disableNameSuffixHash: true
+
+secretGenerator:
+  - name: authentik-bootstrap
+    literals:
+      - bootstrap-password=changeme-bootstrap-password
+      - bootstrap-token=changeme-bootstrap-token
+    options:
+      disableNameSuffixHash: true
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: identity-provider
+  annotations:
+    config.kubernetes.io/local-config: "true"

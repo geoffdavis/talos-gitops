@@ -1,0 +1,74 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgresql-cluster-backup
+  namespace: postgresql-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    backup-tier: "critical"
+    backup-type: "database"
+spec:
+  # Schedule backups daily at 3 AM
+  schedule: "0 3 * * *"
+  
+  # Backup retention policy
+  backupOwnerReference: self
+  
+  # Target cluster
+  cluster:
+    name: postgresql-cluster
+    
+  # Backup method and configuration
+  method: barmanObjectStore
+  
+  # Immediate checkpoint for consistent backup
+  immediate: true
+  
+  # Suspend backup if needed
+  suspend: false
+  
+  # Additional metadata for backup tracking
+  metadata:
+    labels:
+      backup-tier: "critical"
+      backup-type: "database"
+      application: "postgresql"
+      scheduled: "true"
+    annotations:
+      backup.cnpg.io/retention-policy: "30d"
+      backup.cnpg.io/backup-type: "full"
+      backup.cnpg.io/compression: "gzip"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: postgresql-cluster-bootstrap-backup
+  namespace: postgresql-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    backup-tier: "critical"
+    backup-type: "database"
+    backup-purpose: "bootstrap"
+spec:
+  # Target cluster
+  cluster:
+    name: postgresql-cluster
+    
+  # Backup method
+  method: barmanObjectStore
+  
+  # Immediate checkpoint for consistent backup
+  immediate: true
+  
+  # Additional metadata
+  metadata:
+    labels:
+      backup-tier: "critical"
+      backup-type: "database"
+      application: "postgresql"
+      backup-purpose: "bootstrap"
+    annotations:
+      backup.cnpg.io/backup-type: "bootstrap"
+      backup.cnpg.io/compression: "gzip"

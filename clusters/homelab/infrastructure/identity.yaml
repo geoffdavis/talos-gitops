@@ -1,0 +1,88 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-authentik
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 15m0s
+  path: ./infrastructure/authentik
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-sources
+    - name: infrastructure-postgresql-cluster
+    - name: infrastructure-external-secrets
+    - name: infrastructure-cert-manager
+    - name: infrastructure-ingress-nginx-internal
+  retryInterval: 2m0s
+  wait: true
+  healthChecks:
+    # Check Authentik server deployment
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: authentik-server
+      namespace: authentik
+    # Check Authentik worker deployment
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: authentik-worker
+      namespace: authentik
+    # Check RADIUS deployment
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: authentik-radius
+      namespace: authentik
+    # Check HelmRelease
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: authentik
+      namespace: authentik
+    # Check database initialization job completion
+    - apiVersion: batch/v1
+      kind: Job
+      name: authentik-database-init
+      namespace: authentik
+  postBuild:
+    substitute:
+      # Environment-specific substitutions
+      cluster_name: "homelab"
+      domain_name: "k8s.home.geoffdavis.com"
+      authentik_domain: "authentik.k8s.home.geoffdavis.com"
+      radius_domain: "radius.k8s.home.geoffdavis.com"
+      
+      # Network configuration
+      internal_ingress_ip: "172.29.51.200"
+      radius_loadbalancer_pool: "default"
+      
+      # PostgreSQL configuration
+      postgres_cluster_host: "postgresql-cluster-rw.postgresql-system.svc.cluster.local"
+      postgres_cluster_port: "5432"
+      postgres_database: "authentik"
+      
+      # Storage configuration
+      storage_class: "longhorn-ssd"
+      
+      # Resource configuration for homelab
+      authentik_server_cpu_request: "100m"
+      authentik_server_memory_request: "512Mi"
+      authentik_server_cpu_limit: "500m"
+      authentik_server_memory_limit: "1Gi"
+      
+      authentik_worker_cpu_request: "50m"
+      authentik_worker_memory_request: "256Mi"
+      authentik_worker_cpu_limit: "300m"
+      authentik_worker_memory_limit: "512Mi"
+      
+      authentik_redis_cpu_request: "50m"
+      authentik_redis_memory_request: "128Mi"
+      authentik_redis_cpu_limit: "200m"
+      authentik_redis_memory_limit: "256Mi"
+      
+      authentik_radius_cpu_request: "50m"
+      authentik_radius_memory_request: "128Mi"
+      authentik_radius_cpu_limit: "200m"
+      authentik_radius_memory_limit: "256Mi"

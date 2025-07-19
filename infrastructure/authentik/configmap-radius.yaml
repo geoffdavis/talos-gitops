@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-radius-config
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: radius
+data:
+  # RADIUS server configuration
+  AUTHENTIK_LISTEN__RADIUS: "0.0.0.0:1812"
+  AUTHENTIK_LISTEN__RADIUS_METRICS: "0.0.0.0:9300"
+  
+  # Logging configuration
+  AUTHENTIK_LOG_LEVEL: "info"
+  AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+  
+  # RADIUS specific settings
+  AUTHENTIK_RADIUS__SHARED_SECRET: ""  # Will be overridden by secret
+  AUTHENTIK_RADIUS__CLIENT_NETWORKS: "172.29.0.0/16,192.168.0.0/16,10.0.0.0/8"
+  
+  # Outpost configuration
+  AUTHENTIK_OUTPOST__TYPE: "radius"
+  AUTHENTIK_OUTPOST__NAME: "authentik-radius"
+  AUTHENTIK_OUTPOST__DOCKER_NETWORK: ""
+  AUTHENTIK_OUTPOST__CONTAINER_IMAGE: ""
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: authentik-radius-token
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: radius
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword-connect
+    kind: ClusterSecretStore
+  target:
+    name: authentik-radius-token
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      metadata:
+        labels:
+          app.kubernetes.io/name: authentik
+          app.kubernetes.io/component: radius
+      data:
+        token: "{{ .token }}"
+  data:
+    - secretKey: token
+      remoteRef:
+        key: "Authentik RADIUS Token - home-ops"
+        property: "token"

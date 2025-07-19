@@ -1,0 +1,193 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgresql-cluster
+  namespace: postgresql-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    backup-tier: "critical"
+    backup-type: "database"
+    application: "postgresql"
+spec:
+  # High availability configuration - 3 replicas for homelab
+  instances: 3
+  
+  # PostgreSQL version and image
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.4
+  
+  # Primary update strategy
+  primaryUpdateStrategy: unsupervised
+  
+  # PostgreSQL configuration
+  postgresql:
+    parameters:
+      # Performance tuning for homelab
+      max_connections: "200"
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      maintenance_work_mem: "64MB"
+      checkpoint_completion_target: "0.9"
+      wal_buffers: "16MB"
+      default_statistics_target: "100"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      work_mem: "4MB"
+      min_wal_size: "1GB"
+      max_wal_size: "4GB"
+      
+      # Logging configuration
+      log_destination: "stderr"
+      log_statement: "none"
+      log_min_duration_statement: "1000"
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+      
+      # Connection and authentication
+      ssl: "on"
+      ssl_cert_file: "/controller/certificates/server.crt"
+      ssl_key_file: "/controller/certificates/server.key"
+      ssl_ca_file: "/controller/certificates/ca.crt"
+      
+      # Replication settings
+      max_wal_senders: "10"
+      max_replication_slots: "10"
+      wal_level: "replica"
+      hot_standby: "on"
+      
+      # Archive settings for backup
+      archive_mode: "on"
+      archive_timeout: "5min"
+      
+  # Bootstrap configuration
+  bootstrap:
+    initdb:
+      database: "app"
+      owner: "app"
+      secret:
+        name: postgresql-superuser-credentials
+      dataChecksums: true
+      encoding: "UTF8"
+      localeCType: "C"
+      localeCollate: "C"
+      
+  # Storage configuration with Longhorn
+  storage:
+    size: 20Gi
+    storageClass: longhorn-ssd
+    
+  # Monitoring configuration
+  monitoring:
+    enabled: true
+    podMonitorMetricRelabelings:
+      - sourceLabels: [__name__]
+        regex: "cnpg_.*"
+        targetLabel: __name__
+        replacement: "${1}"
+    podMonitorRelabelings:
+      - sourceLabels: [__meta_kubernetes_pod_name]
+        targetLabel: instance
+        replacement: "${1}"
+        
+  # Resource limits appropriate for homelab
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+      
+  # Affinity and node selection
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                postgresql: postgresql-cluster
+            topologyKey: kubernetes.io/hostname
+            
+  nodeMaintenanceWindow:
+    inProgress: false
+    reusePVC: true
+    
+  # Security context
+  securityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+      
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+        
+  # Backup configuration
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: "s3://longhorn-backup/postgresql-cluster"
+      s3Credentials:
+        accessKeyId:
+          name: postgresql-s3-backup-credentials
+          key: AWS_ACCESS_KEY_ID
+        secretAccessKey:
+          name: postgresql-s3-backup-credentials
+          key: AWS_SECRET_ACCESS_KEY
+      wal:
+        retention: "30d"
+        maxParallel: 2
+      data:
+        retention: "7d"
+        immediateCheckpoint: true
+        jobs: 2
+      tags:
+        environment: "homelab"
+        cluster: "postgresql-cluster"
+        backup-tier: "critical"
+        
+  # Connection pooling with PgBouncer
+  connectionPooler:
+    enabled: true
+    instances: 2
+    type: "pgbouncer"
+    pgbouncer:
+      poolMode: "transaction"
+      parameters:
+        max_client_conn: "200"
+        default_pool_size: "25"
+        max_db_connections: "50"
+        max_user_connections: "50"
+        server_reset_query: "DISCARD ALL"
+        server_check_query: "SELECT 1"
+        server_check_delay: "30"
+        application_name_add_host: "1"
+        
+  # Certificates configuration
+  certificates:
+    serverTLSSecret: "postgresql-cluster-server-tls"
+    serverCASecret: "postgresql-cluster-ca"
+    clientCASecret: "postgresql-cluster-ca"
+    replicationTLSSecret: "postgresql-cluster-replication-tls"
+    
+  # Superuser secret
+  superuserSecret:
+    name: postgresql-superuser-credentials
+    
+  # Additional labels for Longhorn backup integration
+  metadata:
+    labels:
+      backup-tier: "critical"
+      backup-type: "database"
+      application: "postgresql"
+      backup-group: "database"
+    annotations:
+      backup.longhorn.io/volume-snapshot-class: "longhorn-snapshot-vsc"
+      backup.longhorn.io/recurring-job-group: "database"
