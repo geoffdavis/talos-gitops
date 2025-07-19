@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cnpg-webhook-cert
+  namespace: cnpg-system
+spec:
+  secretName: cnpg-webhook-cert
+  issuerRef:
+    name: selfsigned-cluster-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - cnpg-webhook-service
+    - cnpg-webhook-service.cnpg-system
+    - cnpg-webhook-service.cnpg-system.svc
+    - cnpg-webhook-service.cnpg-system.svc.cluster.local
