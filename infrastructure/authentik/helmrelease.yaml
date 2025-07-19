@@ -55,7 +55,7 @@ spec:
         
         # Redis configuration (use built-in Redis)
         - name: AUTHENTIK_REDIS__HOST
-          value: "authentik-redis"
+          value: "authentik-redis-master"
         - name: AUTHENTIK_REDIS__PORT
           value: "6379"
         

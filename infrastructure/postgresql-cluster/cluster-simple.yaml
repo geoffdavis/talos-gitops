@@ -73,6 +73,7 @@ spec:
       memory: "2Gi"
       cpu: "1000m"
       
-  # Superuser secret
+  # Superuser secret and access
   superuserSecret:
     name: postgresql-superuser-credentials
+  enableSuperuserAccess: true

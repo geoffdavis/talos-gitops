@@ -1,0 +1,179 @@
+# Reusable PostgreSQL Database Initialization Job Template
+# 
+# This template creates a database and user for applications.
+# To use this template:
+# 1. Copy this file to your application's infrastructure directory
+# 2. Replace the following placeholders:
+#    - {{APP_NAME}} - Name of your application (e.g., authentik, grafana, etc.)
+#    - {{NAMESPACE}} - Kubernetes namespace where your app runs
+#    - {{DATABASE_NAME}} - Name of the database to create
+#    - {{DB_USER_SECRET}} - Name of the secret containing database user credentials
+#    - {{DB_USER_KEY}} - Key in the secret for the username
+#    - {{DB_PASSWORD_KEY}} - Key in the secret for the password
+#
+# Example usage for Authentik:
+# - {{APP_NAME}} -> authentik
+# - {{NAMESPACE}} -> authentik
+# - {{DATABASE_NAME}} -> authentik
+# - {{DB_USER_SECRET}} -> authentik-database-credentials
+# - {{DB_USER_KEY}} -> AUTHENTIK_POSTGRESQL__USER
+# - {{DB_PASSWORD_KEY}} -> AUTHENTIK_POSTGRESQL__PASSWORD
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{APP_NAME}}-database-init
+  namespace: {{NAMESPACE}}
+  labels:
+    app.kubernetes.io/name: {{APP_NAME}}
+    app.kubernetes.io/component: database-init
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-1"
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{APP_NAME}}
+        app.kubernetes.io/component: database-init
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: database-init
+          image: postgres:16.4-alpine
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: PGHOST
+              value: "postgresql-cluster-rw.postgresql-system.svc.cluster.local"
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: "postgres"
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-superuser-credentials
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-superuser-credentials
+                  key: password
+            - name: APP_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{DB_USER_SECRET}}
+                  key: {{DB_USER_KEY}}
+            - name: APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{DB_USER_SECRET}}
+                  key: {{DB_PASSWORD_KEY}}
+            - name: PGSSLMODE
+              value: "require"
+            - name: TARGET_DATABASE
+              value: "{{DATABASE_NAME}}"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Initializing database: ${TARGET_DATABASE} for application: {{APP_NAME}}"
+              echo "Connecting to PostgreSQL cluster..."
+              
+              # Function to execute SQL with retry
+              execute_sql() {
+                local sql="$1"
+                local max_attempts=5
+                local attempt=1
+                
+                while [ $attempt -le $max_attempts ]; do
+                  echo "Attempt $attempt: $sql"
+                  if psql -c "$sql"; then
+                    echo "Success!"
+                    return 0
+                  else
+                    echo "Failed, retrying in 5 seconds..."
+                    sleep 5
+                    attempt=$((attempt + 1))
+                  fi
+                done
+                
+                echo "Failed after $max_attempts attempts"
+                return 1
+              }
+              
+              # Check if database exists
+              DB_EXISTS=$(psql -tAc "SELECT 1 FROM pg_database WHERE datname='${TARGET_DATABASE}';" || echo "0")
+              
+              if [ "$DB_EXISTS" != "1" ]; then
+                echo "Creating ${TARGET_DATABASE} database..."
+                execute_sql "CREATE DATABASE ${TARGET_DATABASE} OWNER ${APP_DB_USER};"
+                echo "Database created successfully"
+              else
+                echo "Database ${TARGET_DATABASE} already exists"
+              fi
+              
+              # Check if user exists
+              USER_EXISTS=$(psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${APP_DB_USER}';" || echo "0")
+              
+              if [ "$USER_EXISTS" != "1" ]; then
+                echo "Creating ${APP_DB_USER} user..."
+                execute_sql "CREATE USER ${APP_DB_USER} WITH PASSWORD '${APP_DB_PASSWORD}';"
+                echo "User created successfully"
+              else
+                echo "User ${APP_DB_USER} already exists"
+                echo "Updating password..."
+                execute_sql "ALTER USER ${APP_DB_USER} WITH PASSWORD '${APP_DB_PASSWORD}';"
+              fi
+              
+              # Grant permissions
+              echo "Granting permissions..."
+              execute_sql "GRANT ALL PRIVILEGES ON DATABASE ${TARGET_DATABASE} TO ${APP_DB_USER};"
+              execute_sql "GRANT ${APP_DB_USER} TO postgres;"
+              
+              # Connect to the target database and grant schema permissions
+              echo "Granting schema permissions..."
+              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL ON SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${APP_DB_USER};" || true
+              
+              echo "Database initialization completed successfully for {{APP_NAME}}"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
