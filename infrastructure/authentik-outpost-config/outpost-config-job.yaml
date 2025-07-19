@@ -72,24 +72,115 @@ spec:
               set -e
               echo "Configuring RADIUS outpost..."
               
-              # TEMPORARY: Skip API configuration due to authentication issues
-              # This allows the RADIUS deployment to proceed while we resolve the token issue
-              echo "NOTICE: Skipping API configuration temporarily due to authentication issues"
-              echo "The RADIUS outpost will need to be configured manually through the Authentik web interface"
-              echo "or after resolving the API token authentication problem."
+              # Get admin token (using API token created via management command)
+              ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
               
-              # Verify Authentik is accessible
-              echo "Verifying Authentik server accessibility..."
-              if curl -f -s "${AUTHENTIK_HOST}/if/flow/initial-setup/" > /dev/null 2>&1; then
-                echo "✓ Authentik server is accessible"
-              else
-                echo "✗ Authentik server is not accessible"
+              # Test authentication first
+              echo "Testing authentication..."
+              AUTH_TEST=$(curl -s -w "%{http_code}" -o /tmp/auth_test -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/core/users/me/")
+              if [ "$AUTH_TEST" != "200" ]; then
+                echo "Authentication failed with status: $AUTH_TEST"
+                cat /tmp/auth_test
+                echo ""
+                echo "ERROR: API token authentication failed."
+                echo "To fix this issue, run the following commands:"
+                echo "1. kubectl exec -n authentik authentik-server-<pod-id> -- ak shell -c \""
+                echo "   from authentik.core.models import User, Token"
+                echo "   import secrets"
+                echo "   user, _ = User.objects.get_or_create(username='akadmin')"
+                echo "   user.is_superuser = True; user.save()"
+                echo "   token_key = secrets.token_hex(32)"
+                echo "   token, _ = Token.objects.get_or_create(user=user, intent='api', defaults={'key': token_key})"
+                echo "   print(f'Token: {token.key}')\""
+                echo "2. kubectl patch secret authentik-radius-token -n authentik --type='json' -p='[{\"op\": \"replace\", \"path\": \"/data/token\", \"value\": \"<base64-encoded-token>\"}]'"
                 exit 1
               fi
+              echo "Authentication successful"
               
-              echo "RADIUS outpost configuration job completed successfully!"
-              echo "Manual configuration required:"
-              echo "1. Access Authentik web interface"
-              echo "2. Create RADIUS provider with name 'radius-provider'"
-              echo "3. Create RADIUS outpost with name 'radius-outpost'"
-              echo "4. Configure outpost to use the RADIUS provider"
+              # Check if RADIUS provider already exists
+              echo "Checking for existing RADIUS provider..."
+              PROVIDER_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+              echo "Provider response: $PROVIDER_RESPONSE"
+              
+              PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o '"name":"radius-provider"' || echo "")
+              
+              if [ -z "$PROVIDER_EXISTS" ]; then
+                echo "Creating RADIUS provider..."
+                PROVIDER_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/provider_response \
+                  -X POST \
+                  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                    "name": "radius-provider",
+                    "authorization_flow": "default-provider-authorization-implicit-consent",
+                    "shared_secret": "radius-shared-secret-change-me",
+                    "client_networks": "0.0.0.0/0,::/0"
+                  }' \
+                  "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+                
+                if [ "$PROVIDER_CREATE_RESPONSE" = "201" ]; then
+                  PROVIDER_PK=$(cat /tmp/provider_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                  echo "Created RADIUS provider with PK: $PROVIDER_PK"
+                else
+                  echo "Failed to create RADIUS provider. Status: $PROVIDER_CREATE_RESPONSE"
+                  cat /tmp/provider_response
+                  exit 1
+                fi
+              else
+                echo "RADIUS provider already exists"
+                PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A5 '"name":"radius-provider"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                echo "Found existing provider with PK: $PROVIDER_PK"
+              fi
+              
+              # Check if RADIUS outpost already exists
+              echo "Checking for existing RADIUS outpost..."
+              OUTPOST_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
+              echo "Outpost response: $OUTPOST_RESPONSE"
+              
+              OUTPOST_EXISTS=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"radius-outpost"' || echo "")
+              
+              if [ -z "$OUTPOST_EXISTS" ]; then
+                echo "Creating RADIUS outpost..."
+                OUTPOST_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/outpost_response \
+                  -X POST \
+                  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"name\": \"radius-outpost\",
+                    \"type\": \"radius\",
+                    \"providers\": [${PROVIDER_PK}],
+                    \"config\": {
+                      \"authentik_host\": \"${AUTHENTIK_HOST}\",
+                      \"authentik_host_insecure\": true,
+                      \"log_level\": \"info\",
+                      \"object_naming\": \"goauthentik.io/outpost/%(name)s\",
+                      \"docker_network\": null,
+                      \"docker_map_ports\": true,
+                      \"container_image\": null,
+                      \"kubernetes_replicas\": 2,
+                      \"kubernetes_namespace\": \"authentik\",
+                      \"kubernetes_ingress_annotations\": {},
+                      \"kubernetes_ingress_secret_name\": \"authentik-outpost-tls\",
+                      \"kubernetes_service_type\": \"LoadBalancer\",
+                      \"kubernetes_disabled_components\": [],
+                      \"kubernetes_image_pull_secrets\": []
+                    }
+                  }" \
+                  "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
+                
+                if [ "$OUTPOST_CREATE_RESPONSE" = "201" ]; then
+                  echo "RADIUS outpost created successfully!"
+                  cat /tmp/outpost_response
+                else
+                  echo "Failed to create RADIUS outpost. Status: $OUTPOST_CREATE_RESPONSE"
+                  cat /tmp/outpost_response
+                  exit 1
+                fi
+              else
+                echo "RADIUS outpost already exists"
+              fi
+              
+              echo "RADIUS outpost configuration completed!"
