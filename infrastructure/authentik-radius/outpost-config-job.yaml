@@ -1,0 +1,113 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentik-radius-outpost-config
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-weight: "10"
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-radius-config
+        app.kubernetes.io/component: configuration
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-authentik
+          image: curlimages/curl:8.5.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Authentik server to be ready..."
+              until curl -f -s http://authentik-server.authentik.svc.cluster.local/if/flow/initial-setup/ > /dev/null 2>&1; do
+                echo "Authentik not ready yet, waiting 10 seconds..."
+                sleep 10
+              done
+              echo "Authentik server is ready!"
+      containers:
+        - name: configure-outpost
+          image: curlimages/curl:8.5.0
+          env:
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.authentik.svc.cluster.local"
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-config
+                  key: secret_key
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Configuring RADIUS outpost..."
+              
+              # Get admin token (using bootstrap token for initial setup)
+              ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
+              
+              # Check if RADIUS provider already exists
+              PROVIDER_EXISTS=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/providers/radius/" | grep -o '"name":"radius-provider"' || echo "")
+              
+              if [ -z "$PROVIDER_EXISTS" ]; then
+                echo "Creating RADIUS provider..."
+                PROVIDER_RESPONSE=$(curl -s -X POST \
+                  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                    "name": "radius-provider",
+                    "authorization_flow": "default-provider-authorization-implicit-consent",
+                    "shared_secret": "radius-shared-secret-change-me",
+                    "client_networks": "0.0.0.0/0,::/0"
+                  }' \
+                  "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+                
+                PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                echo "Created RADIUS provider with PK: $PROVIDER_PK"
+              else
+                echo "RADIUS provider already exists"
+                PROVIDER_PK=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                  "${AUTHENTIK_HOST}/api/v3/providers/radius/" | grep -A5 '"name":"radius-provider"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+              fi
+              
+              # Check if RADIUS outpost already exists
+              OUTPOST_EXISTS=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                "${AUTHENTIK_HOST}/api/v3/outposts/instances/" | grep -o '"name":"radius-outpost"' || echo "")
+              
+              if [ -z "$OUTPOST_EXISTS" ]; then
+                echo "Creating RADIUS outpost..."
+                curl -s -X POST \
+                  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"name\": \"radius-outpost\",
+                    \"type\": \"radius\",
+                    \"providers\": [${PROVIDER_PK}],
+                    \"config\": {
+                      \"authentik_host\": \"${AUTHENTIK_HOST}\",
+                      \"authentik_host_insecure\": true,
+                      \"log_level\": \"info\",
+                      \"object_naming\": \"goauthentik.io/outpost/%(name)s\",
+                      \"docker_network\": null,
+                      \"docker_map_ports\": true,
+                      \"container_image\": null,
+                      \"kubernetes_replicas\": 2,
+                      \"kubernetes_namespace\": \"authentik\",
+                      \"kubernetes_ingress_annotations\": {},
+                      \"kubernetes_ingress_secret_name\": \"authentik-outpost-tls\",
+                      \"kubernetes_service_type\": \"LoadBalancer\",
+                      \"kubernetes_disabled_components\": [],
+                      \"kubernetes_image_pull_secrets\": []
+                    }
+                  }" \
+                  "${AUTHENTIK_HOST}/api/v3/outposts/instances/"
+                echo "RADIUS outpost created successfully!"
+              else
+                echo "RADIUS outpost already exists"
+              fi
+              
+              echo "RADIUS outpost configuration completed!"
