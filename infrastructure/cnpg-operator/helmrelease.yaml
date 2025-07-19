@@ -91,15 +91,15 @@ spec:
     rbac:
       create: true
       
-    # Webhook configuration
+    # Webhook configuration - temporarily disabled for initial deployment
     webhook:
-      enabled: true
+      enabled: false
       port: 9443
       mutating:
-        create: true
+        create: false
         failurePolicy: Fail
       validating:
-        create: true
+        create: false
         failurePolicy: Fail
         
     # Monitoring configuration
