@@ -112,17 +112,17 @@ spec:
     inProgress: false
     reusePVC: true
     
-  # Security context
-  securityContext:
+  # Pod security context
+  podSecurityContext:
     runAsUser: 999
     runAsGroup: 999
     fsGroup: 999
+    runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
       
-  # Pod security context
-  podSecurityContext:
-    runAsNonRoot: true
+  # Container security context
+  containerSecurityContext:
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: false
     capabilities:
