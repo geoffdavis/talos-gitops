@@ -3,9 +3,12 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - cluster-simple.yaml
+  - cluster.yaml
   - external-secret-superuser.yaml
   - external-secret-s3-backup.yaml
+  - backup-configuration.yaml
+  - monitoring.yaml
+  - recurring-job-database.yaml
 
 # Common labels for all PostgreSQL cluster resources
 commonLabels:
