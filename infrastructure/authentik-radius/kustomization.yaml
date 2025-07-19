@@ -9,7 +9,6 @@ resources:
   # RADIUS configuration and service
   - configmap-radius.yaml
   - service-radius.yaml
-  - outpost-config-job.yaml
 
 commonLabels:
   app.kubernetes.io/name: authentik-radius
