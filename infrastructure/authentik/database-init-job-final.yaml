@@ -127,7 +127,9 @@ spec:
               
               # Connect to the target database and grant schema permissions
               echo "Granting schema permissions..."
-              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL ON SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT CREATE ON SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT USAGE ON SCHEMA public TO ${APP_DB_USER};" || true
               PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${APP_DB_USER};" || true
               PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${APP_DB_USER};" || true
               PGDATABASE=${TARGET_DATABASE} psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${APP_DB_USER};" || true
