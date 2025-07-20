@@ -1,0 +1,184 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: authentik-token-alerts
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: authentik
+spec:
+  groups:
+    - name: authentik.token.rules
+      rules:
+        - alert: AuthentikTokenRotationJobFailed
+          expr: |
+            kube_job_status_failed{job_name=~"authentik-token-rotation.*"} > 0
+          for: 5m
+          labels:
+            severity: critical
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token rotation job failed"
+            description: "Token rotation job {{ $labels.job_name }} has failed"
+            runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
+        
+        - alert: AuthentikTokenRotationJobNotRun
+          expr: |
+            time() - kube_job_status_completion_time{job_name=~"authentik-token-rotation.*"} > 86400 * 2
+          for: 1h
+          labels:
+            severity: warning
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token rotation job hasn't run recently"
+            description: "Token rotation job hasn't completed successfully in over 2 days"
+            runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
+        
+        - alert: AuthentikTokenSecretMissing
+          expr: |
+            absent(kube_secret_info{secret="authentik-radius-token", namespace="authentik"})
+          for: 5m
+          labels:
+            severity: critical
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token secret is missing"
+            description: "The authentik-radius-token secret is missing from the authentik namespace"
+        
+        - alert: AuthentikExternalSecretNotSynced
+          expr: |
+            external_secrets_sync_calls_error{name="authentik-admin-token-enhanced", namespace="authentik"} > 0
+          for: 10m
+          labels:
+            severity: warning
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik external secret sync errors"
+            description: "External secret authentik-admin-token-enhanced has sync errors"
+        
+        - alert: AuthentikTokenConfigSecretMissing
+          expr: |
+            absent(kube_secret_info{secret="authentik-token-rotation-config", namespace="authentik"})
+          for: 5m
+          labels:
+            severity: warning
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token rotation config secret is missing"
+            description: "The authentik-token-rotation-config secret is missing"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-token-health-check
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-monitoring
+    app.kubernetes.io/component: monitoring
+data:
+  check-token-health.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    
+    # Simple token health check script
+    echo "=== Authentik Token Health Check ==="
+    echo "Timestamp: $(date -u)"
+    
+    # Check if token secret exists
+    if kubectl get secret authentik-radius-token -n authentik >/dev/null 2>&1; then
+      echo "✓ Token secret exists"
+      
+      # Check if token is not empty
+      TOKEN=$(kubectl get secret authentik-radius-token -n authentik -o jsonpath='{.data.token}' | base64 -d)
+      if [[ -n "$TOKEN" ]]; then
+        echo "✓ Token is not empty"
+        
+        # Try to validate token against Authentik API
+        if kubectl exec -n authentik deployment/authentik-server -- \
+           curl -f -s -H "Authorization: Bearer $TOKEN" \
+           http://localhost:9000/api/v3/core/users/me/ >/dev/null 2>&1; then
+          echo "✓ Token validation successful"
+          exit 0
+        else
+          echo "✗ Token validation failed"
+          exit 1
+        fi
+      else
+        echo "✗ Token is empty"
+        exit 1
+      fi
+    else
+      echo "✗ Token secret does not exist"
+      exit 1
+    fi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: authentik-token-health-check
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-health-check
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: authentik
+spec:
+  # Run every 6 hours
+  schedule: "0 */6 * * *"
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: authentik-token-health-check
+            app.kubernetes.io/component: monitoring
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+          serviceAccountName: authentik-token-rotation
+          containers:
+            - name: health-check
+              image: curlimages/curl:8.5.0
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                runAsUser: 65534
+                runAsGroup: 65534
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - name: health-check-script
+                  mountPath: /scripts
+                  readOnly: true
+              command:
+                - /bin/sh
+                - /scripts/check-token-health.sh
+              resources:
+                requests:
+                  memory: "32Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "64Mi"
+                  cpu: "100m"
+          volumes:
+            - name: health-check-script
+              configMap:
+                name: authentik-token-health-check
+                defaultMode: 0755

@@ -1,0 +1,111 @@
+# Authentik configuration
+authentik:
+  enabled: false  # Authentik should be deployed separately
+  host: "http://authentik-server.authentik.svc.cluster.local"
+  authFlowUuid: "be0ee023-11fe-4a43-b453-bc67957cafbf"
+  
+# Service definitions for proxy configuration
+services:
+  dashboard:
+    name: "Kubernetes Dashboard"
+    slug: "dashboard"
+    externalHost: "https://dashboard.k8s.home.geoffdavis.com"
+    internalHost: "http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000"
+    description: "Kubernetes cluster management dashboard"
+    publisher: "Kubernetes"
+    enabled: true
+    
+  hubble:
+    name: "Hubble UI"
+    slug: "hubble"
+    externalHost: "https://hubble.k8s.home.geoffdavis.com"
+    internalHost: "http://hubble-ui.kube-system.svc.cluster.local:80"
+    description: "Cilium Hubble network observability interface"
+    publisher: "Cilium"
+    enabled: true
+    
+  grafana:
+    name: "Grafana"
+    slug: "grafana"
+    externalHost: "https://grafana.k8s.home.geoffdavis.com"
+    internalHost: "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+    description: "Grafana monitoring and visualization dashboard"
+    publisher: "Grafana Labs"
+    enabled: true
+    
+  prometheus:
+    name: "Prometheus"
+    slug: "prometheus"
+    externalHost: "https://prometheus.k8s.home.geoffdavis.com"
+    internalHost: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+    description: "Prometheus metrics collection and querying interface"
+    publisher: "Prometheus"
+    enabled: true
+    
+  alertmanager:
+    name: "AlertManager"
+    slug: "alertmanager"
+    externalHost: "https://alertmanager.k8s.home.geoffdavis.com"
+    internalHost: "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
+    description: "AlertManager alert routing and management interface"
+    publisher: "Prometheus"
+    enabled: true
+    
+  longhorn:
+    name: "Longhorn Storage"
+    slug: "longhorn"
+    externalHost: "https://longhorn.k8s.home.geoffdavis.com"
+    internalHost: "http://longhorn-frontend.longhorn-system.svc.cluster.local:80"
+    description: "Longhorn distributed block storage management interface"
+    publisher: "Longhorn"
+    enabled: true
+
+# Hook configuration
+hooks:
+  timeout: 300
+  retries: 3
+  backoff: 15
+  image: "curlimages/curl:8.5.0"
+  
+# RBAC configuration
+rbac:
+  create: true
+  serviceAccountName: "authentik-proxy-config"
+  
+# Security context for hook containers
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  seccompProfile:
+    type: RuntimeDefault
+    
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# Proxy provider configuration
+proxyProvider:
+  mode: "forward_single"
+  cookieDomain: "k8s.home.geoffdavis.com"
+  skipPathRegex: "^/api/.*$"
+  basicAuthEnabled: false
+  internalHostSslValidation: false
+
+# Outpost configuration
+outpost:
+  name: "proxy-outpost"
+  namespace: "authentik"
+  
+# External secrets configuration
+externalSecrets:
+  tokenSecretName: "authentik-radius-token"
+  tokenSecretKey: "token"
+  configSecretName: "authentik-config"

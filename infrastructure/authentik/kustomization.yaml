@@ -18,6 +18,13 @@ resources:
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
   
+  # Enhanced token management
+  - external-secret-admin-token-enhanced.yaml
+  - token-rotation-cronjob.yaml
+  
+  # Token monitoring and alerting
+  - token-monitoring-simple.yaml
+  
   # Database initialization - temporarily disabled since migration completed manually
   # - database-init-job-final.yaml
   

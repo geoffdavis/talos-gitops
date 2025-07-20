@@ -1,0 +1,295 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: authentik-token-rotation
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-rotation
+    app.kubernetes.io/component: token-management
+    app.kubernetes.io/part-of: authentik
+  annotations:
+    flux.weave.works/automated: "false"
+spec:
+  # Run daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-token-rotation
+        app.kubernetes.io/component: token-management
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 1800  # 30 minutes
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: authentik-token-rotation
+            app.kubernetes.io/component: token-management
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          serviceAccountName: authentik-token-rotation
+          containers:
+            - name: token-rotation
+              image: python:3.12-slim
+              securityContext:
+                allowPrivilegeEscalation: false
+                runAsNonRoot: true
+                runAsUser: 65534
+                runAsGroup: 65534
+                capabilities:
+                  drop:
+                    - ALL
+                seccompProfile:
+                  type: RuntimeDefault
+                readOnlyRootFilesystem: true
+              env:
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: ROTATION_ENABLED
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-token-rotation-config
+                      key: rotation_enabled
+                      optional: true
+                - name: OVERLAP_DAYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-token-rotation-config
+                      key: overlap_days
+                      optional: true
+                - name: WARNING_DAYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-token-rotation-config
+                      key: warning_days
+                      optional: true
+                - name: VALIDATION_ENABLED
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-token-rotation-config
+                      key: validation_enabled
+                      optional: true
+                - name: NOTIFICATION_ENABLED
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-token-rotation-config
+                      key: notification_enabled
+                      optional: true
+                - name: NOTIFICATION_WEBHOOK
+                  valueFrom:
+                    secretKeyRef:
+                      name: authentik-token-rotation-config
+                      key: notification_webhook
+                      optional: true
+              volumeMounts:
+                - name: token-manager-script
+                  mountPath: /app
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+              workingDir: /app
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  
+                  echo "=== Authentik Token Rotation Job ==="
+                  echo "Starting token rotation check at $(date -u)"
+                  
+                  # Install dependencies
+                  pip install --user requests pyyaml
+                  
+                  # Set Python path
+                  export PYTHONPATH="/app:$PYTHONPATH"
+                  
+                  # Check if rotation is enabled
+                  if [[ "${ROTATION_ENABLED:-true}" != "true" ]]; then
+                    echo "Token rotation is disabled, skipping..."
+                    exit 0
+                  fi
+                  
+                  # Run token rotation check
+                  echo "Checking token expiry status..."
+                  python /app/authentik_token_manager.py list --json > /tmp/token_status.json
+                  
+                  # Parse token status and determine if rotation is needed
+                  python -c "
+                  import json
+                  import sys
+                  from datetime import datetime
+                  
+                  overlap_days = int('${OVERLAP_DAYS:-30}')
+                  warning_days = int('${WARNING_DAYS:-60}')
+                  
+                  with open('/tmp/token_status.json', 'r') as f:
+                      tokens = json.load(f)
+                  
+                  rotation_needed = False
+                  warning_needed = False
+                  
+                  for token in tokens:
+                      if token.get('days_remaining'):
+                          days = token['days_remaining']
+                          if days <= overlap_days:
+                              print(f'Token {token[\"key\"]} expires in {days} days - rotation needed')
+                              rotation_needed = True
+                          elif days <= warning_days:
+                              print(f'Token {token[\"key\"]} expires in {days} days - warning')
+                              warning_needed = True
+                  
+                  if rotation_needed:
+                      print('ROTATION_NEEDED=true')
+                      sys.exit(10)  # Special exit code for rotation needed
+                  elif warning_needed:
+                      print('WARNING_NEEDED=true')
+                      sys.exit(20)  # Special exit code for warning
+                  else:
+                      print('No action needed')
+                      sys.exit(0)
+                  " || rotation_status=$?
+                  
+                  case $rotation_status in
+                    10)
+                      echo "Token rotation is needed, starting rotation process..."
+                      python /app/authentik_token_manager.py rotate --overlap-days ${OVERLAP_DAYS:-30}
+                      if [[ $? -eq 0 ]]; then
+                        echo "Token rotation completed successfully"
+                        if [[ "${NOTIFICATION_ENABLED:-true}" == "true" && -n "${NOTIFICATION_WEBHOOK:-}" ]]; then
+                          curl -X POST "${NOTIFICATION_WEBHOOK}" \
+                            -H "Content-Type: application/json" \
+                            -d '{"text":"✅ Authentik token rotation completed successfully","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' || true
+                        fi
+                      else
+                        echo "Token rotation failed"
+                        if [[ "${NOTIFICATION_ENABLED:-true}" == "true" && -n "${NOTIFICATION_WEBHOOK:-}" ]]; then
+                          curl -X POST "${NOTIFICATION_WEBHOOK}" \
+                            -H "Content-Type: application/json" \
+                            -d '{"text":"❌ Authentik token rotation failed","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' || true
+                        fi
+                        exit 1
+                      fi
+                      ;;
+                    20)
+                      echo "Token expiry warning - no rotation needed yet"
+                      if [[ "${NOTIFICATION_ENABLED:-true}" == "true" && -n "${NOTIFICATION_WEBHOOK:-}" ]]; then
+                        curl -X POST "${NOTIFICATION_WEBHOOK}" \
+                          -H "Content-Type: application/json" \
+                          -d '{"text":"⚠️ Authentik token will expire soon","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' || true
+                      fi
+                      ;;
+                    0)
+                      echo "All tokens are healthy"
+                      ;;
+                    *)
+                      echo "Unexpected status check result: $rotation_status"
+                      exit 1
+                      ;;
+                  esac
+                  
+                  echo "Token rotation job completed at $(date -u)"
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "200m"
+          volumes:
+            - name: token-manager-script
+              configMap:
+                name: authentik-token-manager-script
+                defaultMode: 0755
+            - name: tmp
+              emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: authentik-token-rotation
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-rotation
+    app.kubernetes.io/component: token-management
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: authentik-token-rotation
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-rotation
+    app.kubernetes.io/component: token-management
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: authentik-token-rotation
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-rotation
+    app.kubernetes.io/component: token-management
+subjects:
+  - kind: ServiceAccount
+    name: authentik-token-rotation
+    namespace: authentik
+roleRef:
+  kind: Role
+  name: authentik-token-rotation
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-token-manager-script
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-rotation
+    app.kubernetes.io/component: token-management
+data:
+  authentik_token_manager.py: |
+    # This will be populated by a separate ConfigMap or mounted from the scripts directory
+    # For now, this is a placeholder - in production, you would either:
+    # 1. Build a custom container image with the script
+    # 2. Mount the script from a Git repository
+    # 3. Use an init container to download the script
+    
+    # Placeholder content - replace with actual script content
+    print("Token manager script placeholder")
+    print("In production, mount the actual authentik_token_manager.py script here")

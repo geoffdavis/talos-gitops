@@ -1,0 +1,21 @@
+apiVersion: v2
+name: authentik-proxy-config
+description: A Helm chart for configuring Authentik proxy providers and applications
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - authentik
+  - proxy
+  - authentication
+  - sso
+home: https://github.com/goauthentik/authentik
+sources:
+  - https://github.com/goauthentik/authentik
+maintainers:
+  - name: Geoff Davis
+    email: geoff@geoffdavis.com
+# No dependencies - this chart configures an existing Authentik installation
+dependencies: []
+annotations:
+  category: Identity and Access Management

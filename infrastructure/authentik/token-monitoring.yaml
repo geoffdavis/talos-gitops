@@ -1,0 +1,463 @@
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: authentik-token-monitoring
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: authentik
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authentik-token-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-token-exporter
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-exporter
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: authentik
+spec:
+  selector:
+    app.kubernetes.io/name: authentik-token-exporter
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik-token-exporter
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-exporter
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: authentik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authentik-token-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-token-exporter
+        app.kubernetes.io/component: monitoring
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: authentik-token-exporter
+      containers:
+        - name: token-exporter
+          image: python:3.12-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+            readOnlyRootFilesystem: true
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: METRICS_PORT
+              value: "8080"
+            - name: SCRAPE_INTERVAL
+              value: "30"
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+            - name: token-exporter-script
+              mountPath: /app
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          workingDir: /app
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              
+              echo "Starting Authentik Token Metrics Exporter..."
+              
+              # Install dependencies
+              pip install --user requests prometheus_client pyyaml
+              
+              # Start the metrics exporter
+              python /app/token_exporter.py
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+      volumes:
+        - name: token-exporter-script
+          configMap:
+            name: authentik-token-exporter-script
+            defaultMode: 0755
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: authentik-token-exporter
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-exporter
+    app.kubernetes.io/component: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: authentik-token-exporter
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-exporter
+    app.kubernetes.io/component: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: authentik-token-exporter
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-exporter
+    app.kubernetes.io/component: monitoring
+subjects:
+  - kind: ServiceAccount
+    name: authentik-token-exporter
+    namespace: authentik
+roleRef:
+  kind: Role
+  name: authentik-token-exporter
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-token-exporter-script
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-exporter
+    app.kubernetes.io/component: monitoring
+data:
+  token_exporter.py: |
+    #!/usr/bin/env python3
+    """
+    Authentik Token Metrics Exporter
+    
+    Exports Prometheus metrics for Authentik token status and health.
+    """
+    
+    import os
+    import time
+    import logging
+    import subprocess
+    from datetime import datetime, timedelta
+    from prometheus_client import start_http_server, Gauge, Counter, Info
+    
+    # Metrics
+    token_expiry_days = Gauge(
+        'authentik_token_expiry_days',
+        'Days until token expires',
+        ['token_id', 'user', 'description']
+    )
+    
+    token_status = Gauge(
+        'authentik_token_status',
+        'Token status (1=valid, 0=invalid/expired)',
+        ['token_id', 'user', 'description']
+    )
+    
+    token_rotation_last = Gauge(
+        'authentik_token_rotation_last_timestamp',
+        'Timestamp of last token rotation'
+    )
+    
+    token_validation_errors = Counter(
+        'authentik_token_validation_errors_total',
+        'Total number of token validation errors'
+    )
+    
+    token_info = Info(
+        'authentik_token_info',
+        'Token information',
+        ['token_id', 'user', 'description', 'created', 'expires']
+    )
+    
+    class TokenExporter:
+        def __init__(self):
+            self.namespace = os.getenv('NAMESPACE', 'authentik')
+            self.scrape_interval = int(os.getenv('SCRAPE_INTERVAL', '30'))
+            self.logger = self._setup_logging()
+            
+        def _setup_logging(self):
+            logging.basicConfig(
+                level=logging.INFO,
+                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            return logging.getLogger(__name__)
+        
+        def _run_kubectl_command(self, cmd):
+            """Execute kubectl command and return output"""
+            try:
+                result = subprocess.run(
+                    ["kubectl"] + cmd,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                return True, result.stdout.strip()
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"kubectl command failed: {e}")
+                return False, e.stderr.strip()
+        
+        def _get_token_metrics(self):
+            """Get token metrics from Authentik"""
+            try:
+                # Use the token manager to get token status
+                success, output = self._run_kubectl_command([
+                    "exec", "-n", self.namespace, "deployment/authentik-server", "--",
+                    "ak", "shell", "-c",
+                    """
+from authentik.core.models import User, Token
+from datetime import datetime
+import json
+
+try:
+    user = User.objects.get(username='akadmin')
+    tokens = Token.objects.filter(user=user, intent='api')
+    
+    token_data = []
+    for token in tokens:
+        data = {
+            'key': token.key[:8] + '...',
+            'user': user.username,
+            'description': token.description,
+            'created': token.created.isoformat() if hasattr(token, 'created') else None,
+            'expires': token.expires.isoformat() if token.expires else None,
+            'days_remaining': (token.expires - datetime.now()).days if token.expires else None
+        }
+        token_data.append(data)
+    
+    print(json.dumps(token_data))
+except Exception as e:
+    print(f'ERROR: {e}')
+                    """
+                ])
+                
+                if success and not output.startswith('ERROR:'):
+                    import json
+                    return json.loads(output)
+                else:
+                    self.logger.error(f"Failed to get token metrics: {output}")
+                    return []
+                    
+            except Exception as e:
+                self.logger.error(f"Error getting token metrics: {e}")
+                token_validation_errors.inc()
+                return []
+        
+        def _update_metrics(self):
+            """Update Prometheus metrics"""
+            tokens = self._get_token_metrics()
+            
+            # Clear existing metrics
+            token_expiry_days.clear()
+            token_status.clear()
+            
+            for token in tokens:
+                token_id = token['key']
+                user = token['user']
+                description = token['description'] or 'Unknown'
+                
+                # Set expiry days metric
+                if token['days_remaining'] is not None:
+                    token_expiry_days.labels(
+                        token_id=token_id,
+                        user=user,
+                        description=description
+                    ).set(token['days_remaining'])
+                    
+                    # Set status metric (1=valid, 0=expired)
+                    status = 1 if token['days_remaining'] > 0 else 0
+                else:
+                    # No expiry set (permanent token)
+                    token_expiry_days.labels(
+                        token_id=token_id,
+                        user=user,
+                        description=description
+                    ).set(999999)  # Large number for "never expires"
+                    status = 1
+                
+                token_status.labels(
+                    token_id=token_id,
+                    user=user,
+                    description=description
+                ).set(status)
+                
+                # Set token info
+                token_info.labels(
+                    token_id=token_id,
+                    user=user,
+                    description=description,
+                    created=token['created'] or 'unknown',
+                    expires=token['expires'] or 'never'
+                ).info({
+                    'token_id': token_id,
+                    'user': user,
+                    'description': description,
+                    'created': token['created'] or 'unknown',
+                    'expires': token['expires'] or 'never'
+                })
+            
+            self.logger.info(f"Updated metrics for {len(tokens)} tokens")
+        
+        def run(self):
+            """Main exporter loop"""
+            self.logger.info(f"Starting token exporter on port {os.getenv('METRICS_PORT', '8080')}")
+            
+            # Start Prometheus metrics server
+            start_http_server(int(os.getenv('METRICS_PORT', '8080')))
+            
+            while True:
+                try:
+                    self._update_metrics()
+                    time.sleep(self.scrape_interval)
+                except KeyboardInterrupt:
+                    self.logger.info("Exporter stopped")
+                    break
+                except Exception as e:
+                    self.logger.error(f"Error in exporter loop: {e}")
+                    token_validation_errors.inc()
+                    time.sleep(self.scrape_interval)
+    
+    if __name__ == '__main__':
+        exporter = TokenExporter()
+        exporter.run()
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: authentik-token-alerts
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-token-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: authentik
+spec:
+  groups:
+    - name: authentik.token.rules
+      rules:
+        - alert: AuthentikTokenExpiringSoon
+          expr: authentik_token_expiry_days < 60
+          for: 1h
+          labels:
+            severity: warning
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token expiring soon"
+            description: "Token {{ $labels.token_id }} for user {{ $labels.user }} expires in {{ $value }} days"
+            runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
+        
+        - alert: AuthentikTokenExpiringSoonCritical
+          expr: authentik_token_expiry_days < 30
+          for: 30m
+          labels:
+            severity: critical
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token expiring very soon"
+            description: "Token {{ $labels.token_id }} for user {{ $labels.user }} expires in {{ $value }} days - rotation needed"
+            runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
+        
+        - alert: AuthentikTokenExpired
+          expr: authentik_token_status == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token has expired"
+            description: "Token {{ $labels.token_id }} for user {{ $labels.user }} has expired"
+            runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
+        
+        - alert: AuthentikTokenValidationErrors
+          expr: increase(authentik_token_validation_errors_total[5m]) > 0
+          for: 2m
+          labels:
+            severity: warning
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token validation errors"
+            description: "{{ $value }} token validation errors in the last 5 minutes"
+        
+        - alert: AuthentikTokenExporterDown
+          expr: up{job="authentik-token-exporter"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: authentik
+            service: token-management
+          annotations:
+            summary: "Authentik token exporter is down"
+            description: "The Authentik token metrics exporter has been down for more than 5 minutes"

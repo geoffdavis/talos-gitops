@@ -22,3 +22,33 @@ talhelper = "latest"
 # renovate: datasource=node-version depName=node
 node = "20.18.0"
 cloudflared = "2025.7.0"
+# renovate: datasource=github-releases depName=python/cpython
+python = "3.12.8"
+
+[env]
+# Python path for token management scripts
+PYTHONPATH = "scripts/token-management:$PYTHONPATH"
+
+[tasks.install-token-deps]
+description = "Install token management dependencies"
+run = "pip install -r scripts/token-management/requirements.txt"
+
+[tasks.test-token-manager]
+description = "Run token manager tests"
+run = "cd scripts/token-management && python -m pytest test_authentik_token_manager.py -v"
+
+[tasks.create-token]
+description = "Create a long-lived Authentik token"
+run = "cd scripts/token-management && python authentik_token_manager.py create --expiry-days 365"
+
+[tasks.validate-token]
+description = "Validate an Authentik token"
+run = "cd scripts/token-management && python authentik_token_manager.py validate --token"
+
+[tasks.rotate-tokens]
+description = "Rotate Authentik tokens"
+run = "cd scripts/token-management && python authentik_token_manager.py rotate"
+
+[tasks.list-tokens]
+description = "List all Authentik tokens"
+run = "cd scripts/token-management && python authentik_token_manager.py list"
