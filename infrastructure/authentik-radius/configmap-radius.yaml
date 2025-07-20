@@ -24,33 +24,34 @@ data:
   AUTHENTIK_OUTPOST__NAME: "authentik-radius"
   AUTHENTIK_OUTPOST__DOCKER_NETWORK: ""
   AUTHENTIK_OUTPOST__CONTAINER_IMAGE: ""
----
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: authentik-radius-token
-  namespace: authentik
-  labels:
-    app.kubernetes.io/name: authentik
-    app.kubernetes.io/component: radius
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: onepassword-connect
-    kind: ClusterSecretStore
-  target:
-    name: authentik-radius-token
-    creationPolicy: Owner
-    template:
-      type: Opaque
-      metadata:
-        labels:
-          app.kubernetes.io/name: authentik
-          app.kubernetes.io/component: radius
-      data:
-        token: "{{ .token }}"
-  data:
-    - secretKey: token
-      remoteRef:
-        key: "Authentik RADIUS Token - home-ops"
-        property: "token"
+# External secret moved to enhanced token management in main authentik kustomization
+# ---
+# apiVersion: external-secrets.io/v1
+# kind: ExternalSecret
+# metadata:
+#   name: authentik-radius-token
+#   namespace: authentik
+#   labels:
+#     app.kubernetes.io/name: authentik
+#     app.kubernetes.io/component: radius
+# spec:
+#   refreshInterval: 1h
+#   secretStoreRef:
+#     name: onepassword-connect
+#     kind: ClusterSecretStore
+#   target:
+#     name: authentik-radius-token
+#     creationPolicy: Owner
+#     template:
+#       type: Opaque
+#       metadata:
+#         labels:
+#           app.kubernetes.io/name: authentik
+#           app.kubernetes.io/component: radius
+#       data:
+#         token: "{{ .token }}"
+#   data:
+#     - secretKey: token
+#       remoteRef:
+#         key: "Authentik RADIUS Token - home-ops"
+#         property: "token"
