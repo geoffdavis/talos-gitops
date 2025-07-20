@@ -63,9 +63,15 @@ spec:
             - name: AUTHENTIK_REDIS__HOST
               value: "authentik-redis-master.authentik.svc.cluster.local"
             - name: AUTHENTIK_POSTGRESQL__HOST
-              value: "postgresql-cluster-rw.postgresql-cluster.svc.cluster.local"
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-database-credentials
+                  key: AUTHENTIK_POSTGRESQL__HOST
             - name: AUTHENTIK_POSTGRESQL__NAME
-              value: "authentik"
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-database-credentials
+                  key: AUTHENTIK_POSTGRESQL__NAME
             - name: AUTHENTIK_POSTGRESQL__USER
               valueFrom:
                 secretKeyRef:
@@ -76,6 +82,11 @@ spec:
                 secretKeyRef:
                   name: authentik-database-credentials
                   key: AUTHENTIK_POSTGRESQL__PASSWORD
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-config
+                  key: AUTHENTIK_SECRET_KEY
           command:
             - /bin/bash
             - -c
