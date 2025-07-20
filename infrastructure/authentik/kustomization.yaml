@@ -18,8 +18,8 @@ resources:
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
   
-  # Enhanced token management
-  - external-secret-admin-token-enhanced.yaml
+  # Enhanced token management - temporarily disabled until 1Password items are created
+  # - external-secret-admin-token-enhanced.yaml
   - token-rotation-cronjob.yaml
   
   # Token monitoring and alerting
