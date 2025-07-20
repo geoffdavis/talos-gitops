@@ -6,8 +6,9 @@ metadata:
   namespace: authentik
 
 resources:
-  # Outpost configuration job
+  # Outpost configuration jobs
   - outpost-config-job.yaml
+  - longhorn-proxy-config-job.yaml
 
 labels:
   - pairs:

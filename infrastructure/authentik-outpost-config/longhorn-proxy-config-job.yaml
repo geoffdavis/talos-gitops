@@ -2,16 +2,16 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: authentik-radius-outpost-config
+  name: authentik-longhorn-proxy-config
   namespace: authentik
   annotations:
     argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-weight: "10"
+    argocd.argoproj.io/hook-weight: "15"
 spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: authentik-radius-config
+        app.kubernetes.io/name: authentik-longhorn-config
         app.kubernetes.io/component: configuration
     spec:
       restartPolicy: OnFailure
@@ -45,7 +45,7 @@ spec:
               done
               echo "Authentik server is ready!"
       containers:
-        - name: configure-outpost
+        - name: configure-longhorn-proxy
           image: curlimages/curl:8.5.0
           securityContext:
             allowPrivilegeEscalation: false
@@ -70,9 +70,9 @@ spec:
             - -c
             - |
               set -e
-              echo "Configuring RADIUS outpost..."
+              echo "Configuring Longhorn proxy provider and application..."
               
-              # Get admin token (using API token created via management command)
+              # Get admin token
               ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
               
               # Test authentication first
@@ -84,122 +84,126 @@ spec:
                 cat /tmp/auth_test
                 echo ""
                 echo "ERROR: API token authentication failed."
-                echo "To fix this issue, run the following commands:"
-                echo "1. kubectl exec -n authentik authentik-server-<pod-id> -- ak shell -c \""
-                echo "   from authentik.core.models import User, Token"
-                echo "   import secrets"
-                echo "   user, _ = User.objects.get_or_create(username='akadmin')"
-                echo "   user.is_superuser = True; user.save()"
-                echo "   token_key = secrets.token_hex(32)"
-                echo "   token, _ = Token.objects.get_or_create(user=user, intent='api', defaults={'key': token_key})"
-                echo "   print(f'Token: {token.key}')\""
-                echo "2. kubectl patch secret authentik-radius-token -n authentik --type='json' -p='[{\"op\": \"replace\", \"path\": \"/data/token\", \"value\": \"<base64-encoded-token>\"}]'"
                 exit 1
               fi
               echo "Authentication successful"
               
-              # Check if RADIUS provider already exists
-              echo "Checking for existing RADIUS provider..."
+              # Use the same authorization flow as RADIUS provider
+              AUTH_FLOW_UUID="be0ee023-11fe-4a43-b453-bc67957cafbf"
+              echo "Using authorization flow: $AUTH_FLOW_UUID"
+              
+              # Check if Longhorn proxy provider already exists
+              echo "Checking for existing Longhorn proxy provider..."
               PROVIDER_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+                "${AUTHENTIK_HOST}/api/v3/providers/proxy/")
               echo "Provider response: $PROVIDER_RESPONSE"
               
-              PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o '"name":"radius-provider"' || echo "")
+              PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o '"name":"longhorn-proxy"' || echo "")
               
               if [ -z "$PROVIDER_EXISTS" ]; then
-                echo "Creating RADIUS provider..."
+                echo "Creating Longhorn proxy provider..."
                 PROVIDER_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/provider_response \
                   -X POST \
                   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                   -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "radius-provider",
-                    "authorization_flow": "be0ee023-11fe-4a43-b453-bc67957cafbf",
-                    "shared_secret": "radius-shared-secret-change-me",
-                    "client_networks": "0.0.0.0/0,::/0"
-                  }' \
-                  "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+                  -d "{
+                    \"name\": \"longhorn-proxy\",
+                    \"authorization_flow\": \"${AUTH_FLOW_UUID}\",
+                    \"external_host\": \"https://longhorn.k8s.home.geoffdavis.com\",
+                    \"internal_host\": \"http://longhorn-frontend.longhorn-system.svc.cluster.local\",
+                    \"internal_host_ssl_validation\": false,
+                    \"mode\": \"forward_auth\",
+                    \"cookie_domain\": \"k8s.home.geoffdavis.com\",
+                    \"skip_path_regex\": \"^/api/.*$\",
+                    \"basic_auth_enabled\": false,
+                    \"basic_auth_password_attribute\": \"\",
+                    \"basic_auth_user_attribute\": \"\"
+                  }" \
+                  "${AUTHENTIK_HOST}/api/v3/providers/proxy/")
                 
                 if [ "$PROVIDER_CREATE_RESPONSE" = "201" ]; then
                   PROVIDER_PK=$(cat /tmp/provider_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
-                  echo "Created RADIUS provider with PK: $PROVIDER_PK"
+                  echo "Created Longhorn proxy provider with PK: $PROVIDER_PK"
                 else
-                  echo "Failed to create RADIUS provider. Status: $PROVIDER_CREATE_RESPONSE"
+                  echo "Failed to create Longhorn proxy provider. Status: $PROVIDER_CREATE_RESPONSE"
                   cat /tmp/provider_response
                   exit 1
                 fi
               else
-                echo "RADIUS provider already exists"
-                PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A5 '"name":"radius-provider"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                echo "Longhorn proxy provider already exists"
+                PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A10 '"name":"longhorn-proxy"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                 echo "Found existing provider with PK: $PROVIDER_PK"
               fi
               
-              # Check if RADIUS Application already exists
-              echo "Checking for existing RADIUS application..."
+              # Check if Longhorn Application already exists
+              echo "Checking for existing Longhorn application..."
               APP_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                 "${AUTHENTIK_HOST}/api/v3/core/applications/")
               echo "Application response: $APP_RESPONSE"
               
-              APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o '"name":"RADIUS Application"' || echo "")
+              APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o '"name":"Longhorn Storage"' || echo "")
               
               if [ -z "$APP_EXISTS" ]; then
-                echo "Creating RADIUS application..."
+                echo "Creating Longhorn application..."
                 APP_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/app_response \
                   -X POST \
                   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                   -H "Content-Type: application/json" \
                   -d "{
-                    \"name\": \"RADIUS Application\",
-                    \"slug\": \"radius-app\",
+                    \"name\": \"Longhorn Storage\",
+                    \"slug\": \"longhorn\",
                     \"provider\": ${PROVIDER_PK},
-                    \"meta_description\": \"RADIUS authentication application\",
-                    \"meta_publisher\": \"Authentik\"
+                    \"meta_description\": \"Longhorn distributed block storage management interface\",
+                    \"meta_publisher\": \"Longhorn\",
+                    \"meta_launch_url\": \"https://longhorn.k8s.home.geoffdavis.com\",
+                    \"policy_engine_mode\": \"any\",
+                    \"group\": \"\"
                   }" \
                   "${AUTHENTIK_HOST}/api/v3/core/applications/")
                 
                 if [ "$APP_CREATE_RESPONSE" = "201" ]; then
-                  echo "RADIUS application created successfully!"
+                  echo "Longhorn application created successfully!"
                   cat /tmp/app_response
                 else
-                  echo "Failed to create RADIUS application. Status: $APP_CREATE_RESPONSE"
+                  echo "Failed to create Longhorn application. Status: $APP_CREATE_RESPONSE"
                   cat /tmp/app_response
                   exit 1
                 fi
               else
-                echo "RADIUS application already exists"
+                echo "Longhorn application already exists"
               fi
               
-              # Check if RADIUS outpost already exists
-              echo "Checking for existing RADIUS outpost..."
+              # Check if proxy outpost already exists
+              echo "Checking for existing proxy outpost..."
               OUTPOST_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                 "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
               echo "Outpost response: $OUTPOST_RESPONSE"
               
-              OUTPOST_EXISTS=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"radius-outpost"' || echo "")
+              OUTPOST_EXISTS=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"proxy-outpost"' || echo "")
               
               if [ -z "$OUTPOST_EXISTS" ]; then
-                echo "Creating RADIUS outpost..."
+                echo "Creating proxy outpost..."
                 OUTPOST_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/outpost_response \
                   -X POST \
                   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                   -H "Content-Type: application/json" \
                   -d "{
-                    \"name\": \"radius-outpost\",
-                    \"type\": \"radius\",
+                    \"name\": \"proxy-outpost\",
+                    \"type\": \"proxy\",
                     \"providers\": [${PROVIDER_PK}],
                     \"config\": {
-                      \"authentik_host\": \"${AUTHENTIK_HOST}\",
+                      \"authentik_host\": \"http://authentik-server.authentik.svc.cluster.local\",
                       \"authentik_host_insecure\": true,
                       \"log_level\": \"info\",
                       \"object_naming\": \"goauthentik.io/outpost/%(name)s\",
                       \"docker_network\": null,
                       \"docker_map_ports\": true,
                       \"container_image\": null,
-                      \"kubernetes_replicas\": 2,
+                      \"kubernetes_replicas\": 1,
                       \"kubernetes_namespace\": \"authentik\",
                       \"kubernetes_ingress_annotations\": {},
                       \"kubernetes_ingress_secret_name\": \"authentik-outpost-tls\",
-                      \"kubernetes_service_type\": \"LoadBalancer\",
+                      \"kubernetes_service_type\": \"ClusterIP\",
                       \"kubernetes_disabled_components\": [],
                       \"kubernetes_image_pull_secrets\": []
                     }
@@ -207,15 +211,15 @@ spec:
                   "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
                 
                 if [ "$OUTPOST_CREATE_RESPONSE" = "201" ]; then
-                  echo "RADIUS outpost created successfully!"
+                  echo "Proxy outpost created successfully!"
                   cat /tmp/outpost_response
                 else
-                  echo "Failed to create RADIUS outpost. Status: $OUTPOST_CREATE_RESPONSE"
+                  echo "Failed to create proxy outpost. Status: $OUTPOST_CREATE_RESPONSE"
                   cat /tmp/outpost_response
                   exit 1
                 fi
               else
-                echo "RADIUS outpost already exists"
+                echo "Proxy outpost already exists"
               fi
               
-              echo "RADIUS outpost configuration completed!"
+              echo "Longhorn proxy configuration completed!"
