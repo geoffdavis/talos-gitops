@@ -6,7 +6,9 @@ metadata:
   namespace: authentik
 
 resources:
-  # Outpost configuration jobs
+  # Admin token setup (runs first)
+  - admin-token-setup-job.yaml
+  # Outpost configuration jobs (run after token setup)
   - outpost-config-job.yaml
   - longhorn-proxy-config-job.yaml
 

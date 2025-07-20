@@ -8,6 +8,8 @@ metadata:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-weight: "10"
 spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
   template:
     metadata:
       labels:
@@ -72,60 +74,83 @@ spec:
               set -e
               echo "Configuring RADIUS outpost..."
               
+              # Function to retry API calls
+              retry_api_call() {
+                local url="$1"
+                local method="${2:-GET}"
+                local data="${3:-}"
+                local max_retries=3
+                local retry_count=0
+                
+                while [ $retry_count -lt $max_retries ]; do
+                  if [ "$method" = "POST" ] && [ -n "$data" ]; then
+                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                      -X POST \
+                      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "$data" \
+                      "$url")
+                  else
+                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+                      "$url")
+                  fi
+                  
+                  if [ "$response" = "200" ] || [ "$response" = "201" ]; then
+                    return 0
+                  fi
+                  
+                  retry_count=$((retry_count + 1))
+                  echo "API call failed with status $response, retry $retry_count/$max_retries"
+                  if [ $retry_count -lt $max_retries ]; then
+                    sleep 5
+                  fi
+                done
+                
+                echo "API call failed after $max_retries retries"
+                cat /tmp/api_response
+                return 1
+              }
+              
               # Get admin token (using API token created via management command)
               ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
               
-              # Test authentication first
+              # Test authentication first with retry
               echo "Testing authentication..."
-              AUTH_TEST=$(curl -s -w "%{http_code}" -o /tmp/auth_test -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                "${AUTHENTIK_HOST}/api/v3/core/users/me/")
-              if [ "$AUTH_TEST" != "200" ]; then
-                echo "Authentication failed with status: $AUTH_TEST"
-                cat /tmp/auth_test
-                echo ""
-                echo "ERROR: API token authentication failed."
-                echo "To fix this issue, run the following commands:"
-                echo "1. kubectl exec -n authentik authentik-server-<pod-id> -- ak shell -c \""
-                echo "   from authentik.core.models import User, Token"
-                echo "   import secrets"
-                echo "   user, _ = User.objects.get_or_create(username='akadmin')"
-                echo "   user.is_superuser = True; user.save()"
-                echo "   token_key = secrets.token_hex(32)"
-                echo "   token, _ = Token.objects.get_or_create(user=user, intent='api', defaults={'key': token_key})"
-                echo "   print(f'Token: {token.key}')\""
-                echo "2. kubectl patch secret authentik-radius-token -n authentik --type='json' -p='[{\"op\": \"replace\", \"path\": \"/data/token\", \"value\": \"<base64-encoded-token>\"}]'"
+              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
+                echo "ERROR: API token authentication failed after retries."
+                echo "The token may not have sufficient permissions."
+                echo "Please ensure the admin-token-setup job has run successfully."
                 exit 1
               fi
               echo "Authentication successful"
               
               # Check if RADIUS provider already exists
               echo "Checking for existing RADIUS provider..."
-              PROVIDER_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/radius/"; then
+                echo "Failed to check existing RADIUS providers"
+                exit 1
+              fi
+              
+              PROVIDER_RESPONSE=$(cat /tmp/api_response)
               echo "Provider response: $PROVIDER_RESPONSE"
               
               PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o '"name":"radius-provider"' || echo "")
               
               if [ -z "$PROVIDER_EXISTS" ]; then
                 echo "Creating RADIUS provider..."
-                PROVIDER_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/provider_response \
-                  -X POST \
-                  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                  -H "Content-Type: application/json" \
-                  -d '{
-                    "name": "radius-provider",
-                    "authorization_flow": "be0ee023-11fe-4a43-b453-bc67957cafbf",
-                    "shared_secret": "radius-shared-secret-change-me",
-                    "client_networks": "0.0.0.0/0,::/0"
-                  }' \
-                  "${AUTHENTIK_HOST}/api/v3/providers/radius/")
+                PROVIDER_DATA='{
+                  "name": "radius-provider",
+                  "authorization_flow": "be0ee023-11fe-4a43-b453-bc67957cafbf",
+                  "shared_secret": "radius-shared-secret-change-me",
+                  "client_networks": "0.0.0.0/0,::/0"
+                }'
                 
-                if [ "$PROVIDER_CREATE_RESPONSE" = "201" ]; then
-                  PROVIDER_PK=$(cat /tmp/provider_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/radius/" "POST" "$PROVIDER_DATA"; then
+                  PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                   echo "Created RADIUS provider with PK: $PROVIDER_PK"
                 else
-                  echo "Failed to create RADIUS provider. Status: $PROVIDER_CREATE_RESPONSE"
-                  cat /tmp/provider_response
+                  echo "Failed to create RADIUS provider after retries"
                   exit 1
                 fi
               else
@@ -136,33 +161,31 @@ spec:
               
               # Check if RADIUS Application already exists
               echo "Checking for existing RADIUS application..."
-              APP_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                "${AUTHENTIK_HOST}/api/v3/core/applications/")
+              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
+                echo "Failed to check existing applications"
+                exit 1
+              fi
+              
+              APP_RESPONSE=$(cat /tmp/api_response)
               echo "Application response: $APP_RESPONSE"
               
               APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o '"name":"RADIUS Application"' || echo "")
               
               if [ -z "$APP_EXISTS" ]; then
                 echo "Creating RADIUS application..."
-                APP_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/app_response \
-                  -X POST \
-                  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                  -H "Content-Type: application/json" \
-                  -d "{
-                    \"name\": \"RADIUS Application\",
-                    \"slug\": \"radius-app\",
-                    \"provider\": ${PROVIDER_PK},
-                    \"meta_description\": \"RADIUS authentication application\",
-                    \"meta_publisher\": \"Authentik\"
-                  }" \
-                  "${AUTHENTIK_HOST}/api/v3/core/applications/")
+                APP_DATA="{
+                  \"name\": \"RADIUS Application\",
+                  \"slug\": \"radius-app\",
+                  \"provider\": ${PROVIDER_PK},
+                  \"meta_description\": \"RADIUS authentication application\",
+                  \"meta_publisher\": \"Authentik\"
+                }"
                 
-                if [ "$APP_CREATE_RESPONSE" = "201" ]; then
+                if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
                   echo "RADIUS application created successfully!"
-                  cat /tmp/app_response
+                  cat /tmp/api_response
                 else
-                  echo "Failed to create RADIUS application. Status: $APP_CREATE_RESPONSE"
-                  cat /tmp/app_response
+                  echo "Failed to create RADIUS application after retries"
                   exit 1
                 fi
               else
@@ -171,47 +194,45 @@ spec:
               
               # Check if RADIUS outpost already exists
               echo "Checking for existing RADIUS outpost..."
-              OUTPOST_RESPONSE=$(curl -s -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
+              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/"; then
+                echo "Failed to check existing outposts"
+                exit 1
+              fi
+              
+              OUTPOST_RESPONSE=$(cat /tmp/api_response)
               echo "Outpost response: $OUTPOST_RESPONSE"
               
               OUTPOST_EXISTS=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"radius-outpost"' || echo "")
               
               if [ -z "$OUTPOST_EXISTS" ]; then
                 echo "Creating RADIUS outpost..."
-                OUTPOST_CREATE_RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/outpost_response \
-                  -X POST \
-                  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                  -H "Content-Type: application/json" \
-                  -d "{
-                    \"name\": \"radius-outpost\",
-                    \"type\": \"radius\",
-                    \"providers\": [${PROVIDER_PK}],
-                    \"config\": {
-                      \"authentik_host\": \"${AUTHENTIK_HOST}\",
-                      \"authentik_host_insecure\": true,
-                      \"log_level\": \"info\",
-                      \"object_naming\": \"goauthentik.io/outpost/%(name)s\",
-                      \"docker_network\": null,
-                      \"docker_map_ports\": true,
-                      \"container_image\": null,
-                      \"kubernetes_replicas\": 2,
-                      \"kubernetes_namespace\": \"authentik\",
-                      \"kubernetes_ingress_annotations\": {},
-                      \"kubernetes_ingress_secret_name\": \"authentik-outpost-tls\",
-                      \"kubernetes_service_type\": \"LoadBalancer\",
-                      \"kubernetes_disabled_components\": [],
-                      \"kubernetes_image_pull_secrets\": []
-                    }
-                  }" \
-                  "${AUTHENTIK_HOST}/api/v3/outposts/instances/")
+                OUTPOST_DATA="{
+                  \"name\": \"radius-outpost\",
+                  \"type\": \"radius\",
+                  \"providers\": [${PROVIDER_PK}],
+                  \"config\": {
+                    \"authentik_host\": \"${AUTHENTIK_HOST}\",
+                    \"authentik_host_insecure\": true,
+                    \"log_level\": \"info\",
+                    \"object_naming\": \"goauthentik.io/outpost/%(name)s\",
+                    \"docker_network\": null,
+                    \"docker_map_ports\": true,
+                    \"container_image\": null,
+                    \"kubernetes_replicas\": 2,
+                    \"kubernetes_namespace\": \"authentik\",
+                    \"kubernetes_ingress_annotations\": {},
+                    \"kubernetes_ingress_secret_name\": \"authentik-outpost-tls\",
+                    \"kubernetes_service_type\": \"LoadBalancer\",
+                    \"kubernetes_disabled_components\": [],
+                    \"kubernetes_image_pull_secrets\": []
+                  }
+                }"
                 
-                if [ "$OUTPOST_CREATE_RESPONSE" = "201" ]; then
+                if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/" "POST" "$OUTPOST_DATA"; then
                   echo "RADIUS outpost created successfully!"
-                  cat /tmp/outpost_response
+                  cat /tmp/api_response
                 else
-                  echo "Failed to create RADIUS outpost. Status: $OUTPOST_CREATE_RESPONSE"
-                  cat /tmp/outpost_response
+                  echo "Failed to create RADIUS outpost after retries"
                   exit 1
                 fi
               else
