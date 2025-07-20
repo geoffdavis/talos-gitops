@@ -101,6 +101,8 @@ spec:
                   readOnly: true
                 - name: tmp
                   mountPath: /tmp
+                - name: pip-cache
+                  mountPath: /home/nobody/.local
               workingDir: /app
               command:
                 - /bin/bash
@@ -111,8 +113,9 @@ spec:
                   echo "=== Authentik Token Rotation Job ==="
                   echo "Starting token rotation check at $(date -u)"
                   
-                  # Install dependencies
-                  pip install --user requests pyyaml
+                  # Install dependencies to writable volume
+                  pip install --target /home/nobody/.local/lib/python3.12/site-packages requests pyyaml
+                  export PYTHONPATH="/home/nobody/.local/lib/python3.12/site-packages:$PYTHONPATH"
                   
                   # Set Python path
                   export PYTHONPATH="/app:$PYTHONPATH"
@@ -215,6 +218,8 @@ spec:
                 name: authentik-token-manager-script
                 defaultMode: 0755
             - name: tmp
+              emptyDir: {}
+            - name: pip-cache
               emptyDir: {}
 ---
 apiVersion: v1
