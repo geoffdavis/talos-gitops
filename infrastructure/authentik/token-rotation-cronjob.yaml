@@ -115,7 +115,7 @@ spec:
                   
                   # Install dependencies to writable volume
                   pip install --target /home/nobody/.local/lib/python3.12/site-packages requests pyyaml
-                  export PYTHONPATH="/home/nobody/.local/lib/python3.12/site-packages:$PYTHONPATH"
+                  export PYTHONPATH="/home/nobody/.local/lib/python3.12/site-packages:${PYTHONPATH:-}"
                   
                   # Set Python path
                   export PYTHONPATH="/app:$PYTHONPATH"
@@ -289,89 +289,153 @@ metadata:
     app.kubernetes.io/component: token-management
 data:
   authentik_token_manager.py: |
-    #!/bin/bash
-    # Simple wrapper to run the actual Python script
-    # The real script is in scripts/token-management/authentik_token_manager.py
-    # For now, we'll create a simple version that updates 1Password with the current token
+    #!/usr/bin/env python3
+    """
+    Authentik Token Manager - Updates 1Password with current Authentik tokens
+    """
+    import json
+    import sys
+    import argparse
+    import subprocess
+    from datetime import datetime, timedelta
     
-    set -euo pipefail
+    def run_command(cmd, capture_output=True):
+        """Run a shell command and return the result"""
+        try:
+            result = subprocess.run(cmd, shell=True, capture_output=capture_output, text=True, check=True)
+            return result.stdout.strip() if capture_output else None
+        except subprocess.CalledProcessError as e:
+            print(f"Command failed: {cmd}")
+            print(f"Error: {e.stderr}")
+            raise
     
-    echo "=== Authentik Token Manager ==="
+    def get_current_token():
+        """Get the current token from the enhanced token setup job logs"""
+        try:
+            # Get the most recent enhanced token setup job by name pattern
+            cmd = "kubectl get jobs -n authentik -o jsonpath='{.items[?(@.metadata.name==\"authentik-enhanced-token-setup\")].metadata.name}'"
+            job_name = run_command(cmd)
+            
+            if not job_name:
+                print("No enhanced token setup job found")
+                return None
+            
+            # Get the logs from the job
+            cmd = f"kubectl logs job/{job_name} -n authentik"
+            logs = run_command(cmd)
+            
+            # Extract token from logs
+            for line in logs.split('\n'):
+                if 'Token (base64):' in line:
+                    token_b64 = line.split('Token (base64): ')[1].strip()
+                    # Decode base64 token
+                    import base64
+                    token = base64.b64decode(token_b64).decode()
+                    return token
+                    
+            print("Token not found in job logs")
+            return None
+            
+        except Exception as e:
+            print(f"Error getting current token: {e}")
+            return None
     
-    if [[ "$1" == "rotate" ]]; then
-        echo "Starting token rotation process..."
-        
-        # Get the current token from the enhanced token setup job
-        echo "Getting current token from enhanced token setup job..."
-        JOB_NAME=$(kubectl get jobs -n authentik -l app.kubernetes.io/name=authentik-enhanced-token-setup --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null || echo "")
-        
-        if [[ -z "$JOB_NAME" ]]; then
-            echo "ERROR: No enhanced token setup job found"
-            exit 1
-        fi
-        
-        echo "Found job: $JOB_NAME"
-        
-        # Extract token from job logs
-        TOKEN=$(kubectl logs job/$JOB_NAME -n authentik 2>/dev/null | grep "Token (base64):" | cut -d' ' -f3 | base64 -d 2>/dev/null || echo "")
-        
-        if [[ -z "$TOKEN" ]]; then
-            echo "ERROR: Could not extract token from job logs"
-            exit 1
-        fi
-        
-        echo "Found token: ${TOKEN:0:8}..."
-        
-        # Update 1Password using the Connect API
-        echo "Updating 1Password with new token..."
-        
-        # Get 1Password Connect token
-        CONNECT_TOKEN=$(kubectl get secret onepassword-connect-token -n onepassword-connect -o jsonpath='{.data.token}' 2>/dev/null | base64 -d || echo "")
-        
-        if [[ -z "$CONNECT_TOKEN" ]]; then
-            echo "ERROR: Could not get 1Password Connect token"
-            exit 1
-        fi
-        
-        # Update the 1Password item
-        CONNECT_URL="http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
-        ITEM_ID="Authentik RADIUS Token - home-ops"
-        
-        # Create update payload
-        cat > /tmp/update_payload.json << EOF
-    {
-        "fields": [
-            {
-                "id": "token",
-                "value": "$TOKEN"
+    def update_onepassword(token):
+        """Update 1Password with the new token using 1Password Connect API"""
+        try:
+            # Use kubectl to get the 1Password Connect service
+            connect_url = "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
+            
+            # Get the connect token from the secret
+            cmd = "kubectl get secret onepassword-connect-token -n onepassword-connect -o jsonpath='{.data.token}' | base64 -d"
+            connect_token = run_command(cmd)
+            
+            if not connect_token:
+                print("Could not get 1Password Connect token")
+                return False
+            
+            # Update the item using curl (since requests isn't available yet)
+            item_id = "Authentik RADIUS Token - home-ops"
+            
+            # Create the update payload
+            update_data = {
+                "fields": [
+                    {
+                        "id": "token",
+                        "value": token
+                    }
+                ]
             }
-        ]
-    }
-    EOF
+            
+            # Write the data to a temp file
+            with open('/tmp/update_data.json', 'w') as f:
+                json.dump(update_data, f)
+            
+            # Use curl to update the item
+            cmd = f"""curl -s -X PATCH "{connect_url}/v1/vaults/homelab/items/{item_id}" \
+                -H "Authorization: Bearer {connect_token}" \
+                -H "Content-Type: application/json" \
+                -d @/tmp/update_data.json"""
+            
+            result = run_command(cmd)
+            print(f"1Password update result: {result}")
+            return True
+            
+        except Exception as e:
+            print(f"Error updating 1Password: {e}")
+            return False
+    
+    def list_tokens():
+        """List current token status"""
+        token = get_current_token()
+        if token:
+            # For now, just return basic info
+            return [{
+                "key": token[:8] + "...",
+                "days_remaining": 365,  # New tokens have 1 year
+                "status": "active"
+            }]
+        return []
+    
+    def rotate_tokens(overlap_days=30):
+        """Rotate tokens by updating 1Password with current token"""
+        print("Starting token rotation...")
+        
+        # Get current token
+        token = get_current_token()
+        if not token:
+            print("Could not get current token")
+            return False
+        
+        print(f"Found token: {token[:8]}...")
         
         # Update 1Password
-        RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/response.json \
-            -X PATCH "$CONNECT_URL/v1/vaults/homelab/items/$ITEM_ID" \
-            -H "Authorization: Bearer $CONNECT_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d @/tmp/update_payload.json)
+        if update_onepassword(token):
+            print("Successfully updated 1Password with new token")
+            return True
+        else:
+            print("Failed to update 1Password")
+            return False
+    
+    def main():
+        parser = argparse.ArgumentParser(description='Authentik Token Manager')
+        parser.add_argument('command', choices=['list', 'rotate'], help='Command to execute')
+        parser.add_argument('--json', action='store_true', help='Output in JSON format')
+        parser.add_argument('--overlap-days', type=int, default=30, help='Overlap days for rotation')
         
-        if [[ "$RESPONSE" == "200" ]]; then
-            echo "✅ Successfully updated 1Password with new token"
-            echo "Token rotation completed successfully!"
-            exit 0
-        else
-            echo "❌ Failed to update 1Password (HTTP $RESPONSE)"
-            cat /tmp/response.json
-            exit 1
-        fi
+        args = parser.parse_args()
         
-    elif [[ "$1" == "list" ]]; then
-        echo "Listing current tokens..."
-        # Simple implementation for now
-        echo '[{"key":"current","days_remaining":365,"status":"active"}]'
+        if args.command == 'list':
+            tokens = list_tokens()
+            if args.json:
+                print(json.dumps(tokens))
+            else:
+                for token in tokens:
+                    print(f"Token: {token['key']}, Days remaining: {token['days_remaining']}")
         
-    else
-        echo "Usage: $0 {list|rotate}"
-        exit 1
-    fi
+        elif args.command == 'rotate':
+            success = rotate_tokens(args.overlap_days)
+            sys.exit(0 if success else 1)
+    
+    if __name__ == '__main__':
+        main()
