@@ -70,12 +70,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: authentik-database-credentials
-                  key: username
+                  key: AUTHENTIK_POSTGRESQL__USER
             - name: AUTHENTIK_POSTGRESQL__PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: authentik-database-credentials
-                  key: password
+                  key: AUTHENTIK_POSTGRESQL__PASSWORD
           command:
             - /bin/bash
             - -c
