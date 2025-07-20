@@ -8,7 +8,7 @@ vars:
   GIT_OWNER: '{{.GIT_OWNER | default "geoffdavis"}}'
   GIT_REPO: '{{.GIT_REPO | default "talos-gitops"}}'
   GIT_BRANCH: '{{.GIT_BRANCH | default "main"}}'
-  GIT_PATH: '{{.GIT_PATH | default "clusters/homelab"}}'
+  GIT_PATH: '{{.GIT_PATH | default "clusters/home-ops"}}'
 
 env:
   TALOSCONFIG: talos/generated/talosconfig

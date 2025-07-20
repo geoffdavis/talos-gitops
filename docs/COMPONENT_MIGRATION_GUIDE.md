@@ -108,7 +108,7 @@ resources:
 EOF
 
 # 6. Create Flux Kustomization
-cat > clusters/homelab/infrastructure/my-component.yaml << EOF
+cat > clusters/home-ops/infrastructure/my-component.yaml << EOF
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -161,7 +161,7 @@ vim Taskfile.yml
 task apps:deploy-core  # Should not deploy my-component
 
 # 4. Activate GitOps management
-git add clusters/homelab/infrastructure/my-component.yaml
+git add clusters/home-ops/infrastructure/my-component.yaml
 git commit -m "Migrate my-component to GitOps management"
 git push
 
@@ -275,7 +275,7 @@ task bootstrap:cluster
 
 ```bash
 # 1. Remove Flux Kustomization
-git rm clusters/homelab/infrastructure/my-component.yaml
+git rm clusters/home-ops/infrastructure/my-component.yaml
 
 # 2. Keep manifests for reference but mark as inactive
 # Add comment to infrastructure/my-component/kustomization.yaml
@@ -428,7 +428,7 @@ vim Taskfile.yml
 # Restore component deployment
 
 # 2. Remove from GitOps
-git rm clusters/homelab/infrastructure/my-component.yaml
+git rm clusters/home-ops/infrastructure/my-component.yaml
 git commit -m "Rollback: Move my-component back to bootstrap"
 git push
 
@@ -443,7 +443,7 @@ kubectl get pods -n my-namespace
 
 ```bash
 # 1. Remove GitOps management
-git rm clusters/homelab/infrastructure/my-component.yaml
+git rm clusters/home-ops/infrastructure/my-component.yaml
 git commit -m "Rollback: Remove my-component from GitOps"
 git push
 

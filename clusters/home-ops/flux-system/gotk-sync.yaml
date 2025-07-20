@@ -20,7 +20,7 @@ metadata:
 spec:
   interval: 10m0s
   timeout: 10m0s
-  path: ./clusters/homelab
+  path: ./clusters/home-ops
   prune: true
   sourceRef:
     kind: GitRepository

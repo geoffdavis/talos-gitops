@@ -312,7 +312,7 @@ talosctl reboot --nodes <node-ips>
 To adjust timeouts, modify the appropriate configuration files:
 
 - HelmRelease timeouts: `infrastructure/*/helmrelease.yaml`
-- Kustomization timeouts: `clusters/homelab/infrastructure/*.yaml`
+- Kustomization timeouts: `clusters/home-ops/infrastructure/*.yaml`
 - Source timeouts: `infrastructure/sources/helm-repositories.yaml`
 
 ## Escalation Procedures

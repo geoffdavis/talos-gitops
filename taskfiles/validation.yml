@@ -150,8 +150,8 @@ tasks:
         msg: 'talos/patches directory must exist'
       - sh: 'test -d infrastructure'
         msg: 'infrastructure directory must exist'
-      - sh: 'test -d clusters/homelab'
-        msg: 'clusters/homelab directory must exist'
+      - sh: 'test -d clusters/home-ops'
+        msg: 'clusters/home-ops directory must exist'
     cmds:
       - echo "Repository structure validated"
       - touch {{.BOOTSTRAP_STATE_DIR}}/repository-validated

@@ -295,7 +295,7 @@ main() {
     echo "Next steps:"
     echo "1. Deploy Cilium CNI: task apps:deploy-cilium"
     echo "2. Wait for nodes to become Ready: watch kubectl get nodes"
-    echo "3. Deploy infrastructure: kubectl apply -k clusters/homelab/infrastructure/"
+    echo "3. Deploy infrastructure: kubectl apply -k clusters/home-ops/infrastructure/"
     echo "4. Verify 1Password Connect: kubectl get clustersecretstore"
 }
 

@@ -78,7 +78,7 @@ gitops:
     owner: "geoffdavis"
     name: "talos-gitops"
     branch: "main"
-    path: "clusters/homelab"
+    path: "clusters/home-ops"
   
   # Flux configuration
   flux:

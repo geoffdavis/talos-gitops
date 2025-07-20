@@ -301,11 +301,11 @@ ls -la infrastructure/flux-webhook/
 
 The flux-webhook needs to be added to the main infrastructure kustomization to be managed by Flux.
 
-**Edit** [`clusters/homelab/infrastructure/networking.yaml`](../clusters/homelab/infrastructure/networking.yaml):
+**Edit** [`clusters/home-ops/infrastructure/networking.yaml`](../clusters/home-ops/infrastructure/networking.yaml):
 
 ```bash
 # Add the following kustomization to the end of the file
-cat >> clusters/homelab/infrastructure/networking.yaml << 'EOF'
+cat >> clusters/home-ops/infrastructure/networking.yaml << 'EOF'
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -340,7 +340,7 @@ EOF
 
 ```bash
 # Add changes to git
-git add clusters/homelab/infrastructure/networking.yaml
+git add clusters/home-ops/infrastructure/networking.yaml
 
 # Commit the changes
 git commit -m "Add flux-webhook to infrastructure management
@@ -761,7 +761,7 @@ The flux-webhook integration requires adding it to the main infrastructure manag
 #### 1. Integration Point
 
 The flux-webhook is integrated into the existing infrastructure through the networking configuration file:
-- **File**: [`clusters/homelab/infrastructure/networking.yaml`](../clusters/homelab/infrastructure/networking.yaml)
+- **File**: [`clusters/home-ops/infrastructure/networking.yaml`](../clusters/home-ops/infrastructure/networking.yaml)
 - **Integration Type**: GitOps Phase (managed by Flux)
 - **Dependencies**: Multiple infrastructure components
 
@@ -788,7 +788,7 @@ graph TD
 
 #### 3. Complete Integration Configuration
 
-Add this configuration to [`clusters/homelab/infrastructure/networking.yaml`](../clusters/homelab/infrastructure/networking.yaml):
+Add this configuration to [`clusters/home-ops/infrastructure/networking.yaml`](../clusters/home-ops/infrastructure/networking.yaml):
 
 ```yaml
 ---
@@ -1500,10 +1500,10 @@ kubectl rollout restart deployment -n cloudflare-tunnel cloudflare-tunnel
 
 ```bash
 # 1. Remove webhook from infrastructure management
-git checkout HEAD~1 -- clusters/homelab/infrastructure/networking.yaml
+git checkout HEAD~1 -- clusters/home-ops/infrastructure/networking.yaml
 
 # 2. Commit rollback
-git add clusters/homelab/infrastructure/networking.yaml
+git add clusters/home-ops/infrastructure/networking.yaml
 git commit -m "Rollback: Remove flux-webhook from infrastructure management"
 git push origin main
 
@@ -1532,7 +1532,7 @@ kubectl delete certificate -n flux-system flux-webhook-tls
 
 # 3. Remove from infrastructure configuration
 git rm -r infrastructure/flux-webhook/
-git checkout HEAD~1 -- clusters/homelab/infrastructure/networking.yaml
+git checkout HEAD~1 -- clusters/home-ops/infrastructure/networking.yaml
 
 # 4. Commit complete removal
 git add .
@@ -1560,10 +1560,10 @@ git push origin main
 # 1. Restore from Git history
 git log --oneline | grep -i webhook  # Find last known good commit
 git checkout <commit-hash> -- infrastructure/flux-webhook/
-git checkout <commit-hash> -- clusters/homelab/infrastructure/networking.yaml
+git checkout <commit-hash> -- clusters/home-ops/infrastructure/networking.yaml
 
 # 2. Commit restoration
-git add infrastructure/flux-webhook/ clusters/homelab/infrastructure/networking.yaml
+git add infrastructure/flux-webhook/ clusters/home-ops/infrastructure/networking.yaml
 git commit -m "Restore flux-webhook from backup (commit <commit-hash>)"
 git push origin main
 

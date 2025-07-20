@@ -108,8 +108,8 @@ resources:
 EOF
 
 # 6. Add to GitOps management
-# Edit clusters/homelab/infrastructure/apps.yaml to include:
-cat >> clusters/homelab/infrastructure/apps.yaml << EOF
+# Edit clusters/home-ops/infrastructure/apps.yaml to include:
+cat >> clusters/home-ops/infrastructure/apps.yaml << EOF
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -128,7 +128,7 @@ spec:
 EOF
 
 # 7. Commit and deploy
-git add apps/my-new-app/ clusters/homelab/infrastructure/apps.yaml
+git add apps/my-new-app/ clusters/home-ops/infrastructure/apps.yaml
 git commit -m "Add my-new-app application"
 git push
 
@@ -161,11 +161,11 @@ kubectl rollout status deployment/my-app -n my-app
 **Workflow**:
 ```bash
 # 1. Remove from GitOps management
-# Edit clusters/homelab/infrastructure/apps.yaml
+# Edit clusters/home-ops/infrastructure/apps.yaml
 # Remove the Kustomization for the app
 
 # 2. Commit removal
-git add clusters/homelab/infrastructure/apps.yaml
+git add clusters/home-ops/infrastructure/apps.yaml
 git commit -m "Remove my-old-app application"
 git push
 
@@ -228,7 +228,7 @@ resources:
 EOF
 
 # 5. Add to infrastructure management
-# Edit clusters/homelab/infrastructure/storage.yaml or create new file
+# Edit clusters/home-ops/infrastructure/storage.yaml or create new file
 
 # 6. Commit and deploy
 git add infrastructure/redis/

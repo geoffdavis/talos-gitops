@@ -16,7 +16,7 @@
   - This resolves the VXLAN dead loop issue
 
 #### 2. GitOps Migration
-- **File**: `clusters/homelab/infrastructure/networking.yaml`
+- **File**: `clusters/home-ops/infrastructure/networking.yaml`
   - Added Cilium kustomization to Flux GitOps management
   - Added health checks for Cilium DaemonSet and operator
   - Added dependency chain: external-dns depends on Cilium

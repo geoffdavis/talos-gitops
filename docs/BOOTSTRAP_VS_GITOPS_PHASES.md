@@ -164,7 +164,7 @@ resources:
 EOF
 
 # 3. Add to GitOps management
-cat >> clusters/homelab/infrastructure/apps.yaml << EOF
+cat >> clusters/home-ops/infrastructure/apps.yaml << EOF
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -181,7 +181,7 @@ spec:
 EOF
 
 # 4. Deploy via GitOps
-git add apps/my-new-app/ clusters/homelab/infrastructure/apps.yaml
+git add apps/my-new-app/ clusters/home-ops/infrastructure/apps.yaml
 git commit -m "Add my-new-app application"
 git push
 
@@ -243,7 +243,7 @@ spec:
 EOF
 
 # 3. Add to infrastructure management
-# Edit appropriate infrastructure file in clusters/homelab/infrastructure/
+# Edit appropriate infrastructure file in clusters/home-ops/infrastructure/
 
 # 4. Deploy via GitOps
 git add infrastructure/redis/

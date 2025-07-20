@@ -114,8 +114,8 @@ test_flux_config() {
     
     # Test if Flux system files exist
     local flux_files=(
-        "clusters/homelab/flux-system/gotk-sync.yaml"
-        "clusters/homelab/kustomization.yaml"
+        "clusters/home-ops/flux-system/gotk-sync.yaml"
+        "clusters/home-ops/kustomization.yaml"
     )
     
     for file in "${flux_files[@]}"; do

@@ -288,7 +288,7 @@ tasks:
           --owner=geoffdavis \
           --repository=talos-gitops \
           --branch=main \
-          --path=clusters/homelab \
+          --path=clusters/home-ops \
           --personal=true
 
   flux:reconcile:
@@ -616,7 +616,7 @@ tasks:
       - echo "Testing Talos configuration..."
       - mise exec -- talosctl validate --config talos/generated/controlplane.yaml
       - echo "Testing Kubernetes manifests..."
-      - mise exec -- kubectl apply --dry-run=client -f clusters/homelab/
+      - mise exec -- kubectl apply --dry-run=client -f clusters/home-ops/
 
   test:connectivity:
     desc: Test cluster connectivity

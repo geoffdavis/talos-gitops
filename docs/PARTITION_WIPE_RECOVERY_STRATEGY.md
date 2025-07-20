@@ -120,7 +120,7 @@ task apps:deploy-cilium
 watch kubectl get nodes
 
 # Deploy core infrastructure
-kubectl apply -k clusters/homelab/infrastructure/
+kubectl apply -k clusters/home-ops/infrastructure/
 
 # Verify 1Password Connect and External Secrets
 kubectl get clustersecretstore

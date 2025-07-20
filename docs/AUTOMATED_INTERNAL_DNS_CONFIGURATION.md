@@ -145,7 +145,7 @@ annotations:
 
 ### Flux Kustomizations
 
-Added to [`clusters/homelab/infrastructure/networking.yaml`](../clusters/homelab/infrastructure/networking.yaml):
+Added to [`clusters/home-ops/infrastructure/networking.yaml`](../clusters/home-ops/infrastructure/networking.yaml):
 
 1. **UniFi Webhook**: `infrastructure-external-dns-unifi`
 2. **Internal External-DNS**: `infrastructure-external-dns-internal`

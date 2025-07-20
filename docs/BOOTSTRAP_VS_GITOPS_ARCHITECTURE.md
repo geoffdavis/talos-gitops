@@ -277,7 +277,7 @@ graph TD
 **Process**: GitOps Phase
 **Steps**:
 1. Create application manifests in [`apps/`](../apps/) directory
-2. Add Kustomization to [`clusters/homelab/infrastructure/apps.yaml`](../clusters/homelab/infrastructure/apps.yaml)
+2. Add Kustomization to [`clusters/home-ops/infrastructure/apps.yaml`](../clusters/home-ops/infrastructure/apps.yaml)
 3. Commit and push to Git
 4. Flux automatically deploys the application
 
