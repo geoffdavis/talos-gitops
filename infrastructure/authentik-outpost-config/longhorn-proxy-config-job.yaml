@@ -149,7 +149,7 @@ spec:
                   \"external_host\": \"https://longhorn.k8s.home.geoffdavis.com\",
                   \"internal_host\": \"http://longhorn-frontend.longhorn-system.svc.cluster.local\",
                   \"internal_host_ssl_validation\": false,
-                  \"mode\": \"forward_auth\",
+                  \"mode\": \"forward_single\",
                   \"cookie_domain\": \"k8s.home.geoffdavis.com\",
                   \"skip_path_regex\": \"^/api/.*$\",
                   \"basic_auth_enabled\": false,
