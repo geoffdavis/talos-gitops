@@ -323,19 +323,24 @@ spec:
                   item_exists = False
                   item_id = None
               
-              # Prepare item data
+              # Prepare item data with secondary token fields for rotation overlap
               item_data = {
                   'title': 'Authentik Outpost Token - home-ops',
                   'category': 'API_CREDENTIAL',
                   'vault': {'id': automation_vault_id},
                   'fields': [
+                      # Primary token fields (active)
                       {'id': 'token', 'type': 'CONCEALED', 'label': 'token', 'value': token},
                       {'id': 'expires', 'type': 'STRING', 'label': 'expires', 'value': expires},
                       {'id': 'created', 'type': 'STRING', 'label': 'created', 'value': created},
                       {'id': 'description', 'type': 'STRING', 'label': 'description', 'value': description},
                       {'id': 'user', 'type': 'STRING', 'label': 'user', 'value': user},
                       {'id': 'last_rotation', 'type': 'STRING', 'label': 'last_rotation', 'value': last_rotation},
-                      {'id': 'rotation_status', 'type': 'STRING', 'label': 'rotation_status', 'value': rotation_status}
+                      {'id': 'rotation_status', 'type': 'STRING', 'label': 'rotation_status', 'value': rotation_status},
+                      # Secondary token fields (for rotation overlap - initially empty)
+                      {'id': 'token_secondary', 'type': 'CONCEALED', 'label': 'token_secondary', 'value': ''},
+                      {'id': 'expires_secondary', 'type': 'STRING', 'label': 'expires_secondary', 'value': ''},
+                      {'id': 'created_secondary', 'type': 'STRING', 'label': 'created_secondary', 'value': ''}
                   ]
               }
               
