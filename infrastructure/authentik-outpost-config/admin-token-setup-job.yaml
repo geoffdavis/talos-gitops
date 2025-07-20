@@ -8,6 +8,8 @@ metadata:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-weight: "5"
 spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 600
   template:
     metadata:
       labels:
@@ -67,12 +69,12 @@ spec:
             - name: AUTHENTIK_POSTGRESQL__USER
               valueFrom:
                 secretKeyRef:
-                  name: authentik-db
+                  name: authentik-database-credentials
                   key: username
             - name: AUTHENTIK_POSTGRESQL__PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: authentik-db
+                  name: authentik-database-credentials
                   key: password
           command:
             - /bin/bash

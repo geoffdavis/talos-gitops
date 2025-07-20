@@ -11,9 +11,8 @@ resources:
   # Outpost configuration jobs (run after token setup)
   - outpost-config-job.yaml
   - longhorn-proxy-config-job.yaml
-  - dashboard-proxy-config-job.yaml
-  - hubble-proxy-config-job.yaml
-  - monitoring-proxy-config-job.yaml
+  # Consolidated configuration for all UI services (replaces individual jobs)
+  - consolidated-proxy-config-job.yaml
 
 labels:
   - pairs:

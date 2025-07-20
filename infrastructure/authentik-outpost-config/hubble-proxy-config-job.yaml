@@ -8,8 +8,8 @@ metadata:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-weight: "17"
 spec:
-  backoffLimit: 3
-  activeDeadlineSeconds: 600
+  backoffLimit: 5
+  activeDeadlineSeconds: 900
   template:
     metadata:
       labels:
