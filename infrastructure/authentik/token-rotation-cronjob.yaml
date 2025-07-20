@@ -61,37 +61,37 @@ spec:
                       fieldPath: metadata.namespace
                 - name: ROTATION_ENABLED
                   valueFrom:
-                    secretKeyRef:
+                    configMapKeyRef:
                       name: authentik-token-rotation-config
                       key: rotation_enabled
                       optional: true
                 - name: OVERLAP_DAYS
                   valueFrom:
-                    secretKeyRef:
+                    configMapKeyRef:
                       name: authentik-token-rotation-config
                       key: overlap_days
                       optional: true
                 - name: WARNING_DAYS
                   valueFrom:
-                    secretKeyRef:
+                    configMapKeyRef:
                       name: authentik-token-rotation-config
                       key: warning_days
                       optional: true
                 - name: VALIDATION_ENABLED
                   valueFrom:
-                    secretKeyRef:
+                    configMapKeyRef:
                       name: authentik-token-rotation-config
                       key: validation_enabled
                       optional: true
                 - name: NOTIFICATION_ENABLED
                   valueFrom:
-                    secretKeyRef:
+                    configMapKeyRef:
                       name: authentik-token-rotation-config
                       key: notification_enabled
                       optional: true
                 - name: NOTIFICATION_WEBHOOK
                   valueFrom:
-                    secretKeyRef:
+                    configMapKeyRef:
                       name: authentik-token-rotation-config
                       key: notification_webhook
                       optional: true
@@ -355,7 +355,7 @@ data:
                 return False
             
             # Update the item using curl (since requests isn't available yet)
-            item_id = "Authentik RADIUS Token - home-ops"
+            item_id = "Authentik Admin Token"
             
             # Create the update payload
             update_data = {

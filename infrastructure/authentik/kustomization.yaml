@@ -17,11 +17,12 @@ resources:
   - external-secret-db.yaml
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
+  - external-secret-onepassword-connect-token.yaml
   
-  # Enhanced token management - temporarily disabled until 1Password items are created
+  # Enhanced token management
   - external-secret-admin-token-enhanced.yaml
   - token-rotation-cronjob.yaml
-  - token-rotation-config-secret.yaml
+  - token-rotation-configmap.yaml
   
   # Token monitoring and alerting
   - token-monitoring-simple.yaml

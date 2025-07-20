@@ -1,73 +1,51 @@
----
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: authentik-enhanced-token-setup
-  namespace: authentik
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-weight: "5"
-    flux.weave.works/automated: "false"
+  name: {{ include "authentik-proxy-config.fullname" . }}-pre-install-token-setup
+  namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: authentik-enhanced-token-setup
-    app.kubernetes.io/component: configuration
-    app.kubernetes.io/part-of: authentik
+    {{- include "authentik-proxy-config.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pre-install-token-hook
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
 spec:
-  backoffLimit: 5
-  activeDeadlineSeconds: 900
+  backoffLimit: {{ .Values.hooks.retries }}
+  activeDeadlineSeconds: {{ .Values.hooks.timeout }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: authentik-enhanced-token-setup
-        app.kubernetes.io/component: configuration
-        app.kubernetes.io/part-of: authentik
+        {{- include "authentik-proxy-config.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: pre-install-token-hook
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: {{ include "authentik-proxy-config.serviceAccountName" . }}
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
+        {{- toYaml .Values.securityContext | nindent 8 }}
       volumes:
         - name: op-cli
           emptyDir: {}
       initContainers:
         - name: wait-for-authentik
-          image: curlimages/curl:8.5.0
+          image: {{ .Values.hooks.image }}
           securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           command:
             - /bin/sh
             - -c
             - |
               echo "Waiting for Authentik server to be ready..."
-              until curl -f -s http://authentik-server.authentik.svc.cluster.local/if/flow/initial-setup/ > /dev/null 2>&1; do
+              until curl -f -s {{ .Values.authentik.host }}/if/flow/initial-setup/ > /dev/null 2>&1; do
                 echo "Authentik not ready yet, waiting 10 seconds..."
                 sleep 10
               done
               echo "Authentik server is ready!"
       containers:
         - name: setup-enhanced-token
-          image: ghcr.io/goauthentik/server:2024.8.3
+          image: "ghcr.io/goauthentik/server:2024.8.3"
           securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:
             - name: AUTHENTIK_REDIS__HOST
               value: "authentik-redis-master.authentik.svc.cluster.local"
@@ -94,7 +72,7 @@ spec:
             - name: AUTHENTIK_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: authentik-config
+                  name: {{ .Values.externalSecrets.configSecretName }}
                   key: AUTHENTIK_SECRET_KEY
             - name: OP_CONNECT_HOST
               value: "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
@@ -114,7 +92,12 @@ spec:
               echo "=== Enhanced Token Setup with 1-Year Expiry ==="
               echo "Starting enhanced admin user and long-lived API token setup..."
               
-              echo "Skipping 1Password CLI installation - using Connect API directly"
+              # Install 1Password CLI
+              echo "Installing 1Password CLI..."
+              curl -sSfLo /tmp/op.zip https://cache.agilebits.com/dist/1P/op2/pkg/v2.29.0/op_linux_amd64_v2.29.0.zip
+              unzip -o /tmp/op.zip -d /tmp/op-cli/
+              chmod +x /tmp/op-cli/op
+              export PATH="/tmp/op-cli:$PATH"
               
               # Use ak shell to create admin user and long-lived token
               ak shell -c "
@@ -243,151 +226,58 @@ spec:
               
               # Check if token info file exists
               if [ -f /tmp/token_info.json ]; then
-                echo "✓ Token information file found, using 1Password Connect API..."
+                # Read token information
+                TOKEN_DATA=$(cat /tmp/token_info.json)
+                TOKEN=$(echo "$TOKEN_DATA" | jq -r '.token')
+                EXPIRES=$(echo "$TOKEN_DATA" | jq -r '.expires')
+                CREATED=$(echo "$TOKEN_DATA" | jq -r '.created')
+                DESCRIPTION=$(echo "$TOKEN_DATA" | jq -r '.description')
+                USER=$(echo "$TOKEN_DATA" | jq -r '.user')
+                LAST_ROTATION=$(echo "$TOKEN_DATA" | jq -r '.last_rotation // .created')
+                ROTATION_STATUS=$(echo "$TOKEN_DATA" | jq -r '.rotation_status // "active"')
                 
-                # Use Python to parse JSON and update 1Password via Connect API
-                python3 -c "
-              import json
-              import urllib.request
-              import urllib.parse
-              import os
-              import sys
-              
-              # Read token information
-              with open('/tmp/token_info.json', 'r') as f:
-                  token_data = json.load(f)
-              
-              token = token_data['token']
-              expires = token_data['expires']
-              created = token_data['created']
-              description = token_data['description']
-              user = token_data['user']
-              last_rotation = token_data.get('last_rotation', created)
-              rotation_status = token_data.get('rotation_status', 'active')
-              
-              print('✓ Token information loaded from Authentik')
-              print('Updating 1Password item via Connect API: Authentik Admin Token')
-              
-              # Get environment variables
-              connect_host = os.environ.get('OP_CONNECT_HOST')
-              connect_token = os.environ.get('OP_CONNECT_TOKEN')
-              
-              if not connect_host or not connect_token:
-                  print('✗ Missing 1Password Connect configuration')
-                  sys.exit(1)
-              
-              # Prepare headers
-              headers = {
-                  'Authorization': f'Bearer {connect_token}',
-                  'Content-Type': 'application/json'
-              }
-              
-              # First, get all vaults to find the Automation vault ID
-              try:
-                  req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
-                  with urllib.request.urlopen(req) as response:
-                      vaults = json.loads(response.read().decode())
-                  
-                  automation_vault_id = None
-                  for vault in vaults:
-                      if vault['name'] == 'Automation':
-                          automation_vault_id = vault['id']
-                          break
-                  
-                  if not automation_vault_id:
-                      print('✗ Could not find Automation vault')
-                      sys.exit(1)
-                  
-                  print(f'✓ Found Automation vault: {automation_vault_id}')
-              except Exception as e:
-                  print(f'✗ Failed to get vaults: {e}')
-                  sys.exit(1)
-              
-              # Check if item exists by searching for it
-              try:
-                  search_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items?filter=title eq \"Authentik Outpost Token - home-ops\"'
-                  req = urllib.request.Request(search_url, headers=headers)
-                  with urllib.request.urlopen(req) as response:
-                      items = json.loads(response.read().decode())
-                  
-                  item_exists = len(items) > 0
-                  item_id = items[0]['id'] if item_exists else None
-                  
-                  if item_exists:
-                      print(f'✓ Item already exists with ID: {item_id}')
-                      print('✓ Skipping creation to prevent duplicates (idempotent operation)')
-                  else:
-                      print('✓ Item doesn\\'t exist, will create new one')
-              except Exception as e:
-                  print(f'✗ Failed to search for existing item: {e}')
-                  item_exists = False
-                  item_id = None
-              
-              # Prepare item data
-              item_data = {
-                  'title': 'Authentik Outpost Token - home-ops',
-                  'category': 'API_CREDENTIAL',
-                  'vault': {'id': automation_vault_id},
-                  'fields': [
-                      {'id': 'token', 'type': 'CONCEALED', 'label': 'token', 'value': token},
-                      {'id': 'expires', 'type': 'STRING', 'label': 'expires', 'value': expires},
-                      {'id': 'created', 'type': 'STRING', 'label': 'created', 'value': created},
-                      {'id': 'description', 'type': 'STRING', 'label': 'description', 'value': description},
-                      {'id': 'user', 'type': 'STRING', 'label': 'user', 'value': user},
-                      {'id': 'last_rotation', 'type': 'STRING', 'label': 'last_rotation', 'value': last_rotation},
-                      {'id': 'rotation_status', 'type': 'STRING', 'label': 'rotation_status', 'value': rotation_status}
-                  ]
-              }
-              
-              try:
-                  if item_exists and item_id:
-                      # Update existing item with new token data
-                      url = f'{connect_host}/v1/vaults/{automation_vault_id}/items/{item_id}'
-                      data = json.dumps(item_data).encode('utf-8')
-                      req = urllib.request.Request(url, data=data, headers=headers, method='PUT')
-                      with urllib.request.urlopen(req) as response:
-                          result = json.loads(response.read().decode())
-                      print('✓ 1Password item \\'Authentik Outpost Token - home-ops\\' updated successfully via Connect API')
-                  else:
-                      # Create new item only if it doesn\\'t exist
-                      url = f'{connect_host}/v1/vaults/{automation_vault_id}/items'
-                      data = json.dumps(item_data).encode('utf-8')
-                      req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-                      with urllib.request.urlopen(req) as response:
-                          result = json.loads(response.read().decode())
-                      print('✓ 1Password item \\'Authentik Outpost Token - home-ops\\' created successfully via Connect API')
-              except Exception as e:
-                  print(f'✗ Failed to create/update 1Password item via Connect API: {e}')
-                  sys.exit(1)
-              "
+                echo "✓ Token information loaded from Authentik"
+                
+                # Update 1Password item - create or update "Authentik Admin Token"
+                echo "Updating 1Password item: Authentik Admin Token"
+                
+                # Check if item exists
+                if op item get "Authentik Admin Token" --vault homelab >/dev/null 2>&1; then
+                  echo "✓ Item exists, updating..."
+                  op item edit "Authentik Admin Token" \
+                    --vault homelab \
+                    token="$TOKEN" \
+                    expires="$EXPIRES" \
+                    created="$CREATED" \
+                    description="$DESCRIPTION" \
+                    user="$USER" \
+                    last_rotation="$LAST_ROTATION" \
+                    rotation_status="$ROTATION_STATUS"
+                  echo "✓ 1Password item 'Authentik Admin Token' updated successfully"
+                else
+                  echo "✓ Item doesn't exist, creating..."
+                  op item create \
+                    --category="API Credential" \
+                    --title="Authentik Admin Token" \
+                    --vault homelab \
+                    token="$TOKEN" \
+                    expires="$EXPIRES" \
+                    created="$CREATED" \
+                    description="$DESCRIPTION" \
+                    user="$USER" \
+                    last_rotation="$LAST_ROTATION" \
+                    rotation_status="$ROTATION_STATUS"
+                  echo "✓ 1Password item 'Authentik Admin Token' created successfully"
+                fi
               else
                 echo "⚠ No new token created, 1Password update skipped"
               fi
               
-              echo "=== Token Rotation Config ==="
-              echo "✓ Token rotation configuration is now managed via ConfigMap (not 1Password)"
-              echo "✓ Configuration values are stored in authentik-token-rotation-config ConfigMap"
-              
-              echo "=== Refreshing External Secrets ==="
-              echo "Forcing external secrets to refresh and pick up updated token..."
-              
-              # Force refresh of external secrets by adding timestamp annotation
-              TIMESTAMP=$(date +%s)
-              kubectl annotate externalsecret authentik-radius-token -n authentik force-sync=$TIMESTAMP --overwrite || echo "⚠ Could not refresh authentik-radius-token external secret"
-              kubectl annotate externalsecret authentik-admin-token-enhanced -n authentik force-sync=$TIMESTAMP --overwrite || echo "⚠ Could not refresh authentik-admin-token-enhanced external secret"
-              # Note: authentik-token-rotation-config is now a ConfigMap, not an external secret
-              
-              echo "✓ External secret refresh annotations added"
-              echo "Waiting 10 seconds for external secrets to sync..."
-              sleep 10
-              
               echo "=== Token Setup Summary ==="
               echo "✓ Admin user configured with superuser privileges"
               echo "✓ Long-lived API token created/validated (1 year expiry)"
-              echo "✓ 1Password item 'Authentik Outpost Token - home-ops' updated/created (idempotent)"
-              echo "✓ Token rotation configuration managed via ConfigMap (not 1Password)"
-              echo "✓ External Secrets refreshed to sync the updated token"
+              echo "✓ 1Password item 'Authentik Admin Token' updated automatically"
+              echo "✓ External Secrets will automatically sync the updated token"
               echo "✓ Token ready for use with outpost configurations"
-              echo "✓ Idempotent operation - safe to run multiple times"
               echo ""
               echo "Enhanced token setup completed successfully!"
