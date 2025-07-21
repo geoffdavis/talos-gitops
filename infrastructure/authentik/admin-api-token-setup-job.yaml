@@ -48,8 +48,8 @@ spec:
         - name: AUTHENTIK_BOOTSTRAP_TOKEN
           valueFrom:
             secretKeyRef:
-              name: authentik-bootstrap-token
-              key: AUTHENTIK_BOOTSTRAP__TOKEN
+              name: authentik-bootstrap
+              key: bootstrap-token
         command:
         - /bin/sh
         - -c
