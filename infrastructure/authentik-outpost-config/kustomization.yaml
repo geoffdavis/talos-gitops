@@ -8,8 +8,6 @@ metadata:
 resources:
   # Enhanced admin token setup with 1-year expiry (runs first)
   - enhanced-token-setup-job.yaml
-  # Legacy admin token setup (kept for fallback)
-  - admin-token-setup-job.yaml
   # Outpost configuration jobs (run after token setup)
   - outpost-config-job.yaml
   - longhorn-proxy-config-job.yaml
