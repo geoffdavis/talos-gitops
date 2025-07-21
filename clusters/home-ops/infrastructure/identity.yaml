@@ -36,11 +36,6 @@ spec:
       kind: HelmRelease
       name: authentik
       namespace: authentik
-    # Check database migration job completion
-    - apiVersion: batch/v1
-      kind: Job
-      name: authentik-migration
-      namespace: authentik
   postBuild:
     substitute:
       # Environment-specific substitutions

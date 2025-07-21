@@ -17,7 +17,6 @@ resources:
   - external-secret-db.yaml
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
-  - external-secret-onepassword-connect-token.yaml
   
   # Enhanced token management
   - external-secret-admin-token-enhanced.yaml
