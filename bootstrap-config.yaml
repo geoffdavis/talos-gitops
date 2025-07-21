@@ -58,6 +58,7 @@ onepassword:
     cloudflare_token: "Cloudflare API Token"
     github_token: "GitHub Personal Access Token"
     talos_secrets: "Talos Secrets - ${cluster.name}"
+    authentik_admin_token: "Authentik Admin API Token - ${cluster.name}"
 
 talos:
   version: "v1.10.5"

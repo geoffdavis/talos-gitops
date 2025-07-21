@@ -25,6 +25,12 @@ spec:
       containers:
       - name: setup-admin-token
         image: curlimages/curl:8.5.0
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
         env:
         - name: OP_CONNECT_HOST
           value: "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
