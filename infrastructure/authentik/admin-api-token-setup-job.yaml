@@ -1,0 +1,156 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentik-admin-api-token-setup
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: admin-api-token-setup
+    app.kubernetes.io/part-of: authentik
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik
+        app.kubernetes.io/component: admin-api-token-setup
+    spec:
+      restartPolicy: Never
+      serviceAccountName: authentik
+      containers:
+      - name: setup-admin-token
+        image: curlimages/curl:8.5.0
+        env:
+        - name: OP_CONNECT_HOST
+          value: "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
+        - name: OP_CONNECT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: onepassword-connect-token
+              key: token
+        - name: VAULT_UUID
+          value: "k6vqhqjjpbgwjbryaadqzj2e5u"  # home-ops vault UUID
+        - name: CLUSTER_NAME
+          value: "home-ops"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "=== Setting up Authentik Admin API Token in 1Password for cluster: $CLUSTER_NAME ==="
+          
+          ITEM_NAME="Authentik Admin API Token - $CLUSTER_NAME"
+          
+          # Check if item already exists
+          ITEM_EXISTS=$(curl -s -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
+            "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items" | \
+            grep -c "$ITEM_NAME" || echo "0")
+          
+          if [ "$ITEM_EXISTS" -gt 0 ]; then
+            echo "Admin API token item already exists in 1Password: $ITEM_NAME"
+            echo "Checking if token field exists..."
+            
+            # Get existing item
+            ITEM_ID=$(curl -s -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
+              "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items" | \
+              grep -A 10 -B 10 "$ITEM_NAME" | \
+              grep '"id"' | head -1 | sed 's/.*"id": *"\([^"]*\)".*/\1/')
+            
+            if [ -n "$ITEM_ID" ]; then
+              # Check if token field exists
+              TOKEN_EXISTS=$(curl -s -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
+                "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items/$ITEM_ID" | \
+                grep -c '"label": *"token"' || echo "0")
+              
+              if [ "$TOKEN_EXISTS" -eq 0 ]; then
+                echo "Token field missing, updating item..."
+                # Update existing item to add missing fields
+                curl -X PATCH -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items/$ITEM_ID" \
+                  -d '{
+                    "fields": [
+                      {
+                        "label": "token",
+                        "type": "CONCEALED",
+                        "value": "ak-placeholder-admin-token-will-be-set-manually"
+                      },
+                      {
+                        "label": "created",
+                        "type": "STRING",
+                        "value": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
+                      },
+                      {
+                        "label": "expires",
+                        "type": "STRING", 
+                        "value": "never"
+                      },
+                      {
+                        "label": "description",
+                        "type": "STRING",
+                        "value": "Authentik Admin API Token for internal server operations on '$CLUSTER_NAME' cluster"
+                      }
+                    ]
+                  }'
+                echo "Updated existing item with token fields"
+              else
+                echo "Token field already exists"
+              fi
+            fi
+          else
+            echo "Creating new Admin API token item in 1Password: $ITEM_NAME"
+            curl -X POST -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
+              -H "Content-Type: application/json" \
+              "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items" \
+              -d '{
+                "title": "'$ITEM_NAME'",
+                "category": "API_CREDENTIAL",
+                "tags": ["authentik", "admin", "api", "'$CLUSTER_NAME'"],
+                "fields": [
+                  {
+                    "label": "token",
+                    "type": "CONCEALED",
+                    "value": "ak-placeholder-admin-token-will-be-set-manually"
+                  },
+                  {
+                    "label": "created",
+                    "type": "STRING",
+                    "value": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
+                  },
+                  {
+                    "label": "expires",
+                    "type": "STRING",
+                    "value": "never"
+                  },
+                  {
+                    "label": "description",
+                    "type": "STRING",
+                    "value": "Authentik Admin API Token for internal server operations on '$CLUSTER_NAME' cluster"
+                  }
+                ]
+              }'
+            echo "Created new Admin API token item: $ITEM_NAME"
+          fi
+          
+          echo "=== Admin API Token Setup Complete ==="
+          echo "NOTE: The actual token value needs to be set manually in authentik UI"
+          echo "This is a placeholder setup to create the 1Password structure"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule

@@ -18,6 +18,10 @@ resources:
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
   
+  # Admin API token for server internal operations
+  - external-secret-admin-token.yaml
+  - admin-api-token-setup-job.yaml
+  
   # Enhanced token management
   - external-secret-admin-token-enhanced.yaml
   - token-rotation-cronjob.yaml
@@ -79,6 +83,11 @@ secretGenerator:
     literals:
       - bootstrap-password=changeme-bootstrap-password
       - bootstrap-token=changeme-bootstrap-token
+    options:
+      disableNameSuffixHash: true
+  - name: authentik-admin-api-config
+    literals:
+      - AUTHENTIK_BOOTSTRAP__TOKEN=changeme-will-be-replaced-by-external-secret
     options:
       disableNameSuffixHash: true
 
