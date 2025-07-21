@@ -1,0 +1,152 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentik-cleanup-duplicate-tokens
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-weight: "10"
+    flux.weave.works/automated: "false"
+  labels:
+    app.kubernetes.io/name: authentik-cleanup-duplicate-tokens
+    app.kubernetes.io/component: configuration
+    app.kubernetes.io/part-of: authentik
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-cleanup-duplicate-tokens
+        app.kubernetes.io/component: configuration
+        app.kubernetes.io/part-of: authentik
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cleanup-duplicates
+          image: python:3.11-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: OP_CONNECT_HOST
+              value: "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
+            - name: OP_CONNECT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: onepassword-connect-token
+                  key: token
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "=== 1Password Duplicate Token Cleanup ==="
+              echo "Cleaning up duplicate 'Authentik Outpost Token - home-ops' items..."
+              
+              python3 -c "
+              import json
+              import urllib.request
+              import urllib.parse
+              import os
+              import sys
+              
+              # Get environment variables
+              connect_host = os.environ.get('OP_CONNECT_HOST')
+              connect_token = os.environ.get('OP_CONNECT_TOKEN')
+              
+              if not connect_host or not connect_token:
+                  print('✗ Missing 1Password Connect configuration')
+                  sys.exit(1)
+              
+              # Prepare headers
+              headers = {
+                  'Authorization': f'Bearer {connect_token}',
+                  'Content-Type': 'application/json'
+              }
+              
+              print('✓ Connecting to 1Password Connect API...')
+              
+              # Get all vaults to find the Automation vault ID
+              try:
+                  req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
+                  with urllib.request.urlopen(req) as response:
+                      vaults = json.loads(response.read().decode())
+                  
+                  automation_vault_id = None
+                  for vault in vaults:
+                      if vault['name'] == 'Automation':
+                          automation_vault_id = vault['id']
+                          break
+                  
+                  if not automation_vault_id:
+                      print('✗ Could not find Automation vault')
+                      sys.exit(1)
+                  
+                  print(f'✓ Found Automation vault: {automation_vault_id}')
+              except Exception as e:
+                  print(f'✗ Failed to get vaults: {e}')
+                  sys.exit(1)
+              
+              # Search for all items with the target name
+              try:
+                  # URL encode the filter parameter properly
+                  filter_param = urllib.parse.quote('title eq \"Authentik Outpost Token - home-ops\"')
+                  search_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items?filter={filter_param}'
+                  req = urllib.request.Request(search_url, headers=headers)
+                  with urllib.request.urlopen(req) as response:
+                      items = json.loads(response.read().decode())
+                  
+                  print(f'✓ Found {len(items)} items with name \"Authentik Outpost Token - home-ops\"')
+                  
+                  if len(items) <= 1:
+                      print('✓ No duplicates found, cleanup not needed')
+                      sys.exit(0)
+                  
+                  # Sort items by creation date (keep the newest one)
+                  items_sorted = sorted(items, key=lambda x: x.get('createdAt', ''), reverse=True)
+                  keep_item = items_sorted[0]
+                  delete_items = items_sorted[1:]
+                  
+                  print(f'✓ Keeping newest item: {keep_item[\"id\"]} (created: {keep_item.get(\"createdAt\", \"unknown\")})')
+                  print(f'✓ Will delete {len(delete_items)} duplicate items')
+                  
+                  # Delete duplicate items
+                  for item in delete_items:
+                      try:
+                          delete_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items/{item[\"id\"]}'
+                          req = urllib.request.Request(delete_url, headers=headers, method='DELETE')
+                          with urllib.request.urlopen(req) as response:
+                              pass
+                          print(f'✓ Deleted duplicate item: {item[\"id\"]} (created: {item.get(\"createdAt\", \"unknown\")})')
+                      except Exception as e:
+                          print(f'✗ Failed to delete item {item[\"id\"]}: {e}')
+                  
+                  print('✓ Duplicate cleanup completed successfully')
+                  
+              except Exception as e:
+                  print(f'✗ Failed to search for items: {e}')
+                  sys.exit(1)
+              "
+              
+              echo "=== Refreshing External Secret ==="
+              echo "Forcing external secret to refresh after cleanup..."
+              
+              # Force refresh of external secret
+              TIMESTAMP=$(date +%s)
+              echo "✓ Cleanup completed, external secret should sync properly now"
+              echo "✓ Manual refresh can be done with: kubectl annotate externalsecret authentik-admin-token-enhanced -n authentik force-sync=\$TIMESTAMP --overwrite"
