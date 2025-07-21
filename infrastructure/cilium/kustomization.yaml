@@ -6,4 +6,4 @@ resources:
   # Only operational features are managed via GitOps
   - loadbalancer-pool.yaml
   - loadbalancer-pool-ipv6.yaml
-  - ingress-hubble.yaml
+  # ingress-hubble.yaml removed - using authentik proxy instead of native ingress

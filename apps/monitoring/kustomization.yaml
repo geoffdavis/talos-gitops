@@ -3,4 +3,5 @@ kind: Kustomization
 
 resources:
   # namespace.yaml is already created by infrastructure/monitoring
-  - grafana.yaml
+  # grafana.yaml removed - using authentik proxy instead of native ingress
+  []
