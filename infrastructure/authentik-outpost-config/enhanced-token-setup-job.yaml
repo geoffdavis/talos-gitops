@@ -319,7 +319,7 @@ spec:
                       print(f'✓ Item already exists with ID: {item_id}')
                       print('✓ Skipping creation to prevent duplicates (idempotent operation)')
                   else:
-                      print('✓ Item doesn\\'t exist, will create new one')
+                      print('✓ Item does not exist, will create new one')
               except Exception as e:
                   print(f'✗ Failed to search for existing item: {e}')
                   item_exists = False
@@ -356,7 +356,7 @@ spec:
                           result = json.loads(response.read().decode())
                       print('✓ 1Password item \\'Authentik Outpost Token - home-ops\\' updated successfully via Connect API')
                   else:
-                      # Create new item only if it doesn\\'t exist
+                      # Create new item only if it does not exist
                       url = f'{connect_host}/v1/vaults/{automation_vault_id}/items'
                       data = json.dumps(item_data).encode('utf-8')
                       req = urllib.request.Request(url, data=data, headers=headers, method='POST')
