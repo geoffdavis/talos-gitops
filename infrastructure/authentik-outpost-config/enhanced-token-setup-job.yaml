@@ -107,17 +107,24 @@ spec:
             - name: op-cli
               mountPath: /tmp/op-cli
           command:
-            - /bin/bash
+            - python3
             - -c
             - |
-              set -e
-              echo "=== Enhanced Token Setup with 1-Year Expiry ==="
-              echo "Starting enhanced admin user and long-lived API token setup..."
+              import os
+              import sys
+              import json
+              import base64
+              import secrets
+              import urllib.request
+              import urllib.parse
+              import subprocess
+              from datetime import datetime, timedelta
               
-              echo "Skipping 1Password CLI installation - using Connect API directly"
+              print("=== Enhanced Token Setup with 1-Year Expiry ===")
+              print("Starting enhanced admin user and long-lived API token setup...")
               
-              # Use ak shell to create admin user and long-lived token
-              ak shell -c "
+              # First, run the Authentik shell command to create/update user and token
+              ak_script = '''
               from authentik.core.models import User, Token
               from datetime import datetime, timedelta
               from django.utils import timezone
@@ -176,7 +183,7 @@ spec:
                       user=user,
                       intent='api',
                       key=token_key,
-                      description=f'Long-lived RADIUS Outpost Token (1 year) - Created {now.strftime(\"%Y-%m-%d\")}',
+                      description=f'Long-lived RADIUS Outpost Token (1 year) - Created {now.strftime("%Y-%m-%d")}',
                       expires=expiry_date,
                       expiring=True
                   )
@@ -200,17 +207,13 @@ spec:
                   
                   # Validate the token works
                   print('✓ Validating token...')
-                  from django.test import Client
-                  from django.contrib.auth import authenticate
-                  
-                  # Simple validation - if we got here, the token was created successfully
                   print('✓ Token validation: Token created and stored successfully')
                   
               else:
                   print('✓ Valid long-term token already exists, skipping creation')
                   for token in valid_tokens:
                       if (token.expires - now).days > 300:
-                          print(f'✓ Using existing token: {token.key[:8]}... (expires {token.expires.strftime(\"%Y-%m-%d\")})')
+                          print(f'✓ Using existing token: {token.key[:8]}... (expires {token.expires.strftime("%Y-%m-%d")})')
                           token_b64 = base64.b64encode(token.key.encode()).decode()
                           print(f'✓ Token (base64): {token_b64}')
                           break
@@ -236,165 +239,182 @@ spec:
                               }
                               f.write(json.dumps(existing_info, indent=2))
                               break
-              "
+              '''
               
-              echo "=== Updating 1Password ==="
-              echo "Updating 1Password item 'Authentik Admin Token' with new token information..."
+              # Run the Authentik shell command
+              try:
+                  result = subprocess.run(['ak', 'shell', '-c', ak_script],
+                                        capture_output=True, text=True, check=True)
+                  print(result.stdout)
+                  if result.stderr:
+                      print(f"Warnings: {result.stderr}")
+              except subprocess.CalledProcessError as e:
+                  print(f"✗ Failed to run ak shell command: {e}")
+                  print(f"stdout: {e.stdout}")
+                  print(f"stderr: {e.stderr}")
+                  sys.exit(1)
+              
+              print("\n=== Updating 1Password ===")
+              print("Updating 1Password item 'Authentik Admin Token' with new token information...")
               
               # Check if token info file exists
-              if [ -f /tmp/token_info.json ]; then
-                echo "✓ Token information file found, using 1Password Connect API..."
-                
-                # Use Python to parse JSON and update 1Password via Connect API
-                python3 -c "
-              import json
-              import urllib.request
-              import urllib.parse
-              import os
-              import sys
-              
-              # Read token information
-              with open('/tmp/token_info.json', 'r') as f:
-                  token_data = json.load(f)
-              
-              token = token_data['token']
-              expires = token_data['expires']
-              created = token_data['created']
-              description = token_data['description']
-              user = token_data['user']
-              last_rotation = token_data.get('last_rotation', created)
-              rotation_status = token_data.get('rotation_status', 'active')
-              
-              print('✓ Token information loaded from Authentik')
-              print('Updating 1Password item via Connect API: Authentik Admin Token')
-              
-              # Get environment variables
-              connect_host = os.environ.get('OP_CONNECT_HOST')
-              connect_token = os.environ.get('OP_CONNECT_TOKEN')
-              
-              if not connect_host or not connect_token:
-                  print('✗ Missing 1Password Connect configuration')
-                  sys.exit(1)
-              
-              # Prepare headers
-              headers = {
-                  'Authorization': f'Bearer {connect_token}',
-                  'Content-Type': 'application/json'
-              }
-              
-              # First, get all vaults to find the Automation vault ID
-              try:
-                  req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
-                  with urllib.request.urlopen(req) as response:
-                      vaults = json.loads(response.read().decode())
+              if os.path.exists('/tmp/token_info.json'):
+                  print("✓ Token information file found, using 1Password Connect API...")
                   
-                  automation_vault_id = None
-                  for vault in vaults:
-                      if vault['name'] == 'Automation':
-                          automation_vault_id = vault['id']
-                          break
+                  # Read token information
+                  with open('/tmp/token_info.json', 'r') as f:
+                      token_data = json.load(f)
                   
-                  if not automation_vault_id:
-                      print('✗ Could not find Automation vault')
+                  token = token_data['token']
+                  expires = token_data['expires']
+                  created = token_data['created']
+                  description = token_data['description']
+                  user = token_data['user']
+                  last_rotation = token_data.get('last_rotation', created)
+                  rotation_status = token_data.get('rotation_status', 'active')
+                  
+                  print('✓ Token information loaded from Authentik')
+                  print('Updating 1Password item via Connect API: Authentik Admin Token')
+                  
+                  # Get environment variables
+                  connect_host = os.environ.get('OP_CONNECT_HOST')
+                  connect_token = os.environ.get('OP_CONNECT_TOKEN')
+                  
+                  if not connect_host or not connect_token:
+                      print('✗ Missing 1Password Connect configuration')
                       sys.exit(1)
                   
-                  print(f'✓ Found Automation vault: {automation_vault_id}')
-              except Exception as e:
-                  print(f'✗ Failed to get vaults: {e}')
-                  sys.exit(1)
-              
-              # Check if item exists by searching for it
-              try:
-                  # Properly URL encode the filter parameter to avoid control character errors
-                  filter_param = urllib.parse.quote('title eq "Authentik Outpost Token - home-ops"')
-                  search_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items?filter={filter_param}'
-                  req = urllib.request.Request(search_url, headers=headers)
-                  with urllib.request.urlopen(req) as response:
-                      items = json.loads(response.read().decode())
+                  # Prepare headers
+                  headers = {
+                      'Authorization': f'Bearer {connect_token}',
+                      'Content-Type': 'application/json'
+                  }
                   
-                  item_exists = len(items) > 0
-                  item_id = items[0]['id'] if item_exists else None
+                  # First, get all vaults to find the Automation vault ID
+                  try:
+                      req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
+                      with urllib.request.urlopen(req) as response:
+                          vaults = json.loads(response.read().decode())
+                      
+                      automation_vault_id = None
+                      for vault in vaults:
+                          if vault['name'] == 'Automation':
+                              automation_vault_id = vault['id']
+                              break
+                      
+                      if not automation_vault_id:
+                          print('✗ Could not find Automation vault')
+                          sys.exit(1)
+                      
+                      print(f'✓ Found Automation vault: {automation_vault_id}')
+                  except Exception as e:
+                      print(f'✗ Failed to get vaults: {e}')
+                      sys.exit(1)
                   
-                  if item_exists:
-                      print(f'✓ Item already exists with ID: {item_id}')
-                      print('✓ Skipping creation to prevent duplicates (idempotent operation)')
-                  else:
-                      print('✓ Item does not exist, will create new one')
-              except Exception as e:
-                  print(f'✗ Failed to search for existing item: {e}')
-                  item_exists = False
-                  item_id = None
-              
-              # Prepare item data with secondary token fields for rotation overlap
-              item_data = {
-                  'title': 'Authentik Outpost Token - home-ops',
-                  'category': 'API_CREDENTIAL',
-                  'vault': {'id': automation_vault_id},
-                  'fields': [
-                      # Primary token fields (active)
-                      {'id': 'token', 'type': 'CONCEALED', 'label': 'token', 'value': token},
-                      {'id': 'expires', 'type': 'STRING', 'label': 'expires', 'value': expires},
-                      {'id': 'created', 'type': 'STRING', 'label': 'created', 'value': created},
-                      {'id': 'description', 'type': 'STRING', 'label': 'description', 'value': description},
-                      {'id': 'user', 'type': 'STRING', 'label': 'user', 'value': user},
-                      {'id': 'last_rotation', 'type': 'STRING', 'label': 'last_rotation', 'value': last_rotation},
-                      {'id': 'rotation_status', 'type': 'STRING', 'label': 'rotation_status', 'value': rotation_status},
-                      # Secondary token fields (for rotation overlap - initially empty)
-                      {'id': 'token_secondary', 'type': 'CONCEALED', 'label': 'token_secondary', 'value': ''},
-                      {'id': 'expires_secondary', 'type': 'STRING', 'label': 'expires_secondary', 'value': ''},
-                      {'id': 'created_secondary', 'type': 'STRING', 'label': 'created_secondary', 'value': ''}
-                  ]
-              }
-              
-              try:
-                  if item_exists and item_id:
-                      # Update existing item with new token data
-                      url = f'{connect_host}/v1/vaults/{automation_vault_id}/items/{item_id}'
-                      data = json.dumps(item_data).encode('utf-8')
-                      req = urllib.request.Request(url, data=data, headers=headers, method='PUT')
+                  # Check if item exists by searching for it
+                  try:
+                      # Properly URL encode the filter parameter
+                      filter_param = urllib.parse.quote('title eq "Authentik Outpost Token - home-ops"')
+                      search_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items?filter={filter_param}'
+                      req = urllib.request.Request(search_url, headers=headers)
                       with urllib.request.urlopen(req) as response:
-                          result = json.loads(response.read().decode())
-                      print('✓ 1Password item \\'Authentik Outpost Token - home-ops\\' updated successfully via Connect API')
-                  else:
-                      # Create new item only if it does not exist
-                      url = f'{connect_host}/v1/vaults/{automation_vault_id}/items'
-                      data = json.dumps(item_data).encode('utf-8')
-                      req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-                      with urllib.request.urlopen(req) as response:
-                          result = json.loads(response.read().decode())
-                      print('✓ 1Password item \\'Authentik Outpost Token - home-ops\\' created successfully via Connect API')
-              except Exception as e:
-                  print(f'✗ Failed to create/update 1Password item via Connect API: {e}')
-                  sys.exit(1)
-              "
-              else
-                echo "⚠ No new token created, 1Password update skipped"
-              fi
+                          items = json.loads(response.read().decode())
+                      
+                      item_exists = len(items) > 0
+                      item_id = items[0]['id'] if item_exists else None
+                      
+                      if item_exists:
+                          print(f'✓ Item already exists with ID: {item_id}')
+                          print('✓ Skipping creation to prevent duplicates (idempotent operation)')
+                      else:
+                          print('✓ Item does not exist, will create new one')
+                  except Exception as e:
+                      print(f'✗ Failed to search for existing item: {e}')
+                      item_exists = False
+                      item_id = None
+                  
+                  # Prepare item data with secondary token fields for rotation overlap
+                  item_data = {
+                      'title': 'Authentik Outpost Token - home-ops',
+                      'category': 'API_CREDENTIAL',
+                      'vault': {'id': automation_vault_id},
+                      'fields': [
+                          # Primary token fields (active)
+                          {'id': 'token', 'type': 'CONCEALED', 'label': 'token', 'value': token},
+                          {'id': 'expires', 'type': 'STRING', 'label': 'expires', 'value': expires},
+                          {'id': 'created', 'type': 'STRING', 'label': 'created', 'value': created},
+                          {'id': 'description', 'type': 'STRING', 'label': 'description', 'value': description},
+                          {'id': 'user', 'type': 'STRING', 'label': 'user', 'value': user},
+                          {'id': 'last_rotation', 'type': 'STRING', 'label': 'last_rotation', 'value': last_rotation},
+                          {'id': 'rotation_status', 'type': 'STRING', 'label': 'rotation_status', 'value': rotation_status},
+                          # Secondary token fields (for rotation overlap - initially empty)
+                          {'id': 'token_secondary', 'type': 'CONCEALED', 'label': 'token_secondary', 'value': ''},
+                          {'id': 'expires_secondary', 'type': 'STRING', 'label': 'expires_secondary', 'value': ''},
+                          {'id': 'created_secondary', 'type': 'STRING', 'label': 'created_secondary', 'value': ''}
+                      ]
+                  }
+                  
+                  try:
+                      if item_exists and item_id:
+                          # Update existing item with new token data
+                          url = f'{connect_host}/v1/vaults/{automation_vault_id}/items/{item_id}'
+                          data = json.dumps(item_data).encode('utf-8')
+                          req = urllib.request.Request(url, data=data, headers=headers, method='PUT')
+                          with urllib.request.urlopen(req) as response:
+                              result = json.loads(response.read().decode())
+                          print('✓ 1Password item "Authentik Outpost Token - home-ops" updated successfully via Connect API')
+                      else:
+                          # Create new item only if it does not exist
+                          url = f'{connect_host}/v1/vaults/{automation_vault_id}/items'
+                          data = json.dumps(item_data).encode('utf-8')
+                          req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+                          with urllib.request.urlopen(req) as response:
+                              result = json.loads(response.read().decode())
+                          print('✓ 1Password item "Authentik Outpost Token - home-ops" created successfully via Connect API')
+                  except Exception as e:
+                      print(f'✗ Failed to create/update 1Password item via Connect API: {e}')
+                      sys.exit(1)
+              else:
+                  print("⚠ No new token created, 1Password update skipped")
               
-              echo "=== Token Rotation Config ==="
-              echo "✓ Token rotation configuration is now managed via ConfigMap (not 1Password)"
-              echo "✓ Configuration values are stored in authentik-token-rotation-config ConfigMap"
+              print("\n=== Token Rotation Config ===")
+              print("✓ Token rotation configuration is now managed via ConfigMap (not 1Password)")
+              print("✓ Configuration values are stored in authentik-token-rotation-config ConfigMap")
               
-              echo "=== Refreshing External Secrets ==="
-              echo "Forcing external secrets to refresh and pick up updated token..."
+              print("\n=== Refreshing External Secrets ===")
+              print("Forcing external secrets to refresh and pick up updated token...")
               
               # Force refresh of external secrets by adding timestamp annotation
-              TIMESTAMP=$(date +%s)
-              kubectl annotate externalsecret authentik-radius-token -n authentik force-sync=$TIMESTAMP --overwrite || echo "⚠ Could not refresh authentik-radius-token external secret"
-              kubectl annotate externalsecret authentik-admin-token-enhanced -n authentik force-sync=$TIMESTAMP --overwrite || echo "⚠ Could not refresh authentik-admin-token-enhanced external secret"
-              # Note: authentik-token-rotation-config is now a ConfigMap, not an external secret
+              import time
+              timestamp = str(int(time.time()))
               
-              echo "✓ External secret refresh annotations added"
-              echo "Waiting 10 seconds for external secrets to sync..."
-              sleep 10
+              try:
+                  subprocess.run(['kubectl', 'annotate', 'externalsecret', 'authentik-radius-token',
+                                '-n', 'authentik', f'force-sync={timestamp}', '--overwrite'],
+                               check=True, capture_output=True)
+                  print("✓ Refreshed authentik-radius-token external secret")
+              except subprocess.CalledProcessError:
+                  print("⚠ Could not refresh authentik-radius-token external secret")
               
-              echo "=== Token Setup Summary ==="
-              echo "✓ Admin user configured with superuser privileges"
-              echo "✓ Long-lived API token created/validated (1 year expiry)"
-              echo "✓ 1Password item 'Authentik Outpost Token - home-ops' updated/created (idempotent)"
-              echo "✓ Token rotation configuration managed via ConfigMap (not 1Password)"
-              echo "✓ External Secrets refreshed to sync the updated token"
-              echo "✓ Token ready for use with outpost configurations"
-              echo "✓ Idempotent operation - safe to run multiple times"
-              echo ""
-              echo "Enhanced token setup completed successfully!"
+              try:
+                  subprocess.run(['kubectl', 'annotate', 'externalsecret', 'authentik-admin-token-enhanced',
+                                '-n', 'authentik', f'force-sync={timestamp}', '--overwrite'],
+                               check=True, capture_output=True)
+                  print("✓ Refreshed authentik-admin-token-enhanced external secret")
+              except subprocess.CalledProcessError:
+                  print("⚠ Could not refresh authentik-admin-token-enhanced external secret")
+              
+              print("✓ External secret refresh annotations added")
+              print("Waiting 10 seconds for external secrets to sync...")
+              time.sleep(10)
+              
+              print("\n=== Token Setup Summary ===")
+              print("✓ Admin user configured with superuser privileges")
+              print("✓ Long-lived API token created/validated (1 year expiry)")
+              print("✓ 1Password item 'Authentik Outpost Token - home-ops' updated/created (idempotent)")
+              print("✓ Token rotation configuration managed via ConfigMap (not 1Password)")
+              print("✓ External Secrets refreshed to sync the updated token")
+              print("✓ Token ready for use with outpost configurations")
+              print("✓ Idempotent operation - safe to run multiple times")
+              print("")
+              print("Enhanced token setup completed successfully!")
