@@ -12,7 +12,7 @@ metadata:
     nginx.ingress.kubernetes.io/auth-response-headers: Remote-User,Remote-Name,Remote-Email,Remote-Groups
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-production
+    cert-manager.io/cluster-issuer: selfsigned-issuer
 spec:
   ingressClassName: nginx
   tls:
