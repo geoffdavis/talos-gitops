@@ -19,6 +19,9 @@ resources:
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
   
+  # Enhanced token management for outpost authentication
+  - external-secret-admin-token-enhanced.yaml
+  
   # Main authentik ingress (now that we have tokens)
   - ingress.yaml
   
