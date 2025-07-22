@@ -42,8 +42,8 @@ spec:
             name: authentik-config
         - secretRef:
             name: authentik-database-credentials
-        # - secretRef:
-        #     name: authentik-admin-token  # Temporarily disabled until proper token is created
+        - secretRef:
+            name: authentik-admin-token
       env:
         # Core configuration
         - name: AUTHENTIK_DISABLE_UPDATE_CHECK

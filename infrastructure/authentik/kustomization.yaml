@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 metadata:
-  name: authentik-bootstrap
+  name: authentik-operational
   namespace: authentik
 
 resources:
@@ -19,37 +19,25 @@ resources:
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
   
-  # 1Password connect token for admin setup jobs
-  - external-secret-onepassword-token.yaml
+  # Main authentik ingress (now that we have tokens)
+  - ingress.yaml
   
-  # Bootstrap HelmRelease (no admin token dependencies)
-  - bootstrap-helmrelease.yaml
-  
-  # Admin user and API token setup jobs
-  - admin-user-job.yaml
-  - admin-api-token-setup-job.yaml
+  # Operational HelmRelease (with external secrets)
+  - helmrelease.yaml
 
 commonLabels:
   app.kubernetes.io/name: authentik
   app.kubernetes.io/part-of: identity-provider
-  app.kubernetes.io/component: bootstrap
+  app.kubernetes.io/component: operational
 
 images:
   - name: ghcr.io/goauthentik/server
     newTag: "2024.8.3"
 
-secretGenerator:
-  - name: authentik-bootstrap
-    literals:
-      - bootstrap-password=bootstrap-admin-password-temp
-      - bootstrap-token=bootstrap-token-for-initial-setup-only
-    options:
-      disableNameSuffixHash: true
-
 generatorOptions:
   disableNameSuffixHash: true
   labels:
     app.kubernetes.io/name: authentik
-    app.kubernetes.io/component: bootstrap
+    app.kubernetes.io/component: operational
   annotations:
     config.kubernetes.io/local-config: "true"
