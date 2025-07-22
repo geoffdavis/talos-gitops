@@ -1,354 +1,191 @@
----
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: authentik-consolidated-proxy-config
+  name: authentik-proxy-config
   namespace: authentik
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-weight: "16"
 spec:
-  backoffLimit: 2
-  activeDeadlineSeconds: 600
   template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: authentik-consolidated-config
-        app.kubernetes.io/component: configuration
     spec:
-      restartPolicy: OnFailure
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
-      initContainers:
-        - name: wait-for-authentik
-          image: curlimages/curl:8.5.0
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
-          command:
-            - /bin/sh
-            - -c
-            - |
-              echo "Waiting for Authentik server to be ready..."
-              max_attempts=20
-              attempt=0
-              while [ $attempt -lt $max_attempts ]; do
-                if curl -f -s http://authentik-server.authentik.svc.cluster.local/if/flow/initial-setup/ > /dev/null 2>&1; then
-                  echo "Authentik server is ready!"
-                  exit 0
-                fi
-                attempt=$((attempt + 1))
-                echo "Authentik not ready yet, attempt $attempt/$max_attempts, waiting 10 seconds..."
-                sleep 10
-              done
-              echo "ERROR: Authentik server did not become ready within $((max_attempts * 10)) seconds"
-              exit 1
-        - name: wait-for-admin-token
-          image: curlimages/curl:8.5.0
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
-          env:
-            - name: AUTHENTIK_HOST
-              value: "http://authentik-server.authentik.svc.cluster.local"
-            - name: AUTHENTIK_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-admin-token
-                  key: token
-          command:
-            - /bin/sh
-            - -c
-            - |
-              echo "Waiting for admin token to be valid..."
-              max_attempts=10
-              attempt=0
-              while [ $attempt -lt $max_attempts ]; do
-                response=$(curl -s -w "%{http_code}" -o /dev/null \
-                  -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
-                  "${AUTHENTIK_HOST}/api/v3/core/users/me/")
-                if [ "$response" = "200" ]; then
-                  echo "Admin token is valid!"
-                  exit 0
-                fi
-                attempt=$((attempt + 1))
-                echo "Admin token not ready yet, attempt $attempt/$max_attempts (HTTP $response), waiting 15 seconds..."
-                sleep 15
-              done
-              echo "ERROR: Admin token did not become valid within $((max_attempts * 15)) seconds"
-              exit 1
+      restartPolicy: Never
       containers:
-        - name: configure-all-proxies
-          image: curlimages/curl:8.5.0
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
-          env:
-            - name: AUTHENTIK_HOST
-              value: "http://authentik-server.authentik.svc.cluster.local"
-            - name: AUTHENTIK_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-admin-token
-                  key: token
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -e
-              echo "Configuring all UI service proxy providers and applications..."
+      - name: proxy-config
+        image: curlimages/curl:latest
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        env:
+        - name: AUTHENTIK_TOKEN
+          value: "ak_pwicEfx-ehOQuz6BWATQ3fley2Bk9JwCDxPjgS1Q8c3lSFPvtL8d4Q"
+        - name: AUTHENTIK_URL
+          value: "http://authentik-server.authentik.svc.cluster.local"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "=== AUTHENTIK PROXY PROVIDER CONFIGURATION ==="
+          
+          # Test API connectivity first
+          echo "Testing API connectivity..."
+          response=$(curl -s -w "%{http_code}" -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/core/users/me/")
+          http_code="${response: -3}"
+          if [ "$http_code" != "200" ]; then
+            echo "ERROR: API test failed with HTTP $http_code"
+            echo "Response: $response"
+            exit 1
+          fi
+          echo "API connectivity test passed"
+          
+          # Get outpost ID
+          echo "Getting outpost ID..."
+          outpost_response=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/instances/")
+          outpost_id=$(echo "$outpost_response" | grep -o '"pk":"[^"]*"' | head -1 | cut -d'"' -f4)
+          
+          if [ -z "$outpost_id" ]; then
+            echo "ERROR: Could not find outpost ID"
+            echo "Outpost response: $outpost_response"
+            exit 1
+          fi
+          echo "Found outpost ID: $outpost_id"
+          
+          # Get authorization flow UUID
+          echo "Getting authorization flow UUID..."
+          flow_response=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/flows/instances/?slug=default-provider-authorization-implicit-consent")
+          flow_uuid=$(echo "$flow_response" | grep -o '"pk":"[^"]*"' | head -1 | cut -d'"' -f4)
+          
+          if [ -z "$flow_uuid" ]; then
+            echo "ERROR: Could not find authorization flow UUID"
+            echo "Flow response: $flow_response"
+            exit 1
+          fi
+          echo "Found authorization flow UUID: $flow_uuid"
+          
+          # Function to create proxy provider
+          create_provider() {
+            local name="$1"
+            local external_host="$2"
+            local internal_host="$3"
+            
+            echo "Creating proxy provider: $name"
+            
+            # Check if provider already exists
+            existing=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/providers/proxy/" | grep -o "\"name\":\"$name\"" || true)
+            if [ -n "$existing" ]; then
+              echo "Provider $name already exists, skipping..."
+              return 0
+            fi
+            
+            # Create the provider
+            provider_data="{
+              \"name\": \"$name\",
+              \"authorization_flow\": \"$flow_uuid\",
+              \"external_host\": \"https://$external_host\",
+              \"internal_host\": \"$internal_host\",
+              \"mode\": \"forward_single\"
+            }"
+            
+            provider_response=$(curl -s -X POST \
+              -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$provider_data" \
+              "$AUTHENTIK_URL/api/v3/providers/proxy/")
+            
+            provider_id=$(echo "$provider_response" | grep -o '"pk":[0-9]*' | head -1 | cut -d':' -f2)
+            
+            if [ -z "$provider_id" ]; then
+              echo "ERROR: Failed to create provider $name"
+              echo "Response: $provider_response"
+              return 1
+            fi
+            
+            echo "Created provider $name with ID: $provider_id"
+            
+            # Create application
+            app_slug="$(echo $name | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
+            
+            # Check if application already exists
+            existing_app=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/core/applications/?slug=$app_slug" | grep -o '"pk":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+            
+            if [ -n "$existing_app" ]; then
+              echo "Application $name already exists with ID: $existing_app, updating provider..."
+              app_id="$existing_app"
               
-              # Simple retry function
-              retry_api_call() {
-                local url="$1"
-                local method="${2:-GET}"
-                local data="${3:-}"
-                local max_retries=3
-                local retry_count=0
-                
-                while [ $retry_count -lt $max_retries ]; do
-                  if [ "$method" = "POST" ] && [ -n "$data" ]; then
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
-                      -X POST \
-                      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                      -H "Content-Type: application/json" \
-                      -d "$data" \
-                      "$url")
-                  elif [ "$method" = "PATCH" ] && [ -n "$data" ]; then
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
-                      -X PATCH \
-                      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                      -H "Content-Type: application/json" \
-                      -d "$data" \
-                      "$url")
-                  else
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
-                      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-                      "$url")
-                  fi
-                  
-                  if [ "$response" = "200" ] || [ "$response" = "201" ]; then
-                    return 0
-                  fi
-                  
-                  retry_count=$((retry_count + 1))
-                  if [ $retry_count -lt $max_retries ]; then
-                    echo "API call failed with status $response, retry $retry_count/$max_retries"
-                    sleep 3
-                  fi
-                done
-                
-                echo "API call failed after $max_retries retries"
-                cat /tmp/api_response
+              # Update existing application with new provider
+              app_update_data="{
+                \"provider\": $provider_id
+              }"
+              
+              app_response=$(curl -s -X PATCH \
+                -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$app_update_data" \
+                "$AUTHENTIK_URL/api/v3/core/applications/$app_id/")
+              
+              echo "Updated existing application $name"
+            else
+              # Create new application
+              app_data="{
+                \"name\": \"$name\",
+                \"slug\": \"$app_slug\",
+                \"provider\": $provider_id
+              }"
+              
+              app_response=$(curl -s -X POST \
+                -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$app_data" \
+                "$AUTHENTIK_URL/api/v3/core/applications/")
+              
+              app_id=$(echo "$app_response" | grep -o '"pk":"[^"]*"' | head -1 | cut -d'"' -f4)
+              
+              if [ -z "$app_id" ]; then
+                echo "ERROR: Failed to create application for $name"
+                echo "Response: $app_response"
                 return 1
-              }
-              
-              # Function to create provider and application
-              create_service_config() {
-                local service_name="$1"
-                local display_name="$2"
-                local external_host="$3"
-                local internal_host="$4"
-                local description="$5"
-                local publisher="$6"
-                
-                echo "=== Configuring $service_name ==="
-                
-                # Check if provider already exists
-                echo "Checking for existing $service_name proxy provider..."
-                if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/"; then
-                  echo "Failed to check existing proxy providers"
-                  return 1
-                fi
-                
-                PROVIDER_RESPONSE=$(cat /tmp/api_response)
-                PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o "\"name\":\"${service_name}-proxy\"" || echo "")
-                
-                if [ -z "$PROVIDER_EXISTS" ]; then
-                  echo "Creating $service_name proxy provider..."
-                  PROVIDER_DATA="{
-                    \"name\": \"${service_name}-proxy\",
-                    \"authorization_flow\": \"${AUTH_FLOW_UUID}\",
-                    \"external_host\": \"${external_host}\",
-                    \"internal_host\": \"${internal_host}\",
-                    \"internal_host_ssl_validation\": false,
-                    \"mode\": \"forward_single\",
-                    \"cookie_domain\": \"k8s.home.geoffdavis.com\",
-                    \"skip_path_regex\": \"^/api/.*$\",
-                    \"basic_auth_enabled\": false,
-                    \"basic_auth_password_attribute\": \"\",
-                    \"basic_auth_user_attribute\": \"\"
-                  }"
-                  
-                  if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "POST" "$PROVIDER_DATA"; then
-                    PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
-                    echo "Created $service_name proxy provider with PK: $PROVIDER_PK"
-                  else
-                    echo "Failed to create $service_name proxy provider"
-                    return 1
-                  fi
-                else
-                  echo "$service_name proxy provider already exists"
-                  PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A10 "\"name\":\"${service_name}-proxy\"" | grep -o '"pk":[0-9]*' | cut -d':' -f2)
-                  echo "Found existing provider with PK: $PROVIDER_PK"
-                fi
-                
-                # Check if Application already exists
-                echo "Checking for existing $service_name application..."
-                if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
-                  echo "Failed to check existing applications"
-                  return 1
-                fi
-                
-                APP_RESPONSE=$(cat /tmp/api_response)
-                APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o "\"name\":\"${display_name}\"" || echo "")
-                
-                if [ -z "$APP_EXISTS" ]; then
-                  echo "Creating $service_name application..."
-                  APP_DATA="{
-                    \"name\": \"${display_name}\",
-                    \"slug\": \"${service_name}\",
-                    \"provider\": ${PROVIDER_PK},
-                    \"meta_description\": \"${description}\",
-                    \"meta_publisher\": \"${publisher}\",
-                    \"meta_launch_url\": \"${external_host}\",
-                    \"policy_engine_mode\": \"any\",
-                    \"group\": \"\"
-                  }"
-                  
-                  if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
-                    echo "$service_name application created successfully!"
-                  else
-                    echo "Failed to create $service_name application"
-                    return 1
-                  fi
-                else
-                  echo "$service_name application already exists"
-                fi
-                
-                # Store provider PK for later outpost update
-                echo "$PROVIDER_PK" >> /tmp/provider_pks
-                echo "$service_name configuration completed!"
-                return 0
-              }
-              
-              # Get admin token
-              ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
-              
-              # Test authentication
-              echo "Testing authentication..."
-              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
-                echo "ERROR: API token authentication failed"
-                exit 1
-              fi
-              echo "Authentication successful"
-              
-              # Use the same authorization flow as other providers
-              AUTH_FLOW_UUID="be0ee023-11fe-4a43-b453-bc67957cafbf"
-              echo "Using authorization flow: $AUTH_FLOW_UUID"
-              
-              # Initialize provider PKs file
-              echo "" > /tmp/provider_pks
-              
-              # Configure all services sequentially
-              create_service_config "dashboard" "Kubernetes Dashboard" \
-                "https://dashboard.k8s.home.geoffdavis.com" \
-                "http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000" \
-                "Kubernetes cluster management dashboard" \
-                "Kubernetes"
-              
-              create_service_config "hubble" "Hubble UI" \
-                "https://hubble.k8s.home.geoffdavis.com" \
-                "http://hubble-ui.kube-system.svc.cluster.local:80" \
-                "Cilium Hubble network observability interface" \
-                "Cilium"
-              
-              create_service_config "grafana" "Grafana" \
-                "https://grafana.k8s.home.geoffdavis.com" \
-                "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80" \
-                "Grafana monitoring and visualization dashboard" \
-                "Grafana Labs"
-              
-              create_service_config "prometheus" "Prometheus" \
-                "https://prometheus.k8s.home.geoffdavis.com" \
-                "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" \
-                "Prometheus metrics collection and querying interface" \
-                "Prometheus"
-              
-              create_service_config "alertmanager" "AlertManager" \
-                "https://alertmanager.k8s.home.geoffdavis.com" \
-                "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093" \
-                "AlertManager alert routing and management interface" \
-                "Prometheus"
-              
-              # Now update the proxy outpost with all providers at once
-              echo "=== Updating proxy outpost with all providers ==="
-              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/"; then
-                echo "Failed to check existing outposts"
-                exit 1
               fi
               
-              OUTPOST_RESPONSE=$(cat /tmp/api_response)
-              OUTPOST_PK=$(echo "$OUTPOST_RESPONSE" | grep -A10 '"name":"proxy-outpost"' | grep -o '"pk":"[^"]*"' | cut -d'"' -f4)
-              
-              if [ -n "$OUTPOST_PK" ]; then
-                echo "Found proxy outpost with PK: $OUTPOST_PK"
-                
-                # Get current providers list
-                CURRENT_PROVIDERS=$(echo "$OUTPOST_RESPONSE" | grep -A10 '"name":"proxy-outpost"' | grep -o '"providers":\[[0-9,]*\]' | sed 's/"providers":\[\([0-9,]*\)\]/\1/')
-                
-                # Get new provider PKs
-                NEW_PROVIDER_PKS=$(cat /tmp/provider_pks | grep -v '^$' | tr '\n' ',' | sed 's/,$//')
-                
-                # Combine current and new providers
-                if [ -n "$CURRENT_PROVIDERS" ] && [ -n "$NEW_PROVIDER_PKS" ]; then
-                  ALL_PROVIDERS="[$CURRENT_PROVIDERS,$NEW_PROVIDER_PKS]"
-                elif [ -n "$NEW_PROVIDER_PKS" ]; then
-                  ALL_PROVIDERS="[$NEW_PROVIDER_PKS]"
-                else
-                  ALL_PROVIDERS="[$CURRENT_PROVIDERS]"
-                fi
-                
-                # Remove duplicates by converting to unique list
-                UNIQUE_PROVIDERS=$(echo "$ALL_PROVIDERS" | sed 's/\[//g' | sed 's/\]//g' | tr ',' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
-                FINAL_PROVIDERS="[$UNIQUE_PROVIDERS]"
-                
-                UPDATE_DATA="{\"providers\": $FINAL_PROVIDERS}"
-                
-                if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/${OUTPOST_PK}/" "PATCH" "$UPDATE_DATA"; then
-                  echo "Updated proxy outpost with all providers!"
-                else
-                  echo "Failed to update proxy outpost"
-                  exit 1
-                fi
-              else
-                echo "Proxy outpost not found - it should be created by the longhorn config job first"
-                exit 1
-              fi
-              
-              echo "=== All UI services proxy configuration completed successfully! ==="
+              echo "Created application $name with ID: $app_id"
+            fi
+            
+            # Get current outpost providers
+            echo "Getting current outpost providers..."
+            current_outpost=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/instances/$outpost_id/")
+            current_providers=$(echo "$current_outpost" | grep -o '"providers":\[[^]]*\]' | sed 's/"providers":\[//' | sed 's/\]//' | tr -d ' ')
+            
+            # Add new provider to existing list
+            if [ -z "$current_providers" ]; then
+              new_providers="$provider_id"
+            else
+              new_providers="$current_providers,$provider_id"
+            fi
+            
+            echo "Adding provider $provider_id to outpost $outpost_id..."
+            outpost_update_data="{
+              \"providers\": [$new_providers]
+            }"
+            
+            outpost_update_response=$(curl -s -X PATCH \
+              -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$outpost_update_data" \
+              "$AUTHENTIK_URL/api/v3/outposts/instances/$outpost_id/")
+            
+            echo "Updated outpost with provider $name"
+          }
+          
+          # Create all proxy providers
+          create_provider "Longhorn" "longhorn.k8s.home.geoffdavis.com" "http://longhorn-frontend.longhorn-system.svc.cluster.local"
+          create_provider "Kubernetes Dashboard" "dashboard.k8s.home.geoffdavis.com" "http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000"
+          create_provider "Hubble UI" "hubble.k8s.home.geoffdavis.com" "http://hubble-ui.kube-system.svc.cluster.local"
+          create_provider "Grafana" "grafana.k8s.home.geoffdavis.com" "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local"
+          create_provider "Prometheus" "prometheus.k8s.home.geoffdavis.com" "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+          create_provider "Alertmanager" "alertmanager.k8s.home.geoffdavis.com" "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
+          
+          echo "=== PROXY CONFIGURATION COMPLETED ==="

@@ -2,15 +2,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: authentik-admin-api-token-setup
+  name: authentik-admin-api-token-setup-simple
   namespace: authentik
   labels:
     app.kubernetes.io/name: authentik
     app.kubernetes.io/component: admin-api-token-setup
     app.kubernetes.io/part-of: authentik
-  annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   ttlSecondsAfterFinished: 300
   backoffLimit: 3
@@ -40,16 +37,21 @@ spec:
               name: onepassword-connect-token
               key: token
         - name: VAULT_UUID
-          value: "k6vqhqjjpbgwjbryaadqzj2e5u"  # home-ops vault UUID
+          value: "k6vqhqjjpbgwjbryaadqzj2e5u"
         - name: CLUSTER_NAME
           value: "home-ops"
         - name: AUTHENTIK_HOST
           value: "http://authentik-server.authentik.svc.cluster.local"
-        - name: AUTHENTIK_BOOTSTRAP_TOKEN
+        - name: ADMIN_USERNAME
           valueFrom:
             secretKeyRef:
-              name: authentik-bootstrap
-              key: bootstrap-token
+              name: authentik-admin-credentials
+              key: username
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: authentik-admin-credentials
+              key: password
         command:
         - /bin/sh
         - -c
@@ -114,13 +116,56 @@ spec:
             fi
           fi
           
-          # Create new API token using bootstrap token
-          echo "Creating new admin API token via Authentik API..."
+          # Get session token by logging in with admin credentials
+          echo "Logging in with admin credentials to get session token..."
           
-          # First, get the admin user ID
-          ADMIN_USER_ID=$(curl -s -H "Authorization: Bearer $AUTHENTIK_BOOTSTRAP_TOKEN" \
+          # First, get the login flow
+          LOGIN_FLOW=$(curl -s "$AUTHENTIK_HOST/api/v3/flows/instances/default-authentication-flow/" | \
+            grep '"pk"' | head -1 | sed 's/.*"pk": *"\([^"]*\)".*/\1/')
+          
+          if [ -z "$LOGIN_FLOW" ]; then
+            echo "ERROR: Could not find login flow"
+            exit 1
+          fi
+          
+          echo "Found login flow: $LOGIN_FLOW"
+          
+          # Create a session and get CSRF token
+          SESSION_RESPONSE=$(curl -s -c /tmp/cookies.txt -b /tmp/cookies.txt \
+            "$AUTHENTIK_HOST/if/flow/$LOGIN_FLOW/")
+          
+          CSRF_TOKEN=$(echo "$SESSION_RESPONSE" | grep 'csrfmiddlewaretoken' | \
+            sed 's/.*value="\([^"]*\)".*/\1/' | head -1)
+          
+          if [ -z "$CSRF_TOKEN" ]; then
+            echo "ERROR: Could not get CSRF token"
+            exit 1
+          fi
+          
+          echo "Got CSRF token: ${CSRF_TOKEN:0:20}..."
+          
+          # Login with admin credentials
+          LOGIN_RESPONSE=$(curl -s -c /tmp/cookies.txt -b /tmp/cookies.txt \
+            -X POST \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -H "Referer: $AUTHENTIK_HOST/if/flow/$LOGIN_FLOW/" \
+            -d "csrfmiddlewaretoken=$CSRF_TOKEN&uid_field=$ADMIN_USERNAME&password=$ADMIN_PASSWORD" \
+            "$AUTHENTIK_HOST/if/flow/$LOGIN_FLOW/")
+          
+          # Get session token from cookies
+          SESSION_TOKEN=$(grep 'authentik_session' /tmp/cookies.txt | cut -f7)
+          
+          if [ -z "$SESSION_TOKEN" ]; then
+            echo "ERROR: Could not get session token after login"
+            exit 1
+          fi
+          
+          echo "Successfully logged in, got session token"
+          
+          # Now get admin user ID using session
+          ADMIN_USER_ID=$(curl -s -b /tmp/cookies.txt \
             "$AUTHENTIK_HOST/api/v3/core/users/" | \
-            grep -A 10 '"username": *"admin"' | \
+            grep -A 10 '"username": *"'$ADMIN_USERNAME'"' | \
             grep '"pk"' | head -1 | sed 's/.*"pk": *\([0-9]*\).*/\1/')
           
           if [ -z "$ADMIN_USER_ID" ]; then
@@ -130,10 +175,11 @@ spec:
           
           echo "Found admin user ID: $ADMIN_USER_ID"
           
-          # Create API token
-          TOKEN_RESPONSE=$(curl -s -X POST \
-            -H "Authorization: Bearer $AUTHENTIK_BOOTSTRAP_TOKEN" \
+          # Create API token using session
+          TOKEN_RESPONSE=$(curl -s -b /tmp/cookies.txt \
+            -X POST \
             -H "Content-Type: application/json" \
+            -H "X-CSRFToken: $CSRF_TOKEN" \
             "$AUTHENTIK_HOST/api/v3/core/tokens/" \
             -d '{
               "identifier": "admin-api-token-'$CLUSTER_NAME'",
