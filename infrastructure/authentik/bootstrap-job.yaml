@@ -1,0 +1,259 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentik-bootstrap
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: bootstrap
+    app.kubernetes.io/part-of: identity-provider
+spec:
+  ttlSecondsAfterFinished: 86400  # Keep for 24 hours for debugging
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik
+        app.kubernetes.io/component: bootstrap
+        app.kubernetes.io/part-of: identity-provider
+    spec:
+      restartPolicy: Never
+      serviceAccountName: authentik
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-authentik
+          image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Waiting for Authentik to be ready ==="
+              max_attempts=60
+              attempt=0
+              while [ $attempt -lt $max_attempts ]; do
+                if curl -f -s "$AUTHENTIK_HOST/if/flow/initial-setup/" > /dev/null 2>&1; then
+                  echo "Authentik is ready!"
+                  exit 0
+                fi
+                attempt=$((attempt + 1))
+                echo "Authentik not ready yet, attempt $attempt/$max_attempts, waiting 10 seconds..."
+                sleep 10
+              done
+              echo "ERROR: Authentik did not become ready within $((max_attempts * 10)) seconds"
+              exit 1
+          env:
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.authentik.svc.cluster.local"
+      containers:
+        - name: bootstrap-authentik
+          image: ghcr.io/goauthentik/server:2024.8.3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "=== Authentik Bootstrap Process Started ==="
+              
+              # Generate secure admin credentials
+              ADMIN_USERNAME="admin"
+              ADMIN_EMAIL="admin@home-ops.dev"
+              ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
+              
+              echo "Generated admin credentials:"
+              echo "Username: $ADMIN_USERNAME"
+              echo "Email: $ADMIN_EMAIL"
+              echo "Password: [REDACTED]"
+              
+              # Create admin user using authentik's management command
+              echo "=== Creating admin user ==="
+              python -m authentik.core.management.commands.create_admin_group
+              python -m authentik.core.management.commands.create_admin_user \
+                --username "$ADMIN_USERNAME" \
+                --email "$ADMIN_EMAIL" \
+                --password "$ADMIN_PASSWORD"
+              
+              echo "Admin user created successfully"
+              
+              # Wait a moment for user to be fully created
+              sleep 5
+              
+              # Create admin API token using authentik's API
+              echo "=== Creating admin API token ==="
+              
+              # First, get admin user ID
+              ADMIN_USER_ID=$(python -c "
+              import os
+              os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'authentik.root.settings')
+              import django
+              django.setup()
+              from authentik.core.models import User
+              user = User.objects.get(username='$ADMIN_USERNAME')
+              print(user.pk)
+              ")
+              
+              echo "Admin user ID: $ADMIN_USER_ID"
+              
+              # Create API token
+              API_TOKEN=$(python -c "
+              import os
+              os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'authentik.root.settings')
+              import django
+              django.setup()
+              from authentik.core.models import User, Token
+              from authentik.core.models import TokenIntents
+              user = User.objects.get(pk=$ADMIN_USER_ID)
+              token, created = Token.objects.get_or_create(
+                  identifier='admin-api-token-$CLUSTER_NAME',
+                  defaults={
+                      'user': user,
+                      'description': 'Admin API Token for internal server operations on $CLUSTER_NAME cluster',
+                      'intent': TokenIntents.INTENT_API,
+                      'expiring': False
+                  }
+              )
+              print(token.key)
+              ")
+              
+              echo "API token created: ${API_TOKEN:0:20}..."
+              
+              # Test the API token
+              echo "=== Testing API token ==="
+              if curl -s -H "Authorization: Bearer $API_TOKEN" "$AUTHENTIK_HOST/api/v3/core/users/me/" | grep -q "username"; then
+                echo "API token is working correctly"
+              else
+                echo "ERROR: API token is not working"
+                exit 1
+              fi
+              
+              # Store credentials in 1Password
+              echo "=== Storing credentials in 1Password ==="
+              
+              # Store admin user credentials
+              curl -X POST -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
+                -H "Content-Type: application/json" \
+                "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items" \
+                -d "{
+                  \"title\": \"Authentik Admin User - $CLUSTER_NAME\",
+                  \"category\": \"LOGIN\",
+                  \"tags\": [\"authentik\", \"admin\", \"user\", \"$CLUSTER_NAME\"],
+                  \"fields\": [
+                    {
+                      \"label\": \"username\",
+                      \"type\": \"STRING\",
+                      \"value\": \"$ADMIN_USERNAME\"
+                    },
+                    {
+                      \"label\": \"password\",
+                      \"type\": \"CONCEALED\",
+                      \"value\": \"$ADMIN_PASSWORD\"
+                    },
+                    {
+                      \"label\": \"email\",
+                      \"type\": \"STRING\",
+                      \"value\": \"$ADMIN_EMAIL\"
+                    },
+                    {
+                      \"label\": \"url\",
+                      \"type\": \"STRING\",
+                      \"value\": \"https://auth.home-ops.dev\"
+                    },
+                    {
+                      \"label\": \"created\",
+                      \"type\": \"STRING\",
+                      \"value\": \"$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")\"
+                    }
+                  ]
+                }"
+              
+              echo "Admin user credentials stored in 1Password"
+              
+              # Store API token
+              curl -X POST -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
+                -H "Content-Type: application/json" \
+                "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items" \
+                -d "{
+                  \"title\": \"Authentik Admin API Token - $CLUSTER_NAME\",
+                  \"category\": \"API_CREDENTIAL\",
+                  \"tags\": [\"authentik\", \"admin\", \"api\", \"$CLUSTER_NAME\"],
+                  \"fields\": [
+                    {
+                      \"label\": \"token\",
+                      \"type\": \"CONCEALED\",
+                      \"value\": \"$API_TOKEN\"
+                    },
+                    {
+                      \"label\": \"created\",
+                      \"type\": \"STRING\",
+                      \"value\": \"$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")\"
+                    },
+                    {
+                      \"label\": \"expires\",
+                      \"type\": \"STRING\",
+                      \"value\": \"never\"
+                    },
+                    {
+                      \"label\": \"description\",
+                      \"type\": \"STRING\",
+                      \"value\": \"Authentik Admin API Token for internal server operations on $CLUSTER_NAME cluster\"
+                    }
+                  ]
+                }"
+              
+              echo "API token stored in 1Password"
+              
+              echo "=== Bootstrap Process Complete ==="
+              echo "Authentik is now ready for GitOps management"
+              echo "Admin credentials and API token have been stored in 1Password"
+              
+          envFrom:
+            - secretRef:
+                name: authentik-config
+            - secretRef:
+                name: authentik-database-credentials
+            - secretRef:
+                name: onepassword-connect-token
+          env:
+            - name: OP_CONNECT_HOST
+              value: "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
+            - name: VAULT_UUID
+              value: "k6vqhqjjpbgwjbryaadqzj2e5u"
+            - name: CLUSTER_NAME
+              value: "home-ops"
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.authentik.svc.cluster.local"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: authentik-tmp
+              mountPath: /authentik/tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: authentik-tmp
+          emptyDir: {}
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule

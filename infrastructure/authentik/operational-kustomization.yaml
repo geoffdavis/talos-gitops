@@ -1,0 +1,43 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: authentik-operational
+  namespace: authentik
+
+resources:
+  # External secrets to sync credentials from 1Password
+  - external-secret-admin-user.yaml
+  - external-secret-admin-api-token.yaml
+  
+  # Operational HelmRelease with admin token
+  - operational-helmrelease.yaml
+  
+  # Outpost configuration jobs (using admin API token)
+  - ../authentik-outpost-config/
+
+commonLabels:
+  app.kubernetes.io/name: authentik
+  app.kubernetes.io/part-of: identity-provider
+  app.kubernetes.io/phase: operational
+
+secretGenerator:
+  - name: authentik-config
+    literals:
+      - AUTHENTIK_SECRET_KEY=ak-secret-key-change-me-in-production-please
+      - AUTHENTIK_COOKIE_DOMAIN=home-ops.dev
+      - AUTHENTIK_DISABLE_UPDATE_CHECK=true
+      - AUTHENTIK_ERROR_REPORTING__ENABLED=false
+      - AUTHENTIK_LOG_LEVEL=info
+      - AUTHENTIK_AVATARS=gravatar,initials
+      - AUTHENTIK_DEFAULT_USER_CHANGE_NAME=true
+      - AUTHENTIK_DEFAULT_USER_CHANGE_EMAIL=true
+      - AUTHENTIK_DEFAULT_USER_CHANGE_USERNAME=true
+      - AUTHENTIK_GDPR_COMPLIANCE=true
+      - AUTHENTIK_DEFAULT_TOKEN_LENGTH=128
+      - AUTHENTIK_DEFAULT_TOKEN_DURATION=minutes=30
+      - AUTHENTIK_IMPERSONATION=true
+
+generatorOptions:
+  disableNameSuffixHash: true
