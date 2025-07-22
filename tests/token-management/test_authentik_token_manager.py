@@ -40,8 +40,8 @@ class TestAuthentikTokenManager(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.sample_token = "70140b65f593e64a69e2d4924345ad16e8137f580f3102458fc5934a35eba095"
-        self.sample_token_b64 = "NzAxNDBiNjVmNTkzZTY0YTY5ZTJkNDkyNDM0NWFkMTZlODEzN2Y1ODBmMzEwMjQ1OGZjNTkzNGEzNWViYTA5NQ=="
+        self.sample_token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        self.sample_token_b64 = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZg=="
         self.sample_job_logs = f"""
 === Enhanced Token Setup with 1-Year Expiry ===
 Starting enhanced admin user and long-lived API token setup...
