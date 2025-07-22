@@ -305,7 +305,9 @@ spec:
               
               # Check if item exists by searching for it
               try:
-                  search_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items?filter=title eq \"Authentik Outpost Token - home-ops\"'
+                  # Properly URL encode the filter parameter to avoid control character errors
+                  filter_param = urllib.parse.quote('title eq "Authentik Outpost Token - home-ops"')
+                  search_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items?filter={filter_param}'
                   req = urllib.request.Request(search_url, headers=headers)
                   with urllib.request.urlopen(req) as response:
                       items = json.loads(response.read().decode())
