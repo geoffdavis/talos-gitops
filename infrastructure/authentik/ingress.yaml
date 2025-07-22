@@ -10,15 +10,17 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/auth-response-headers: Remote-User,Remote-Name,Remote-Email,Remote-Groups
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: letsencrypt-production
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - auth.k8s.home.geoffdavis.com
+        - authentik.k8s.home.geoffdavis.com
       secretName: authentik-tls
   rules:
-    - host: auth.k8s.home.geoffdavis.com
+    - host: authentik.k8s.home.geoffdavis.com
       http:
         paths:
           - path: /
