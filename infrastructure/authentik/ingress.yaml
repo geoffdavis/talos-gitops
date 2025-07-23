@@ -14,7 +14,7 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: selfsigned-issuer
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx-internal
   tls:
     - hosts:
         - authentik.k8s.home.geoffdavis.com
