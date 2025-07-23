@@ -40,7 +40,6 @@ metadata:
   name: cilium-bgp-peer-config
   namespace: kube-system
 spec:
-  authSecretRef: cilium-bgp-auth
   gracefulRestart:
     enabled: true
     restartTimeSeconds: 120
