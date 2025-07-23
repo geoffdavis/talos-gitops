@@ -4,6 +4,5 @@ kind: Kustomization
 resources:
   # Cilium core CNI is deployed via Bootstrap (task apps:deploy-cilium)
   # Only operational features are managed via GitOps
-  - loadbalancer-pool.yaml
-  - loadbalancer-pool-ipv6.yaml
+  - loadbalancer-pool-bgp.yaml
   # ingress-hubble.yaml removed - using authentik proxy instead of native ingress

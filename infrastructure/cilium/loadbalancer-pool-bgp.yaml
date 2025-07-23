@@ -16,7 +16,7 @@ spec:
       stop: "172.29.52.199"
   serviceSelector:
     matchLabels:
-      io.cilium/lb-ipam-pool: "default"
+      io.cilium/lb-ipam-pool: "bgp-default"
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
@@ -33,7 +33,7 @@ spec:
       stop: "172.29.52.220"
   serviceSelector:
     matchLabels:
-      io.cilium/lb-ipam-pool: "ingress"
+      io.cilium/lb-ipam-pool: "bgp-ingress"
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumLoadBalancerIPPool
@@ -50,7 +50,7 @@ spec:
       stop: "172.29.52.99"
   serviceSelector:
     matchLabels:
-      io.cilium/lb-ipam-pool: "reserved"
+      io.cilium/lb-ipam-pool: "bgp-reserved"
 ---
 # IPv6 BGP Load Balancer Pool
 apiVersion: cilium.io/v2alpha1
@@ -67,4 +67,4 @@ spec:
     - cidr: fd47:25e1:2f96:52:100::/120
   serviceSelector:
     matchLabels:
-      io.cilium/lb-ipam-pool: "default-ipv6"
+      io.cilium/lb-ipam-pool: "bgp-default-ipv6"

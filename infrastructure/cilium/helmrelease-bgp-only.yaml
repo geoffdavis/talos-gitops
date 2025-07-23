@@ -1,0 +1,158 @@
+# Cilium Helm Release - BGP-only Load Balancer Configuration
+# Removes L2 announcements and optimizes for BGP load balancing
+
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: cni
+spec:
+  interval: 30m
+  timeout: 20m
+  install:
+    timeout: 20m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 20m
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  rollback:
+    timeout: 10m
+    cleanupOnFail: true
+  chart:
+    spec:
+      chart: cilium
+      version: "1.16.1"
+      sourceRef:
+        kind: HelmRepository
+        name: cilium
+        namespace: flux-system
+      interval: 12h
+  values:
+    # Talos-specific configuration
+    securityContext:
+      privileged: true
+    
+    # CNI Configuration
+    cni:
+      install: true
+      exclusive: false
+    
+    # IPAM Configuration with IPv6 dual-stack support
+    ipam:
+      mode: cluster-pool
+      operator:
+        clusterPoolIPv4PodCIDRList: ["10.244.0.0/16"]
+        clusterPoolIPv4MaskSize: 24
+        clusterPoolIPv6PodCIDRList: ["fd47:25e1:2f96:51:2000::/64"]
+        clusterPoolIPv6MaskSize: 64
+    
+    # IPv6 dual-stack configuration
+    ipv6:
+      enabled: true
+    
+    # Enable dual-stack mode
+    enableIPv4: true
+    enableIPv6: true
+    
+    # API Server Configuration for Talos
+    # Use the cluster VIP instead of localhost for pod access
+    k8sServiceHost: 172.29.51.10
+    k8sServicePort: 6443
+    
+    # Kube-proxy replacement - disabled for Talos compatibility
+    kubeProxyReplacement: false
+    
+    # Enable Hubble for observability with comprehensive metrics
+    hubble:
+      enabled: true
+      metrics:
+        enabled:
+          - dns:query;ignoreAAAA
+          - drop
+          - tcp
+          - flow
+          - icmp
+          - http
+      relay:
+        enabled: true
+        rollOutPods: true
+      ui:
+        enabled: true
+        rollOutPods: true
+    
+    # BGP Configuration - ENABLED for load balancer announcements
+    bgpControlPlane:
+      enabled: true
+    
+    # Load Balancer Configuration - Optimized for BGP
+    loadBalancer:
+      algorithm: maglev
+      mode: dsr  # Direct Server Return for better performance
+      acceleration: native  # Use native XDP acceleration if available
+    
+    # L2 announcements - DISABLED (replaced with BGP-only)
+    l2announcements:
+      enabled: false
+    
+    # Operator configuration
+    operator:
+      replicas: 1
+      rollOutPods: true
+      # Enable Prometheus metrics
+      prometheus:
+        enabled: true
+        port: 9963
+    
+    # Node selector for control plane scheduling
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node.kubernetes.io/not-ready
+        operator: Exists
+        effect: NoSchedule
+    
+    # Enable Prometheus metrics for monitoring (main agent)
+    prometheus:
+      enabled: true
+      port: 9962
+      serviceMonitor:
+        enabled: true
+    
+    # BGP-specific configuration
+    bgp:
+      enabled: true
+      announce:
+        loadbalancerIP: true
+        podCIDR: false  # Only announce load balancer IPs, not pod CIDR
+    
+    # Bandwidth manager for traffic shaping
+    bandwidthManager:
+      enabled: true
+      bbr: true
+    
+    # Enable local redirect policy for better performance
+    localRedirectPolicy: true
+    
+    # Enable socket-based load balancing
+    socketLB:
+      enabled: true
+    
+    # Cluster mesh configuration (disabled for single cluster)
+    clustermesh:
+      useAPIServer: false
+    
+    # Debug configuration
+    debug:
+      enabled: false
+      verbose: ""
