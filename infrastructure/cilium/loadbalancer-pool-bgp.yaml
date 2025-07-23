@@ -1,0 +1,70 @@
+# BGP-only Load Balancer IP Pools - Replaces L2 announcement pools
+# Uses dedicated 172.29.52.0/24 network segment for clean separation
+
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: bgp-default
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: loadbalancer-ipam
+spec:
+  # Default pool for general services (100 IPs)
+  blocks:
+    - start: "172.29.52.100"
+      stop: "172.29.52.199"
+  serviceSelector:
+    matchLabels:
+      io.cilium/lb-ipam-pool: "default"
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: bgp-ingress
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: loadbalancer-ipam
+spec:
+  # Ingress pool for ingress controllers (21 IPs)
+  blocks:
+    - start: "172.29.52.200"
+      stop: "172.29.52.220"
+  serviceSelector:
+    matchLabels:
+      io.cilium/lb-ipam-pool: "ingress"
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: bgp-reserved
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: loadbalancer-ipam
+spec:
+  # Reserved pool for future expansion (50 IPs)
+  blocks:
+    - start: "172.29.52.50"
+      stop: "172.29.52.99"
+  serviceSelector:
+    matchLabels:
+      io.cilium/lb-ipam-pool: "reserved"
+---
+# IPv6 BGP Load Balancer Pool
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: bgp-default-ipv6
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: loadbalancer-ipam
+spec:
+  # IPv6 pool using dedicated segment fd47:25e1:2f96:52::/64
+  blocks:
+    - cidr: fd47:25e1:2f96:52:100::/120
+  serviceSelector:
+    matchLabels:
+      io.cilium/lb-ipam-pool: "default-ipv6"
