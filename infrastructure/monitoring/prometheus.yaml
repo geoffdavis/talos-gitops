@@ -19,16 +19,14 @@ spec:
       enabled: true
       service:
         type: LoadBalancer
-        loadBalancerIP: "172.29.51.160"
         annotations:
-          io.cilium/lb-ipam-pool: "default"
+          io.cilium/lb-ipam-pool: "bgp-default"
       
     prometheus:
       service:
         type: LoadBalancer
-        loadBalancerIP: "172.29.51.161"
         annotations:
-          io.cilium/lb-ipam-pool: "default"
+          io.cilium/lb-ipam-pool: "bgp-default"
       
       prometheusSpec:
         storageSpec:
@@ -59,9 +57,8 @@ spec:
     grafana:
       service:
         type: LoadBalancer
-        loadBalancerIP: "172.29.51.162"
         annotations:
-          io.cilium/lb-ipam-pool: "default"
+          io.cilium/lb-ipam-pool: "bgp-default"
       
       persistence:
         enabled: true
