@@ -6,7 +6,7 @@ resources:
   - helmrelease.yaml
   - storage-class.yaml
   - volume-snapshot-class.yaml
-  # ingress.yaml removed - using authentik proxy instead of native ingress
+  - ingress.yaml
   - external-secret-s3.yaml
   - backup-target-patch.yaml
   - recurring-jobs.yaml
