@@ -104,9 +104,10 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Cloudflare Tunnel**: [`infrastructure/cloudflare-tunnel/`](../infrastructure/cloudflare-tunnel/)
 
 #### 3. Identity Management
-- **Authentik**: [`infrastructure/authentik/`](../infrastructure/authentik/)
-- **PostgreSQL Backend**: [`infrastructure/postgresql-cluster/`](../infrastructure/postgresql-cluster/)
-- **Outpost Configuration**: [`infrastructure/authentik-outpost-config/`](../infrastructure/authentik-outpost-config/)
+- **Authentik**: [`infrastructure/authentik/`](../infrastructure/authentik/) - Complete SSO identity provider
+- **PostgreSQL Backend**: [`infrastructure/postgresql-cluster/`](../infrastructure/postgresql-cluster/) - Database for Authentik
+- **Outpost Configuration**: [`infrastructure/authentik-outpost-config/`](../infrastructure/authentik-outpost-config/) - Embedded outpost for Kubernetes services
+- **Authentication Architecture**: Embedded outpost handles all *.k8s.home.geoffdavis.com services with proper token management
 
 ## Key Technical Decisions
 
@@ -138,6 +139,14 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Certificate Strategy**: Let's Encrypt for internal, Cloudflare for external
 - **Integration**: BGP-advertised ingress IP (172.29.51.200)
 - **DNS Management**: Cilium peers with Ubiquiti UDM-Pro and updates DNS records for *.k8s.home.geoffdavis.com domain
+
+### Authentication Architecture
+- **Identity Provider**: Authentik provides centralized SSO for all cluster services
+- **Outpost Model**: Embedded outpost architecture (not RADIUS) for Kubernetes service integration
+- **Ingress Integration**: All services use nginx-internal ingress class with Authentik authentication
+- **Token Management**: API tokens properly managed with regeneration procedures for outpost connectivity
+- **Service Coverage**: All *.k8s.home.geoffdavis.com services redirect to Authentik for authentication
+- **SSL/TLS**: Proper certificate validation and secure communication between outpost and Authentik server
 
 ## Critical Implementation Paths
 

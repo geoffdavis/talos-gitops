@@ -185,6 +185,39 @@ This file documents repetitive tasks and operational workflows that follow estab
 - Verify all external secrets sync properly after rotation
 - Keep backup of old credentials until rotation is confirmed
 
+### Maintain Authentik Authentication System
+**Last performed:** Ongoing maintenance
+**Files to modify:**
+- `infrastructure/authentik/admin-api-token-setup-job.yaml` - Token management
+- `infrastructure/authentik-outpost-config/` - Outpost configurations
+
+**Steps:**
+1. **Regular Health Checks**:
+   - Verify all services accessible: Test key services like Longhorn, Grafana, Dashboard
+   - Check outpost status in Authentik admin interface
+   - Monitor authentication response times
+
+2. **Token Health Monitoring**:
+   - Check API token expiration dates in Authentik admin
+   - Verify outpost connectivity status
+   - Review authentication logs for errors
+
+3. **Proactive Token Rotation**:
+   - Schedule token regeneration before expiration (monthly recommended)
+   - Follow token regeneration procedure from troubleshooting task
+   - Test all services after token rotation
+
+4. **Service Integration Validation**:
+   - Ensure new services use nginx-internal ingress class
+   - Verify proper Authentik annotations on ingress resources
+   - Test SSO functionality for newly deployed services
+
+**Important notes:**
+- Embedded outpost architecture requires API token connectivity
+- Monitor for authentication failures and address promptly
+- Keep documentation updated with any configuration changes
+- Test authentication system after any Authentik upgrades
+
 ## Monitoring and Maintenance
 
 ### Update Monitoring Dashboards
@@ -220,5 +253,57 @@ This file documents repetitive tasks and operational workflows that follow estab
 - Document any issues found for trending analysis
 - Address failed pods and resource constraints promptly
 - Monitor storage capacity and plan for expansion
+
+### Troubleshoot Authentik Authentication Issues
+**Last performed:** January 2025 (successful resolution)
+**Files to modify:**
+- `infrastructure/authentik/admin-api-token-setup-job.yaml` - Token regeneration job
+- `infrastructure/authentik-outpost-config/outpost-config-job.yaml` - Outpost configuration
+- Various service ingress files - Ingress class standardization
+
+**Steps:**
+1. **Diagnose Authentication Failures**:
+   - Check service accessibility: `curl -I https://<service>.k8s.home.geoffdavis.com`
+   - Verify ingress configuration: `kubectl get ingress -A`
+   - Check Authentik outpost logs: `kubectl logs -n authentik -l app.kubernetes.io/name=authentik`
+
+2. **Check API Token Status**:
+   - Verify token exists: `kubectl get secrets -n authentik | grep api-token`
+   - Check token expiration in Authentik admin interface
+   - Review outpost connectivity in Authentik admin
+
+3. **Regenerate API Tokens**:
+   - Delete existing token job: `kubectl delete job -n authentik admin-api-token-setup`
+   - Apply token setup job: `kubectl apply -f infrastructure/authentik/admin-api-token-setup-job.yaml`
+   - Monitor job completion: `kubectl logs -n authentik job/admin-api-token-setup`
+
+4. **Reconfigure Outpost**:
+   - Delete outpost config job: `kubectl delete job -n authentik outpost-config`
+   - Apply outpost config: `kubectl apply -f infrastructure/authentik-outpost-config/outpost-config-job.yaml`
+   - Verify outpost registration in Authentik admin interface
+
+5. **Standardize Ingress Classes**:
+   - Review all service ingress files for consistent `ingressClassName: nginx-internal`
+   - Update any services using different ingress classes
+   - Commit and deploy changes: `git add . && git commit -m "Standardize ingress classes"`
+
+6. **Verify Resolution**:
+   - Test service access: Navigate to https://<service>.k8s.home.geoffdavis.com
+   - Confirm redirect to Authentik login
+   - Verify successful authentication and service access
+   - Check all monitored services (Longhorn, Grafana, etc.)
+
+**Important notes:**
+- Root cause is typically expired API tokens or outpost configuration drift
+- Embedded outpost architecture is used (not RADIUS) for Kubernetes services
+- All *.k8s.home.geoffdavis.com services should use nginx-internal ingress class
+- Token regeneration requires both API token setup and outpost reconfiguration
+- SSL verification must be properly configured between outpost and Authentik server
+
+**Common Issues and Solutions:**
+- **502/503 errors**: Usually indicates outpost connectivity issues - regenerate tokens
+- **Authentication loops**: Check ingress class consistency and outpost configuration
+- **SSL errors**: Verify certificate configuration and trust relationships
+- **Token expiration**: Implement monitoring for token health and proactive rotation
 
 This task documentation helps maintain consistency and reduces the learning curve for common operational procedures.
