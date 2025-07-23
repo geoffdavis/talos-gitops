@@ -36,7 +36,7 @@ spec:
         annotations:
           io.cilium/lb-ipam-pool: "bgp-ingress"
           external-dns.alpha.kubernetes.io/hostname: "*.homelab.local"
-          external-dns.alpha.kubernetes.io/target: "172.29.52.200"
+          external-dns.alpha.kubernetes.io/target: "172.29.52.201"
         externalTrafficPolicy: Cluster
         
       # Enable metrics
