@@ -313,7 +313,7 @@ tasks:
       - mise exec -- helm repo update
       - |
         mise exec -- helm upgrade --install cilium cilium/cilium \
-            --version 1.16.1 \
+            --version 1.17.6 \
             --namespace kube-system \
             --set ipam.mode=cluster-pool \
             --set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16" \
@@ -329,6 +329,11 @@ tasks:
             --set l2announcements.enabled=true \
             --set loadBalancer.algorithm=maglev \
             --set loadBalancer.mode=snat \
+            --set loadBalancer.l2.enabled=false \
+            --set loadBalancer.acceleration=disabled \
+            --set datapathMode=veth \
+            --set enableXDPPrefilter=false \
+            --set enable-lb-ipam=true \
             --set operator.replicas=1 \
             --set operator.rollOutPods=true \
             --set k8sServiceHost=172.29.51.10 \
@@ -1137,3 +1142,4 @@ includes:
   services: ./taskfiles/services.yml
   gitops: ./taskfiles/gitops.yml
   applications: ./taskfiles/applications.yml
+  bgp-loadbalancer: ./taskfiles/bgp-loadbalancer.yml

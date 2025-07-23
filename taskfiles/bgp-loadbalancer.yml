@@ -1,0 +1,270 @@
+# BGP Load Balancer Tasks
+# Tasks for managing BGP-only load balancer architecture
+
+version: '3'
+
+vars:
+  NEW_LB_NETWORK: "172.29.52.0/24"
+  NEW_LB_RANGE_START: "172.29.52.50"
+  NEW_LB_RANGE_END: "172.29.52.220"
+  IPV6_LB_NETWORK: "fd47:25e1:2f96:52::/64"
+
+tasks:
+  migrate:
+    desc: Migrate from L2 announcements to BGP-only load balancer architecture
+    cmds:
+      - echo "Starting BGP-only load balancer migration..."
+      - ./scripts/migrate-to-bgp-only-loadbalancer.sh
+    preconditions:
+      - sh: '[ -x scripts/migrate-to-bgp-only-loadbalancer.sh ]'
+        msg: 'Migration script must be executable'
+      - sh: 'kubectl get nodes &> /dev/null'
+        msg: 'Kubernetes cluster must be accessible'
+
+  rollback:
+    desc: Rollback BGP-only migration to L2 announcements
+    cmds:
+      - echo "Rolling back BGP-only load balancer migration..."
+      - ./scripts/migrate-to-bgp-only-loadbalancer.sh --rollback
+    preconditions:
+      - sh: '[ -x scripts/migrate-to-bgp-only-loadbalancer.sh ]'
+        msg: 'Migration script must be executable'
+
+  validate:
+    desc: Validate BGP-only load balancer configuration
+    cmds:
+      - echo "Validating BGP-only load balancer configuration..."
+      - ./scripts/validate-bgp-loadbalancer.sh
+    preconditions:
+      - sh: '[ -x scripts/validate-bgp-loadbalancer.sh ]'
+        msg: 'Validation script must be executable'
+
+  status:
+    desc: Show BGP load balancer status
+    cmds:
+      - echo "=== BGP Cluster Configuration ==="
+      - mise exec -- kubectl get ciliumbgpclusterconfig -o wide
+      - echo ""
+      - echo "=== BGP Advertisements ==="
+      - mise exec -- kubectl get ciliumbgpadvertisement -o wide
+      - echo ""
+      - echo "=== Load Balancer IP Pools ==="
+      - mise exec -- kubectl get ciliumloadbalancerippool -o wide
+      - echo ""
+      - echo "=== L2 Announcement Policies (should be empty) ==="
+      - mise exec -- kubectl get ciliuml2announcementpolicy -n kube-system || echo "No L2 policies found (BGP-only mode confirmed)"
+      - echo ""
+      - echo "=== LoadBalancer Services ==="
+      - mise exec -- kubectl get svc --all-namespaces -o wide | grep LoadBalancer
+
+  check-pools:
+    desc: Check BGP load balancer IP pool status and utilization
+    cmds:
+      - echo "=== BGP Load Balancer IP Pools ==="
+      - mise exec -- kubectl get ciliumloadbalancerippool -o yaml | grep -A 10 -B 5 "name:\|blocks:"
+      - echo ""
+      - echo "=== IP Pool Utilization ==="
+      - |
+        echo "Checking IP allocation in BGP pools..."
+        services=$(mise exec -- kubectl get svc --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer" and .status.loadBalancer.ingress[0].ip != null) | .status.loadBalancer.ingress[0].ip')
+        bgp_ips=0
+        other_ips=0
+        
+        for ip in $services; do
+          if [[ "$ip" =~ ^172\.29\.52\. ]]; then
+            bgp_ips=$((bgp_ips + 1))
+          else
+            other_ips=$((other_ips + 1))
+          fi
+        done
+        
+        echo "IPs in BGP range (172.29.52.x): $bgp_ips"
+        echo "IPs outside BGP range: $other_ips"
+        echo "Total LoadBalancer IPs: $((bgp_ips + other_ips))"
+
+  test-connectivity:
+    desc: Test connectivity to BGP load balancer IPs
+    cmds:
+      - echo "Testing connectivity to BGP load balancer network..."
+      - |
+        # Test network reachability
+        if ping -c 1 -W 2 172.29.52.1 &> /dev/null; then
+          echo "✓ BGP load balancer network ({{.NEW_LB_NETWORK}}) is reachable"
+        else
+          echo "⚠ BGP load balancer network may not be configured"
+        fi
+      - echo ""
+      - echo "Testing LoadBalancer service connectivity..."
+      - |
+        services=$(mise exec -- kubectl get svc --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer" and .status.loadBalancer.ingress[0].ip != null) | "\(.metadata.namespace)/\(.metadata.name)/\(.status.loadBalancer.ingress[0].ip)/\(.spec.ports[0].port)"')
+        
+        for service_info in $services; do
+          namespace=$(echo "$service_info" | cut -d'/' -f1)
+          name=$(echo "$service_info" | cut -d'/' -f2)
+          ip=$(echo "$service_info" | cut -d'/' -f3)
+          port=$(echo "$service_info" | cut -d'/' -f4)
+          
+          if [[ "$ip" =~ ^172\.29\.52\. ]]; then
+            if curl -s --connect-timeout 5 "http://$ip:$port" &> /dev/null; then
+              echo "✓ $namespace/$name ($ip:$port) - accessible"
+            else
+              echo "⚠ $namespace/$name ($ip:$port) - not accessible"
+            fi
+          fi
+        done
+
+  verify-bgp-peering:
+    desc: Verify BGP peering status with UDM Pro
+    cmds:
+      - echo "Checking BGP peering status with UDM Pro..."
+      - |
+        if command -v ssh &> /dev/null && ssh -o ConnectTimeout=5 -o BatchMode=yes unifi-admin@udm-pro "echo test" &> /dev/null; then
+          echo "=== BGP Summary ==="
+          ssh unifi-admin@udm-pro "vtysh -c 'show bgp summary'"
+          echo ""
+          echo "=== BGP IPv4 Routes ==="
+          ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv4 unicast' | grep 172.29.52"
+          echo ""
+          echo "=== BGP IPv6 Routes ==="
+          ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv6 unicast' | grep fd47:25e1:2f96:52" || echo "No IPv6 BGP routes found"
+        else
+          echo "⚠ Cannot connect to UDM Pro via SSH"
+          echo "Manually verify BGP peering with:"
+          echo "  ssh unifi-admin@udm-pro 'vtysh -c \"show bgp summary\"'"
+        fi
+
+  show-service-ips:
+    desc: Show all LoadBalancer service IPs with BGP pool information
+    cmds:
+      - echo "=== LoadBalancer Services with IP Pool Information ==="
+      - |
+        mise exec -- kubectl get svc --all-namespaces -o json | jq -r '
+          .items[] | 
+          select(.spec.type=="LoadBalancer") | 
+          {
+            namespace: .metadata.namespace,
+            name: .metadata.name,
+            ip: (.status.loadBalancer.ingress[0].ip // "pending"),
+            pool: (.metadata.labels["io.cilium/lb-ipam-pool"] // "default"),
+            ports: [.spec.ports[].port] | join(",")
+          } | 
+          "\(.namespace)/\(.name) | IP: \(.ip) | Pool: \(.pool) | Ports: \(.ports)"
+        ' | column -t -s '|'
+
+  update-service-pools:
+    desc: Update services to use specific BGP IP pools
+    vars:
+      SERVICE: '{{.SERVICE | default ""}}'
+      NAMESPACE: '{{.NAMESPACE | default ""}}'
+      POOL: '{{.POOL | default "default"}}'
+    cmds:
+      - |
+        if [ -z "{{.SERVICE}}" ] || [ -z "{{.NAMESPACE}}" ]; then
+          echo "Usage: task bgp-loadbalancer:update-service-pools SERVICE=<name> NAMESPACE=<namespace> [POOL=<pool>]"
+          echo ""
+          echo "Available pools:"
+          echo "  - default: 172.29.52.100-199 (general services)"
+          echo "  - ingress: 172.29.52.200-220 (ingress controllers)"
+          echo "  - reserved: 172.29.52.50-99 (reserved for future use)"
+          echo "  - default-ipv6: fd47:25e1:2f96:52:100::/120 (IPv6 services)"
+          exit 1
+        fi
+      - echo "Updating service {{.NAMESPACE}}/{{.SERVICE}} to use pool '{{.POOL}}'..."
+      - |
+        mise exec -- kubectl patch svc "{{.SERVICE}}" -n "{{.NAMESPACE}}" \
+          -p '{"metadata":{"labels":{"io.cilium/lb-ipam-pool":"{{.POOL}}"}}}'
+      - echo "Service updated. New IP will be assigned from pool '{{.POOL}}'"
+      - sleep 5
+      - mise exec -- kubectl get svc "{{.SERVICE}}" -n "{{.NAMESPACE}}" -o wide
+
+  configure-udm-pro:
+    desc: Show UDM Pro BGP configuration instructions
+    cmds:
+      - echo "=== UDM Pro BGP Configuration Instructions ==="
+      - echo ""
+      - echo "1. Access UniFi Network UI"
+      - echo "2. Navigate to Network Settings Routing BGP"
+      - echo "3. Upload configuration file scripts/unifi-bgp-config-bgp-only.conf"
+      - echo "4. Apply the configuration"
+      - echo ""
+      - echo "Configuration file contents:"
+      - echo "=========================="
+      - cat scripts/unifi-bgp-config-bgp-only.conf
+      - echo "=========================="
+      - echo ""
+      - echo "After applying configuration, verify with:"
+      - echo "  task bgp-loadbalancer:verify-bgp-peering"
+
+  troubleshoot:
+    desc: Run BGP load balancer troubleshooting diagnostics
+    cmds:
+      - echo "=== BGP Load Balancer Troubleshooting ==="
+      - echo ""
+      - echo "1. Checking Cilium BGP configuration..."
+      - mise exec -- kubectl get ciliumbgpclusterconfig -o yaml | grep -A 20 -B 5 "localASN\|peerASN\|peerAddress"
+      - echo ""
+      - echo "2. Checking BGP advertisements..."
+      - mise exec -- kubectl get ciliumbgpadvertisement -o yaml | grep -A 10 -B 5 "advertisementType\|LoadBalancerIP"
+      - echo ""
+      - echo "3. Checking load balancer IP pools..."
+      - mise exec -- kubectl get ciliumloadbalancerippool -o yaml | grep -A 5 -B 5 "blocks\|start\|stop"
+      - echo ""
+      - echo "4. Checking Cilium agent logs for BGP errors..."
+      - mise exec -- kubectl logs -n kube-system -l app.kubernetes.io/name=cilium --tail=50 | grep -i bgp || echo "No BGP-related log entries found"
+      - echo ""
+      - echo "5. Checking service endpoints..."
+      - mise exec -- kubectl get endpoints --all-namespaces | grep -E "(longhorn|grafana|prometheus|alertmanager|dashboard)" || echo "No matching service endpoints found"
+      - echo ""
+      - echo "6. Testing network connectivity..."
+      - |
+        echo "Testing connectivity to BGP network gateway..."
+        if ping -c 1 -W 2 172.29.52.1 &> /dev/null; then
+          echo "✓ BGP network gateway reachable"
+        else
+          echo "⚠ BGP network gateway not reachable"
+        fi
+
+  generate-report:
+    desc: Generate comprehensive BGP load balancer status report
+    cmds:
+      - echo "Generating BGP load balancer status report..."
+      - |
+        report_file="bgp-loadbalancer-report-$(date +%Y%m%d-%H%M%S).txt"
+        
+        {
+          echo "BGP Load Balancer Status Report"
+          echo "Generated: $(date)"
+          echo "========================================"
+          echo
+          
+          echo "=== Cluster Information ==="
+          mise exec -- kubectl cluster-info | head -1
+          echo
+          
+          echo "=== BGP Configuration ==="
+          mise exec -- kubectl get ciliumbgpclusterconfig -o wide
+          echo
+          
+          echo "=== BGP Advertisements ==="
+          mise exec -- kubectl get ciliumbgpadvertisement -o wide
+          echo
+          
+          echo "=== Load Balancer IP Pools ==="
+          mise exec -- kubectl get ciliumloadbalancerippool -o wide
+          echo
+          
+          echo "=== LoadBalancer Services ==="
+          mise exec -- kubectl get svc --all-namespaces -o wide | grep LoadBalancer
+          echo
+          
+          echo "=== L2 Announcement Policies (should be empty) ==="
+          mise exec -- kubectl get ciliuml2announcementpolicy -n kube-system 2>/dev/null || echo "No L2 announcement policies found"
+          echo
+          
+          echo "=== Cilium Agent Status ==="
+          mise exec -- kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium -o wide
+          echo
+          
+        } > "$report_file"
+        
+        echo "Report saved to: $report_file"

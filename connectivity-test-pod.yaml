@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: connectivity-test
+  namespace: authentik
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: connectivity-test
+    image: curlimages/curl:8.5.0
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    command:
+    - /bin/sh
+    - -c
+    - |
+      echo 'Testing backend service connectivity from authentik namespace:'
+      echo '1. Testing Longhorn frontend...'
+      curl -I -m 10 http://longhorn-frontend.longhorn-system.svc.cluster.local:80/ || echo 'Longhorn connection failed'
+      echo '2. Testing Dashboard web...'
+      curl -I -m 10 http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000/ || echo 'Dashboard connection failed'
+      echo '3. Testing Hubble UI...'
+      curl -I -m 10 http://hubble-ui.kube-system.svc.cluster.local:80/ || echo 'Hubble connection failed'
+      echo '4. Testing Grafana...'
+      curl -I -m 10 http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80/ || echo 'Grafana connection failed'
+      echo 'Connectivity test complete'
+      sleep 30

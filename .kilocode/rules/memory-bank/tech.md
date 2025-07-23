@@ -8,7 +8,7 @@
 - **containerd**: Container runtime (managed by Talos)
 
 ### Networking
-- **Cilium v1.16.1**: CNI with eBPF-based networking and security
+- **Cilium v1.17.6**: CNI with eBPF-based networking and security
 - **BGP**: Border Gateway Protocol for load balancer IP advertisement
 - **Dual-Stack IPv6**: Full IPv4/IPv6 networking support
 - **LLDP**: Link Layer Discovery Protocol for network topology
@@ -112,6 +112,26 @@ cp .env.example .env
 - **Network Dependencies**: BGP peering required for load balancer functionality
 - **DNS Integration**: External DNS providers must be properly configured
 
+## Cilium Configuration Details
+
+### Cilium v1.17.6 Deployment Parameters
+- **XDP Acceleration**: Disabled for Mac mini compatibility (`--set loadBalancer.acceleration=disabled`)
+- **LoadBalancer IPAM**: Enabled (`--set enable-lb-ipam=true`)
+- **L2 Announcements**: Disabled (`--set loadBalancer.l2.enabled=false`)
+- **BGP Control Plane**: Enabled for load balancer IP advertisement
+- **Kube-proxy Replacement**: Disabled in Talos configuration
+- **Dual-Stack Support**: IPv4/IPv6 networking enabled
+
+### BGP LoadBalancer Configuration
+- **Cluster ASN**: 64512 (all nodes participate in BGP)
+- **UDM Pro ASN**: 64513 (BGP peer and route acceptor)
+- **BGP Peering Status**: ✅ Established and stable
+- **Route Advertisement**: ❌ Currently not working (CiliumBGPAdvertisement issue)
+- **IP Pool Architecture**:
+  - bgp-default: 172.29.52.100-199 (default services)
+  - bgp-ingress: 172.29.52.200-220 (ingress controllers)
+  - bgp-reserved: 172.29.52.221-250 (reserved for future use)
+
 ## Tool Usage Patterns
 
 ### Bootstrap Operations
@@ -127,7 +147,7 @@ task talos:bootstrap          # Initialize cluster
 task talos:reboot             # Reboot nodes
 
 # Core services
-task apps:deploy-cilium       # Deploy CNI
+task apps:deploy-cilium       # Deploy CNI (Cilium v1.17.6 with XDP disabled)
 task bootstrap:1password-secrets # Bootstrap secrets
 task flux:bootstrap           # Deploy GitOps
 ```
@@ -156,6 +176,12 @@ kubectl get pods -A         # Pod status
 cilium status               # CNI status
 task bgp:verify-peering     # BGP status
 task network:check-ipv6     # IPv6 configuration
+
+# BGP troubleshooting
+kubectl get ciliumbgppeers  # BGP peering status
+kubectl get ciliumbgpadvertisements # Route advertisement config
+kubectl exec -n kube-system -l k8s-app=cilium -- cilium bgp routes # BGP routes
+kubectl logs -n kube-system -l k8s-app=cilium | grep -i bgp # BGP logs
 
 # Storage diagnostics
 task storage:check-longhorn  # Storage health

@@ -5,3 +5,6 @@ resources:
   - namespace.yaml
   - prometheus.yaml
   - flux-monitoring.yaml
+  - ingress-grafana.yaml
+  - ingress-prometheus.yaml
+  - ingress-alertmanager.yaml

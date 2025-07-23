@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-auth-flow
+  namespace: authentik
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: test-auth-flow
+    image: curlimages/curl:8.5.0
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    command:
+    - /bin/sh
+    - -c
+    - |
+      echo 'Testing authentication flow via embedded outpost:'
+      echo '1. Testing Longhorn via embedded outpost...'
+      curl -I -k -m 10 https://longhorn.k8s.home.geoffdavis.com/ || echo 'Longhorn test failed'
+      echo '2. Testing Dashboard via embedded outpost...'
+      curl -I -k -m 10 https://dashboard.k8s.home.geoffdavis.com/ || echo 'Dashboard test failed'
+      echo '3. Testing Hubble via embedded outpost...'
+      curl -I -k -m 10 https://hubble.k8s.home.geoffdavis.com/ || echo 'Hubble test failed'
+      echo '4. Testing Grafana via embedded outpost...'
+      curl -I -k -m 10 https://grafana.k8s.home.geoffdavis.com/ || echo 'Grafana test failed'
+      echo 'Authentication flow test complete'
+      sleep 30

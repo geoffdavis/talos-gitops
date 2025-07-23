@@ -158,8 +158,7 @@ controlPlane:
           hostDNS:
             enabled: true
             forwardKubeDNSToHost: true
-        nodeLabels:
-          node.kubernetes.io/exclude-from-external-load-balancers: ""
+        # nodeLabels removed to allow external load balancer functionality
 
     # Kubernetes API server configuration
     - |-

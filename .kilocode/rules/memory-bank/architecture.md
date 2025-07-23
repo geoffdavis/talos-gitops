@@ -69,7 +69,8 @@ This cluster implements a sophisticated two-phase architecture that separates fo
   - Kube-proxy replacement disabled in Talos
   - Dual-stack IPv4/IPv6 support
   - BGP control plane enabled
-  - L2 announcements for LoadBalancer IPAM
+  - LoadBalancer IPAM enabled (Cilium v1.17.6)
+  - XDP disabled for Mac mini compatibility
 
 #### 3. Secret Management Foundation
 - **Components**: 1Password Connect + External Secrets Operator
@@ -99,7 +100,13 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 
 #### 2. Network Services
 - **Cilium BGP**: [`infrastructure/cilium-bgp/`](../infrastructure/cilium-bgp/)
-- **Load Balancer Pools**: [`infrastructure/cilium/loadbalancer-pool.yaml`](../infrastructure/cilium/loadbalancer-pool.yaml)
+  - CiliumBGPClusterConfig: Global BGP configuration
+  - CiliumBGPPeerConfig: BGP peering with UDM Pro (ASN 64513)
+  - CiliumBGPAdvertisement: Route advertisement configuration (currently problematic)
+- **Load Balancer Pools**: [`infrastructure/cilium/loadbalancer-pool-bgp.yaml`](../infrastructure/cilium/loadbalancer-pool-bgp.yaml)
+  - bgp-default: 172.29.52.100-199 (default services)
+  - bgp-ingress: 172.29.52.200-220 (ingress controllers)
+  - bgp-reserved: 172.29.52.221-250 (reserved for future use)
 - **External DNS**: Multiple providers (Cloudflare, Unifi, internal)
 - **Cloudflare Tunnel**: [`infrastructure/cloudflare-tunnel/`](../infrastructure/cloudflare-tunnel/)
 
@@ -127,26 +134,45 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **IPv4 Networks**:
   - Pods: 10.244.0.0/16
   - Services: 10.96.0.0/12
-  - LoadBalancer Pool: 172.29.51.100-199
+  - Management: 172.29.51.0/24 (VLAN 51)
+  - LoadBalancer Pool: 172.29.52.0/24 (VLAN 52, BGP-advertised)
 - **IPv6 Networks**:
   - Pods: fd47:25e1:2f96:51:2000::/64
   - Services: fd47:25e1:2f96:51:1000::/108
   - LoadBalancer Pool: fd47:25e1:2f96:51:100::/120
 
+### BGP LoadBalancer Architecture
+- **Architecture Model**: Hybrid L2/BGP (L2 for control plane, BGP for LoadBalancer services)
+- **BGP Configuration**:
+  - Cluster ASN: 64512 (all nodes participate in BGP)
+  - UDM Pro ASN: 64513 (BGP peer and route acceptor)
+  - Peering Status: ✅ Established and stable
+  - Route Advertisement: ❌ Currently not working (CiliumBGPAdvertisement issue)
+- **Network Separation**:
+  - Management Traffic: VLAN 51 (172.29.51.x) - L2 announcements
+  - LoadBalancer IPs: VLAN 52 (172.29.52.x) - BGP advertisements
+- **IP Pool Management**:
+  - Pool selectors match service annotations (io.cilium/lb-ipam-pool)
+  - Automatic IP assignment from appropriate pools based on service type
+  - IPAM conflicts resolved by removing duplicate pools
+
 ### DNS Architecture
 - **Internal Domain**: k8s.home.geoffdavis.com (fits existing home domain structure)
 - **External Domain**: geoffdavis.com (via Cloudflare tunnel)
 - **Certificate Strategy**: Let's Encrypt for internal, Cloudflare for external
-- **Integration**: BGP-advertised ingress IP (172.29.51.200)
-- **DNS Management**: Cilium peers with Ubiquiti UDM-Pro and updates DNS records for *.k8s.home.geoffdavis.com domain
+- **Integration**: BGP-advertised ingress IP (172.29.52.200 - new BGP pool)
+- **DNS Management**: External DNS updates records for *.k8s.home.geoffdavis.com domain
+- **Network Integration**: UDM Pro accepts BGP routes and provides DNS resolution
 
 ### Authentication Architecture
 - **Identity Provider**: Authentik provides centralized SSO for all cluster services
 - **Outpost Model**: Embedded outpost architecture (not RADIUS) for Kubernetes service integration
-- **Ingress Integration**: All services use nginx-internal ingress class with Authentik authentication
+- **Ingress Architecture**: **CRITICAL** - Only embedded outpost ingress handles *.k8s.home.geoffdavis.com domains
+- **Service Integration**: Individual services must NOT have their own ingresses for authenticated domains
 - **Token Management**: API tokens properly managed with regeneration procedures for outpost connectivity
 - **Service Coverage**: All *.k8s.home.geoffdavis.com services redirect to Authentik for authentication
 - **SSL/TLS**: Proper certificate validation and secure communication between outpost and Authentik server
+- **Network Connectivity**: Verified clear network path between authentik namespace and service namespaces
 
 ## Critical Implementation Paths
 
