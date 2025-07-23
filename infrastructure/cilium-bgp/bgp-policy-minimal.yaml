@@ -1,24 +1,30 @@
+# Minimal BGP Configuration for Cilium v1.17.6
+# Simplified to avoid schema validation errors
+
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPAdvertisement
 metadata:
-  name: bgp-advertisements
+  name: bgp-loadbalancer-advertisements
   namespace: kube-system
 spec:
   advertisements:
+    # Announce LoadBalancer service IPs via BGP
     - advertisementType: "Service"
       service:
         addresses:
           - LoadBalancerIP
           - ExternalIP
+    # Announce Pod CIDR for internal routing
     - advertisementType: "PodCIDR"
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPClusterConfig
 metadata:
-  name: cilium-bgp
+  name: cilium-bgp-cluster
+  namespace: kube-system
 spec:
   bgpInstances:
-    - name: "main"
+    - name: "main-bgp-instance"
       localASN: 64512
       peers:
         - name: "unifi-udm-pro"
@@ -33,14 +39,14 @@ metadata:
   name: cilium-bgp-peer-config
   namespace: kube-system
 spec:
+  # Authentication secret for BGP peering
+  authSecretRef: cilium-bgp-auth
+  # Graceful restart configuration
   gracefulRestart:
     enabled: true
     restartTimeSeconds: 120
-  # connectRetryTimeSeconds is not a valid field in the current schema
-  # holdTimeSeconds: 90  # Not supported in current Cilium version
-  # keepAliveTimeSeconds: 30  # Not supported in current Cilium version
-  # advertisedPathAttributes moved to CiliumBGPAdvertisement in newer versions
 ---
+# BGP authentication secret (populated by External Secrets)
 apiVersion: v1
 kind: Secret
 metadata:
@@ -52,6 +58,7 @@ data:
   # This will be populated by External Secrets from 1Password
   password: ""
 ---
+# External Secret for BGP authentication
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:

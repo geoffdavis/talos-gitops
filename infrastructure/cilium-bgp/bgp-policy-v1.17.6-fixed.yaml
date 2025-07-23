@@ -1,0 +1,106 @@
+# BGP Configuration Fixed for Cilium v1.17.6 Schema Compatibility
+# Removes unsupported fields and fixes community format
+
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPAdvertisement
+metadata:
+  name: bgp-loadbalancer-advertisements
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: bgp
+spec:
+  advertisements:
+    # Announce LoadBalancer service IPs via BGP
+    - advertisementType: "Service"
+      service:
+        addresses:
+          - LoadBalancerIP
+          - ExternalIP
+      # Fixed: Communities as map format for v1.17.6
+      attributes:
+        communities:
+          standard:
+            - "64512:100"  # Load balancer service marker
+    # Announce Pod CIDR for internal routing
+    - advertisementType: "PodCIDR"
+      attributes:
+        communities:
+          standard:
+            - "64512:200"  # Pod network marker
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cilium-bgp-cluster
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: bgp
+spec:
+  # Remove nodeSelector that was causing NoMatchingNode error
+  bgpInstances:
+    - name: "main-bgp-instance"
+      localASN: 64512
+      peers:
+        - name: "unifi-udm-pro"
+          peerASN: 64513
+          peerAddress: "172.29.51.1"
+          peerConfigRef:
+            name: "cilium-bgp-peer-config"
+          # Remove advertisementsRef - not supported in v1.17.6
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPPeerConfig
+metadata:
+  name: cilium-bgp-peer-config
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: bgp
+spec:
+  # Authentication secret for BGP peering
+  authSecretRef: cilium-bgp-auth
+  # Graceful restart configuration
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 120
+  # Remove families section - not supported in current schema
+---
+# BGP authentication secret (populated by External Secrets)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cilium-bgp-auth
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: bgp
+type: Opaque
+data:
+  # BGP authentication password (base64 encoded)
+  # This will be populated by External Secrets from 1Password
+  password: ""
+---
+# External Secret for BGP authentication
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: cilium-bgp-auth
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: bgp
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword-connect
+    kind: ClusterSecretStore
+  target:
+    name: cilium-bgp-auth
+    creationPolicy: Owner
+  data:
+    - secretKey: password
+      remoteRef:
+        key: "BGP Authentication - home-ops"
+        property: "password"
