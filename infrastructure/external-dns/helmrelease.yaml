@@ -125,16 +125,13 @@ spec:
     # Annotation filters
     annotationFilter: "external-dns.alpha.kubernetes.io/hostname"
     
-    # Ingress class filters - exclude nginx-internal to avoid conflicts
-    ingressClassNames:
-      - nginx
-      - nginx-public
-    
     # Extra arguments
     extraArgs:
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
       - --cloudflare-dns-records-per-page=5000
+      - --ingress-class=nginx
+      - --ingress-class=nginx-public
       
     # Environment variables
     env:
