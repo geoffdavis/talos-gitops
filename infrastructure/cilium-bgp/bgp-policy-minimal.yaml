@@ -23,6 +23,9 @@ metadata:
   name: cilium-bgp-cluster
   namespace: kube-system
 spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
   bgpInstances:
     - name: "main-bgp-instance"
       localASN: 64512
