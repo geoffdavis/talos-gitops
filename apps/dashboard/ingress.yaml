@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    external-dns-internal.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
+    external-dns-internal.alpha.kubernetes.io/target: "172.29.51.201"
+    nginx.ingress.kubernetes.io/auth-url: http://authentik-server.authentik.svc.cluster.local:80/outpost.goauthentik.io/auth/nginx
+    nginx.ingress.kubernetes.io/auth-signin: https://authentik.k8s.home.geoffdavis.com/outpost.goauthentik.io/start?rd=$escaped_request_uri
+    nginx.ingress.kubernetes.io/auth-response-headers: Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid
+spec:
+  ingressClassName: nginx-internal
+  tls:
+    - hosts:
+        - dashboard.k8s.home.geoffdavis.com
+      secretName: kubernetes-dashboard-tls
+  rules:
+    - host: dashboard.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kubernetes-dashboard-web
+                port:
+                  number: 8000
