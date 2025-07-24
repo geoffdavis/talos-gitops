@@ -24,6 +24,7 @@ node = "20.18.0"
 cloudflared = "2025.7.0"
 # renovate: datasource=github-releases depName=python/cpython
 python = "3.12.8"
+yamllint = "latest"
 
 [env]
 # Python path for token management scripts

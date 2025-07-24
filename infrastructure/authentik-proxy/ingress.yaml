@@ -1,0 +1,117 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: authentik-proxy
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: external-outpost
+  annotations:
+    # Use internal ingress controller with BGP load balancer
+    kubernetes.io/ingress.class: nginx-internal
+    
+    # TLS configuration
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    
+    # Nginx configuration for proxy functionality
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Proxy configuration for Authentik outpost
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+    
+    # External DNS configuration
+    external-dns.alpha.kubernetes.io/hostname: "longhorn.k8s.home.geoffdavis.com,grafana.k8s.home.geoffdavis.com,prometheus.k8s.home.geoffdavis.com,alertmanager.k8s.home.geoffdavis.com,dashboard.k8s.home.geoffdavis.com,hubble.k8s.home.geoffdavis.com"
+    external-dns.alpha.kubernetes.io/target: "172.29.52.200"
+spec:
+  tls:
+    - hosts:
+        - longhorn.k8s.home.geoffdavis.com
+        - grafana.k8s.home.geoffdavis.com
+        - prometheus.k8s.home.geoffdavis.com
+        - alertmanager.k8s.home.geoffdavis.com
+        - dashboard.k8s.home.geoffdavis.com
+        - hubble.k8s.home.geoffdavis.com
+      secretName: authentik-proxy-tls
+  rules:
+    # Longhorn Storage Management
+    - host: longhorn.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-proxy
+                port:
+                  number: 9000
+    
+    # Grafana Monitoring Dashboard
+    - host: grafana.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-proxy
+                port:
+                  number: 9000
+    
+    # Prometheus Metrics Server
+    - host: prometheus.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-proxy
+                port:
+                  number: 9000
+    
+    # AlertManager Alert Routing
+    - host: alertmanager.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-proxy
+                port:
+                  number: 9000
+    
+    # Kubernetes Dashboard
+    - host: dashboard.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-proxy
+                port:
+                  number: 9000
+    
+    # Hubble Network Observability
+    - host: hubble.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-proxy
+                port:
+                  number: 9000

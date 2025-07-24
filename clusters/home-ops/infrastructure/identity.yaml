@@ -69,3 +69,67 @@ spec:
       authentik_redis_memory_request: "128Mi"
       authentik_redis_cpu_limit: "200m"
       authentik_redis_memory_limit: "256Mi"
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+ name: infrastructure-authentik-proxy
+ namespace: flux-system
+spec:
+ interval: 10m0s
+ timeout: 15m0s
+ path: ./infrastructure/authentik-proxy
+ prune: true
+ sourceRef:
+   kind: GitRepository
+   name: flux-system
+ dependsOn:
+   - name: infrastructure-sources
+   - name: infrastructure-external-secrets
+   - name: infrastructure-cert-manager
+   - name: infrastructure-ingress-nginx-internal
+   - name: infrastructure-authentik
+ retryInterval: 2m0s
+ wait: true
+ healthChecks:
+   # Check Authentik proxy deployment
+   - apiVersion: apps/v1
+     kind: Deployment
+     name: authentik-proxy
+     namespace: authentik-proxy
+   # Check Authentik proxy service
+   - apiVersion: v1
+     kind: Service
+     name: authentik-proxy
+     namespace: authentik-proxy
+   # Check Authentik proxy ingress
+   - apiVersion: networking.k8s.io/v1
+     kind: Ingress
+     name: authentik-proxy
+     namespace: authentik-proxy
+ postBuild:
+   substitute:
+     # Environment-specific substitutions
+     cluster_name: "homelab"
+     domain_name: "k8s.home.geoffdavis.com"
+     
+     # Network configuration
+     internal_ingress_ip: "172.29.52.200"
+     
+     # Authentik server connection
+     authentik_server_host: "authentik-server.authentik.svc.cluster.local"
+     authentik_server_port: "9000"
+     
+     # Resource configuration for homelab
+     authentik_proxy_cpu_request: "100m"
+     authentik_proxy_memory_request: "128Mi"
+     authentik_proxy_cpu_limit: "500m"
+     authentik_proxy_memory_limit: "512Mi"
+     
+     # Service routing configuration
+     longhorn_backend: "http://longhorn-frontend.longhorn-system.svc.cluster.local:80"
+     grafana_backend: "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+     prometheus_backend: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+     alertmanager_backend: "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
+     dashboard_backend: "https://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:443"
+     hubble_backend: "http://hubble-ui.kube-system.svc.cluster.local:80"

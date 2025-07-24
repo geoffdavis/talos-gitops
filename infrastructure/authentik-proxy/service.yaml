@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentik-proxy
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: external-outpost
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9300"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9000
+      targetPort: http
+      protocol: TCP
+    - name: https
+      port: 9443
+      targetPort: https
+      protocol: TCP
+    - name: metrics
+      port: 9300
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/component: external-outpost

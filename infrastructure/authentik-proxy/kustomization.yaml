@@ -1,0 +1,65 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: authentik-proxy
+  namespace: authentik-proxy
+
+resources:
+  # Core namespace and RBAC
+  - namespace.yaml
+  - rbac.yaml
+  
+  # Configuration and secrets
+  - configmap.yaml
+  - secret.yaml
+  
+  # Application deployment
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+
+commonLabels:
+  app.kubernetes.io/name: authentik-proxy
+  app.kubernetes.io/part-of: identity-provider
+  app.kubernetes.io/component: external-outpost
+
+images:
+  - name: ghcr.io/goauthentik/proxy
+    newTag: "2024.8.3"
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/component: external-outpost
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Namespace for all resources
+namespace: authentik-proxy
+
+# Configuration patches
+patches:
+  # Ensure proper resource limits based on cluster capacity
+  - target:
+      kind: Deployment
+      name: authentik-proxy
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "128Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+
+# Replica configuration for high availability
+replicas:
+  - name: authentik-proxy
+    count: 2
