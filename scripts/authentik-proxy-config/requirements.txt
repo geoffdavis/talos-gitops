@@ -1,0 +1,2 @@
+# Requirements for Authentik Proxy Configuration Script
+pytest>=7.0.0
