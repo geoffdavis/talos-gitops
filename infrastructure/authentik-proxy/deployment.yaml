@@ -85,6 +85,13 @@ spec:
               value: "0.0.0.0:9443"
             - name: AUTHENTIK_LISTEN__METRICS
               value: "0.0.0.0:9300"
+            # Session storage configuration (use Redis service)
+            - name: AUTHENTIK_REDIS__HOST
+              value: "redis.authentik-proxy.svc.cluster.local"
+            - name: AUTHENTIK_REDIS__PORT
+              value: "6379"
+            - name: AUTHENTIK_REDIS__DB
+              value: "0"
           ports:
             - name: http
               containerPort: 9000
