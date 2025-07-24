@@ -24,8 +24,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     
     # External DNS configuration - let external-dns-internal handle this ingress
+    external-dns.alpha.kubernetes.io/controller: unifi
     external-dns.alpha.kubernetes.io/hostname: "longhorn.k8s.home.geoffdavis.com,grafana.k8s.home.geoffdavis.com,prometheus.k8s.home.geoffdavis.com,alertmanager.k8s.home.geoffdavis.com,dashboard.k8s.home.geoffdavis.com,hubble.k8s.home.geoffdavis.com"
-    external-dns.alpha.kubernetes.io/target: "172.29.52.200"
     external-dns.alpha.kubernetes.io/ttl: "300"
 spec:
   ingressClassName: nginx-internal
