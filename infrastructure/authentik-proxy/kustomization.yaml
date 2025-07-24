@@ -22,8 +22,8 @@ resources:
   - service.yaml
   - ingress.yaml
   
-  # Configuration job
-  - proxy-config-job.yaml
+  # Configuration job (Python-based)
+  - proxy-config-job-python.yaml
 
 commonLabels:
   app.kubernetes.io/name: authentik-proxy
