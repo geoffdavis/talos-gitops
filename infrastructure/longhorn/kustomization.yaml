@@ -12,4 +12,5 @@ resources:
   - volume-snapshots-critical.yaml
   - backup-monitoring.yaml
   - backup-restore-procedures.yaml
+  - ingress-forward-auth.yaml
   # - database-backup-examples.yaml  # Commented out until database namespace is created

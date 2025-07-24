@@ -5,3 +5,6 @@ resources:
   - namespace.yaml
   - prometheus.yaml
   - flux-monitoring.yaml
+  - ingress-grafana-forward-auth.yaml
+  - ingress-prometheus-forward-auth.yaml
+  - ingress-alertmanager-forward-auth.yaml
