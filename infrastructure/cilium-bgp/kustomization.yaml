@@ -3,4 +3,3 @@ kind: Kustomization
 
 resources:
   - bgp-policy-legacy.yaml
-  - ingress-hubble.yaml
