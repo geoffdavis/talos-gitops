@@ -103,21 +103,21 @@ spec:
                   echo "API call attempt $((retry_count + 1))/$max_retries: $method $url"
                   
                   if [ "$method" = "POST" ] && [ -n "$data" ]; then
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                    response=$(curl -s -w "%{http_code}" -o /home/curl_user/api_response \
                       -X POST \
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                       -H "Content-Type: application/json" \
                       -d "$data" \
                       "$url")
                   elif [ "$method" = "PATCH" ] && [ -n "$data" ]; then
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                    response=$(curl -s -w "%{http_code}" -o /home/curl_user/api_response \
                       -X PATCH \
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                       -H "Content-Type: application/json" \
                       -d "$data" \
                       "$url")
                   else
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                    response=$(curl -s -w "%{http_code}" -o /home/curl_user/api_response \
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                       "$url")
                   fi
@@ -133,14 +133,14 @@ spec:
                   if [ $retry_count -lt $max_retries ]; then
                     echo "API call failed with status $response, retrying in 5s..."
                     echo "Response body:"
-                    cat /tmp/api_response
+                    cat /home/curl_user/api_response 2>/dev/null || echo "No response body available"
                     sleep 5
                   fi
                 done
                 
                 echo "ERROR: API call failed after $max_retries retries"
                 echo "Final response body:"
-                cat /tmp/api_response
+                cat /home/curl_user/api_response 2>/dev/null || echo "No response body available"
                 return 1
               }
               
@@ -189,7 +189,7 @@ spec:
                   continue
                 fi
                 
-                PROVIDER_RESPONSE=$(cat /tmp/api_response)
+                PROVIDER_RESPONSE=$(cat /home/curl_user/api_response)
                 PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o "\"name\":\"$service_name-proxy\"" || echo "")
                 
                 if [ -z "$PROVIDER_EXISTS" ]; then
@@ -207,7 +207,7 @@ spec:
                   }"
                   
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "POST" "$PROVIDER_DATA"; then
-                    PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                    PROVIDER_PK=$(cat /home/curl_user/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                     echo "✓ Created $service_name proxy provider with PK: $PROVIDER_PK"
                     PROVIDER_PKS="$PROVIDER_PKS,$PROVIDER_PK"
                   else
@@ -227,7 +227,7 @@ spec:
                   continue
                 fi
                 
-                APP_RESPONSE=$(cat /tmp/api_response)
+                APP_RESPONSE=$(cat /home/curl_user/api_response)
                 APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o "\"name\":\"$service_name\"" || echo "")
                 
                 if [ -z "$APP_EXISTS" ]; then
@@ -260,7 +260,7 @@ spec:
                 exit 1
               fi
               
-              OUTPOST_RESPONSE=$(cat /tmp/api_response)
+              OUTPOST_RESPONSE=$(cat /home/curl_user/api_response)
               OUTPOST_NAME=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
               
               if [ -n "$OUTPOST_NAME" ]; then
@@ -285,7 +285,7 @@ spec:
               else
                 echo "✗ External outpost not found with ID: $OUTPOST_ID"
                 echo "Response:"
-                cat /tmp/api_response
+                cat /home/curl_user/api_response 2>/dev/null || echo "No response body available"
                 exit 1
               fi
               
