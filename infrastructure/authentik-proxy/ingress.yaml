@@ -12,7 +12,7 @@ metadata:
     kubernetes.io/ingress.class: nginx-internal
     
     # TLS configuration
-    cert-manager.io/cluster-issuer: letsencrypt-production
+    cert-manager.io/cluster-issuer: selfsigned-issuer
     
     # Nginx configuration for proxy functionality
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -23,7 +23,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     
-    # External DNS configuration
+    # External DNS configuration - use unifi webhook for *.home.geoffdavis.com internal DNS
+    external-dns.alpha.kubernetes.io/controller: "unifi"
     external-dns.alpha.kubernetes.io/hostname: "longhorn.k8s.home.geoffdavis.com,grafana.k8s.home.geoffdavis.com,prometheus.k8s.home.geoffdavis.com,alertmanager.k8s.home.geoffdavis.com,dashboard.k8s.home.geoffdavis.com,hubble.k8s.home.geoffdavis.com"
     external-dns.alpha.kubernetes.io/target: "172.29.52.200"
 spec:
