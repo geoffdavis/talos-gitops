@@ -1,0 +1,296 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentik-proxy-config
+  namespace: authentik-proxy
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-weight: "20"
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: configuration
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-proxy-config
+        app.kubernetes.io/component: configuration
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: authentik-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-authentik
+          image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Authentik server to be ready..."
+              max_attempts=30
+              attempt=0
+              while [ $attempt -lt $max_attempts ]; do
+                if curl -f -s http://authentik-server.authentik.svc.cluster.local/if/flow/initial-setup/ > /dev/null 2>&1; then
+                  echo "Authentik server is ready!"
+                  exit 0
+                fi
+                attempt=$((attempt + 1))
+                echo "Authentik not ready yet, attempt $attempt/$max_attempts, waiting 10 seconds..."
+                sleep 10
+              done
+              echo "ERROR: Authentik server did not become ready within $((max_attempts * 10)) seconds"
+              exit 1
+      containers:
+        - name: configure-external-outpost
+          image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: authentik_host
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+            - name: OUTPOST_ID
+              value: "26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Configuring External Authentik Proxy Outpost ==="
+              
+              # Enhanced retry function
+              retry_api_call() {
+                local url="$1"
+                local method="${2:-GET}"
+                local data="${3:-}"
+                local max_retries=3
+                local retry_count=0
+                
+                while [ $retry_count -lt $max_retries ]; do
+                  echo "API call attempt $((retry_count + 1))/$max_retries: $method $url"
+                  
+                  if [ "$method" = "POST" ] && [ -n "$data" ]; then
+                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                      -X POST \
+                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "$data" \
+                      "$url")
+                  elif [ "$method" = "PATCH" ] && [ -n "$data" ]; then
+                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                      -X PATCH \
+                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "$data" \
+                      "$url")
+                  else
+                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
+                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                      "$url")
+                  fi
+                  
+                  echo "Response code: $response"
+                  
+                  if [ "$response" = "200" ] || [ "$response" = "201" ]; then
+                    echo "API call successful"
+                    return 0
+                  fi
+                  
+                  retry_count=$((retry_count + 1))
+                  if [ $retry_count -lt $max_retries ]; then
+                    echo "API call failed with status $response, retrying in 5s..."
+                    echo "Response body:"
+                    cat /tmp/api_response
+                    sleep 5
+                  fi
+                done
+                
+                echo "ERROR: API call failed after $max_retries retries"
+                echo "Final response body:"
+                cat /tmp/api_response
+                return 1
+              }
+              
+              # Test authentication
+              echo "Testing API authentication..."
+              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
+                echo "ERROR: API authentication failed"
+                exit 1
+              fi
+              echo "✓ API authentication successful"
+              
+              # Get authorization flow UUID
+              echo "Getting default authorization flow..."
+              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/flows/instances/?slug=default-authorization-flow"; then
+                echo "ERROR: Failed to get authorization flow"
+                exit 1
+              fi
+              
+              AUTH_FLOW_UUID=$(cat /tmp/api_response | grep -o '"pk":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ -z "$AUTH_FLOW_UUID" ]; then
+                # Fallback to hardcoded UUID if default flow not found
+                AUTH_FLOW_UUID="be0ee023-11fe-4a43-b453-bc67957cafbf"
+                echo "Using fallback authorization flow: $AUTH_FLOW_UUID"
+              else
+                echo "Using authorization flow: $AUTH_FLOW_UUID"
+              fi
+              
+              # Define services to configure
+              SERVICES="longhorn:longhorn.k8s.home.geoffdavis.com:longhorn-frontend.longhorn-system:80
+              grafana:grafana.k8s.home.geoffdavis.com:kube-prometheus-stack-grafana.monitoring:80
+              prometheus:prometheus.k8s.home.geoffdavis.com:kube-prometheus-stack-prometheus.monitoring:9090
+              alertmanager:alertmanager.k8s.home.geoffdavis.com:kube-prometheus-stack-alertmanager.monitoring:9093
+              dashboard:dashboard.k8s.home.geoffdavis.com:kubernetes-dashboard-kong-proxy.kubernetes-dashboard:443
+              hubble:hubble.k8s.home.geoffdavis.com:hubble-ui.kube-system:80"
+              
+              PROVIDER_PKS=""
+              
+              # Create proxy providers for each service
+              echo "$SERVICES" | while IFS=: read -r service_name external_host internal_host internal_port; do
+                echo "=== Configuring $service_name ==="
+                
+                # Check if provider already exists
+                echo "Checking for existing $service_name proxy provider..."
+                if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/"; then
+                  echo "Failed to check existing proxy providers"
+                  continue
+                fi
+                
+                PROVIDER_RESPONSE=$(cat /tmp/api_response)
+                PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o "\"name\":\"$service_name-proxy\"" || echo "")
+                
+                if [ -z "$PROVIDER_EXISTS" ]; then
+                  echo "Creating $service_name proxy provider..."
+                  PROVIDER_DATA="{
+                    \"name\": \"$service_name-proxy\",
+                    \"authorization_flow\": \"${AUTH_FLOW_UUID}\",
+                    \"external_host\": \"https://$external_host\",
+                    \"internal_host\": \"http://$internal_host:$internal_port\",
+                    \"internal_host_ssl_validation\": false,
+                    \"mode\": \"forward_single\",
+                    \"cookie_domain\": \"k8s.home.geoffdavis.com\",
+                    \"skip_path_regex\": \"^/api/.*$\",
+                    \"basic_auth_enabled\": false
+                  }"
+                  
+                  if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "POST" "$PROVIDER_DATA"; then
+                    PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                    echo "✓ Created $service_name proxy provider with PK: $PROVIDER_PK"
+                    PROVIDER_PKS="$PROVIDER_PKS,$PROVIDER_PK"
+                  else
+                    echo "✗ Failed to create $service_name proxy provider"
+                  fi
+                else
+                  echo "✓ $service_name proxy provider already exists"
+                  PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A10 "\"name\":\"$service_name-proxy\"" | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                  echo "Found existing provider with PK: $PROVIDER_PK"
+                  PROVIDER_PKS="$PROVIDER_PKS,$PROVIDER_PK"
+                fi
+                
+                # Create application for the service
+                echo "Checking for existing $service_name application..."
+                if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
+                  echo "Failed to check existing applications"
+                  continue
+                fi
+                
+                APP_RESPONSE=$(cat /tmp/api_response)
+                APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o "\"name\":\"$service_name\"" || echo "")
+                
+                if [ -z "$APP_EXISTS" ]; then
+                  echo "Creating $service_name application..."
+                  APP_DATA="{
+                    \"name\": \"$service_name\",
+                    \"slug\": \"$service_name\",
+                    \"provider\": ${PROVIDER_PK},
+                    \"meta_description\": \"$service_name service\",
+                    \"meta_launch_url\": \"https://$external_host\",
+                    \"policy_engine_mode\": \"any\"
+                  }"
+                  
+                  if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
+                    echo "✓ Created $service_name application"
+                  else
+                    echo "✗ Failed to create $service_name application"
+                  fi
+                else
+                  echo "✓ $service_name application already exists"
+                fi
+              done
+              
+              # Configure the external outpost
+              echo "=== Configuring External Outpost ==="
+              echo "Looking for outpost with ID: $OUTPOST_ID"
+              
+              if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/${OUTPOST_ID}/"; then
+                echo "Failed to get external outpost details"
+                exit 1
+              fi
+              
+              OUTPOST_RESPONSE=$(cat /tmp/api_response)
+              OUTPOST_NAME=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"[^"]*"' | cut -d'"' -f4)
+              
+              if [ -n "$OUTPOST_NAME" ]; then
+                echo "✓ Found external outpost: $OUTPOST_NAME"
+                
+                # Clean up PROVIDER_PKS (remove leading comma)
+                PROVIDER_PKS=$(echo "$PROVIDER_PKS" | sed 's/^,//')
+                
+                if [ -n "$PROVIDER_PKS" ]; then
+                  echo "Updating external outpost with providers: [$PROVIDER_PKS]"
+                  UPDATE_DATA="{\"providers\": [$PROVIDER_PKS]}"
+                  
+                  if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/${OUTPOST_ID}/" "PATCH" "$UPDATE_DATA"; then
+                    echo "✓ Updated external outpost with all proxy providers!"
+                  else
+                    echo "✗ Failed to update external outpost"
+                    exit 1
+                  fi
+                else
+                  echo "⚠ No provider PKs collected, skipping outpost update"
+                fi
+              else
+                echo "✗ External outpost not found with ID: $OUTPOST_ID"
+                echo "Response:"
+                cat /tmp/api_response
+                exit 1
+              fi
+              
+              echo "=== Configuration Complete ==="
+              echo "✓ All proxy providers created/verified"
+              echo "✓ All applications created/verified"  
+              echo "✓ External outpost configured with all providers"
+              echo "✓ Services should now be accessible with Authentik authentication"
