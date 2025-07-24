@@ -23,13 +23,6 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     
-    # Security headers
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      more_set_headers "X-Frame-Options: SAMEORIGIN";
-      more_set_headers "X-Content-Type-Options: nosniff";
-      more_set_headers "X-XSS-Protection: 1; mode=block";
-      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
-    
     # External DNS configuration
     external-dns.alpha.kubernetes.io/hostname: "longhorn.k8s.home.geoffdavis.com,grafana.k8s.home.geoffdavis.com,prometheus.k8s.home.geoffdavis.com,alertmanager.k8s.home.geoffdavis.com,dashboard.k8s.home.geoffdavis.com,hubble.k8s.home.geoffdavis.com"
     external-dns.alpha.kubernetes.io/target: "172.29.52.200"
