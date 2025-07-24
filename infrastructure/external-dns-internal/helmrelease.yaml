@@ -155,7 +155,6 @@ spec:
     extraArgs:
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      - --controller-name=unifi
       
     # Environment variables to fix IPv6 localhost resolution
     env:
