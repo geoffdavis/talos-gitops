@@ -2,9 +2,9 @@
 
 ## Current Work Focus
 
-**Flux Circular Dependency Resolution (COMPLETED - January 2025)**: Successfully resolved critical circular dependency issue in Flux GitOps configuration that was causing authentication system failures and 500 errors across all services. The circular dependency chain was broken by removing monitoring dependencies from ingress controllers.
+**Forward Auth Implementation (IN PROGRESS - July 2025)**: Successfully identified and implementing solution for critical 404 routing failures across all *.k8s.home.geoffdavis.com services. Root cause was missing individual service ingresses - embedded outpost only handles authentication endpoints, not service routing.
 
-**Authentication System Infrastructure Restoration (COMPLETED - January 2025)**: Successfully restored authentication system infrastructure with all components operational. Embedded outpost configured and visible in Authentik admin interface with all 6 services properly registered.
+**Authentication Architecture Understanding (COMPLETED - July 2025)**: Clarified Authentik embedded outpost architecture - embedded outpost provides authentication endpoint only, requires forward auth pattern with individual service ingresses for proper routing.
 
 **Current Status**:
 - ✅ BGP peering established and stable (ASN 64512 ↔ ASN 64513)
@@ -14,16 +14,17 @@
 - ✅ **RESOLVED**: Infrastructure components now deploy in correct order
 - ✅ **RESOLVED**: Authentication system infrastructure fully restored
 - ✅ **CONFIRMED**: All backend services operational via direct IP access
-- 🔄 **IN PROGRESS**: Final embedded outpost routing configuration
+- ✅ **RESOLVED**: Root cause of 404 errors identified - missing service ingresses
+- 🔄 **IN PROGRESS**: Forward auth ingresses deployment via GitOps
 
-**Authentication System Status (INFRASTRUCTURE COMPLETE)**:
+**Authentication System Status (FORWARD AUTH IMPLEMENTATION)**:
 - ✅ Authentik admin interface accessible and functional (admin/FcDVk9F3zwNfvwEqqyC2)
-- ✅ Embedded outpost infrastructure configured (2 outposts visible in admin interface)
+- ✅ Embedded outpost infrastructure configured (handles /outpost.goauthentik.io authentication endpoint)
 - ✅ All 6 services visible in Authentik user interface (AlertManager, Grafana, Hubble UI, Kubernetes Dashboard, Longhorn Storage, Prometheus)
 - ✅ Backend services confirmed operational (Longhorn accessible at 172.29.52.100)
 - ✅ Network connectivity and TLS working properly
-- ❌ Services returning 404 errors instead of authentication redirects (routing configuration issue)
-- ❌ Expired API token preventing automated configuration jobs from completing
+- ✅ **RESOLVED**: Architecture understanding - embedded outpost is authentication-only, not full proxy
+- 🔄 **IN PROGRESS**: Forward auth ingresses created and deploying via GitOps
 
 ## Recent Changes
 
