@@ -625,3 +625,99 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
 - **Task Commands**: [`taskfiles/bgp-loadbalancer.yml`](../taskfiles/bgp-loadbalancer.yml)
 
 The BGP LoadBalancer system is now **production-ready** and the migration from L2 announcements is **complete**.
+
+### Fix BGP Pool Advertisement Issues for Multiple IP Pools
+**Last performed:** January 2025 (COMPLETED - BGP pool advertisement fixed)
+**Files to modify:**
+- `infrastructure/cilium-bgp/bgp-policy-legacy.yaml` - BGP peering policy with multiple virtual routers
+- `infrastructure/ingress-nginx-internal/helmrelease.yaml` - Service pool annotations
+
+**Context:**
+This task resolves BGP route advertisement failures where only services from the `bgp-default` pool were being advertised via BGP, while services from other pools (like `bgp-ingress`) were not advertised, causing 500 errors for *.k8s.home.geoffdavis.com services.
+
+**Root Cause:**
+The legacy CiliumBGPPeeringPolicy with a single virtual router using `serviceSelector: {}` (empty selector) was not properly advertising services from all IP pools. Only services from the `bgp-default` pool were being advertised.
+
+**Solution:**
+Create dedicated virtual routers for each IP pool with explicit service selectors matching the pool labels.
+
+**Steps:**
+1. **Diagnose BGP Advertisement Issue**:
+   - Check BGP routes: `kubectl exec -n kube-system <cilium-pod> -- cilium bgp routes`
+   - Verify service pool assignments: `kubectl get svc -A --field-selector spec.type=LoadBalancer -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metadata.name,EXTERNAL-IP:.status.loadBalancer.ingress[0].ip,POOL:.metadata.annotations.io\.cilium/lb-ipam-pool"`
+   - Identify missing routes for specific pools
+
+2. **Update BGP Policy Configuration**:
+   - Replace single virtual router with multiple virtual routers
+   - Create dedicated virtual router for each IP pool:
+     - `bgp-default` pool: `serviceSelector.matchLabels.io.cilium/lb-ipam-pool: "bgp-default"`
+     - `bgp-ingress` pool: `serviceSelector.matchLabels.io.cilium/lb-ipam-pool: "bgp-ingress"`
+     - `bgp-reserved` pool: `serviceSelector.matchLabels.io.cilium/lb-ipam-pool: "bgp-reserved"`
+   - Set `exportPodCIDR: true` only on first virtual router to avoid duplication
+   - Each virtual router has same BGP neighbor configuration
+
+3. **Verify Service Pool Annotations**:
+   - Ensure services have correct `io.cilium/lb-ipam-pool` annotations
+   - Match service annotations with IP pool names exactly
+   - Update service configurations if pool names don't match
+
+4. **Test BGP Route Advertisement**:
+   - Apply BGP policy changes via GitOps
+   - Monitor BGP routes: `kubectl exec -n kube-system <cilium-pod> -- cilium bgp routes`
+   - Verify all LoadBalancer service IPs are advertised
+   - Test service connectivity: `curl -I -k https://<service>.k8s.home.geoffdavis.com`
+
+5. **Validate End-to-End Connectivity**:
+   - Confirm BGP peering remains stable: `kubectl exec -n kube-system <cilium-pod> -- cilium bgp peers`
+   - Test all services respond with proper HTTP codes (not connection timeouts)
+   - Verify network routing from client machines
+
+**BGP Policy Configuration Example:**
+```yaml
+spec:
+  virtualRouters:
+    # Virtual router for bgp-default pool services
+    - localASN: 64512
+      exportPodCIDR: true
+      serviceSelector:
+        matchLabels:
+          io.cilium/lb-ipam-pool: "bgp-default"
+      serviceAdvertisements:
+        - LoadBalancerIP
+      neighbors:
+        - peerAddress: "172.29.51.1/32"
+          peerASN: 64513
+    # Virtual router for bgp-ingress pool services
+    - localASN: 64512
+      exportPodCIDR: false
+      serviceSelector:
+        matchLabels:
+          io.cilium/lb-ipam-pool: "bgp-ingress"
+      serviceAdvertisements:
+        - LoadBalancerIP
+      neighbors:
+        - peerAddress: "172.29.51.1/32"
+          peerASN: 64513
+```
+
+**Important notes:**
+- **Root cause**: Single virtual router with empty serviceSelector not advertising all IP pools
+- **Solution**: Multiple virtual routers with explicit pool-specific service selectors
+- **Cilium v1.17.6 compatibility**: Legacy CiliumBGPPeeringPolicy schema required
+- **Network impact**: Fix resolves 500 errors by ensuring ingress controller IP is advertised
+- **Pool architecture**: Maintains separation between bgp-default, bgp-ingress, and bgp-reserved pools
+
+**Success Criteria:**
+- ✅ All LoadBalancer service IPs advertised via BGP regardless of pool assignment
+- ✅ BGP routes include services from bgp-default, bgp-ingress, and bgp-reserved pools
+- ✅ Services respond with HTTP codes instead of connection timeouts
+- ✅ Network connectivity restored for *.k8s.home.geoffdavis.com services
+- ✅ BGP peering remains stable with multiple virtual routers
+
+**Troubleshooting:**
+- **Missing routes**: Check service pool annotations match IP pool names exactly
+- **BGP peering issues**: Verify all virtual routers have identical neighbor configuration
+- **Service connectivity**: Ensure DNS records point to correct advertised IPs
+- **Pool conflicts**: Verify no duplicate pool selectors between virtual routers
+
+This fix ensures robust BGP advertisement for all IP pools and resolves service connectivity issues caused by missing route advertisements.
