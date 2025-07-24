@@ -9,7 +9,8 @@ resources:
   # Enhanced admin token setup with 1-year expiry (runs first)
   - enhanced-token-setup-job.yaml
   # Outpost configuration jobs (run after token setup)
-  - outpost-config-job.yaml
+  - embedded-outpost-config-job.yaml
+  - radius-outpost-config-job.yaml
   - longhorn-proxy-config-job.yaml
   # Individual proxy configuration jobs for UI services
   - dashboard-proxy-config-job.yaml
