@@ -48,11 +48,11 @@ spec:
         enabled: true
         type: LoadBalancer
         annotations:
-          # TEMPORARY FIX: Use bgp-default pool until bgp-ingress pool advertisement is fixed
-          io.cilium/lb-ipam-pool: "bgp-default"
+          # Use the ingress pool for BGP advertisement
+          io.cilium/lb-ipam-pool: "bgp-ingress"
         labels:
           # Required label for Cilium LoadBalancer IP pool selector
-          io.cilium/lb-ipam-pool: "bgp-default"
+          io.cilium/lb-ipam-pool: "bgp-ingress"
         externalTrafficPolicy: Local
         ipFamilyPolicy: SingleStack
         ipFamilies:
