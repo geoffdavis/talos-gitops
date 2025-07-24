@@ -80,7 +80,10 @@ spec:
               value: "true"
             # Outpost configuration
             - name: AUTHENTIK_OUTPOST_ID
-              value: "26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083"
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-proxy-outpost-id
+                  key: outpost_id
             # Network configuration
             - name: AUTHENTIK_LISTEN__HTTP
               value: "0.0.0.0:9000"

@@ -185,38 +185,108 @@ This file documents repetitive tasks and operational workflows that follow estab
 - Verify all external secrets sync properly after rotation
 - Keep backup of old credentials until rotation is confirmed
 
-### Maintain Authentik Authentication System
-**Last performed:** Ongoing maintenance
+### Maintain External Authentik-Proxy Authentication System
+**Last performed:** July 2025 (successful migration to external outpost)
 **Files to modify:**
-- `infrastructure/authentik/admin-api-token-setup-job.yaml` - Token management
-- `infrastructure/authentik-outpost-config/` - Outpost configurations
+- `infrastructure/authentik-proxy/secret.yaml` - External outpost token management
+- `infrastructure/authentik-proxy/deployment.yaml` - External outpost configuration
+- `infrastructure/authentik-proxy/redis.yaml` - Redis session storage configuration
 
 **Steps:**
 1. **Regular Health Checks**:
    - Verify all services accessible: Test key services like Longhorn, Grafana, Dashboard
-   - Check outpost status in Authentik admin interface
-   - Monitor authentication response times
+   - Check external outpost status in Authentik admin interface (outpost ID: `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`)
+   - Monitor authentication response times and Redis connectivity
 
-2. **Token Health Monitoring**:
-   - Check API token expiration dates in Authentik admin
-   - Verify outpost connectivity status
-   - Review authentication logs for errors
+2. **External Outpost Health Monitoring**:
+   - Check external outpost API token expiration dates in 1Password
+   - Verify outpost connectivity status in Authentik admin interface
+   - Monitor authentik-proxy pod logs for connection issues
+   - Check Redis instance health and session storage functionality
 
 3. **Proactive Token Rotation**:
-   - Schedule token regeneration before expiration (monthly recommended)
-   - Follow token regeneration procedure from troubleshooting task
+   - Schedule external outpost token regeneration before expiration (monthly recommended)
+   - Update token in 1Password and force ExternalSecret sync
+   - Restart authentik-proxy deployment after token rotation
    - Test all services after token rotation
 
 4. **Service Integration Validation**:
    - Ensure new services use nginx-internal ingress class
-   - Verify proper Authentik annotations on ingress resources
-   - Test SSO functionality for newly deployed services
+   - Verify NO individual service ingresses for *.k8s.home.geoffdavis.com domains
+   - Test SSO functionality for newly deployed services through external outpost
+   - Validate proxy provider configurations in Authentik admin interface
+
+5. **Redis Session Storage Maintenance**:
+   - Monitor Redis instance resource usage and performance
+   - Check Redis connectivity from authentik-proxy pods
+   - Validate session persistence and cleanup
+   - Scale Redis if needed for performance
 
 **Important notes:**
-- Embedded outpost architecture requires API token connectivity
+- **External outpost architecture** requires dedicated deployment and Redis instance
 - Monitor for authentication failures and address promptly
 - Keep documentation updated with any configuration changes
-- Test authentication system after any Authentik upgrades
+- Test authentication system after any Authentik or authentik-proxy upgrades
+- **CRITICAL**: Only external outpost ingress should handle *.k8s.home.geoffdavis.com domains
+
+### Deploy External Authentik-Proxy System
+**Last performed:** July 2025 (successful deployment and migration)
+**Files to modify:**
+- `infrastructure/authentik-proxy/` - Complete external outpost deployment
+- `clusters/home-ops/infrastructure/identity.yaml` - Flux Kustomization
+
+**Steps:**
+1. **Prerequisites Validation**:
+   - Verify Authentik server is operational and accessible
+   - Confirm 1Password Connect is working for secret management
+   - Check BGP load balancer and ingress controller functionality
+   - Validate network connectivity between namespaces
+
+2. **External Outpost Token Setup**:
+   - Create external outpost in Authentik admin interface
+   - Generate API token for external outpost (not admin user token)
+   - Store token in 1Password with proper naming convention
+   - Configure ExternalSecret to sync token from 1Password
+
+3. **Deploy External Outpost Infrastructure**:
+   - Deploy namespace: `kubectl apply -f infrastructure/authentik-proxy/namespace.yaml`
+   - Deploy Redis instance: `kubectl apply -f infrastructure/authentik-proxy/redis.yaml`
+   - Deploy RBAC and ConfigMap: `kubectl apply -f infrastructure/authentik-proxy/rbac.yaml infrastructure/authentik-proxy/configmap.yaml`
+   - Deploy ExternalSecret: `kubectl apply -f infrastructure/authentik-proxy/secret.yaml`
+   - Deploy authentik-proxy: `kubectl apply -f infrastructure/authentik-proxy/deployment.yaml`
+
+4. **Network and Ingress Configuration**:
+   - Deploy service: `kubectl apply -f infrastructure/authentik-proxy/service.yaml`
+   - Deploy ingress with BGP load balancer: `kubectl apply -f infrastructure/authentik-proxy/ingress.yaml`
+   - Verify ingress gets external IP from BGP pool
+   - Test DNS resolution for *.k8s.home.geoffdavis.com domains
+
+5. **Outpost Registration and Validation**:
+   - Verify external outpost appears in Authentik admin interface
+   - Check outpost connectivity status (should show connected)
+   - Monitor authentik-proxy pod logs for successful registration
+   - Validate Redis connectivity and session storage
+
+6. **Proxy Provider Configuration**:
+   - Access Authentik admin interface
+   - Create proxy providers for all services (dashboard, longhorn, hubble, grafana, prometheus, alertmanager)
+   - Configure forward auth with proper internal service URLs
+   - Test authentication flow for each service
+
+**Important notes:**
+- **External outpost architecture** provides better reliability and maintainability than embedded outpost
+- Use correct external outpost API token, not admin user token
+- Redis instance is required for session storage and caching
+- Network connectivity between authentik-proxy and service namespaces is critical
+- Only external outpost ingress should handle *.k8s.home.geoffdavis.com domains
+
+**Success Criteria:**
+- External outpost shows connected in Authentik admin interface
+- All authentik-proxy pods are running and healthy
+- Redis instance is operational and accessible
+- All services redirect to Authentik for authentication
+- SSO flow works correctly for all 6 services
+- No conflicting ingress configurations exist
 
 ## Monitoring and Maintenance
 

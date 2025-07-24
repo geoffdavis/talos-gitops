@@ -35,6 +35,7 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 │   └── infrastructure/         # Infrastructure Kustomizations
 ├── infrastructure/             # Infrastructure service manifests
 │   ├── authentik/              # Identity provider
+│   ├── authentik-proxy/        # External outpost for authentication
 │   ├── cilium/                 # CNI configuration (GitOps part)
 │   ├── longhorn/               # Distributed storage
 │   ├── onepassword-connect/    # Secret management
@@ -113,8 +114,8 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 #### 3. Identity Management
 - **Authentik**: [`infrastructure/authentik/`](../infrastructure/authentik/) - Complete SSO identity provider
 - **PostgreSQL Backend**: [`infrastructure/postgresql-cluster/`](../infrastructure/postgresql-cluster/) - Database for Authentik
-- **Outpost Configuration**: [`infrastructure/authentik-outpost-config/`](../infrastructure/authentik-outpost-config/) - Embedded outpost for Kubernetes services
-- **Authentication Architecture**: Embedded outpost handles all *.k8s.home.geoffdavis.com services with proper token management
+- **External Authentik-Proxy**: [`infrastructure/authentik-proxy/`](../infrastructure/authentik-proxy/) - External outpost for Kubernetes services
+- **Authentication Architecture**: External outpost handles all *.k8s.home.geoffdavis.com services with dedicated deployment and Redis session storage
 
 ## Key Technical Decisions
 
@@ -166,13 +167,26 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 
 ### Authentication Architecture
 - **Identity Provider**: Authentik provides centralized SSO for all cluster services
-- **Outpost Model**: Embedded outpost architecture (not RADIUS) for Kubernetes service integration
-- **Ingress Architecture**: **CRITICAL** - Only embedded outpost ingress handles *.k8s.home.geoffdavis.com domains
+- **External Outpost Model**: External outpost architecture with dedicated deployment for Kubernetes service integration
+- **Ingress Architecture**: **CRITICAL** - Only external outpost ingress handles *.k8s.home.geoffdavis.com domains
 - **Service Integration**: Individual services must NOT have their own ingresses for authenticated domains
-- **Token Management**: API tokens properly managed with regeneration procedures for outpost connectivity
-- **Service Coverage**: All *.k8s.home.geoffdavis.com services redirect to Authentik for authentication
-- **SSL/TLS**: Proper certificate validation and secure communication between outpost and Authentik server
-- **Network Connectivity**: Verified clear network path between authentik namespace and service namespaces
+- **Token Management**: External outpost API tokens properly managed with 1Password integration
+- **Service Coverage**: All *.k8s.home.geoffdavis.com services redirect to Authentik for authentication via external outpost
+- **Session Storage**: Dedicated Redis instance in authentik-proxy namespace for session management
+- **SSL/TLS**: Proper certificate validation and secure communication between external outpost and Authentik server
+- **Network Connectivity**: Verified clear network path between authentik-proxy namespace and service namespaces
+
+### External Outpost Architecture Details
+- **Deployment Model**: Standalone external outpost deployment separate from Authentik server
+- **Components**:
+  - **authentik-proxy deployment**: External outpost pods running proxy functionality
+  - **Redis instance**: Dedicated Redis for session storage and caching
+  - **Ingress controller**: BGP load balancer integration for *.k8s.home.geoffdavis.com domains
+  - **Secret management**: ExternalSecret integration with 1Password for API tokens
+- **Outpost Registration**: External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered with Authentik server
+- **Configuration Management**: Python-based configuration scripts for proxy provider setup
+- **Scalability**: Independent scaling of authentication proxy separate from identity provider
+- **Reliability**: Improved fault isolation between authentication proxy and identity provider
 
 ## Critical Implementation Paths
 

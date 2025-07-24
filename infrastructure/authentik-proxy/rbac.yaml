@@ -9,9 +9,10 @@ metadata:
     app.kubernetes.io/component: external-outpost
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: authentik-proxy
+  namespace: authentik-proxy
   labels:
     app.kubernetes.io/name: authentik-proxy
     app.kubernetes.io/part-of: identity-provider
@@ -21,10 +22,10 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]
-  # Allow reading configmaps for service discovery
+  # Allow reading and creating configmaps for service discovery and configuration
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
   # Allow reading services for backend discovery
   - apiGroups: [""]
     resources: ["services"]
@@ -35,9 +36,41 @@ rules:
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: ClusterRole
+metadata:
+  name: authentik-proxy-cluster
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: external-outpost
+rules:
+  # Allow reading services across namespaces for backend discovery
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
 metadata:
   name: authentik-proxy
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: external-outpost
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: authentik-proxy
+subjects:
+  - kind: ServiceAccount
+    name: authentik-proxy
+    namespace: authentik-proxy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: authentik-proxy-cluster
   labels:
     app.kubernetes.io/name: authentik-proxy
     app.kubernetes.io/part-of: identity-provider
@@ -45,7 +78,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: authentik-proxy
+  name: authentik-proxy-cluster
 subjects:
   - kind: ServiceAccount
     name: authentik-proxy

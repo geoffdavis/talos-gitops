@@ -85,7 +85,7 @@ spec:
             - name: CREATE_EXTERNAL_OUTPOST
               value: "true"
             - name: OUTPOST_NAME
-              value: "external-proxy-outpost"
+              value: "k8s-external-proxy-outpost"
           command:
             - /bin/sh
             - -c
@@ -579,3 +579,114 @@ spec:
               
               echo "=== Running Python Configuration Script ==="
               python3 /tmp/configure_proxy.py
+              
+              echo "=== Extracting Outpost ID for ConfigMap Update ==="
+              # Extract outpost ID from the Python script output
+              OUTPOST_ID=$(python3 -c "
+              import os
+              import sys
+              import json
+              import urllib.request
+              import urllib.parse
+              import urllib.error
+              
+              authentik_host = os.environ.get('AUTHENTIK_HOST')
+              authentik_token = os.environ.get('AUTHENTIK_TOKEN')
+              outpost_name = os.environ.get('OUTPOST_NAME', 'k8s-external-proxy-outpost')
+              
+              headers = {
+                  'Authorization': f'Bearer {authentik_token}',
+                  'Content-Type': 'application/json'
+              }
+              
+              try:
+                  url = f'{authentik_host}/api/v3/outposts/instances/?name={outpost_name}'
+                  request = urllib.request.Request(url, headers=headers)
+                  with urllib.request.urlopen(request) as response:
+                      data = json.loads(response.read().decode('utf-8'))
+                      if data.get('results'):
+                          print(data['results'][0]['pk'])
+                      else:
+                          print('ERROR: Outpost not found')
+                          sys.exit(1)
+              except Exception as e:
+                  print(f'ERROR: {e}')
+                  sys.exit(1)
+              ")
+              
+              if [ "$OUTPOST_ID" = "ERROR: Outpost not found" ] || [ -z "$OUTPOST_ID" ]; then
+                echo "ERROR: Failed to get outpost ID"
+                exit 1
+              fi
+              
+              echo "Found outpost ID: $OUTPOST_ID"
+              
+              # Write outpost ID to shared volume for kubectl container
+              echo "$OUTPOST_ID" > /shared/outpost_id
+              echo "✓ Outpost ID written to shared volume for ConfigMap update"
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared
+        - name: update-configmap
+          image: bitnami/kubectl:1.31.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Waiting for outpost ID from configuration container ==="
+              
+              # Wait for outpost ID file to be created
+              max_attempts=30
+              attempt=0
+              while [ $attempt -lt $max_attempts ]; do
+                if [ -f /shared/outpost_id ]; then
+                  OUTPOST_ID=$(cat /shared/outpost_id)
+                  if [ -n "$OUTPOST_ID" ] && [ "$OUTPOST_ID" != "ERROR: Outpost not found" ]; then
+                    echo "Found outpost ID: $OUTPOST_ID"
+                    break
+                  fi
+                fi
+                attempt=$((attempt + 1))
+                echo "Waiting for outpost ID, attempt $attempt/$max_attempts..."
+                sleep 5
+              done
+              
+              if [ $attempt -eq $max_attempts ]; then
+                echo "ERROR: Timeout waiting for outpost ID"
+                exit 1
+              fi
+              
+              echo "=== Updating ConfigMap with Outpost ID ==="
+              # Update ConfigMap with outpost ID
+              cat <<EOF | kubectl apply -f -
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: authentik-proxy-outpost-id
+                namespace: authentik-proxy
+                labels:
+                  app.kubernetes.io/name: authentik-proxy
+                  app.kubernetes.io/component: configuration
+              data:
+                outpost_id: "$OUTPOST_ID"
+              EOF
+              
+              echo "✓ ConfigMap updated with outpost ID: $OUTPOST_ID"
+              echo "=== Configuration Job Complete ==="
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared
+      volumes:
+        - name: shared-data
+          emptyDir: {}
