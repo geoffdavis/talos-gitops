@@ -2,9 +2,11 @@
 
 ## Current Work Focus
 
-**Forward Auth Implementation (COMPLETED - July 2025)**: Successfully implemented forward auth pattern to resolve critical 404 routing failures across all *.k8s.home.geoffdavis.com services. Forward auth ingresses deployed and routing correctly implemented.
+**External Authentik-Proxy Deployment (IN PROGRESS - July 2025)**: Deploying new external authentik-proxy to replace broken embedded outpost system. Successfully resolved LLDPD networking issues and ExternalSecret API version compatibility problems.
 
-**Embedded Outpost Configuration Issue (IDENTIFIED - July 2025)**: Root cause of remaining 500 errors identified - embedded outpost authentication endpoint returns 404, preventing forward auth from working. This is the same expired API token issue previously documented.
+**Previous Work - Forward Auth Implementation (COMPLETED - July 2025)**: Successfully implemented forward auth pattern to resolve critical 404 routing failures across all *.k8s.home.geoffdavis.com services. Forward auth ingresses deployed and routing correctly implemented.
+
+**Previous Work - Embedded Outpost Configuration Issue (IDENTIFIED - July 2025)**: Root cause of remaining 500 errors identified - embedded outpost authentication endpoint returns 404, preventing forward auth from working. This is the same expired API token issue previously documented.
 
 **Current Status**:
 - ✅ BGP peering established and stable (ASN 64512 ↔ ASN 64513)
@@ -35,6 +37,23 @@
 - ❌ **REMAINING**: Embedded outpost authentication endpoint not responding (expired API token issue)
 
 ## Recent Changes
+
+### External Authentik-Proxy Deployment Issues and Resolutions (July 2025)
+- **LLDPD Networking Issue (RESOLVED)**: Mini03 node restart caused LLDPD service failure, leading to networking problems
+  - **Root Cause**: LLDPD configuration lost after node restart, causing webhook connectivity issues
+  - **Solution**: Applied `task talos:apply-lldpd-config` to restore ext-lldpd service on all nodes
+  - **Result**: All nodes now have running ext-lldpd service, networking restored
+- **External Secrets API Version Compatibility (RESOLVED)**: ExternalSecret resource using incompatible API version
+  - **Root Cause**: ExternalSecret using `external-secrets.io/v1beta1` but cluster only supports `external-secrets.io/v1`
+  - **Error**: "no matches for kind ExternalSecret in version external-secrets.io/v1beta1"
+  - **Solution**: Updated `infrastructure/authentik-proxy/secret.yaml` to use `external-secrets.io/v1`
+  - **Result**: ExternalSecret validation now passes, deployment can proceed
+- **External Secrets Webhook Issues (RESOLVED)**: TLS handshake errors in external-secrets webhook
+  - **Root Cause**: Networking issues from mini03 restart affecting webhook connectivity
+  - **Solution**: Applied `task apps:fix-external-secrets-webhook` to reinstall and restore webhook
+  - **Result**: External secrets webhook restored and operational
+
+## Previous Changes
 
 ### Flux Circular Dependency Resolution (COMPLETED - January 2025)
 - **Root Cause Identified**: Circular dependency chain in Flux Kustomizations:
