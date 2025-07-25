@@ -71,6 +71,9 @@ spec:
                 secretKeyRef:
                   name: authentik-proxy-token
                   key: authentik_insecure
+            # External URL for browser redirects
+            - name: AUTHENTIK_HOST_BROWSER
+              value: "https://authentik.k8s.home.geoffdavis.com"
             # Proxy configuration
             - name: AUTHENTIK_LOG_LEVEL
               value: "info"
