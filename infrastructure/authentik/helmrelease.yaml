@@ -72,8 +72,9 @@ spec:
           value: "2"
         
         # RADIUS configuration
+        # NOTE: Disabled for external outpost architecture
         - name: AUTHENTIK_OUTPOSTS__DISCOVER
-          value: "true"
+          value: "false"
         
     # Server configuration
     server:
