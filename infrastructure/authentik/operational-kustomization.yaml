@@ -15,7 +15,8 @@ resources:
   - operational-helmrelease.yaml
   
   # Outpost configuration jobs (using admin API token)
-  - ../authentik-outpost-config/
+  # NOTE: Disabled for external outpost architecture
+  # - ../authentik-outpost-config/
 
 commonLabels:
   app.kubernetes.io/name: authentik
