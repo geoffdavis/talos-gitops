@@ -564,24 +564,42 @@ spec:
                   def get_or_create_outpost(self, outpost_name: str) -> Optional[str]:
                       """Get existing outpost or create a new external outpost, ensuring correct configuration."""
                       try:
-                          # First, check if outpost already exists
-                          self.logger.info(f"Checking for existing outpost: {outpost_name}")
-                          url = f"{self.config.host}/api/v3/outposts/instances/?name={outpost_name}"
+                          # Get all outposts and find the correct external proxy outpost
+                          self.logger.info(f"Searching for external proxy outpost...")
+                          url = f"{self.config.host}/api/v3/outposts/instances/"
                           status_code, response = self._make_api_request(url)
                           
-                          if status_code == 200 and response.get('results'):
-                              outpost_id = response['results'][0]['pk']
-                              self.logger.info(f"✓ Found existing outpost: {outpost_name} (ID: {outpost_id})")
-                              
-                              # Always update existing outpost to ensure correct configuration
-                              if self.update_outpost_configuration(outpost_id):
-                                  self.logger.info(f"✓ Updated outpost configuration for {outpost_name}")
-                              else:
-                                  self.logger.warning(f"⚠ Failed to update outpost configuration for {outpost_name}")
-                              
-                              return outpost_id
+                          if status_code != 200:
+                              self.logger.error(f"✗ Failed to get outposts: status {status_code}")
+                              return None
                           
-                          # Create new external outpost
+                          external_proxy_outpost_id = None
+                          for outpost in response.get('results', []):
+                              outpost_name_lower = outpost['name'].lower()
+                              outpost_type = outpost.get('type', '')
+                              
+                              self.logger.info(f"Found outpost: {outpost['name']} (ID: {outpost['pk']}, Type: {outpost_type})")
+                              
+                              # Look for external proxy outpost (not embedded, not radius)
+                              if (outpost_type == 'proxy' and
+                                  'embedded' not in outpost_name_lower and
+                                  'radius' not in outpost_name_lower):
+                                  external_proxy_outpost_id = outpost['pk']
+                                  actual_outpost_name = outpost['name']
+                                  self.logger.info(f"✓ Found external proxy outpost: {actual_outpost_name} (ID: {external_proxy_outpost_id})")
+                                  break
+                          
+                          if external_proxy_outpost_id:
+                              # Always update existing outpost to ensure correct configuration
+                              if self.update_outpost_configuration(external_proxy_outpost_id):
+                                  self.logger.info(f"✓ Updated outpost configuration for {actual_outpost_name}")
+                              else:
+                                  self.logger.warning(f"⚠ Failed to update outpost configuration for {actual_outpost_name}")
+                              
+                              return external_proxy_outpost_id
+                          
+                          # Create new external outpost if none found
+                          self.logger.info("No external proxy outpost found, creating new one...")
                           return self.create_external_outpost(outpost_name)
                           
                       except AuthentikAPIError as e:
@@ -593,14 +611,34 @@ spec:
                       try:
                           self.logger.info(f"Updating outpost {outpost_id} with {len(provider_pks)} providers")
                           
-                          # Update the outpost with provider PKs
+                          # First get the current outpost to preserve other settings
                           url = f"{self.config.host}/api/v3/outposts/instances/{outpost_id}/"
-                          update_data = {"providers": provider_pks}
+                          status_code, current_outpost = self._make_api_request(url)
+                          
+                          if status_code != 200:
+                              self.logger.error(f"✗ Failed to get current outpost: status {status_code}")
+                              return False
+                          
+                          # Update the outpost with provider PKs, preserving other settings
+                          update_data = {
+                              "name": current_outpost['name'],
+                              "type": current_outpost['type'],
+                              "providers": provider_pks,
+                              "config": current_outpost.get('config', {})
+                          }
+                          
                           status_code, response = self._make_api_request(url, method='PATCH', data=update_data)
                           
                           if status_code == 200:
                               outpost_name = response.get('name', 'unknown')
-                              self.logger.info(f"✓ Updated outpost {outpost_name} with providers: {provider_pks}")
+                              self.logger.info(f"✓ Updated external outpost '{outpost_name}' (ID: {outpost_id}) with providers: {provider_pks}")
+                              
+                              # Verify the providers were actually assigned
+                              if response.get('providers') == provider_pks:
+                                  self.logger.info(f"✓ Verified: All {len(provider_pks)} providers successfully assigned to external outpost")
+                              else:
+                                  self.logger.warning(f"⚠ Provider assignment mismatch - expected {provider_pks}, got {response.get('providers')}")
+                              
                               return True
                           else:
                               self.logger.error(f"✗ Failed to update outpost: status {status_code}")
