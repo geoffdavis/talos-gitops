@@ -23,8 +23,8 @@ resources:
   - service.yaml
   - ingress.yaml
   
-  # Configuration job (Python-based)
-  - proxy-config-job-python.yaml
+  # Configuration job (simplified)
+  - proxy-config-job-simple.yaml
   
   # OAuth2 redirect URL fix job
   - fix-oauth2-redirect-urls-job.yaml
