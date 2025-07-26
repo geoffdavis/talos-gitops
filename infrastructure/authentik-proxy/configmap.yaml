@@ -39,14 +39,14 @@ data:
   # Authentik configuration
   authentik.yaml: |
     authentik:
-      server: "http://authentik-server.authentik.svc.cluster.local:80"
-      api_endpoint: "http://authentik-server.authentik.svc.cluster.local:80/api/v3/"
+      server: "https://authentik.k8s.home.geoffdavis.com"
+      api_endpoint: "https://authentik.k8s.home.geoffdavis.com/api/v3/"
       outpost_type: "proxy"
       
   # Nginx configuration template
   nginx.conf: |
     upstream authentik {
-        server authentik-server.authentik.svc.cluster.local:80;
+        server authentik.k8s.home.geoffdavis.com:443;
     }
     
     # Health check endpoint
