@@ -56,13 +56,13 @@ wait_for_condition() {
     log_info "Waiting for: $description (timeout: ${timeout}s)"
     
     local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
+    while [ $elapsed -lt "$timeout" ]; do
         if eval "$condition"; then
             log_success "$description"
             return 0
         fi
         
-        sleep $interval
+        sleep "$interval"
         elapsed=$((elapsed + interval))
         echo -n "."
     done
@@ -83,7 +83,8 @@ check_postgresql() {
     fi
     
     # Check cluster status
-    local status=$(kubectl get cluster postgresql-cluster -n postgresql-system -o jsonpath='{.status.phase}')
+    local status
+    status=$(kubectl get cluster postgresql-cluster -n postgresql-system -o jsonpath='{.status.phase}')
     if [ "$status" != "Cluster in healthy state" ]; then
         log_error "PostgreSQL cluster status: $status"
         return 1
@@ -106,7 +107,8 @@ check_external_secrets() {
         fi
         
         # Check if secret has data
-        local keys=$(kubectl get secret "$secret" -n authentik -o jsonpath='{.data}' | jq -r 'keys[]' 2>/dev/null || echo "")
+        local keys
+        keys=$(kubectl get secret "$secret" -n authentik -o jsonpath='{.data}' | jq -r 'keys[]' 2>/dev/null || echo "")
         if [ -z "$keys" ]; then
             log_error "Secret '$secret' has no data"
             return 1
@@ -125,7 +127,8 @@ check_flux_kustomizations() {
     local kustomizations=("infrastructure-authentik")
     
     for kustomization in "${kustomizations[@]}"; do
-        local ready=$(kubectl get kustomization "$kustomization" -n flux-system -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+        local ready
+        ready=$(kubectl get kustomization "$kustomization" -n flux-system -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
         
         if [ "$ready" != "True" ]; then
             log_error "Kustomization '$kustomization' is not ready"
@@ -144,7 +147,8 @@ check_pods() {
     log_info "Checking pod status..."
     
     # Get all pods in authentik namespace
-    local pods=$(kubectl get pods -n authentik -o jsonpath='{.items[*].metadata.name}')
+    local pods
+    pods=$(kubectl get pods -n authentik -o jsonpath='{.items[*].metadata.name}')
     
     if [ -z "$pods" ]; then
         log_error "No pods found in authentik namespace"
@@ -152,8 +156,10 @@ check_pods() {
     fi
     
     for pod in $pods; do
-        local status=$(kubectl get pod "$pod" -n authentik -o jsonpath='{.status.phase}')
-        local ready=$(kubectl get pod "$pod" -n authentik -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+        local status
+        local ready
+        status=$(kubectl get pod "$pod" -n authentik -o jsonpath='{.status.phase}')
+        ready=$(kubectl get pod "$pod" -n authentik -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
         
         if [ "$status" != "Running" ] || [ "$ready" != "True" ]; then
             log_error "Pod '$pod' is not ready (Status: $status, Ready: $ready)"
@@ -184,7 +190,8 @@ check_services() {
     fi
     
     # Check if RADIUS service has external IP
-    local external_ip=$(kubectl get service authentik-radius -n authentik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    local external_ip
+    external_ip=$(kubectl get service authentik-radius -n authentik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
     if [ -z "$external_ip" ]; then
         log_warning "RADIUS service does not have external IP yet"
     else
@@ -204,7 +211,8 @@ check_ingress() {
         return 1
     fi
     
-    local hosts=$(kubectl get ingress authentik-internal -n authentik -o jsonpath='{.spec.rules[*].host}')
+    local hosts
+    hosts=$(kubectl get ingress authentik-internal -n authentik -o jsonpath='{.spec.rules[*].host}')
     log_success "Ingress configured for hosts: $hosts"
     
     return 0
@@ -219,7 +227,9 @@ test_database_connectivity() {
         psql "postgresql://authentik:$(kubectl get secret authentik-database-credentials -n authentik -o jsonpath='{.data.password}' | base64 -d)@authentik-postgres-rw.authentik.svc.cluster.local:5432/authentik" \
         -c "SELECT version();" &>/dev/null
     
-    if [ $? -eq 0 ]; then
+    if kubectl run authentik-db-test --rm -i --restart=Never --image=postgres:15 -n authentik -- \
+        psql "postgresql://authentik:$(kubectl get secret authentik-database-credentials -n authentik -o jsonpath='{.data.password}' | base64 -d)@authentik-postgres-rw.authentik.svc.cluster.local:5432/authentik" \
+        -c "SELECT version();" &>/dev/null; then
         log_success "Database connectivity test passed"
         return 0
     else
@@ -313,7 +323,8 @@ main() {
     echo "- Services: $(kubectl get services -n authentik --no-headers | wc -l)"
     echo "- Ingress hosts: $(kubectl get ingress authentik-internal -n authentik -o jsonpath='{.spec.rules[*].host}')"
     
-    local external_ip=$(kubectl get service authentik-radius -n authentik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    local external_ip
+    external_ip=$(kubectl get service authentik-radius -n authentik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
     if [ -n "$external_ip" ]; then
         echo "- RADIUS external IP: $external_ip"
     fi

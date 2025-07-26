@@ -55,7 +55,7 @@ check_cluster_health() {
     
     # Check Cilium status
     CILIUM_RUNNING=$(mise exec -- kubectl get pods -n kube-system | grep cilium | grep -c "Running" || echo "0")
-    CILIUM_TOTAL=$(mise exec -- kubectl get pods -n kube-system | grep cilium | wc -l)
+    CILIUM_TOTAL=$(mise exec -- kubectl get pods -n kube-system | grep -c cilium)
     
     echo "Cilium pods running: $CILIUM_RUNNING/$CILIUM_TOTAL"
     

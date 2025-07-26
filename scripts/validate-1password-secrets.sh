@@ -100,7 +100,7 @@ validate_secrets() {
         validation_passed=false
     fi
     
-    return $([[ "$validation_passed" == "true" ]] && echo 0 || echo 1)
+    return "$([[ "$validation_passed" == "true" ]] && echo 0 || echo 1)"
 }
 
 # Check if 1Password Connect deployment is ready (if deployed)

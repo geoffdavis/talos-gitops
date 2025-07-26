@@ -182,8 +182,8 @@ configure_iptables() {
     
     # Allow traffic from cluster nodes
     for node in "${CLUSTER_NODES[@]}"; do
-        iptables -I INPUT -s ${node} -j ACCEPT
-        iptables -I OUTPUT -d ${node} -j ACCEPT
+        iptables -I INPUT -s "${node}" -j ACCEPT
+        iptables -I OUTPUT -d "${node}" -j ACCEPT
     done
     
     # Save iptables rules

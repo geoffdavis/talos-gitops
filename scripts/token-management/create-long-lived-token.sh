@@ -151,8 +151,10 @@ create_token() {
     fi
     
     # Create a temporary job to run the token creation
-    local job_name="create-long-lived-token-$(date +%s)"
-    local job_manifest=$(cat << EOF
+    local job_name
+    job_name="create-long-lived-token-$(date +%s)"
+    local job_manifest
+    job_manifest=$(cat << EOF
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -281,20 +283,25 @@ EOF
     
     # Wait for job completion
     log_info "Waiting for token creation job to complete..."
-    kubectl wait --for=condition=complete job/$job_name -n "$NAMESPACE" --timeout=300s
+    kubectl wait --for=condition=complete job/"$job_name" -n "$NAMESPACE" --timeout=300s
     
     # Get the job output
-    local pod_name=$(kubectl get pods -n "$NAMESPACE" -l job-name=$job_name -o jsonpath='{.items[0].metadata.name}')
-    local job_output=$(kubectl logs -n "$NAMESPACE" "$pod_name")
+    local pod_name
+    pod_name=$(kubectl get pods -n "$NAMESPACE" -l job-name="$job_name" -o jsonpath='{.items[0].metadata.name}')
+    local job_output
+    job_output=$(kubectl logs -n "$NAMESPACE" "$pod_name")
     
     # Parse output
     if echo "$job_output" | grep -q "SUCCESS:"; then
         log_success "Token creation completed successfully"
         
         # Extract token information
-        local token_key=$(echo "$job_output" | grep "TOKEN_KEY=" | cut -d'=' -f2)
-        local token_b64=$(echo "$job_output" | grep "TOKEN_B64=" | cut -d'=' -f2)
-        local expires=$(echo "$job_output" | grep "EXPIRES=" | cut -d'=' -f2)
+        local token_key
+        token_key=$(echo "$job_output" | grep "TOKEN_KEY=" | cut -d'=' -f2)
+        local token_b64
+        token_b64=$(echo "$job_output" | grep "TOKEN_B64=" | cut -d'=' -f2)
+        local expires
+        expires=$(echo "$job_output" | grep "EXPIRES=" | cut -d'=' -f2)
         
         echo ""
         log_info "Token Information:"

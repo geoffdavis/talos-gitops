@@ -199,7 +199,7 @@ test_cluster_connectivity() {
         # Test API connectivity with local kubeconfig
         kubectl_output=$(kubectl --kubeconfig=./kubeconfig get nodes 2>&1)
         
-        if [[ $? -eq 0 ]]; then
+        if kubectl --kubeconfig=./kubeconfig get nodes &>/dev/null; then
             pass "Can connect to cluster API with local kubeconfig"
         elif echo "$kubectl_output" | grep -q "certificate"; then
             warn "Cannot connect to cluster API with local kubeconfig (certificate issues - run 'task talos:recover-kubeconfig')"
@@ -215,7 +215,7 @@ test_cluster_connectivity() {
     # Also test default kubectl context
     kubectl_output=$(kubectl get nodes 2>&1)
     
-    if [[ $? -eq 0 ]]; then
+    if kubectl get nodes &>/dev/null; then
         pass "Can connect to cluster API with default kubectl context"
     elif [[ "$kubeconfig_found" == "false" ]]; then
         fail "No working kubeconfig found (run 'task talos:recover-kubeconfig')"
@@ -293,5 +293,5 @@ run_tests() {
 }
 
 # Run tests
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit
 run_tests

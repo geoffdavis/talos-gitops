@@ -26,14 +26,14 @@ This repository contains the configuration and automation for managing a Talos K
 
 🛡️ **[SUBTASK SAFETY GUIDELINES](docs/SUBTASK_SAFETY_GUIDELINES.md)** - **REQUIRED FOR ALL OPERATIONS**
 
-### Safe Operations Available:
+### Safe Operations Available
 
 - [`task cluster:safe-reset`](Taskfile.yml:829) - Safe partition-only reset (preserves OS)
 - [`task cluster:safe-reboot`](Taskfile.yml:883) - Safe cluster reboot
 - [`task cluster:emergency-recovery`](Taskfile.yml:861) - Emergency recovery procedures
 - [`task cluster:verify-safety`](Taskfile.yml:913) - Verify safety before operations
 
-### ❌ NEVER USE THESE DANGEROUS COMMANDS:
+### ❌ NEVER USE THESE DANGEROUS COMMANDS
 
 - `talosctl reset` (without partition specifications) - **WILL WIPE ENTIRE OS**
 - Any reset command that doesn't specify partitions
@@ -85,11 +85,11 @@ This configuration is optimized for Intel Mac mini devices with:
 - **Ingress IP**: 172.29.51.200
 - **TLS**: Let's Encrypt certificates via cert-manager
 - **Services**:
-  - Longhorn: https://longhorn.k8s.home.geoffdavis.com
-  - Grafana: https://grafana.k8s.home.geoffdavis.com
-  - Prometheus: https://prometheus.k8s.home.geoffdavis.com
-  - AlertManager: https://alertmanager.k8s.home.geoffdavis.com
-  - Dashboard: https://dashboard.k8s.home.geoffdavis.com
+  - Longhorn: <https://longhorn.k8s.home.geoffdavis.com>
+  - Grafana: <https://grafana.k8s.home.geoffdavis.com>
+  - Prometheus: <https://prometheus.k8s.home.geoffdavis.com>
+  - AlertManager: <https://alertmanager.k8s.home.geoffdavis.com>
+  - Dashboard: <https://dashboard.k8s.home.geoffdavis.com>
 
 ### External Access (Cloudflare Tunnel)
 
@@ -97,12 +97,12 @@ This configuration is optimized for Intel Mac mini devices with:
 - **TLS**: Handled by Cloudflare (no Let's Encrypt needed)
 - **Tunnel**: home-ops-tunnel
 - **Services Exposed**:
-  - Grafana: https://grafana.geoffdavis.com
-  - Prometheus: https://prometheus.geoffdavis.com
-  - Longhorn: https://longhorn.geoffdavis.com (with auth)
-  - Kubernetes Dashboard: https://k8s.geoffdavis.com (secured)
-  - AlertManager: https://alerts.geoffdavis.com
-  - Hubble UI: https://hubble.geoffdavis.com
+  - Grafana: <https://grafana.geoffdavis.com>
+  - Prometheus: <https://prometheus.geoffdavis.com>
+  - Longhorn: <https://longhorn.geoffdavis.com> (with auth)
+  - Kubernetes Dashboard: <https://k8s.geoffdavis.com> (secured)
+  - AlertManager: <https://alerts.geoffdavis.com>
+  - Hubble UI: <https://hubble.geoffdavis.com>
 
 ## Why This DNS Strategy Works Perfectly
 
@@ -120,7 +120,7 @@ This configuration is optimized for Intel Mac mini devices with:
 
 ## Domain Layout
 
-```
+```text
 home.geoffdavis.com
 ├── iot.home.geoffdavis.com          (existing)
 ├── not.home.geoffdavis.com          (existing)
@@ -177,9 +177,10 @@ geoffdavis.com (external via Cloudflare tunnel)
    ```
 
 3. **Install tools**:
-   ```bash
-   mise install
-   ```
+
+    ```bash
+    mise install
+    ```
 
 ## Cloudflare Setup
 
@@ -199,7 +200,7 @@ Before deploying, set up your Cloudflare tunnel:
 
 3. **Configure DNS Records** in Cloudflare dashboard:
 
-   ```
+   ```text
    # External services (root domain via tunnel)
    grafana.geoffdavis.com → home-ops-tunnel.cfargotunnel.com
    prometheus.geoffdavis.com → home-ops-tunnel.cfargotunnel.com
@@ -294,18 +295,19 @@ The phased bootstrap approach provides systematic, resumable cluster deployment 
 
 4. **Monitor progress**:
 
-   ```bash
-   # Check current status
-   task bootstrap:status
+    ```bash
+    # Check current status
+    task bootstrap:status
 
-   # View logs for specific phase
-   task bootstrap:logs PHASE=2
-   ```
+    # View logs for specific phase
+    task bootstrap:logs PHASE=2
+    ```
 
 5. **Configure BGP on Unifi UDM Pro**:
-   ```bash
-   task bgp:configure-unifi
-   ```
+
+    ```bash
+    task bgp:configure-unifi
+    ```
 
 ### 📖 Phased Bootstrap Benefits
 
@@ -412,9 +414,10 @@ If you prefer manual control over each step:
    ```
 
 10. Deploy GitOps stack:
-    ```bash
-    task flux:bootstrap
-    ```
+
+     ```bash
+     task flux:bootstrap
+     ```
 
 ### Converting Existing Cluster to All-Control-Plane
 

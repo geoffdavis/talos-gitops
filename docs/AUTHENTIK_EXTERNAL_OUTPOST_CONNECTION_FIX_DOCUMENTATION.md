@@ -192,12 +192,12 @@ kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy --tail
 
 | Service          | Status           | URL                                          | Notes                                             |
 | ---------------- | ---------------- | -------------------------------------------- | ------------------------------------------------- |
-| **Longhorn**     | ✅ Working       | https://longhorn.k8s.home.geoffdavis.com     | Redirects to Authentik, authentication successful |
-| **Grafana**      | ✅ Working       | https://grafana.k8s.home.geoffdavis.com      | Redirects to Authentik, authentication successful |
-| **Prometheus**   | ✅ Working       | https://prometheus.k8s.home.geoffdavis.com   | Redirects to Authentik, authentication successful |
-| **AlertManager** | ✅ Working       | https://alertmanager.k8s.home.geoffdavis.com | Redirects to Authentik, authentication successful |
-| **Hubble**       | ✅ Working       | https://hubble.k8s.home.geoffdavis.com       | Redirects to Authentik, authentication successful |
-| **Dashboard**    | ❌ Service Issue | https://dashboard.k8s.home.geoffdavis.com    | DNS lookup error - Kong service disabled          |
+| **Longhorn**     | ✅ Working       | <https://longhorn.k8s.home.geoffdavis.com>     | Redirects to Authentik, authentication successful |
+| **Grafana**      | ✅ Working       | <https://grafana.k8s.home.geoffdavis.com>      | Redirects to Authentik, authentication successful |
+| **Prometheus**   | ✅ Working       | <https://prometheus.k8s.home.geoffdavis.com>   | Redirects to Authentik, authentication successful |
+| **AlertManager** | ✅ Working       | <https://alertmanager.k8s.home.geoffdavis.com> | Redirects to Authentik, authentication successful |
+| **Hubble**       | ✅ Working       | <https://hubble.k8s.home.geoffdavis.com>       | Redirects to Authentik, authentication successful |
+| **Dashboard**    | ❌ Service Issue | <https://dashboard.k8s.home.geoffdavis.com>    | DNS lookup error - Kong service disabled          |
 
 #### Dashboard Service Issue Analysis
 

@@ -102,7 +102,7 @@ check_existing_tunnel() {
     if [[ "$tunnel_exists" == true && "$credentials_exist" == true ]]; then
         warn "Both tunnel and credentials already exist"
         echo ""
-        read -p "Do you want to recreate the tunnel and credentials? (y/N): " confirm
+        read -r -p "Do you want to recreate the tunnel and credentials? (y/N): " confirm
         if [[ "$confirm" != "y" ]]; then
             log "Skipping tunnel creation - existing setup preserved"
             exit 0
@@ -151,7 +151,7 @@ create_cloudflare_tunnel() {
     # Create temporary directory for tunnel operations
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+    trap 'rm -rf "$temp_dir"' EXIT
     
     # Create new tunnel
     log "Creating new Cloudflare tunnel..."
@@ -315,7 +315,7 @@ main() {
     echo "⚠️  SAFETY: No other credentials or configurations will be modified"
     echo ""
     
-    read -p "Continue with Cloudflare tunnel credential creation? (y/N): " confirm
+    read -r -p "Continue with Cloudflare tunnel credential creation? (y/N): " confirm
     if [[ "$confirm" != "y" ]]; then
         echo "Aborted by user"
         exit 0

@@ -456,7 +456,8 @@ validate_longhorn_integration() {
 
 # Test storage class functionality
 test_storage_class() {
-    local test_pvc="usb-ssd-deployment-test-$(date +%s)"
+    local test_pvc
+    test_pvc="usb-ssd-deployment-test-$(date +%s)"
     
     # Create test PVC
     cat <<EOF | kubectl apply -f - &>/dev/null

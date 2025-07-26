@@ -85,7 +85,7 @@ create_1password_connect_secrets() {
     # Create temporary directory for secrets
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+    trap 'rm -rf "$temp_dir"' EXIT
     
     # Create onepassword-connect namespace
     kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -

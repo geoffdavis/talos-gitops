@@ -17,7 +17,7 @@ This guide provides instructions for setting up 1Password Connect for secure sec
 
 ### Step 1: Create Connect Server
 
-1. Log into your 1Password account at https://my.1password.com/
+1. Log into your 1Password account at <https://my.1password.com/>
 2. Navigate to **Integrations** → **Directory**
 3. Find "1Password Connect Server" and click **"Set Up"**
 4. Give it a descriptive name: `Kubernetes Cluster - home-ops`

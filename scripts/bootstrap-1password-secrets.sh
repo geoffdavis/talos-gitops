@@ -123,7 +123,7 @@ validate_credentials_format() {
     # Create temporary directory for validation
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+    trap 'rm -rf "$temp_dir"' EXIT
     
     local credentials_content=""
     
@@ -187,7 +187,7 @@ validate_token_format() {
     # Create temporary directory for validation
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+    trap 'rm -rf "$temp_dir"' EXIT
     
     local token=""
     
@@ -243,7 +243,7 @@ create_1password_connect_secrets() {
     # Create temporary directory for secrets
     local temp_dir
     temp_dir=$(mktemp -d)
-    trap "rm -rf $temp_dir" EXIT
+    trap 'rm -rf "$temp_dir"' EXIT
     
     # Create onepassword-connect namespace
     kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -

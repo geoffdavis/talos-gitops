@@ -193,8 +193,8 @@ phase_6_migrate_services() {
     fi
     
     for service in $services; do
-        namespace=$(echo $service | cut -d'/' -f1)
-        name=$(echo $service | cut -d'/' -f2)
+        namespace=$(echo "$service" | cut -d'/' -f1)
+        name=$(echo "$service" | cut -d'/' -f2)
         
         log "Migrating service $namespace/$name..."
         

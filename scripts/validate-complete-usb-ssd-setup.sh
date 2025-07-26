@@ -293,7 +293,8 @@ validate_usb_mounting() {
         log_info "  Available space: $available_space"
         
         # Test write permissions
-        local test_file="$MOUNT_POINT/.write-test-$(date +%s)"
+        local test_file
+        test_file="$MOUNT_POINT/.write-test-$(date +%s)"
         if talosctl -n "$ip" sh -c "echo 'test' > '$test_file' && rm '$test_file'" &>/dev/null; then
             log_success "  Write permissions verified"
         else
@@ -522,13 +523,14 @@ validate_storage_classes() {
 test_storage_functionality() {
     log_section "Storage Functionality Testing"
     
-    local test_pvc="samsung-t5-validation-test-$(date +%s)"
+    local test_pvc
+    test_pvc="samsung-t5-validation-test-$(date +%s)"
     local test_namespace="default"
     
     log_test "Creating test PVC with longhorn-ssd storage class"
     
     # Create test PVC
-    cat <<EOF | kubectl apply -f - &>/dev/null
+    if cat <<EOF | kubectl apply -f - &>/dev/null
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -542,8 +544,7 @@ spec:
     requests:
       storage: 1Gi
 EOF
-
-    if [[ $? -eq 0 ]]; then
+    then
         log_success "Test PVC created successfully"
     else
         log_error "Failed to create test PVC"
@@ -599,7 +600,7 @@ EOF
         
         # Verify volume is on SSD storage
         local longhorn_volume
-        longhorn_volume=$(kubectl get volumes.longhorn.io -n longhorn-system -o jsonpath='{.items[?(@.spec.name=="'$pv_name'")].metadata.name}' 2>/dev/null || echo "")
+        longhorn_volume=$(kubectl get volumes.longhorn.io -n longhorn-system -o jsonpath='{.items[?(@.spec.name=="'"$pv_name"'")].metadata.name}' 2>/dev/null || echo "")
         
         if [[ -n "$longhorn_volume" ]]; then
             log_success "Longhorn volume found: $longhorn_volume"
@@ -614,8 +615,9 @@ EOF
     log_test "Testing pod mounting"
     
     # Create test pod
-    local test_pod="usb-ssd-test-pod-$(date +%s)"
-    cat <<EOF | kubectl apply -f - &>/dev/null
+    local test_pod
+    test_pod="usb-ssd-test-pod-$(date +%s)"
+    if cat <<EOF | kubectl apply -f - &>/dev/null
 apiVersion: v1
 kind: Pod
 metadata:
@@ -635,8 +637,7 @@ spec:
       claimName: $test_pvc
   restartPolicy: Never
 EOF
-
-    if [[ $? -eq 0 ]]; then
+    then
         log_success "Test pod created successfully"
         
         # Wait for pod to complete
@@ -690,7 +691,8 @@ validate_performance() {
         fi
         
         # Simple write test
-        local test_file="$MOUNT_POINT/.perf-test-$(date +%s)"
+        local test_file
+        test_file="$MOUNT_POINT/.perf-test-$(date +%s)"
         local write_result
         write_result=$(talosctl -n "$ip" sh -c "time dd if=/dev/zero of='$test_file' bs=1M count=100 oflag=direct 2>&1 && rm '$test_file'" 2>/dev/null || echo "failed")
         
@@ -719,7 +721,8 @@ test_failover_scenarios() {
     local test_namespace="default"
     
     for i in {1..3}; do
-        local test_pvc="failover-test-pvc-$i-$(date +%s)"
+        local test_pvc
+        test_pvc="failover-test-pvc-$i-$(date +%s)"
         test_pvcs+=("$test_pvc")
         
         cat <<EOF | kubectl apply -f - &>/dev/null

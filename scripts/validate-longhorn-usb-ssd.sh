@@ -207,7 +207,8 @@ check_snapshot_classes() {
 test_usb_ssd_storage() {
     log_info "Testing Samsung Portable SSD T5 storage functionality..."
     
-    local test_pvc="test-samsung-t5-ssd-$(date +%s)"
+    local test_pvc
+    test_pvc="test-samsung-t5-ssd-$(date +%s)"
     local test_namespace="default"
     
     # Create test PVC

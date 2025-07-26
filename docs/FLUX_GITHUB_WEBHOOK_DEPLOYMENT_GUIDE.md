@@ -194,7 +194,7 @@ echo "Generated webhook secret: $WEBHOOK_SECRET"
 
 1. **Access 1Password Web Interface**:
 
-   - Navigate to https://my.1password.com/
+   - Navigate to <https://my.1password.com/>
    - Select the **"Automation"** vault
 
 2. **Create New Item**:
@@ -205,7 +205,7 @@ echo "Generated webhook secret: $WEBHOOK_SECRET"
 
 3. **Configure Required Fields**:
 
-   ```
+   ```text
    Field Name: token
    Field Type: Password
    Field Value: [paste the generated WEBHOOK_SECRET]
@@ -213,7 +213,7 @@ echo "Generated webhook secret: $WEBHOOK_SECRET"
 
 4. **Add Metadata** (Optional but recommended):
 
-   ```
+   ```text
    Field Name: description
    Field Type: Text
    Field Value: Webhook secret for GitHub integration with Flux GitOps
@@ -559,7 +559,7 @@ kill %1  # Stop port-forward
 
 The webhook URL follows this pattern:
 
-```
+```text
 https://flux-webhook.geoffdavis.com/hook/{receiver-name}
 ```
 
@@ -750,7 +750,7 @@ kubectl get prometheusrule -n monitoring flux-webhook-alerts -o yaml
 
 **Expected Log Entries** (in notification-controller):
 
-```
+```json
 {"level":"info","ts":"2025-01-18T20:00:00.000Z","msg":"handling request","receiver":"github-webhook","event":"push"}
 {"level":"info","ts":"2025-01-18T20:00:00.000Z","msg":"triggering reconciliation","receiver":"github-webhook","resource":"GitRepository/flux-system"}
 ```
@@ -1221,7 +1221,7 @@ kubectl run webhook-test --image=curlimages/curl --rm -it --restart=Never -- cur
 
 **Error Message**:
 
-```
+```json
 {"level":"error","ts":"2025-01-18T20:00:00.000Z","msg":"receiver not found","receiver":"github-webhook"}
 ```
 
@@ -1242,7 +1242,7 @@ flux reconcile kustomization infrastructure-flux-webhook
 
 **Error Message**:
 
-```
+```text
 Warning  Failed     certificate/flux-webhook-tls   Failed to determine issuer: certificate not ready
 ```
 
@@ -1264,7 +1264,7 @@ kubectl delete certificate -n flux-system flux-webhook-tls
 
 **Error Message**:
 
-```
+```json
 {"level":"error","ts":"2025-01-18T20:00:00.000Z","msg":"webhook signature validation failed"}
 ```
 
@@ -1817,4 +1817,4 @@ This comprehensive deployment guide provides all necessary procedures to success
 **Last Updated**: 2025-01-18  
 **Cluster**: homelab  
 **Domain**: geoffdavis.com  
-**Webhook Endpoint**: https://flux-webhook.geoffdavis.com/hook
+**Webhook Endpoint**: <https://flux-webhook.geoffdavis.com/hook>

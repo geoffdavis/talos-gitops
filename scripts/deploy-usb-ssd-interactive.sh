@@ -83,7 +83,7 @@ prompt_choice() {
     done
     
     while true; do
-        read -p "Enter choice (1-${#options[@]}): " choice
+        read -r -p "Enter choice (1-${#options[@]}): " choice
         if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#options[@]} ]]; then
             echo "${options[$((choice-1))]}"
             return
@@ -317,8 +317,9 @@ check_usb_ssd_hardware() {
                 ;;
             "Wait and check again"*)
                 log_info "Please connect Samsung Portable SSD T5 drives to the nodes now"
-                read -p "Press Enter when T5 drives are connected..."
-                return $(check_usb_ssd_hardware)
+                read -r -p "Press Enter when T5 drives are connected..."
+                check_usb_ssd_hardware
+                return $?
                 ;;
             "Cancel deployment")
                 log_info "Deployment cancelled by user"
@@ -794,7 +795,8 @@ validate_deployment() {
         
         # Test storage class functionality
         log_info "Testing storage class functionality..."
-        local test_pvc="usb-ssd-deployment-test-$(date +%s)"
+        local test_pvc
+        test_pvc="usb-ssd-deployment-test-$(date +%s)"
         
         cat <<EOF | kubectl apply -f - &>/dev/null
 apiVersion: v1
@@ -905,7 +907,8 @@ test_performance() {
         log_info "Testing I/O performance on $node..."
         
         # Simple write test
-        local test_file="$MOUNT_POINT/.perf-test-$(date +%s)"
+        local test_file
+        test_file="$MOUNT_POINT/.perf-test-$(date +%s)"
         local write_result
         write_result=$(talosctl -n "$ip" sh -c "time dd if=/dev/zero of='$test_file' bs=1M count=100 oflag=direct 2>&1 && rm '$test_file'" 2>/dev/null || echo "failed")
         
@@ -1029,11 +1032,13 @@ main() {
     echo
     
     # Initialize deployment log
-    echo "USB SSD Storage Deployment Started: $(date)" > "$DEPLOYMENT_LOG"
-    echo "Cluster: home-ops" >> "$DEPLOYMENT_LOG"
-    echo "Nodes: ${NODES[*]}" >> "$DEPLOYMENT_LOG"
-    echo "Node IPs: ${NODE_IPS[*]}" >> "$DEPLOYMENT_LOG"
-    echo "========================================" >> "$DEPLOYMENT_LOG"
+    {
+        echo "USB SSD Storage Deployment Started: $(date)"
+        echo "Cluster: home-ops"
+        echo "Nodes: ${NODES[*]}"
+        echo "Node IPs: ${NODE_IPS[*]}"
+        echo "========================================"
+    } > "$DEPLOYMENT_LOG"
     
     log_info "Starting interactive Samsung Portable SSD T5 storage deployment..."
     log_info "This deployment will configure Samsung Portable SSD T5 storage for Longhorn"

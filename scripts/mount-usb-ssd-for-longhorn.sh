@@ -103,7 +103,8 @@ add_longhorn_disk() {
     fi
     
     # Create disk configuration
-    local disk_id="usb-ssd-$(date +%s)"
+    local disk_id
+    disk_id="usb-ssd-$(date +%s)"
     
     # Patch the Longhorn node to add the USB SSD disk
     kubectl patch nodes.longhorn.io "$node_name" -n longhorn-system --type='merge' -p="$(cat <<EOF

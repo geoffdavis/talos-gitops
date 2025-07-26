@@ -354,5 +354,5 @@ run_tests() {
 }
 
 # Run tests
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit
 run_tests

@@ -20,7 +20,7 @@ Create an item in your 1Password Services vault named `authentik-admin-credentia
 
 - `username`: admin
 - `password`: [generate a secure password]
-- `email`: admin@k8s.home.geoffdavis.com
+- `email`: <admin@k8s.home.geoffdavis.com>
 
 The admin user will be automatically created by the `authentik-admin-user-setup` job during deployment.
 

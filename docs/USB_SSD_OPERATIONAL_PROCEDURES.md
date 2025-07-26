@@ -47,15 +47,15 @@ kubectl get events -n longhorn-system --sort-by='.lastTimestamp' | tail -10
 
 **Internal Access** (Home Network):
 
-- Longhorn UI: https://longhorn.k8s.home.geoffdavis.com
-- Grafana: https://grafana.k8s.home.geoffdavis.com
-- Prometheus: https://prometheus.k8s.home.geoffdavis.com
+- Longhorn UI: <https://longhorn.k8s.home.geoffdavis.com>
+- Grafana: <https://grafana.k8s.home.geoffdavis.com>
+- Prometheus: <https://prometheus.k8s.home.geoffdavis.com>
 
 **External Access** (Internet):
 
-- Longhorn UI: https://longhorn.geoffdavis.com
-- Grafana: https://grafana.geoffdavis.com
-- Prometheus: https://prometheus.geoffdavis.com
+- Longhorn UI: <https://longhorn.geoffdavis.com>
+- Grafana: <https://grafana.geoffdavis.com>
+- Prometheus: <https://prometheus.geoffdavis.com>
 
 ### Daily Validation Script
 
