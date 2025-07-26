@@ -19,7 +19,7 @@ data:
             - "X-Auth-Request-User:$(headers.x-authentik-username)"
             - "X-Auth-Request-Email:$(headers.x-authentik-email)"
             - "X-Auth-Request-Groups:$(headers.x-authentik-groups)"
-            - "Authorization:Bearer $(headers.x-authentik-token)"
+            - "Authorization:Bearer PLACEHOLDER_TOKEN"
           remove:
             headers:
             - "x-authentik-token"  # Remove sensitive token after using it
@@ -87,6 +87,15 @@ data:
           credentials: true
           max_age: 3600
     
+    - name: dashboard-auth
+      url: http://kubernetes-dashboard-auth.kubernetes-dashboard.svc.cluster.local:8000
+      plugins:
+      - name: request-transformer
+        config:
+          add:
+            headers:
+            - "Authorization:Bearer PLACEHOLDER_TOKEN"
+    
     routes:
     - name: dashboard-api-route
       service: dashboard-api
@@ -99,6 +108,27 @@ data:
       service: dashboard-web
       paths:
       - /
+      strip_path: false
+      preserve_host: true
+      
+    - name: dashboard-auth-login
+      service: dashboard-auth
+      paths:
+      - /api/v1/login
+      strip_path: false
+      preserve_host: true
+      
+    - name: dashboard-auth-csrf
+      service: dashboard-auth
+      paths:
+      - /api/v1/csrftoken/login
+      strip_path: false
+      preserve_host: true
+      
+    - name: dashboard-auth-me
+      service: dashboard-auth
+      paths:
+      - /api/v1/me
       strip_path: false
       preserve_host: true
       

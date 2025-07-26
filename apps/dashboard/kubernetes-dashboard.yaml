@@ -29,11 +29,87 @@ spec:
       enabled: false
       
     kong:
-      enabled: false
+      enabled: true
       
-    # Configure the dashboard
+      # Disable auto-generated configuration
+      autogenerate: false
+      
+      # Kong proxy configuration
+      proxy:
+        enabled: true
+        type: ClusterIP
+        http:
+          enabled: true
+          servicePort: 8000
+          containerPort: 8000
+        tls:
+          enabled: false
+      
+      # Disable admin API for security
+      admin:
+        enabled: false
+      
+      # Environment variables for Kong
+      env:
+        # Trust all IPs for header forwarding (since we're behind Authentik proxy)
+        trusted_ips: "0.0.0.0/0,::/0"
+        real_ip_header: "X-Forwarded-For"
+        real_ip_recursive: "on"
+        # Disable Kong's built-in authentication since Authentik handles it
+        anonymous: ""
+        # Enable required plugins
+        plugins: "bundled"
+        # DNS resolver configuration
+        dns_resolver: "10.96.0.10:53"
+        dns_hostsfile: "/etc/hosts"
+        dns_order: "LAST,A,CNAME,AAAA,SRV"
+        
+      # Kong configuration for Dashboard integration
+      ingressController:
+        enabled: false
+        
+      # Configure Kong to work with Authentik headers
+      # This will be handled via Kong's declarative configuration
+      dblessConfig:
+        configMap: kubernetes-dashboard-kong-config
+        
+      # Disable auto-generated configuration
+      enterprise:
+        enabled: false
+      manager:
+        enabled: false
+      portal:
+        enabled: false
+        
+      # Resource limits for Kong
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+          
+      # Node selector and tolerations
+      nodeSelector:
+        kubernetes.io/os: linux
+        
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      
+    # Configure the dashboard API to disable authentication
     api:
       containers:
+        args:
+        - --disable-csrf-protection
+        - --act-as-proxy
+        - --namespace=kubernetes-dashboard
+        - --metrics-scraper-service-name=kubernetes-dashboard-metrics-scraper
         resources:
           requests:
             cpu: 100m
@@ -55,6 +131,22 @@ spec:
           
     web:
       containers:
+        # Configure web frontend to completely disable authentication
+        env:
+        - name: KUBERNETES_DASHBOARD_API_URL
+          value: "/api"
+        - name: KUBERNETES_DASHBOARD_SKIP_LOGIN_PAGE
+          value: "true"
+        - name: KUBERNETES_DASHBOARD_ENABLE_SKIP_LOGIN
+          value: "true"
+        - name: KUBERNETES_DASHBOARD_ENABLE_INSECURE_LOGIN
+          value: "true"
+        - name: KUBERNETES_DASHBOARD_AUTH_MODE
+          value: "token"
+        - name: KUBERNETES_DASHBOARD_DISABLE_AUTH
+          value: "true"
+        args:
+        - --settings-config-map-name=kubernetes-dashboard-settings
         resources:
           requests:
             cpu: 100m

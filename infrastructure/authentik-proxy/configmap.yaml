@@ -29,8 +29,8 @@ data:
         description: "AlertManager Alert Routing"
       dashboard:
         host: "dashboard.k8s.home.geoffdavis.com"
-        backend: "https://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:443"
-        description: "Kubernetes Dashboard"
+        backend: "http://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:8000"
+        description: "Kubernetes Dashboard via Kong Proxy"
       hubble:
         host: "hubble.k8s.home.geoffdavis.com"
         backend: "http://hubble-ui.kube-system.svc.cluster.local:80"

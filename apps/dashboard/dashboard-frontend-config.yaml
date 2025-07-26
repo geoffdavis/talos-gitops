@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-frontend-config
+  namespace: kubernetes-dashboard
+data:
+  # Configuration for Dashboard frontend to use Kong as API proxy
+  config.json: |
+    {
+      "apiServerUrl": "/api",
+      "authMode": "token",
+      "skipLoginPage": true,
+      "enableInsecureLogin": false,
+      "enableSkipLogin": false,
+      "defaultNamespace": "default",
+      "namespaceFallbackList": ["default", "kube-system", "kube-public"],
+      "systemBanner": "",
+      "systemBannerSeverity": "INFO",
+      "itemsPerPage": 10,
+      "labelsLimit": 3,
+      "logsAutoRefreshTimeInterval": 5,
+      "resourceAutoRefreshTimeInterval": 5,
+      "disableAccessDeniedNotifications": false
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: configure-dashboard-frontend
+  namespace: kubernetes-dashboard
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "3"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: configure-frontend
+        image: bitnami/kubectl:1.31.1
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Configuring Dashboard frontend to use Kong for API calls..."
+          
+          # Wait for Kong deployment to be ready
+          echo "Waiting for Kong deployment to be ready..."
+          kubectl wait --for=condition=available --timeout=300s deployment/kubernetes-dashboard-kong -n kubernetes-dashboard
+          
+          # Wait for Dashboard web deployment to be ready
+          echo "Waiting for Dashboard web deployment to be ready..."
+          kubectl wait --for=condition=available --timeout=300s deployment/kubernetes-dashboard-web -n kubernetes-dashboard
+          
+          # Create a settings ConfigMap that configures the frontend to use Kong
+          echo "Creating Dashboard settings ConfigMap..."
+          cat > /tmp/dashboard-settings.json << 'EOF'
+          {
+            "clusterName": "home-ops",
+            "itemsPerPage": 10,
+            "labelsLimit": 3,
+            "logsAutoRefreshTimeInterval": 5,
+            "resourceAutoRefreshTimeInterval": 5,
+            "disableAccessDeniedNotifications": false,
+            "defaultNamespace": "default",
+            "namespaceFallbackList": ["default", "kube-system", "kube-public"],
+            "systemBanner": "",
+            "systemBannerSeverity": "INFO"
+          }
+          EOF
+          
+          # Apply the settings ConfigMap
+          kubectl create configmap kubernetes-dashboard-settings \
+            --from-file=settings.json=/tmp/dashboard-settings.json \
+            --dry-run=client -o yaml | \
+            kubectl apply -f -
+          
+          echo "Dashboard frontend configuration completed successfully!"
+          echo "Frontend will now use Kong proxy for all API calls"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+      serviceAccountName: kong-config-override

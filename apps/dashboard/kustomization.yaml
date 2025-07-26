@@ -6,5 +6,5 @@ resources:
   - kubernetes-dashboard.yaml
   - dashboard-service-account.yaml
   - kong-config.yaml
-  - kong-config-override-job.yaml
+  - dashboard-frontend-config.yaml
   - kong-token-injection-job.yaml

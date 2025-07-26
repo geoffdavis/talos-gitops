@@ -21,11 +21,7 @@ spec:
           set -e
           echo "Setting up service account token injection for Kong..."
           
-          # Wait for service account token to be created
-          echo "Waiting for service account token to be ready..."
-          kubectl wait --for=condition=ready --timeout=300s secret/kubernetes-dashboard-viewer-token -n kubernetes-dashboard
-          
-          # Extract the service account token
+          # Extract the service account token (secret should already exist)
           echo "Extracting service account token..."
           SA_TOKEN=$(kubectl get secret kubernetes-dashboard-viewer-token -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d)
           
@@ -55,9 +51,9 @@ spec:
               config:
                 add:
                   headers:
-                  - "X-Auth-Request-User:\$(headers.x-authentik-username)"
-                  - "X-Auth-Request-Email:\$(headers.x-authentik-email)"
-                  - "X-Auth-Request-Groups:\$(headers.x-authentik-groups)"
+                  - "X-Auth-Request-User:\${headers.x-authentik-username}"
+                  - "X-Auth-Request-Email:\${headers.x-authentik-email}"
+                  - "X-Auth-Request-Groups:\${headers.x-authentik-groups}"
                   - "Authorization:Bearer $SA_TOKEN"
                 remove:
                   headers:
@@ -97,9 +93,9 @@ spec:
               config:
                 add:
                   headers:
-                  - "X-Auth-Request-User:\$(headers.x-authentik-username)"
-                  - "X-Auth-Request-Email:\$(headers.x-authentik-email)"
-                  - "X-Auth-Request-Groups:\$(headers.x-authentik-groups)"
+                  - "X-Auth-Request-User:\${headers.x-authentik-username}"
+                  - "X-Auth-Request-Email:\${headers.x-authentik-email}"
+                  - "X-Auth-Request-Groups:\${headers.x-authentik-groups}"
             - name: cors
               config:
                 origins:
