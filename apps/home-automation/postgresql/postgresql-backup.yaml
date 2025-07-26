@@ -1,0 +1,81 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: homeassistant-postgresql-backup
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: homeassistant-postgresql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: home-automation-stack
+    backup-tier: "important"
+    backup-type: "database"
+    application: "homeassistant"
+spec:
+  # Schedule backups daily at 3:00 AM to avoid peak usage
+  schedule: "0 3 * * *"
+
+  # Backup retention policy
+  backupOwnerReference: self
+
+  # Target cluster
+  cluster:
+    name: homeassistant-postgresql
+
+  # Backup method and configuration
+  method: barmanObjectStore
+
+  # Immediate checkpoint for consistent backup
+  immediate: true
+
+  # Suspend backup if needed
+  suspend: false
+
+  # Additional metadata for backup tracking
+  metadata:
+    labels:
+      backup-tier: "important"
+      backup-type: "database"
+      application: "homeassistant"
+      scheduled: "true"
+      backup-group: "home-automation"
+    annotations:
+      backup.cnpg.io/retention-policy: "30d"
+      backup.cnpg.io/backup-type: "full"
+      backup.cnpg.io/compression: "gzip"
+      backup.cnpg.io/schedule: "daily"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: homeassistant-postgresql-bootstrap-backup
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: homeassistant-postgresql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: home-automation-stack
+    backup-tier: "important"
+    backup-type: "database"
+    backup-purpose: "bootstrap"
+    application: "homeassistant"
+spec:
+  # Target cluster
+  cluster:
+    name: homeassistant-postgresql
+
+  # Backup method
+  method: barmanObjectStore
+
+  # Immediate checkpoint for consistent backup
+  immediate: true
+
+  # Additional metadata
+  metadata:
+    labels:
+      backup-tier: "important"
+      backup-type: "database"
+      application: "homeassistant"
+      backup-purpose: "bootstrap"
+      backup-group: "home-automation"
+    annotations:
+      backup.cnpg.io/backup-type: "bootstrap"
+      backup.cnpg.io/compression: "gzip"

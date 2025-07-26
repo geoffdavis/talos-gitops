@@ -1,0 +1,163 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: homeassistant-postgresql
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: homeassistant-postgresql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: home-automation-stack
+    backup-tier: "important"
+    backup-type: "database"
+    application: "homeassistant"
+spec:
+  # Single instance for Home Assistant (can be scaled later)
+  instances: 1
+
+  # PostgreSQL version and image
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.4
+
+  # Primary update strategy
+  primaryUpdateStrategy: unsupervised
+
+  # PostgreSQL configuration optimized for Home Assistant
+  postgresql:
+    parameters:
+      # Performance tuning for Home Assistant workload
+      max_connections: "100"
+      shared_buffers: "128MB"
+      effective_cache_size: "512MB"
+      maintenance_work_mem: "32MB"
+      checkpoint_completion_target: "0.9"
+      wal_buffers: "8MB"
+      default_statistics_target: "100"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      work_mem: "2MB"
+      min_wal_size: "512MB"
+      max_wal_size: "2GB"
+
+      # Logging configuration
+      log_destination: "stderr"
+      log_statement: "none"
+      log_min_duration_statement: "2000"
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+
+      # Connection and authentication
+      ssl: "on"
+      ssl_cert_file: "/controller/certificates/server.crt"
+      ssl_key_file: "/controller/certificates/server.key"
+      ssl_ca_file: "/controller/certificates/ca.crt"
+
+      # Replication settings
+      max_wal_senders: "5"
+      max_replication_slots: "5"
+      wal_level: "replica"
+      hot_standby: "on"
+
+      # Archive settings for backup
+      archive_mode: "on"
+      archive_timeout: "10min"
+
+  # Bootstrap configuration
+  bootstrap:
+    initdb:
+      database: "homeassistant"
+      owner: "homeassistant"
+      secret:
+        name: homeassistant-postgresql-superuser
+      dataChecksums: true
+      encoding: "UTF8"
+      localeCType: "C"
+      localeCollate: "C"
+
+  # Storage configuration with Longhorn
+  storage:
+    size: 10Gi
+    storageClass: longhorn-ssd
+
+  # Monitoring configuration
+  monitoring:
+    enabled: true
+    podMonitorMetricRelabelings:
+      - sourceLabels: [__name__]
+        regex: "cnpg_.*"
+        targetLabel: __name__
+        replacement: "${1}"
+    podMonitorRelabelings:
+      - sourceLabels: [__meta_kubernetes_pod_name]
+        targetLabel: instance
+        replacement: "${1}"
+
+  # Resource limits appropriate for Home Assistant
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  # Pod security context
+  podSecurityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Container security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+  # Backup configuration
+  backup:
+    retentionPolicy: "30d"
+    barmanObjectStore:
+      destinationPath: "s3://longhorn-backup/homeassistant-postgresql"
+      s3Credentials:
+        accessKeyId:
+          name: homeassistant-postgresql-s3-backup
+          key: AWS_ACCESS_KEY_ID
+        secretAccessKey:
+          name: homeassistant-postgresql-s3-backup
+          key: AWS_SECRET_ACCESS_KEY
+      wal:
+        retention: "30d"
+        maxParallel: 1
+      data:
+        retention: "7d"
+        immediateCheckpoint: true
+        jobs: 1
+      tags:
+        environment: "homelab"
+        cluster: "homeassistant-postgresql"
+        backup-tier: "important"
+
+  # Certificates configuration
+  certificates:
+    serverTLSSecret: "homeassistant-postgresql-server-tls"
+    serverCASecret: "homeassistant-postgresql-ca"
+    clientCASecret: "homeassistant-postgresql-ca"
+    replicationTLSSecret: "homeassistant-postgresql-replication-tls"
+
+  # Superuser secret
+  superuserSecret:
+    name: homeassistant-postgresql-superuser
+  enableSuperuserAccess: true
+
+  # Additional labels for Longhorn backup integration
+  metadata:
+    labels:
+      backup-tier: "important"
+      backup-type: "database"
+      application: "homeassistant"
+      backup-group: "home-automation"
+    annotations:
+      backup.longhorn.io/volume-snapshot-class: "longhorn-snapshot-vsc"
+      backup.longhorn.io/recurring-job-group: "home-automation"

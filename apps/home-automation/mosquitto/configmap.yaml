@@ -1,0 +1,148 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mosquitto-config
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/component: mqtt-broker
+    app.kubernetes.io/part-of: home-automation-stack
+data:
+  mosquitto.conf: |
+    # =================================================================
+    # Mosquitto MQTT Broker Configuration
+    # Optimized for Home Assistant IoT device communication
+    # =================================================================
+
+    # General configuration
+    user mosquitto
+
+    # Persistence configuration for reliability
+    persistence true
+    persistence_location /mosquitto/data/
+    autosave_interval 1800
+    autosave_on_changes false
+
+    # Connection settings
+    max_connections 1000
+    max_inflight_messages 100
+    max_queued_messages 1000
+    message_size_limit 0
+
+    # Logging configuration
+    log_dest file /mosquitto/log/mosquitto.log
+    log_dest stdout
+    log_type error
+    log_type warning
+    log_type notice
+    log_type information
+    log_timestamp true
+    log_timestamp_format %Y-%m-%dT%H:%M:%S
+
+    # Connection logging for troubleshooting
+    connection_messages true
+
+    # =================================================================
+    # Security Configuration
+    # =================================================================
+
+    # Disable anonymous access - require authentication
+    allow_anonymous false
+
+    # Password file location (created by init container)
+    password_file /mosquitto/config/passwd
+
+    # =================================================================
+    # Network Listeners
+    # =================================================================
+
+    # Standard MQTT listener (port 1883)
+    listener 1883 0.0.0.0
+    protocol mqtt
+
+    # MQTT over TLS listener (port 8883) - disabled for now
+    # listener 8883 0.0.0.0
+    # protocol mqtt
+    # cafile /mosquitto/certs/ca.crt
+    # certfile /mosquitto/certs/server.crt
+    # keyfile /mosquitto/certs/server.key
+    # require_certificate false
+    # use_identity_as_username false
+
+    # WebSocket listener for web clients (port 9001)
+    listener 9001 0.0.0.0
+    protocol websockets
+
+    # =================================================================
+    # Topic Access Control
+    # =================================================================
+
+    # Default ACL - authenticated users can access all topics
+    # This can be restricted further based on specific requirements
+    acl_file /dev/null
+
+    # =================================================================
+    # Performance Tuning
+    # =================================================================
+
+    # Memory limits
+    memory_limit 0
+
+    # Queue settings for IoT devices
+    max_queued_messages 1000
+    queue_qos0_messages false
+
+    # Retain message settings
+    max_retained_messages -1
+    retained_persistence true
+
+    # Client settings
+    persistent_client_expiration 1m
+
+    # =================================================================
+    # Home Assistant Integration Settings
+    # =================================================================
+
+    # Optimize for Home Assistant MQTT discovery
+    # These settings ensure reliable message delivery for HA
+
+    # Keep alive settings
+    max_keepalive 65535
+
+    # Will message settings for device availability
+    # (Home Assistant uses will messages for device tracking)
+
+    # Bridge settings (if connecting to external MQTT brokers)
+    # connection bridge-01
+    # address external-mqtt-broker:1883
+    # topic homeassistant/# out 1
+    # topic homeassistant/# in 1
+
+    # =================================================================
+    # Monitoring and Health
+    # =================================================================
+
+    # System topic publishing for monitoring
+    sys_interval 10
+
+    # Client connection tracking
+    clientid_prefixes
+
+    # =================================================================
+    # Additional Security Hardening
+    # =================================================================
+
+    # Disable certain features for security
+    allow_zero_length_clientid true
+    auto_id_prefix auto-
+
+    # Connection limits per client
+    max_connections -1
+
+    # Protocol version restrictions
+    # protocol_version mqttv311
+
+    # =================================================================
+    # End of Configuration
+    # =================================================================

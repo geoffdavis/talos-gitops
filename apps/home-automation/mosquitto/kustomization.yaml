@@ -1,0 +1,34 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: mosquitto
+  namespace: home-automation
+
+# Mosquitto MQTT broker resources for Home Assistant
+resources:
+  - deployment.yaml
+  - service.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - external-secret.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: mosquitto
+      app.kubernetes.io/component: mqtt-broker
+      app.kubernetes.io/part-of: home-automation-stack
+      backup-tier: "important"
+      backup-type: "mqtt-data"
+      application: "mosquitto"
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/component: mqtt-broker
+    app.kubernetes.io/part-of: home-automation-stack
+
+# Namespace for all resources
+namespace: home-automation

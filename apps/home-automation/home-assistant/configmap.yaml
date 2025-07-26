@@ -1,0 +1,221 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-configuration
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: home-automation-core
+    app.kubernetes.io/part-of: home-automation-stack
+data:
+  configuration.yaml: |
+    # Home Assistant Configuration
+    # Loads default set of integrations. Do not remove.
+    default_config:
+
+    # Load frontend themes from the themes folder
+    frontend:
+      themes: !include_dir_merge_named themes
+
+    # Text to speech
+    tts:
+      - platform: google_translate
+
+    # Database configuration - PostgreSQL backend
+    recorder:
+      db_url: !env_var POSTGRES_DB_URL
+      purge_keep_days: 30
+      commit_interval: 1
+      exclude:
+        domains:
+          - automation
+          - updater
+        entity_globs:
+          - sensor.weather_*
+        entities:
+          - sun.sun
+          - sensor.date
+          - sensor.time
+
+    # HTTP configuration for reverse proxy integration
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        - 10.244.0.0/16  # Pod CIDR for Authentik proxy
+        - 172.29.51.0/24 # Management network
+        - 127.0.0.1
+        - ::1
+      ip_ban_enabled: true
+      login_attempts_threshold: 5
+
+    # MQTT Integration
+    mqtt:
+      broker: !env_var MQTT_HOST mosquitto.home-automation.svc.cluster.local
+      port: !env_var MQTT_PORT 1883
+      username: !env_var MQTT_USERNAME
+      password: !env_var MQTT_PASSWORD
+      discovery: true
+      discovery_prefix: homeassistant
+      birth_message:
+        topic: "homeassistant/status"
+        payload: "online"
+      will_message:
+        topic: "homeassistant/status"
+        payload: "offline"
+
+    # Redis configuration for session storage and caching
+    # Note: Home Assistant doesn't directly support Redis, but we can use it for custom components
+
+    # Logger configuration
+    logger:
+      default: info
+      logs:
+        homeassistant.core: debug
+        homeassistant.components.mqtt: debug
+        homeassistant.components.recorder: info
+        homeassistant.components.http: warning
+
+    # System Health
+    system_health:
+
+    # Energy configuration
+    energy:
+
+    # My Home Assistant integration
+    my:
+
+    # Mobile app integration
+    mobile_app:
+
+    # Person integration
+    person:
+
+    # Sun integration
+    sun:
+
+    # Zone integration
+    zone:
+      - name: Home
+        latitude: !secret home_latitude
+        longitude: !secret home_longitude
+        radius: 100
+        icon: mdi:account-multiple
+
+    # Device tracker
+    device_tracker:
+
+    # History
+    history:
+      include:
+        domains:
+          - sensor
+          - switch
+          - light
+          - binary_sensor
+          - climate
+          - cover
+          - fan
+          - media_player
+      exclude:
+        entity_globs:
+          - sensor.weather_*
+        entities:
+          - sun.sun
+
+    # Logbook
+    logbook:
+      exclude:
+        domains:
+          - automation
+          - script
+        entity_globs:
+          - sensor.weather_*
+
+    # Map
+    map:
+
+    # Stream (for camera integration)
+    stream:
+
+    # Automation
+    automation: !include automations.yaml
+
+    # Scripts
+    script: !include scripts.yaml
+
+    # Scenes
+    scene: !include scenes.yaml
+
+    # Sensors
+    sensor: !include sensors.yaml
+
+    # Binary sensors
+    binary_sensor: !include binary_sensors.yaml
+
+    # Switches
+    switch: !include switches.yaml
+
+    # Lights
+    light: !include lights.yaml
+
+    # Climate
+    climate: !include climate.yaml
+
+    # Covers
+    cover: !include covers.yaml
+
+    # Fans
+    fan: !include fans.yaml
+
+    # Media players
+    media_player: !include media_players.yaml
+
+    # Cameras
+    camera: !include cameras.yaml
+
+    # Input boolean
+    input_boolean: !include input_boolean.yaml
+
+    # Input number
+    input_number: !include input_number.yaml
+
+    # Input select
+    input_select: !include input_select.yaml
+
+    # Input text
+    input_text: !include input_text.yaml
+
+    # Input datetime
+    input_datetime: !include input_datetime.yaml
+
+    # Timer
+    timer: !include timer.yaml
+
+    # Counter
+    counter: !include counter.yaml
+
+    # Template
+    template: !include template.yaml
+
+    # Group
+    group: !include groups.yaml
+
+    # Customize
+    homeassistant:
+      customize: !include customize.yaml
+      # Location configuration
+      latitude: !secret home_latitude
+      longitude: !secret home_longitude
+      elevation: !secret home_elevation
+      unit_system: imperial
+      time_zone: America/New_York
+      country: US
+      currency: USD
+      # Internal/External URLs for proper proxy integration
+      internal_url: "http://home-assistant.home-automation.svc.cluster.local:8123"
+      external_url: "https://homeassistant.k8s.home.geoffdavis.com"
+      # Allowlist for external URLs
+      allowlist_external_dirs:
+        - "/config"
+        - "/tmp"

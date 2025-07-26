@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home-assistant-config
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: home-automation-core
+    app.kubernetes.io/part-of: home-automation-stack
+    backup-tier: "critical"
+    backup-type: "config"
+    application: "home-assistant"
+  annotations:
+    backup.longhorn.io/volume-snapshot-class: "longhorn-snapshot-vsc"
+    backup.longhorn.io/recurring-job-group: "home-assistant-critical"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 10Gi
