@@ -15,6 +15,7 @@ This guide provides comprehensive testing scenarios to validate the pre-commit c
 ### 1. Security Testing (ENFORCED - Must Block)
 
 #### Test 1.1: Secret Detection
+
 ```bash
 # Create test file with fake credentials
 cat > test-secret.yaml << EOF
@@ -23,7 +24,7 @@ kind: Secret
 metadata:
   name: test-secret
 data:
-  password: "super-secret-password-123"
+  password: "super-secret-password-123"  # pragma: allowlist secret
   api-key: "sk-1234567890abcdef"
 EOF
 
@@ -38,12 +39,13 @@ rm test-secret.yaml
 ```
 
 #### Test 1.2: Git Leaks Detection
+
 ```bash
 # Create file with credential pattern
 cat > test-creds.sh << EOF
 #!/bin/bash
-export AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
-export AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+export AWS_ACCESS_KEY_ID="REDACTED"  # pragma: allowlist secret
+export AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"  # pragma: allowlist secret
 EOF
 
 # Attempt commit - should FAIL
@@ -57,6 +59,7 @@ rm test-creds.sh
 ```
 
 #### Test 1.3: Large File Detection
+
 ```bash
 # Create large file (>1MB)
 dd if=/dev/zero of=large-file.bin bs=1024 count=1100
@@ -74,6 +77,7 @@ rm large-file.bin
 ### 2. YAML Validation Testing (ENFORCED)
 
 #### Test 2.1: Invalid YAML Syntax
+
 ```bash
 # Create invalid YAML
 cat > test-invalid.yaml << EOF
@@ -98,6 +102,7 @@ rm test-invalid.yaml
 ```
 
 #### Test 2.2: Valid YAML with Style Issues
+
 ```bash
 # Create valid YAML with style issues
 cat > test-style.yaml << EOF
@@ -106,7 +111,7 @@ kind: ConfigMap
 metadata:
   name: test-config-with-very-long-name-that-exceeds-normal-line-length-limits
 data:
-  key1: "value1"    
+  key1: "value1"
   key2: "value2"
 EOF
 
@@ -124,6 +129,7 @@ rm test-style.yaml
 ### 3. Kubernetes Validation Testing (ENFORCED)
 
 #### Test 3.1: Invalid Kubernetes Manifest
+
 ```bash
 # Create invalid K8s manifest
 mkdir -p test-k8s
@@ -160,6 +166,7 @@ rm -rf test-k8s/
 ```
 
 #### Test 3.2: Invalid Kustomization
+
 ```bash
 # Create invalid kustomization
 mkdir -p test-kustomize
@@ -187,6 +194,7 @@ rm -rf test-kustomize/
 ### 4. Python Validation Testing
 
 #### Test 4.1: Python Syntax Error (ENFORCED)
+
 ```bash
 # Create Python file with syntax error
 cat > test-syntax.py << EOF
@@ -208,6 +216,7 @@ rm test-syntax.py
 ```
 
 #### Test 4.2: Python Formatting Issues (WARNING)
+
 ```bash
 # Create Python file with formatting issues
 cat > test-format.py << EOF
@@ -225,7 +234,7 @@ def poorly_formatted_function( x,y,z ):
 class PoorlyFormattedClass:
     def __init__(self,value):
         self.value=value
-    
+
     def get_value( self ):
         return self.value
 EOF
@@ -249,6 +258,7 @@ rm test-format.py
 ### 5. Shell Script Validation Testing (ENFORCED)
 
 #### Test 5.1: Shell Script Security Issues
+
 ```bash
 # Create shell script with security issues
 cat > test-security.sh << EOF
@@ -279,6 +289,7 @@ rm test-security.sh
 ```
 
 #### Test 5.2: Shell Script Best Practices
+
 ```bash
 # Create shell script with minor issues (should pass)
 cat > test-minor.sh << EOF
@@ -312,6 +323,7 @@ rm test-minor.sh
 ### 6. Markdown Validation Testing
 
 #### Test 6.1: Markdown Structure Issues (ENFORCED)
+
 ```bash
 # Create markdown with structure issues
 cat > test-structure.md << EOF
@@ -339,6 +351,7 @@ rm test-structure.md
 ```
 
 #### Test 6.2: Markdown Style Issues (WARNING)
+
 ```bash
 # Create markdown with style issues
 cat > test-style.md << EOF
@@ -374,6 +387,7 @@ rm test-style.md
 ### 7. Commit Message Testing (WARNING)
 
 #### Test 7.1: Non-Conventional Commit Message
+
 ```bash
 # Create a simple file
 echo "test content" > test-commit-msg.txt
@@ -390,6 +404,7 @@ rm test-commit-msg.txt
 ```
 
 #### Test 7.2: Conventional Commit Message
+
 ```bash
 # Create a simple file
 echo "test content" > test-commit-msg.txt
@@ -433,16 +448,16 @@ run_test() {
     local test_name="$1"
     local test_command="$2"
     local expected_result="$3"  # "pass" or "fail"
-    
+
     echo -n "Testing $test_name... "
     TESTS_RUN=$((TESTS_RUN + 1))
-    
+
     if eval "$test_command" >/dev/null 2>&1; then
         actual_result="pass"
     else
         actual_result="fail"
     fi
-    
+
     if [[ "$actual_result" == "$expected_result" ]]; then
         echo -e "${GREEN}✓${NC}"
         TESTS_PASSED=$((TESTS_PASSED + 1))
@@ -494,18 +509,21 @@ fi
 ## Manual Testing Checklist
 
 ### Pre-Implementation Testing
+
 - [ ] Install pre-commit framework
 - [ ] Install all required tools (detect-secrets, gitleaks, etc.)
 - [ ] Create initial secrets baseline
 - [ ] Run pre-commit on existing codebase
 
 ### Security Hook Testing
+
 - [ ] Test secret detection with fake credentials
 - [ ] Test git leaks detection with credential patterns
 - [ ] Test large file detection
 - [ ] Verify secrets baseline excludes known false positives
 
 ### Validation Hook Testing
+
 - [ ] Test YAML syntax validation with invalid files
 - [ ] Test Kubernetes manifest validation
 - [ ] Test Python syntax checking
@@ -513,18 +531,21 @@ fi
 - [ ] Test markdown structure validation
 
 ### Warning Hook Testing
+
 - [ ] Test YAML formatting (should warn, not block)
 - [ ] Test Python formatting (should warn, not block)
 - [ ] Test markdown style issues (should warn, not block)
 - [ ] Test commit message format (should warn, not block)
 
 ### Integration Testing
+
 - [ ] Test with existing repository files
 - [ ] Test performance with large changesets
 - [ ] Test hook bypass mechanisms
 - [ ] Test manual hook execution
 
 ### Edge Case Testing
+
 - [ ] Test with binary files
 - [ ] Test with symlinks
 - [ ] Test with submodules
@@ -534,6 +555,7 @@ fi
 ## Performance Testing
 
 ### Benchmark Commands
+
 ```bash
 # Time full pre-commit run
 time pre-commit run --all-files
@@ -548,6 +570,7 @@ pre-commit run --all-files --verbose
 ```
 
 ### Performance Expectations
+
 - **Full run**: < 60 seconds for entire repository
 - **Security hooks**: < 30 seconds
 - **YAML validation**: < 15 seconds
@@ -557,6 +580,7 @@ pre-commit run --all-files --verbose
 ## Troubleshooting Common Issues
 
 ### Hook Installation Issues
+
 ```bash
 # Reinstall hooks
 pre-commit uninstall
@@ -565,6 +589,7 @@ pre-commit install --hook-type commit-msg
 ```
 
 ### Cache Issues
+
 ```bash
 # Clear pre-commit cache
 pre-commit clean
@@ -572,12 +597,14 @@ pre-commit install
 ```
 
 ### Baseline Issues
+
 ```bash
 # Regenerate secrets baseline
 detect-secrets scan --baseline .secrets.baseline --force-use-all-plugins
 ```
 
 ### Performance Issues
+
 ```bash
 # Run hooks in parallel (if supported)
 pre-commit run --all-files --show-diff-on-failure

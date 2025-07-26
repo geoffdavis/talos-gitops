@@ -1,4 +1,4 @@
-e#!/bin/bash
+#!/bin/bash
 # USB SSD Storage Preparation Script for Talos Cluster
 # Prepares Samsung Portable SSD T5 drives for Longhorn integration
 
@@ -148,7 +148,8 @@ add_longhorn_disk() {
     fi
     
     # Create disk configuration
-    local disk_id="usb-ssd-$(date +%s)"
+    local disk_id
+    disk_id="usb-ssd-$(date +%s)"
     
     # Patch the Longhorn node to add the USB SSD disk
     kubectl patch nodes.longhorn.io "$node_name" -n longhorn-system --type='merge' -p="$(cat <<EOF
@@ -176,3 +177,52 @@ EOF
 wait_for_longhorn() {
     log_info "Waiting for Longhorn to be ready..."
     
+    local timeout=300
+    local elapsed=0
+    local interval=10
+    
+    while [ $elapsed -lt $timeout ]; do
+        if kubectl get pods -n longhorn-system | grep -q "longhorn-manager.*Running"; then
+            log_success "Longhorn is ready"
+            return 0
+        fi
+        
+        log_info "Waiting for Longhorn... ($elapsed/$timeout seconds)"
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+    
+    log_error "Timeout waiting for Longhorn to be ready"
+    return 1
+}
+
+# Main execution
+main() {
+    log_info "Starting USB SSD storage preparation for Talos cluster..."
+    
+    # Check prerequisites
+    check_talosctl
+    check_kubectl
+    
+    # Wait for Longhorn to be ready
+    wait_for_longhorn
+    
+    # Prepare USB SSDs on all nodes
+    for i in "${!NODES[@]}"; do
+        local node_ip="${NODES[$i]}"
+        local node_name="${NODE_NAMES[$i]}"
+        
+        if prepare_usb_ssd_on_node "$node_ip" "$node_name"; then
+            add_longhorn_disk "$node_name"
+        else
+            log_error "Failed to prepare USB SSD on $node_name"
+        fi
+    done
+    
+    log_success "USB SSD storage preparation completed!"
+}
+
+# Run main function if script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

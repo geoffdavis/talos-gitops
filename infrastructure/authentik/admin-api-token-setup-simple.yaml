@@ -88,19 +88,19 @@ spec:
 
               if [ "$ITEM_EXISTS" -gt 0 ]; then
                 echo "Admin API token item already exists in 1Password: $ITEM_NAME"
-                
+
                 # Get existing item to check if it has a valid token
                 ITEM_ID=$(curl -s -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
                   "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items" | \
                   grep -A 10 -B 10 "$ITEM_NAME" | \
                   grep '"id"' | head -1 | sed 's/.*"id": *"\([^"]*\)".*/\1/')
-                
+
                 if [ -n "$ITEM_ID" ]; then
                   # Get current token value
                   CURRENT_TOKEN=$(curl -s -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
                     "$OP_CONNECT_HOST/v1/vaults/$VAULT_UUID/items/$ITEM_ID" | \
                     grep -A 5 '"label": *"token"' | grep '"value"' | sed 's/.*"value": *"\([^"]*\)".*/\1/')
-                  
+
                   # Test if current token is valid
                   if [ -n "$CURRENT_TOKEN" ] && [ "$CURRENT_TOKEN" != "ak-placeholder-admin-token-will-be-set-manually" ]; then
                     echo "Testing existing token..."

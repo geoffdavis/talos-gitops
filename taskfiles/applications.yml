@@ -38,7 +38,7 @@ tasks:
         while [ $elapsed -lt $max_wait ]; do
           # Check critical infrastructure components
           infrastructure_ready=true
-          
+
           # Check cert-manager if deployed
           if  kubectl get namespace cert-manager >/dev/null 2>&1; then
             if !  kubectl get pods -n cert-manager | grep -q "Running"; then
@@ -46,7 +46,7 @@ tasks:
               echo "Waiting for cert-manager..."
             fi
           fi
-          
+
           # Check ingress-nginx if deployed
           if  kubectl get namespace ingress-nginx >/dev/null 2>&1; then
             if !  kubectl get pods -n ingress-nginx | grep -q "Running"; then
@@ -54,7 +54,7 @@ tasks:
               echo "Waiting for ingress-nginx..."
             fi
           fi
-          
+
           # Check external-dns if deployed
           if  kubectl get namespace external-dns >/dev/null 2>&1; then
             if !  kubectl get pods -n external-dns | grep -q "Running"; then
@@ -62,12 +62,12 @@ tasks:
               echo "Waiting for external-dns..."
             fi
           fi
-          
+
           if [ "$infrastructure_ready" = true ]; then
             echo "✓ Infrastructure components are ready"
             break
           fi
-          
+
           echo "Waiting for infrastructure components... (${elapsed}s elapsed)"
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))
@@ -125,12 +125,12 @@ tasks:
           app_pods=$( kubectl get pods --all-namespaces --no-headers | \
             grep -v -E "(kube-system|flux-system|external-secrets-system|onepassword-connect|longhorn-system|cert-manager|ingress-nginx|external-dns)" | \
             grep -c "Running" || echo "0")
-          
+
           if [ "$app_pods" -gt 0 ]; then
             echo "✓ Found $app_pods running application pods"
             break
           fi
-          
+
           echo "Waiting for application pods... (${elapsed}s elapsed)"
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))

@@ -81,7 +81,7 @@ spec:
                 local data="${3:-}"
                 local max_retries=3
                 local retry_count=0
-                
+
                 while [ $retry_count -lt $max_retries ]; do
                   if [ "$method" = "POST" ] && [ -n "$data" ]; then
                     response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
@@ -102,18 +102,18 @@ spec:
                       -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                       "$url")
                   fi
-                  
+
                   if [ "$response" = "200" ] || [ "$response" = "201" ]; then
                     return 0
                   fi
-                  
+
                   retry_count=$((retry_count + 1))
                   echo "API call failed with status $response, retry $retry_count/$max_retries"
                   if [ $retry_count -lt $max_retries ]; then
                     sleep 5
                   fi
                 done
-                
+
                 echo "API call failed after $max_retries retries"
                 cat /tmp/api_response
                 return 1
@@ -127,19 +127,19 @@ spec:
                 local internal_host="$4"
                 local description="$5"
                 local publisher="$6"
-                
+
                 echo "Processing $service_name..."
-                
+
                 # Check if provider already exists
                 echo "Checking for existing $service_name proxy provider..."
                 if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/"; then
                   echo "Failed to check existing proxy providers"
                   return 1
                 fi
-                
+
                 PROVIDER_RESPONSE=$(cat /tmp/api_response)
                 PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o "\"name\":\"${service_name}-proxy\"" || echo "")
-                
+
                 if [ -z "$PROVIDER_EXISTS" ]; then
                   echo "Creating $service_name proxy provider..."
                   PROVIDER_DATA="{
@@ -155,7 +155,7 @@ spec:
                     \"basic_auth_password_attribute\": \"\",
                     \"basic_auth_user_attribute\": \"\"
                   }"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "POST" "$PROVIDER_DATA"; then
                     PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                     echo "Created $service_name proxy provider with PK: $PROVIDER_PK"
@@ -168,17 +168,17 @@ spec:
                   PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A10 "\"name\":\"${service_name}-proxy\"" | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                   echo "Found existing provider with PK: $PROVIDER_PK"
                 fi
-                
+
                 # Check if Application already exists
                 echo "Checking for existing $service_name application..."
                 if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
                   echo "Failed to check existing applications"
                   return 1
                 fi
-                
+
                 APP_RESPONSE=$(cat /tmp/api_response)
                 APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o "\"name\":\"${display_name}\"" || echo "")
-                
+
                 if [ -z "$APP_EXISTS" ]; then
                   echo "Creating $service_name application..."
                   APP_DATA="{
@@ -191,7 +191,7 @@ spec:
                     \"policy_engine_mode\": \"any\",
                     \"group\": \"\"
                   }"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
                     echo "$service_name application created successfully!"
                   else
@@ -201,22 +201,22 @@ spec:
                 else
                   echo "$service_name application already exists"
                 fi
-                
+
                 # Add provider to outpost
                 echo "Adding $service_name provider to proxy outpost..."
                 if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/"; then
                   echo "Failed to check existing outposts"
                   return 1
                 fi
-                
+
                 OUTPOST_RESPONSE=$(cat /tmp/api_response)
                 OUTPOST_PK=$(echo "$OUTPOST_RESPONSE" | grep -A10 '"name":"proxy-outpost"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
-                
+
                 if [ -n "$OUTPOST_PK" ]; then
                   echo "Found proxy outpost with PK: $OUTPOST_PK"
                   # Get current providers list
                   CURRENT_PROVIDERS=$(echo "$OUTPOST_RESPONSE" | grep -A10 '"name":"proxy-outpost"' | grep -o '"providers":\[[0-9,]*\]' | sed 's/"providers":\[\([0-9,]*\)\]/\1/')
-                  
+
                   # Add new provider to the list if not already present
                   if echo "$CURRENT_PROVIDERS" | grep -q "$PROVIDER_PK"; then
                     echo "Provider already in outpost"
@@ -226,9 +226,9 @@ spec:
                     else
                       NEW_PROVIDERS="[$PROVIDER_PK]"
                     fi
-                    
+
                     UPDATE_DATA="{\"providers\": $NEW_PROVIDERS}"
-                    
+
                     if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/${OUTPOST_PK}/" "PATCH" "$UPDATE_DATA"; then
                       echo "Updated proxy outpost with $service_name provider!"
                     else
@@ -240,7 +240,7 @@ spec:
                   echo "Proxy outpost not found - it should be created by the longhorn config job first"
                   return 1
                 fi
-                
+
                 echo "$service_name configuration completed!"
                 return 0
               }

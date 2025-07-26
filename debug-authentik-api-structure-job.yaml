@@ -127,19 +127,19 @@ spec:
                   # Configuration from environment
                   authentik_host = os.environ.get('AUTHENTIK_HOST')
                   authentik_token = os.environ.get('AUTHENTIK_TOKEN')
-                  
+
                   if not all([authentik_host, authentik_token]):
                       print("ERROR: Missing required environment variables")
                       return 1
-                  
+
                   headers = {
                       'Authorization': f'Bearer {authentik_token}',
                       'Content-Type': 'application/json'
                   }
-                  
+
                   print("=== Investigating Authentik API Structure ===")
                   print(f"Authentik Host: {authentik_host}")
-                  
+
                   # 1. Test authentication
                   print("\n=== Authentication Test ===")
                   status_code, response = make_api_request(f"{authentik_host}/api/v3/core/users/me/", headers)
@@ -148,7 +148,7 @@ spec:
                   else:
                       print(f"✗ Authentication failed: {status_code}")
                       return 1
-                  
+
                   # 2. Check all applications
                   print("\n=== Applications ===")
                   status_code, response = make_api_request(f"{authentik_host}/api/v3/core/applications/", headers)
@@ -163,7 +163,7 @@ spec:
                           print()
                   else:
                       print(f"✗ Failed to fetch applications: {status_code}")
-                  
+
                   # 3. Check all proxy providers
                   print("\n=== Proxy Providers ===")
                   status_code, response = make_api_request(f"{authentik_host}/api/v3/providers/proxy/", headers)
@@ -180,7 +180,7 @@ spec:
                           print()
                   else:
                       print(f"✗ Failed to fetch proxy providers: {status_code}")
-                  
+
                   # 4. Check all OAuth2 providers
                   print("\n=== OAuth2 Providers ===")
                   status_code, response = make_api_request(f"{authentik_host}/api/v3/providers/oauth2/", headers)
@@ -196,7 +196,7 @@ spec:
                           print()
                   else:
                       print(f"✗ Failed to fetch OAuth2 providers: {status_code}")
-                  
+
                   # 5. Check all outposts
                   print("\n=== Outposts ===")
                   status_code, response = make_api_request(f"{authentik_host}/api/v3/outposts/instances/", headers)
@@ -214,7 +214,7 @@ spec:
                           print()
                   else:
                       print(f"✗ Failed to fetch outposts: {status_code}")
-                  
+
                   # 6. Check all provider types (to understand the structure)
                   print("\n=== All Provider Types Investigation ===")
                   provider_endpoints = [
@@ -225,7 +225,7 @@ spec:
                       'providers/radius/',
                       'providers/scim/'
                   ]
-                  
+
                   for endpoint in provider_endpoints:
                       print(f"\n--- {endpoint} ---")
                       status_code, response = make_api_request(f"{authentik_host}/api/v3/{endpoint}", headers)
@@ -236,7 +236,7 @@ spec:
                               print(f"  - {provider.get('name')} (PK: {provider.get('pk')})")
                       else:
                           print(f"✗ Failed to fetch {endpoint}: {status_code}")
-                  
+
                   print("\n=== Investigation Complete ===")
                   return 0
 

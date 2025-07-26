@@ -103,7 +103,7 @@ tasks:
           name=$(echo "$service_info" | cut -d'/' -f2)
           ip=$(echo "$service_info" | cut -d'/' -f3)
           port=$(echo "$service_info" | cut -d'/' -f4)
-          
+
           if [[ "$ip" =~ ^172\.29\.52\. ]]; then
             if curl -s --connect-timeout 5 "http://$ip:$port" &> /dev/null; then
               echo "✓ $namespace/$name ($ip:$port) - accessible"
@@ -139,15 +139,15 @@ tasks:
       - echo "=== LoadBalancer Services with IP Pool Information ==="
       - |
         mise exec -- kubectl get svc --all-namespaces -o json | jq -r '
-          .items[] | 
-          select(.spec.type=="LoadBalancer") | 
+          .items[] |
+          select(.spec.type=="LoadBalancer") |
           {
             namespace: .metadata.namespace,
             name: .metadata.name,
             ip: (.status.loadBalancer.ingress[0].ip // "pending"),
             pool: (.metadata.labels["io.cilium/lb-ipam-pool"] // "default"),
             ports: [.spec.ports[].port] | join(",")
-          } | 
+          } |
           "\(.namespace)/\(.name) | IP: \(.ip) | Pool: \(.pool) | Ports: \(.ports)"
         ' | column -t -s '|'
 
@@ -236,35 +236,35 @@ tasks:
           echo "Generated: $(date)"
           echo "========================================"
           echo
-          
+
           echo "=== Cluster Information ==="
           mise exec -- kubectl cluster-info | head -1
           echo
-          
+
           echo "=== BGP Configuration ==="
           mise exec -- kubectl get ciliumbgpclusterconfig -o wide
           echo
-          
+
           echo "=== BGP Advertisements ==="
           mise exec -- kubectl get ciliumbgpadvertisement -o wide
           echo
-          
+
           echo "=== Load Balancer IP Pools ==="
           mise exec -- kubectl get ciliumloadbalancerippool -o wide
           echo
-          
+
           echo "=== LoadBalancer Services ==="
           mise exec -- kubectl get svc --all-namespaces -o wide | grep LoadBalancer
           echo
-          
+
           echo "=== L2 Announcement Policies (should be empty) ==="
           mise exec -- kubectl get ciliuml2announcementpolicy -n kube-system 2>/dev/null || echo "No L2 announcement policies found"
           echo
-          
+
           echo "=== Cilium Agent Status ==="
           mise exec -- kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium -o wide
           echo
-          
+
         } > "$report_file"
 
         echo "Report saved to: $report_file"

@@ -59,13 +59,13 @@ spec:
               try:
                   url = f'{authentik_host}/api/v3/outposts/instances/'
                   request = urllib.request.Request(url, headers=headers)
-                  
+
                   with urllib.request.urlopen(request) as response:
                       data = json.loads(response.read().decode('utf-8'))
-                      
+
                       print(f'Found {len(data.get(\"results\", []))} outposts:')
                       print()
-                      
+
                       for i, outpost in enumerate(data.get('results', []), 1):
                           print(f'Outpost {i}:')
                           print(f'  Name: {outpost[\"name\"]}')
@@ -73,7 +73,7 @@ spec:
                           print(f'  Type: {outpost.get(\"type\", \"unknown\")}')
                           print(f'  Providers: {len(outpost.get(\"providers\", []))} assigned')
                           print(f'  Provider IDs: {outpost.get(\"providers\", [])}')
-                          
+
                           config = outpost.get('config', {})
                           if config:
                               print(f'  Config:')

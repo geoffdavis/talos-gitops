@@ -246,15 +246,15 @@ spec:
                       local app=$1
                       local namespace=$2
                       local pvc_name=$3
-                      
+
                       echo "Creating consistent snapshot for $app"
-                      
+
                       # Execute pre-backup hook
                       kubectl exec -n $namespace deployment/$app -- /backup-scripts/pre-backup.sh || true
-                      
+
                       # Wait a moment for dump to complete
                       sleep 30
-                      
+
                       # Create snapshot
                       TIMESTAMP=$(date +%Y%m%d-%H%M%S)
                       cat <<EOF | kubectl apply -f -
@@ -272,10 +272,10 @@ spec:
                       persistentVolumeClaimName: ${pvc_name}
                     volumeSnapshotClassName: longhorn-snapshot-vsc
                   EOF
-                      
+
                       # Execute post-backup hook
                       kubectl exec -n $namespace deployment/$app -- /backup-scripts/post-backup.sh || true
-                      
+
                       echo "Consistent snapshot created for $app: ${app}-consistent-${TIMESTAMP}"
                   }
 

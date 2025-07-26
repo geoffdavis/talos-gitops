@@ -80,7 +80,7 @@ spec:
                       req_data = None
                       if data and method in ['POST', 'PATCH', 'PUT', 'DELETE']:
                           req_data = json.dumps(data).encode('utf-8')
-                      
+
                       request = urllib.request.Request(url, data=req_data, headers=headers, method=method)
                       with urllib.request.urlopen(request) as response:
                           response_body = response.read().decode('utf-8')
@@ -118,7 +118,7 @@ spec:
 
               print(f"\n=== Root Cause Analysis ===")
               print("1. External outpost pods are using admin token: ✓ CONFIRMED")
-              print("2. Admin token allows connection to any outpost: ✓ CONFIRMED") 
+              print("2. Admin token allows connection to any outpost: ✓ CONFIRMED")
               print("3. Pods are auto-discovering and connecting to embedded outpost: ✓ CONFIRMED")
               print("4. We need to force pods to connect to external outpost ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e")
 
@@ -159,7 +159,7 @@ spec:
 
               print(f"\n=== Summary ===")
               print("✓ Admin token authentication: WORKING")
-              print("✓ External outpost access: WORKING") 
+              print("✓ External outpost access: WORKING")
               print("✓ Root cause identified: Missing AUTHENTIK_OUTPOST_ID environment variable")
               print("✓ Solution: Add AUTHENTIK_OUTPOST_ID=3f0970c5-d6a3-43b2-9a36-d74665c6b24e to deployment")
 

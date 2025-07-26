@@ -77,7 +77,7 @@ spec:
                       req_data = None
                       if data and method in ['POST', 'PATCH', 'PUT', 'DELETE']:
                           req_data = json.dumps(data).encode('utf-8')
-                      
+
                       request = urllib.request.Request(url, data=req_data, headers=headers, method=method)
                       with urllib.request.urlopen(request) as response:
                           response_body = response.read().decode('utf-8')
@@ -129,28 +129,28 @@ spec:
 
               for token_identifier, token_info in target_tokens.items():
                   print(f"\n=== Processing {token_info['outpost_name']} ===")
-                  
+
                   if token_identifier not in current_tokens:
                       print(f"Warning: Token {token_identifier} not found, skipping")
                       continue
-                  
+
                   current_token = current_tokens[token_identifier]
                   token_pk = current_token['pk']
-                  
+
                   print(f"Current token PK: {token_pk}")
                   print(f"Outpost ID: {token_info['outpost_id']}")
-                  
+
                   # Delete the current token
                   print("Deleting current token...")
                   delete_url = f'{authentik_host}/api/v3/core/tokens/{token_pk}/'
                   delete_result = make_request(delete_url, method='DELETE')
-                  
+
                   if delete_result is not None:
                       print("✓ Current token deleted successfully")
                   else:
                       print("✗ Failed to delete current token")
                       continue
-                  
+
                   # Create a new token for the outpost
                   print("Creating new token...")
                   create_data = {
@@ -160,16 +160,16 @@ spec:
                       'user': current_token['user'],  # Use same user as before
                       'expiring': False
                   }
-                  
+
                   create_url = f'{authentik_host}/api/v3/core/tokens/'
                   new_token = make_request(create_url, method='POST', data=create_data)
-                  
+
                   if new_token and 'key' in new_token:
                       token_key = new_token['key']
                       print(f"✓ New token created successfully")
                       print(f"  New PK: {new_token['pk']}")
                       print(f"  Token: {token_key[:20]}... (truncated)")
-                      
+
                       regenerated_tokens[token_identifier] = {
                           'outpost_id': token_info['outpost_id'],
                           'outpost_name': token_info['outpost_name'],

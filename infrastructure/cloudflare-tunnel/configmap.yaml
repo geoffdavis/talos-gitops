@@ -20,6 +20,6 @@ data:
           tlsTimeout: 10s
           keepAliveTimeout: 90s
           httpHostHeader: flux-webhook.geoffdavis.com
-      
+
       # Default rule - catch all
       - service: http_status:404

@@ -186,18 +186,18 @@ tasks:
 
         while [ $elapsed -lt $max_wait ]; do
           nodes_ready=0
-          
+
           for node_ip in {{.NODE_1_IP}} {{.NODE_2_IP}} {{.NODE_3_IP}}; do
             if  talosctl version --nodes "$node_ip" >/dev/null 2>&1; then
               nodes_ready=$((nodes_ready + 1))
             fi
           done
-          
+
           if [ $nodes_ready -eq 3 ]; then
             echo "✓ All nodes are ready for bootstrap"
             break
           fi
-          
+
           echo "Waiting for nodes to be ready... ($nodes_ready/3 ready)"
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))
@@ -262,14 +262,14 @@ tasks:
           # Try to get kubeconfig
           if  talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force >/dev/null 2>&1; then
             echo "✓ Kubeconfig retrieved successfully"
-            
+
             # Test cluster connectivity
             if  kubectl get nodes >/dev/null 2>&1; then
               echo "✓ Cluster is responding to kubectl commands"
               break
             fi
           fi
-          
+
           echo "Waiting for cluster to be ready... (${elapsed}s elapsed)"
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))

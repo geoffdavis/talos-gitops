@@ -79,7 +79,7 @@ spec:
                 local sql="$1"
                 local max_attempts=5
                 local attempt=1
-                
+
                 while [ $attempt -le $max_attempts ]; do
                   echo "Attempt $attempt: $sql"
                   if psql -c "$sql"; then
@@ -91,7 +91,7 @@ spec:
                     attempt=$((attempt + 1))
                   fi
                 done
-                
+
                 echo "Failed after $max_attempts attempts"
                 return 1
               }

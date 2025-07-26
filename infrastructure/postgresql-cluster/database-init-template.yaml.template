@@ -1,5 +1,5 @@
 # Reusable PostgreSQL Database Initialization Job Template
-# 
+#
 # This template creates a database and user for applications.
 # To use this template:
 # 1. Copy this file to your application's infrastructure directory
@@ -18,7 +18,10 @@
 # - {{DB_USER_SECRET}} -> authentik-database-credentials
 # - {{DB_USER_KEY}} -> AUTHENTIK_POSTGRESQL__USER
 # - {{DB_PASSWORD_KEY}} -> AUTHENTIK_POSTGRESQL__PASSWORD
+#
+# NOTE: This is a template file with placeholders. It should not be applied directly.
 
+---
 apiVersion: batch/v1
 kind: Job
 metadata:

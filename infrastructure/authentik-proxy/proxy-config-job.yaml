@@ -98,10 +98,10 @@ spec:
                 local data="${3:-}"
                 local max_retries=3
                 local retry_count=0
-                
+
                 while [ $retry_count -lt $max_retries ]; do
                   echo "API call attempt $((retry_count + 1))/$max_retries: $method $url"
-                  
+
                   if [ "$method" = "POST" ] && [ -n "$data" ]; then
                     response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
                       -X POST \
@@ -121,14 +121,14 @@ spec:
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                       "$url")
                   fi
-                  
+
                   echo "Response code: $response"
-                  
+
                   if [ "$response" = "200" ] || [ "$response" = "201" ]; then
                     echo "API call successful"
                     return 0
                   fi
-                  
+
                   retry_count=$((retry_count + 1))
                   if [ $retry_count -lt $max_retries ]; then
                     echo "API call failed with status $response, retrying in 5s..."
@@ -137,7 +137,7 @@ spec:
                     sleep 5
                   fi
                 done
-                
+
                 echo "ERROR: API call failed after $max_retries retries"
                 echo "Final response body:"
                 cat /tmp/api_response 2>/dev/null || echo "No response body available"
@@ -177,19 +177,19 @@ spec:
                 local external_host="$2"
                 local internal_host="$3"
                 local internal_port="$4"
-                
+
                 echo "=== Configuring $service_name ==="
-                
+
                 # Check if provider already exists
                 echo "Checking for existing $service_name proxy provider..."
                 if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/"; then
                   echo "Failed to check existing proxy providers"
                   return 1
                 fi
-                
+
                 PROVIDER_RESPONSE=$(cat /tmp/api_response)
                 PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o "\"name\":\"$service_name-proxy\"" || echo "")
-                
+
                 if [ -z "$PROVIDER_EXISTS" ]; then
                   echo "Creating $service_name proxy provider..."
                   PROVIDER_DATA="{
@@ -203,7 +203,7 @@ spec:
                     \"skip_path_regex\": \"^/api/.*$\",
                     \"basic_auth_enabled\": false
                   }"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "POST" "$PROVIDER_DATA"; then
                     PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                     echo "✓ Created $service_name proxy provider with PK: $PROVIDER_PK"
@@ -218,17 +218,17 @@ spec:
                   echo "Found existing provider with PK: $PROVIDER_PK"
                   PROVIDER_PKS="$PROVIDER_PKS,$PROVIDER_PK"
                 fi
-                
+
                 # Create application for the service
                 echo "Checking for existing $service_name application..."
                 if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
                   echo "Failed to check existing applications"
                   return 1
                 fi
-                
+
                 APP_RESPONSE=$(cat /tmp/api_response)
                 APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o "\"name\":\"$service_name\"" || echo "")
-                
+
                 if [ -z "$APP_EXISTS" ]; then
                   echo "Creating $service_name application..."
                   APP_DATA="{
@@ -239,7 +239,7 @@ spec:
                     \"meta_launch_url\": \"https://$external_host\",
                     \"policy_engine_mode\": \"any\"
                   }"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
                     echo "✓ Created $service_name application"
                   else
@@ -248,7 +248,7 @@ spec:
                 else
                   echo "✓ $service_name application already exists"
                 fi
-                
+
                 return 0
               }
 
@@ -274,14 +274,14 @@ spec:
 
               if [ -n "$OUTPOST_NAME" ]; then
                 echo "✓ Found external outpost: $OUTPOST_NAME"
-                
+
                 # Clean up PROVIDER_PKS (remove leading comma)
                 PROVIDER_PKS=$(echo "$PROVIDER_PKS" | sed 's/^,//')
-                
+
                 if [ -n "$PROVIDER_PKS" ]; then
                   echo "Updating external outpost with providers: [$PROVIDER_PKS]"
                   UPDATE_DATA="{\"providers\": [$PROVIDER_PKS]}"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/${OUTPOST_ID}/" "PATCH" "$UPDATE_DATA"; then
                     echo "✓ Updated external outpost with all proxy providers!"
                   else
@@ -300,6 +300,6 @@ spec:
 
               echo "=== Configuration Complete ==="
               echo "✓ All proxy providers created/verified"
-              echo "✓ All applications created/verified"  
+              echo "✓ All applications created/verified"
               echo "✓ External outpost configured with all providers"
               echo "✓ Services should now be accessible with Authentik authentication"

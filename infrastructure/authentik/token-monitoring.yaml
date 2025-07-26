@@ -101,12 +101,12 @@ spec:
             - -c
             - |
               set -euo pipefail
-              
+
               echo "Starting Authentik Token Metrics Exporter..."
-              
+
               # Install dependencies
               pip install --user requests prometheus_client pyyaml
-              
+
               # Start the metrics exporter
               python /app/token_exporter.py
           livenessProbe:
@@ -200,59 +200,59 @@ data:
     #!/usr/bin/env python3
     """
     Authentik Token Metrics Exporter
-    
+
     Exports Prometheus metrics for Authentik token status and health.
     """
-    
+
     import os
     import time
     import logging
     import subprocess
     from datetime import datetime, timedelta
     from prometheus_client import start_http_server, Gauge, Counter, Info
-    
+
     # Metrics
     token_expiry_days = Gauge(
         'authentik_token_expiry_days',
         'Days until token expires',
         ['token_id', 'user', 'description']
     )
-    
+
     token_status = Gauge(
         'authentik_token_status',
         'Token status (1=valid, 0=invalid/expired)',
         ['token_id', 'user', 'description']
     )
-    
+
     token_rotation_last = Gauge(
         'authentik_token_rotation_last_timestamp',
         'Timestamp of last token rotation'
     )
-    
+
     token_validation_errors = Counter(
         'authentik_token_validation_errors_total',
         'Total number of token validation errors'
     )
-    
+
     token_info = Info(
         'authentik_token_info',
         'Token information',
         ['token_id', 'user', 'description', 'created', 'expires']
     )
-    
+
     class TokenExporter:
         def __init__(self):
             self.namespace = os.getenv('NAMESPACE', 'authentik')
             self.scrape_interval = int(os.getenv('SCRAPE_INTERVAL', '30'))
             self.logger = self._setup_logging()
-            
+
         def _setup_logging(self):
             logging.basicConfig(
                 level=logging.INFO,
                 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             )
             return logging.getLogger(__name__)
-        
+
         def _run_kubectl_command(self, cmd):
             """Execute kubectl command and return output"""
             try:
@@ -266,7 +266,7 @@ data:
             except subprocess.CalledProcessError as e:
                 self.logger.error(f"kubectl command failed: {e}")
                 return False, e.stderr.strip()
-        
+
         def _get_token_metrics(self):
             """Get token metrics from Authentik"""
             try:
@@ -275,57 +275,57 @@ data:
                     "exec", "-n", self.namespace, "deployment/authentik-server", "--",
                     "ak", "shell", "-c",
                     """
-from authentik.core.models import User, Token
-from datetime import datetime
-import json
+                    from authentik.core.models import User, Token
+                    from datetime import datetime
+                    import json
 
-try:
-    user = User.objects.get(username='akadmin')
-    tokens = Token.objects.filter(user=user, intent='api')
-    
-    token_data = []
-    for token in tokens:
-        data = {
-            'key': token.key[:8] + '...',
-            'user': user.username,
-            'description': token.description,
-            'created': token.created.isoformat() if hasattr(token, 'created') else None,
-            'expires': token.expires.isoformat() if token.expires else None,
-            'days_remaining': (token.expires - datetime.now()).days if token.expires else None
-        }
-        token_data.append(data)
-    
-    print(json.dumps(token_data))
-except Exception as e:
-    print(f'ERROR: {e}')
+                    try:
+                        user = User.objects.get(username='akadmin')
+                        tokens = Token.objects.filter(user=user, intent='api')
+
+                        token_data = []
+                        for token in tokens:
+                            data = {
+                                'key': token.key[:8] + '...',
+                                'user': user.username,
+                                'description': token.description,
+                                'created': token.created.isoformat() if hasattr(token, 'created') else None,
+                                'expires': token.expires.isoformat() if token.expires else None,
+                                'days_remaining': (token.expires - datetime.now()).days if token.expires else None
+                            }
+                            token_data.append(data)
+
+                        print(json.dumps(token_data))
+                    except Exception as e:
+                        print(f'ERROR: {e}')
                     """
                 ])
-                
+
                 if success and not output.startswith('ERROR:'):
                     import json
                     return json.loads(output)
                 else:
                     self.logger.error(f"Failed to get token metrics: {output}")
                     return []
-                    
+
             except Exception as e:
                 self.logger.error(f"Error getting token metrics: {e}")
                 token_validation_errors.inc()
                 return []
-        
+
         def _update_metrics(self):
             """Update Prometheus metrics"""
             tokens = self._get_token_metrics()
-            
+
             # Clear existing metrics
             token_expiry_days.clear()
             token_status.clear()
-            
+
             for token in tokens:
                 token_id = token['key']
                 user = token['user']
                 description = token['description'] or 'Unknown'
-                
+
                 # Set expiry days metric
                 if token['days_remaining'] is not None:
                     token_expiry_days.labels(
@@ -333,7 +333,7 @@ except Exception as e:
                         user=user,
                         description=description
                     ).set(token['days_remaining'])
-                    
+
                     # Set status metric (1=valid, 0=expired)
                     status = 1 if token['days_remaining'] > 0 else 0
                 else:
@@ -344,13 +344,13 @@ except Exception as e:
                         description=description
                     ).set(999999)  # Large number for "never expires"
                     status = 1
-                
+
                 token_status.labels(
                     token_id=token_id,
                     user=user,
                     description=description
                 ).set(status)
-                
+
                 # Set token info
                 token_info.labels(
                     token_id=token_id,
@@ -365,16 +365,16 @@ except Exception as e:
                     'created': token['created'] or 'unknown',
                     'expires': token['expires'] or 'never'
                 })
-            
+
             self.logger.info(f"Updated metrics for {len(tokens)} tokens")
-        
+
         def run(self):
             """Main exporter loop"""
             self.logger.info(f"Starting token exporter on port {os.getenv('METRICS_PORT', '8080')}")
-            
+
             # Start Prometheus metrics server
             start_http_server(int(os.getenv('METRICS_PORT', '8080')))
-            
+
             while True:
                 try:
                     self._update_metrics()
@@ -386,7 +386,7 @@ except Exception as e:
                     self.logger.error(f"Error in exporter loop: {e}")
                     token_validation_errors.inc()
                     time.sleep(self.scrape_interval)
-    
+
     if __name__ == '__main__':
         exporter = TokenExporter()
         exporter.run()
@@ -415,7 +415,7 @@ spec:
             summary: "Authentik token expiring soon"
             description: "Token {{ $labels.token_id }} for user {{ $labels.user }} expires in {{ $value }} days"
             runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
-        
+
         - alert: AuthentikTokenExpiringSoonCritical
           expr: authentik_token_expiry_days < 30
           for: 30m
@@ -427,7 +427,7 @@ spec:
             summary: "Authentik token expiring very soon"
             description: "Token {{ $labels.token_id }} for user {{ $labels.user }} expires in {{ $value }} days - rotation needed"
             runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
-        
+
         - alert: AuthentikTokenExpired
           expr: authentik_token_status == 0
           for: 5m
@@ -439,7 +439,7 @@ spec:
             summary: "Authentik token has expired"
             description: "Token {{ $labels.token_id }} for user {{ $labels.user }} has expired"
             runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
-        
+
         - alert: AuthentikTokenValidationErrors
           expr: increase(authentik_token_validation_errors_total[5m]) > 0
           for: 2m
@@ -450,7 +450,7 @@ spec:
           annotations:
             summary: "Authentik token validation errors"
             description: "{{ $value }} token validation errors in the last 5 minutes"
-        
+
         - alert: AuthentikTokenExporterDown
           expr: up{job="authentik-token-exporter"} == 0
           for: 5m

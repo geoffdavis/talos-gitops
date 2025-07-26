@@ -83,12 +83,12 @@ tasks:
         while [ $elapsed -lt $max_wait ]; do
           cilium_pods_ready=$( kubectl get pods -n kube-system -l k8s-app=cilium --no-headers | grep -c "Running" || echo "0")
           cilium_pods_total=$( kubectl get pods -n kube-system -l k8s-app=cilium --no-headers | wc -l)
-          
+
           if [ "$cilium_pods_ready" -eq "$cilium_pods_total" ] && [ "$cilium_pods_total" -gt 0 ]; then
             echo "✓ All $cilium_pods_ready Cilium pods are ready"
             break
           fi
-          
+
           echo "Waiting for Cilium pods... ($cilium_pods_ready/$cilium_pods_total ready)"
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))
@@ -116,12 +116,12 @@ tasks:
 
         while [ $elapsed -lt $max_wait ]; do
           ready_nodes=$( kubectl get nodes --no-headers | grep -c "Ready" || echo "0")
-          
+
           if [ "$ready_nodes" -eq 3 ]; then
             echo "✓ All 3 nodes are Ready"
             break
           fi
-          
+
           echo "Waiting for nodes to be Ready... ($ready_nodes/3 ready)"
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))

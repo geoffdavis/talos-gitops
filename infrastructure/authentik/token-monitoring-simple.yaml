@@ -94,12 +94,12 @@ data:
     # Check if token secret exists
     if kubectl get secret authentik-radius-token -n authentik >/dev/null 2>&1; then
       echo "✓ Token secret exists"
-      
+
       # Check if token is not empty
       TOKEN=$(kubectl get secret authentik-radius-token -n authentik -o jsonpath='{.data.token}' | base64 -d)
       if [[ -n "$TOKEN" ]]; then
         echo "✓ Token is not empty"
-        
+
         # Try to validate token against Authentik API
         if kubectl exec -n authentik deployment/authentik-server -- \
            curl -f -s -H "Authorization: Bearer $TOKEN" \

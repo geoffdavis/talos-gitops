@@ -81,7 +81,7 @@ spec:
                 local data="${3:-}"
                 local max_retries=3
                 local retry_count=0
-                
+
                 while [ $retry_count -lt $max_retries ]; do
                   if [ "$method" = "POST" ] && [ -n "$data" ]; then
                     response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
@@ -95,18 +95,18 @@ spec:
                       -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                       "$url")
                   fi
-                  
+
                   if [ "$response" = "200" ] || [ "$response" = "201" ]; then
                     return 0
                   fi
-                  
+
                   retry_count=$((retry_count + 1))
                   echo "API call failed with status $response, retry $retry_count/$max_retries"
                   if [ $retry_count -lt $max_retries ]; then
                     sleep 5
                   fi
                 done
-                
+
                 echo "API call failed after $max_retries retries"
                 cat /tmp/api_response
                 return 1
@@ -145,7 +145,7 @@ spec:
                   "shared_secret": "radius-shared-secret-change-me",
                   "client_networks": "0.0.0.0/0,::/0"
                 }'
-                
+
                 if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/radius/" "POST" "$PROVIDER_DATA"; then
                   PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                   echo "Created RADIUS provider with PK: $PROVIDER_PK"
@@ -180,7 +180,7 @@ spec:
                   \"meta_description\": \"RADIUS authentication application\",
                   \"meta_publisher\": \"Authentik\"
                 }"
-                
+
                 if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
                   echo "RADIUS application created successfully!"
                   cat /tmp/api_response
@@ -227,7 +227,7 @@ spec:
                     \"kubernetes_image_pull_secrets\": []
                   }
                 }"
-                
+
                 if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/" "POST" "$OUTPOST_DATA"; then
                   echo "RADIUS outpost created successfully!"
                   cat /tmp/api_response

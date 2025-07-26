@@ -121,7 +121,7 @@ data:
 
     if [ -n "$LATEST_PROMETHEUS_SNAPSHOT" ]; then
         echo "Testing Prometheus snapshot restore: $LATEST_PROMETHEUS_SNAPSHOT"
-        
+
         # Create test PVC from snapshot
         cat <<EOF | kubectl apply -f -
         apiVersion: v1
@@ -144,11 +144,11 @@ data:
             apiGroup: snapshot.storage.k8s.io
             namespace: monitoring
     EOF
-        
+
         # Wait for PVC to be bound
         kubectl wait --for=condition=Bound pvc/test-prometheus-restore -n "$TEST_NAMESPACE" --timeout=300s
         echo "✓ Prometheus snapshot restore test successful"
-        
+
         # Cleanup test PVC
         kubectl delete pvc test-prometheus-restore -n "$TEST_NAMESPACE"
     else
@@ -157,7 +157,7 @@ data:
 
     if [ -n "$LATEST_GRAFANA_SNAPSHOT" ]; then
         echo "Testing Grafana snapshot restore: $LATEST_GRAFANA_SNAPSHOT"
-        
+
         # Create test PVC from snapshot
         cat <<EOF | kubectl apply -f -
         apiVersion: v1
@@ -180,11 +180,11 @@ data:
             apiGroup: snapshot.storage.k8s.io
             namespace: monitoring
     EOF
-        
+
         # Wait for PVC to be bound
         kubectl wait --for=condition=Bound pvc/test-grafana-restore -n "$TEST_NAMESPACE" --timeout=300s
         echo "✓ Grafana snapshot restore test successful"
-        
+
         # Cleanup test PVC
         kubectl delete pvc test-grafana-restore -n "$TEST_NAMESPACE"
     else

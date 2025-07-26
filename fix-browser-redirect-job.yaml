@@ -63,14 +63,14 @@ spec:
                   print('Getting current external outpost configuration...')
                   url = f'{authentik_host}/api/v3/outposts/instances/{EXTERNAL_OUTPOST_ID}/'
                   request = urllib.request.Request(url, headers=headers)
-                  
+
                   with urllib.request.urlopen(request) as response:
                       outpost_data = json.loads(response.read().decode('utf-8'))
-                  
+
                   current_config = outpost_data.get('config', {})
                   print(f'Current authentik_host: {current_config.get(\"authentik_host\", \"not set\")}')
                   print(f'Current authentik_host_browser: {current_config.get(\"authentik_host_browser\", \"not set\")}')
-                  
+
                   # Update configuration with correct external URLs
                   updated_config = {
                       **current_config,
@@ -81,25 +81,25 @@ spec:
                       'error_reporting': False,
                       'object_naming_template': 'ak-outpost-%(name)s'
                   }
-                  
+
                   update_data = {
                       'name': outpost_data['name'],
                       'type': outpost_data['type'],
                       'providers': outpost_data['providers'],
                       'config': updated_config
                   }
-                  
+
                   print('Updating outpost configuration with external URLs...')
                   req_data = json.dumps(update_data).encode('utf-8')
                   request = urllib.request.Request(url, data=req_data, headers=headers, method='PATCH')
-                  
+
                   with urllib.request.urlopen(request) as response:
                       result = json.loads(response.read().decode('utf-8'))
                       updated_config = result.get('config', {})
                       print('✓ Updated outpost configuration')
                       print(f'✓ authentik_host: {updated_config.get(\"authentik_host\", \"not set\")}')
                       print(f'✓ authentik_host_browser: {updated_config.get(\"authentik_host_browser\", \"not set\")}')
-                  
+
                   print('=== Browser redirect fix complete ===')
                   print('✓ External outpost now uses external URLs for browser redirects')
                   print('✓ Services should now redirect to https://authentik.k8s.home.geoffdavis.com')

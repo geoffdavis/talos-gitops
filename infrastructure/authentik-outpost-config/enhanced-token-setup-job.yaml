@@ -176,7 +176,7 @@ spec:
                   Token.objects.filter(user=user, intent='api').delete()
                   if old_count > 0:
                       print(f'✓ Cleaned up {old_count} old tokens')
-                  
+
                   # Create a new long-lived API token
                   token_key = secrets.token_hex(32)
                   token = Token.objects.create(
@@ -188,7 +188,7 @@ spec:
                       expiring=True
                   )
                   print(f'✓ Created new 1-year token: {token.key[:8]}...')
-                  
+
                   # Output token information for 1Password update
                   token_info = {
                       'token': token.key,
@@ -197,18 +197,18 @@ spec:
                       'description': token.description,
                       'user': user.username
                   }
-                  
+
                   # Output the token in base64 format for Kubernetes secret
                   token_b64 = base64.b64encode(token.key.encode()).decode()
                   print(f'✓ Token (base64): {token_b64}')
-                  
+
                   # Output JSON for 1Password
                   print(f'✓ Token Info JSON: {json.dumps(token_info, indent=2)}')
-                  
+
                   # Validate the token works
                   print('✓ Validating token...')
                   print('✓ Token validation: Token created and stored successfully')
-                  
+
               else:
                   print('✓ Valid long-term token already exists, skipping creation')
                   for token in valid_tokens:
@@ -260,11 +260,11 @@ spec:
               # Check if token info file exists
               if os.path.exists('/tmp/token_info.json'):
                   print("✓ Token information file found, using 1Password Connect API...")
-                  
+
                   # Read token information
                   with open('/tmp/token_info.json', 'r') as f:
                       token_data = json.load(f)
-                  
+
                   token = token_data['token']
                   expires = token_data['expires']
                   created = token_data['created']
@@ -272,45 +272,45 @@ spec:
                   user = token_data['user']
                   last_rotation = token_data.get('last_rotation', created)
                   rotation_status = token_data.get('rotation_status', 'active')
-                  
+
                   print('✓ Token information loaded from Authentik')
                   print('Updating 1Password item via Connect API: Authentik Admin Token')
-                  
+
                   # Get environment variables
                   connect_host = os.environ.get('OP_CONNECT_HOST')
                   connect_token = os.environ.get('OP_CONNECT_TOKEN')
-                  
+
                   if not connect_host or not connect_token:
                       print('✗ Missing 1Password Connect configuration')
                       sys.exit(1)
-                  
+
                   # Prepare headers
                   headers = {
                       'Authorization': f'Bearer {connect_token}',
                       'Content-Type': 'application/json'
                   }
-                  
+
                   # First, get all vaults to find the Automation vault ID
                   try:
                       req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
                       with urllib.request.urlopen(req) as response:
                           vaults = json.loads(response.read().decode())
-                      
+
                       automation_vault_id = None
                       for vault in vaults:
                           if vault['name'] == 'Automation':
                               automation_vault_id = vault['id']
                               break
-                      
+
                       if not automation_vault_id:
                           print('✗ Could not find Automation vault')
                           sys.exit(1)
-                      
+
                       print(f'✓ Found Automation vault: {automation_vault_id}')
                   except Exception as e:
                       print(f'✗ Failed to get vaults: {e}')
                       sys.exit(1)
-                  
+
                   # Check if item exists by searching for it
                   try:
                       # Properly URL encode the filter parameter
@@ -319,10 +319,10 @@ spec:
                       req = urllib.request.Request(search_url, headers=headers)
                       with urllib.request.urlopen(req) as response:
                           items = json.loads(response.read().decode())
-                      
+
                       item_exists = len(items) > 0
                       item_id = items[0]['id'] if item_exists else None
-                      
+
                       if item_exists:
                           print(f'✓ Item already exists with ID: {item_id}')
                           print('✓ Skipping creation to prevent duplicates (idempotent operation)')
@@ -332,7 +332,7 @@ spec:
                       print(f'✗ Failed to search for existing item: {e}')
                       item_exists = False
                       item_id = None
-                  
+
                   # Prepare item data with secondary token fields for rotation overlap
                   item_data = {
                       'title': 'Authentik Outpost Token - home-ops',
@@ -353,7 +353,7 @@ spec:
                           {'id': 'created_secondary', 'type': 'STRING', 'label': 'created_secondary', 'value': ''}
                       ]
                   }
-                  
+
                   try:
                       if item_exists and item_id:
                           # Update existing item with new token data

@@ -81,7 +81,7 @@ spec:
                       req_data = None
                       if data and method in ['POST', 'PATCH', 'PUT', 'DELETE']:
                           req_data = json.dumps(data).encode('utf-8')
-                      
+
                       request = urllib.request.Request(url, data=req_data, headers=headers, method=method)
                       with urllib.request.urlopen(request) as response:
                           response_body = response.read().decode('utf-8')
@@ -123,12 +123,12 @@ spec:
                       outpost_id = outpost['pk']
                       outpost_name = outpost['name']
                       providers = outpost.get('providers', [])
-                      
+
                       print(f"\nOutpost: {outpost_name}")
                       print(f"  ID: {outpost_id}")
                       print(f"  Providers: {len(providers)} assigned")
                       print(f"  Provider IDs: {providers}")
-                      
+
                       if outpost_id == "3f0970c5-d6a3-43b2-9a36-d74665c6b24e":
                           print(f"  → This is our TARGET external outpost")
                       elif outpost_id == "26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083":

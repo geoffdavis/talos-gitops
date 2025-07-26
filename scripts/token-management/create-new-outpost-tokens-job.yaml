@@ -77,7 +77,7 @@ spec:
                       req_data = None
                       if data and method in ['POST', 'PATCH', 'PUT', 'DELETE']:
                           req_data = json.dumps(data).encode('utf-8')
-                      
+
                       request = urllib.request.Request(url, data=req_data, headers=headers, method=method)
                       with urllib.request.urlopen(request) as response:
                           response_body = response.read().decode('utf-8')
@@ -129,7 +129,7 @@ spec:
 
               for outpost_id, outpost_info in target_outposts.items():
                   print(f"\n=== Creating Token for {outpost_info['outpost_name']} ===")
-                  
+
                   # Create a new API token for this outpost
                   create_data = {
                       'identifier': outpost_info['token_identifier'],
@@ -138,17 +138,17 @@ spec:
                       'user': admin_user_id,
                       'expiring': False
                   }
-                  
+
                   create_url = f'{authentik_host}/api/v3/core/tokens/'
                   new_token = make_request(create_url, method='POST', data=create_data)
-                  
+
                   if new_token and 'key' in new_token:
                       token_key = new_token['key']
                       print(f"✓ New token created successfully")
                       print(f"  Token PK: {new_token['pk']}")
                       print(f"  Token Identifier: {new_token['identifier']}")
                       print(f"  Token Key: {token_key[:20]}... (truncated)")
-                      
+
                       created_tokens[outpost_id] = {
                           'outpost_id': outpost_id,
                           'outpost_name': outpost_info['outpost_name'],

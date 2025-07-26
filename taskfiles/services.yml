@@ -88,7 +88,7 @@ tasks:
         # Try separate entries first (recommended approach)
         if  op document get "1Password Connect Credentials - home-ops" --vault="Automation" --out-file="$temp_dir/1password-credentials.json" 2>/dev/null; then
           echo "✓ Retrieved credentials from separate document entry"
-          
+
           # Get token from separate entry
           if  op item get "1Password Connect Token - home-ops" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
             token=$(jq -r '.value' "$temp_dir/op-token.json")
@@ -103,11 +103,11 @@ tasks:
         # Fallback to legacy entry
         elif  op item get "1password connect" --vault="Automation" >/dev/null 2>&1; then
           echo "⚠ Using legacy 1Password Connect entry"
-          
+
           # Get credentials field
           if  op item get "1password connect" --vault="Automation" --fields label=credentials --format json > "$temp_dir/op-credentials.json" 2>/dev/null; then
             credentials_content=$(jq -r '.value' "$temp_dir/op-credentials.json")
-            
+
             # Handle different encoding formats
             if echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d 2>/dev/null | jq . >/dev/null 2>&1; then
               echo "$credentials_content" | python3 -c "import sys, urllib.parse; print(urllib.parse.unquote(sys.stdin.read().strip()))" | base64 -d > "$temp_dir/1password-credentials.json"
@@ -116,14 +116,14 @@ tasks:
             else
               echo "$credentials_content" > "$temp_dir/1password-credentials.json"
             fi
-            
+
             echo "✓ Retrieved credentials from legacy entry"
           else
             echo "✗ Failed to retrieve credentials from legacy entry"
             rm -rf "$temp_dir"
             exit 1
           fi
-          
+
           # Get token field
           if  op item get "1password connect" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
             token=$(jq -r '.value' "$temp_dir/op-token.json")

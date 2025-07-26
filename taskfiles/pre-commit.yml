@@ -1,6 +1,6 @@
 # Pre-commit management tasks
 
-version: '3'
+version: "3"
 
 tasks:
   install:
@@ -8,36 +8,36 @@ tasks:
     cmds:
       - pre-commit install
       - pre-commit install --hook-type commit-msg
-    
+
   update:
     desc: Update pre-commit hooks
     cmds:
       - pre-commit autoupdate
       - pre-commit install
-    
+
   run:
     desc: Run pre-commit on all files
     cmds:
       - pre-commit run --all-files
-    
+
   run-manual:
     desc: Run manual/warning hooks on all files
     cmds:
       - pre-commit run --all-files --hook-stage manual
-    
+
   security-scan:
     desc: Run security-focused hooks only
     cmds:
       - pre-commit run detect-secrets --all-files
       - pre-commit run gitleaks --all-files
-    
+
   format:
     desc: Run formatting hooks (warnings)
     cmds:
       - pre-commit run prettier --all-files --hook-stage manual || true
       - pre-commit run black --all-files --hook-stage manual || true
       - pre-commit run isort --all-files --hook-stage manual || true
-    
+
   validate:
     desc: Run validation hooks only
     cmds:
@@ -45,12 +45,12 @@ tasks:
       - pre-commit run kubeval --all-files
       - pre-commit run shellcheck --all-files
       - pre-commit run check-ast --all-files
-    
+
   clean:
     desc: Clean pre-commit cache
     cmds:
       - pre-commit clean
-    
+
   baseline:
     desc: Update secrets baseline
     cmds:

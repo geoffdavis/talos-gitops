@@ -86,17 +86,17 @@ spec:
                   req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
                   with urllib.request.urlopen(req) as response:
                       vaults = json.loads(response.read().decode())
-                  
+
                   automation_vault_id = None
                   for vault in vaults:
                       if vault['name'] == 'Automation':
                           automation_vault_id = vault['id']
                           break
-                  
+
                   if not automation_vault_id:
                       print('✗ Could not find Automation vault')
                       sys.exit(1)
-                  
+
                   print(f'✓ Found Automation vault: {automation_vault_id}')
               except Exception as e:
                   print(f'✗ Failed to get vaults: {e}')
@@ -110,21 +110,21 @@ spec:
                   req = urllib.request.Request(search_url, headers=headers)
                   with urllib.request.urlopen(req) as response:
                       items = json.loads(response.read().decode())
-                  
+
                   print(f'✓ Found {len(items)} items with name \"Authentik Outpost Token - home-ops\"')
-                  
+
                   if len(items) <= 1:
                       print('✓ No duplicates found, cleanup not needed')
                       sys.exit(0)
-                  
+
                   # Sort items by creation date (keep the newest one)
                   items_sorted = sorted(items, key=lambda x: x.get('createdAt', ''), reverse=True)
                   keep_item = items_sorted[0]
                   delete_items = items_sorted[1:]
-                  
+
                   print(f'✓ Keeping newest item: {keep_item[\"id\"]} (created: {keep_item.get(\"createdAt\", \"unknown\")})')
                   print(f'✓ Will delete {len(delete_items)} duplicate items')
-                  
+
                   # Delete duplicate items
                   for item in delete_items:
                       try:
@@ -135,9 +135,9 @@ spec:
                           print(f'✓ Deleted duplicate item: {item[\"id\"]} (created: {item.get(\"createdAt\", \"unknown\")})')
                       except Exception as e:
                           print(f'✗ Failed to delete item {item[\"id\"]}: {e}')
-                  
+
                   print('✓ Duplicate cleanup completed successfully')
-                  
+
               except Exception as e:
                   print(f'✗ Failed to search for items: {e}')
                   sys.exit(1)

@@ -24,7 +24,7 @@ data:
         local metric_name=$1
         local metric_value=$2
         local labels=$3
-        
+
         cat <<EOF | curl -X POST --data-binary @- "${PROMETHEUS_GATEWAY}/metrics/job/backup-verification/instance/$(hostname)"
     # HELP ${metric_name} Backup verification metric
     # TYPE ${metric_name} gauge

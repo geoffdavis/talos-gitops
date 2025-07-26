@@ -95,7 +95,7 @@ spec:
                       print(f"  Intent: {token.get('intent', 'N/A')}")
                       print(f"  Expiring: {token.get('expiring', 'N/A')}")
                       print(f"  Expires: {token.get('expires', 'N/A')}")
-                      
+
                       # Check if key field exists
                       if 'key' in token:
                           key = token['key']
@@ -105,7 +105,7 @@ spec:
                               print(f"  Key: EMPTY")
                       else:
                           print(f"  Key: FIELD NOT PRESENT")
-                      
+
                       # Print all fields for debugging
                       print(f"  All fields: {list(token.keys())}")
 
@@ -120,11 +120,11 @@ spec:
                       print(f"  Name: {outpost.get('name', 'N/A')}")
                       print(f"  Type: {outpost.get('type', 'N/A')}")
                       print(f"  Providers: {outpost.get('providers', [])}")
-                      
+
                       # Check if there's a token_identifier field
                       if 'token_identifier' in outpost:
                           print(f"  Token Identifier: {outpost['token_identifier']}")
-                      
+
                       # Print all fields for debugging
                       print(f"  All fields: {list(outpost.keys())}")
 

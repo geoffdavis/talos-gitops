@@ -315,15 +315,15 @@ data:
             # Get the most recent enhanced token setup job by name pattern
             cmd = "kubectl get jobs -n authentik -o jsonpath='{.items[?(@.metadata.name==\"authentik-enhanced-token-setup\")].metadata.name}'"
             job_name = run_command(cmd)
-            
+
             if not job_name:
                 print("No enhanced token setup job found")
                 return None
-            
+
             # Get the logs from the job
             cmd = f"kubectl logs job/{job_name} -n authentik"
             logs = run_command(cmd)
-            
+
             # Extract token from logs
             for line in logs.split('\n'):
                 if 'Token (base64):' in line:
@@ -332,10 +332,10 @@ data:
                     import base64
                     token = base64.b64decode(token_b64).decode()
                     return token
-                    
+
             print("Token not found in job logs")
             return None
-            
+
         except Exception as e:
             print(f"Error getting current token: {e}")
             return None
@@ -345,18 +345,18 @@ data:
         try:
             # Use kubectl to get the 1Password Connect service
             connect_url = "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080"
-            
+
             # Get the connect token from the secret
             cmd = "kubectl get secret onepassword-connect-token -n onepassword-connect -o jsonpath='{.data.token}' | base64 -d"
             connect_token = run_command(cmd)
-            
+
             if not connect_token:
                 print("Could not get 1Password Connect token")
                 return False
-            
+
             # Update the item using curl (since requests isn't available yet)
             item_id = "Authentik Admin Token"
-            
+
             # Create the update payload
             update_data = {
                 "fields": [
@@ -366,21 +366,21 @@ data:
                     }
                 ]
             }
-            
+
             # Write the data to a temp file
             with open('/tmp/update_data.json', 'w') as f:
                 json.dump(update_data, f)
-            
+
             # Use curl to update the item
             cmd = f"""curl -s -X PATCH "{connect_url}/v1/vaults/homelab/items/{item_id}" \
                 -H "Authorization: Bearer {connect_token}" \
                 -H "Content-Type: application/json" \
                 -d @/tmp/update_data.json"""
-            
+
             result = run_command(cmd)
             print(f"1Password update result: {result}")
             return True
-            
+
         except Exception as e:
             print(f"Error updating 1Password: {e}")
             return False
@@ -400,15 +400,15 @@ data:
     def rotate_tokens(overlap_days=30):
         """Rotate tokens by updating 1Password with current token"""
         print("Starting token rotation...")
-        
+
         # Get current token
         token = get_current_token()
         if not token:
             print("Could not get current token")
             return False
-        
+
         print(f"Found token: {token[:8]}...")
-        
+
         # Update 1Password
         if update_onepassword(token):
             print("Successfully updated 1Password with new token")
@@ -422,9 +422,9 @@ data:
         parser.add_argument('command', choices=['list', 'rotate'], help='Command to execute')
         parser.add_argument('--json', action='store_true', help='Output in JSON format')
         parser.add_argument('--overlap-days', type=int, default=30, help='Overlap days for rotation')
-        
+
         args = parser.parse_args()
-        
+
         if args.command == 'list':
             tokens = list_tokens()
             if args.json:
@@ -432,7 +432,7 @@ data:
             else:
                 for token in tokens:
                     print(f"Token: {token['key']}, Days remaining: {token['days_remaining']}")
-        
+
         elif args.command == 'rotate':
             success = rotate_tokens(args.overlap_days)
             sys.exit(0 if success else 1)

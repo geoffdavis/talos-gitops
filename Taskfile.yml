@@ -910,15 +910,15 @@ tasks:
           RESET_SUCCESS=true
         else
           echo "Simultaneous reset failed, trying individual resets..."
-          
+
           # Parse nodes and reset individually
           NODES_LIST=$(echo "$RESET_NODES" | tr ',' ' ')
           INDIVIDUAL_SUCCESS=0
           TOTAL_NODES=$(echo $NODES_LIST | wc -w)
-          
+
           for node in $NODES_LIST; do
             echo "Resetting node $node (SAFE - partitions only)..."
-            
+
             # Try with talosconfig first (with --wait=false for authenticated mode)
             if mise exec -- talosctl reset --nodes $node --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
               echo "✅ Reset command sent to $node (authenticated)"
@@ -938,7 +938,7 @@ tasks:
             fi
             sleep 5
           done
-          
+
           if [ $INDIVIDUAL_SUCCESS -gt 0 ]; then
             echo "✅ Reset commands sent to $INDIVIDUAL_SUCCESS/$TOTAL_NODES nodes"
             RESET_SUCCESS=true
@@ -978,20 +978,20 @@ tasks:
 
         while [ $elapsed -lt $max_wait ]; do
           nodes_online=0
-          
+
           for node_ip in $NODES_LIST; do
             if ping -c 1 -W 2 "$node_ip" >/dev/null 2>&1; then
               nodes_online=$((nodes_online + 1))
             fi
           done
-          
+
           echo "Nodes online: $nodes_online/3 (${elapsed}s elapsed)"
-          
+
           if [ $nodes_online -eq 3 ]; then
             echo "✅ All nodes are back online"
             break
           fi
-          
+
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))
         done
@@ -1015,12 +1015,12 @@ tasks:
 
         for node_ip in $NODES_LIST; do
           echo "Checking node $node_ip..."
-          
+
           # Try to connect with insecure mode (expected for maintenance mode)
           if mise exec -- talosctl version --insecure --nodes $node_ip >/dev/null 2>&1; then
             echo "  ✅ Node $node_ip is accessible (maintenance mode)"
             NODES_IN_MAINTENANCE=$((NODES_IN_MAINTENANCE + 1))
-            
+
             # Check if it's actually in maintenance mode (no cluster config)
             if ! mise exec -- talosctl get machineconfig --insecure --nodes $node_ip >/dev/null 2>&1; then
               echo "  ✅ Node $node_ip confirmed in maintenance mode (no cluster config)"

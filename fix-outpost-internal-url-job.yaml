@@ -113,9 +113,9 @@ spec:
                       req_data = None
                       if data and method in ['POST', 'PATCH', 'PUT']:
                           req_data = json.dumps(data).encode('utf-8')
-                      
+
                       request = urllib.request.Request(url, data=req_data, headers=headers, method=method)
-                      
+
                       with urllib.request.urlopen(request) as response:
                           status_code = response.getcode()
                           response_body = response.read().decode('utf-8')
@@ -139,20 +139,20 @@ spec:
                   authentik_host = os.environ.get('AUTHENTIK_HOST')
                   authentik_token = os.environ.get('AUTHENTIK_TOKEN')
                   external_outpost_id = os.environ.get('EXTERNAL_OUTPOST_ID')
-                  
+
                   if not all([authentik_host, authentik_token, external_outpost_id]):
                       print("ERROR: Missing required environment variables")
                       return 1
-                  
+
                   headers = {
                       'Authorization': f'Bearer {authentik_token}',
                       'Content-Type': 'application/json'
                   }
-                  
+
                   print("=== Fixing External Outpost Internal URL ===")
                   print(f"Authentik Host: {authentik_host}")
                   print(f"External Outpost ID: {external_outpost_id}")
-                  
+
                   # 1. Test authentication
                   print("\n=== Authentication Test ===")
                   status_code, response = make_api_request(f"{authentik_host}/api/v3/core/users/me/", headers)
@@ -161,38 +161,38 @@ spec:
                   else:
                       print(f"✗ Authentication failed: {status_code}")
                       return 1
-                  
+
                   # 2. Get current outpost configuration
                   print("\n=== Getting Current Outpost Configuration ===")
                   url = f"{authentik_host}/api/v3/outposts/instances/{external_outpost_id}/"
                   status_code, outpost_data = make_api_request(url, headers)
-                  
+
                   if status_code != 200:
                       print(f"✗ Failed to get outpost configuration: {status_code}")
                       return 1
-                  
+
                   print(f"✓ Found outpost: {outpost_data.get('name')}")
                   current_config = outpost_data.get('config', {})
                   current_internal_url = current_config.get('authentik_host', 'not set')
                   current_browser_url = current_config.get('authentik_host_browser', 'not set')
-                  
+
                   print(f"Current Internal URL: {current_internal_url}")
                   print(f"Current Browser URL: {current_browser_url}")
-                  
+
                   # 3. Check if fix is needed
                   correct_internal_url = "http://authentik-server.authentik.svc.cluster.local:80"
                   correct_browser_url = "https://authentik.k8s.home.geoffdavis.com"
-                  
-                  if (current_internal_url == correct_internal_url and 
+
+                  if (current_internal_url == correct_internal_url and
                       current_browser_url == correct_browser_url):
                       print("✓ Outpost configuration is already correct!")
                       return 0
-                  
+
                   # 4. Update outpost configuration
                   print("\n=== Updating Outpost Configuration ===")
                   print(f"Setting Internal URL to: {correct_internal_url}")
                   print(f"Setting Browser URL to: {correct_browser_url}")
-                  
+
                   # Update the configuration with correct URLs
                   updated_config = {
                       **current_config,
@@ -203,22 +203,22 @@ spec:
                       "error_reporting": False,
                       "object_naming_template": "ak-outpost-%(name)s"
                   }
-                  
+
                   update_data = {
                       "name": outpost_data['name'],
                       "type": outpost_data['type'],
                       "providers": outpost_data['providers'],  # Keep existing providers
                       "config": updated_config
                   }
-                  
+
                   status_code, response = make_api_request(url, headers, method='PATCH', data=update_data)
-                  
+
                   if status_code == 200:
                       print("✓ Successfully updated outpost configuration")
                       print("✓ Internal URL now points to cluster DNS")
                       print("✓ Browser URL points to external domain")
                       print("✓ Authentication should now work correctly")
-                      
+
                       # Verify the update
                       print("\n=== Verifying Update ===")
                       status_code, updated_outpost = make_api_request(url, headers)
@@ -226,7 +226,7 @@ spec:
                           updated_config = updated_outpost.get('config', {})
                           print(f"Verified Internal URL: {updated_config.get('authentik_host')}")
                           print(f"Verified Browser URL: {updated_config.get('authentik_host_browser')}")
-                      
+
                       return 0
                   else:
                       print(f"✗ Failed to update outpost configuration: {status_code}")

@@ -92,12 +92,12 @@ tasks:
         while [ $elapsed -lt $max_wait ]; do
           flux_pods_ready=$( kubectl get pods -n flux-system --no-headers | grep -c "Running" || echo "0")
           flux_pods_total=$( kubectl get pods -n flux-system --no-headers | wc -l)
-          
+
           if [ "$flux_pods_ready" -eq "$flux_pods_total" ] && [ "$flux_pods_total" -gt 0 ]; then
             echo "✓ All $flux_pods_ready Flux pods are ready"
             break
           fi
-          
+
           echo "Waiting for Flux pods... ($flux_pods_ready/$flux_pods_total ready)"
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))

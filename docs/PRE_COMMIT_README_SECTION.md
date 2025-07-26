@@ -34,6 +34,7 @@ pre-commit install --hook-type commit-msg
 ### Hook Categories
 
 #### 🚫 ENFORCED (Blocks commits)
+
 - 🔒 **Secret detection** (detect-secrets, gitleaks)
 - 📋 **YAML syntax** (yamllint)
 - ☸️ **Kubernetes validation** (kubeval, kustomize)
@@ -44,6 +45,7 @@ pre-commit install --hook-type commit-msg
 - 🔤 **File encoding** issues
 
 #### ⚠️ WARNING (Allows commits)
+
 - 💅 **Code formatting** (prettier, black, isort)
 - 🐍 **Python linting** (flake8)
 - 📝 **Markdown style** (prettier)
@@ -87,19 +89,21 @@ SKIP=detect-secrets,gitleaks git commit -m "skip security hooks"
 After the [security incident](SECURITY_INCIDENT_REPORT.md), these hooks provide critical protection:
 
 - **🔒 Multi-layer secret detection** prevents credential commits
-- **📏 File size limits** prevent accidental large file commits  
+- **📏 File size limits** prevent accidental large file commits
 - **🐚 Shell script security** catches dangerous patterns
 - **☸️ Infrastructure validation** ensures valid Kubernetes manifests
 
 ### Troubleshooting
 
 #### Hook Installation Issues
+
 ```bash
 pre-commit uninstall && pre-commit install
 pre-commit install --hook-type commit-msg
 ```
 
 #### Performance Issues
+
 ```bash
 # Clear cache
 pre-commit clean
@@ -109,6 +113,7 @@ SKIP=kubeval,pytest-critical pre-commit run --all-files
 ```
 
 #### False Positives in Secret Detection
+
 ```bash
 # Update secrets baseline
 detect-secrets scan --baseline .secrets.baseline
@@ -160,7 +165,7 @@ Add these tools and tasks to the existing `.mise.toml`:
 ```toml
 # Pre-commit tools
 pre-commit = "latest"
-detect-secrets = "latest"
+detect-secrets = "latest"  # pragma: allowlist secret
 gitleaks = "latest"
 shellcheck = "latest"
 markdownlint-cli = "latest"
@@ -189,6 +194,7 @@ run = """
 ## Implementation Checklist
 
 ### Phase 1: Core Setup (Immediate)
+
 - [ ] Create `.pre-commit-config.yaml` from implementation plan
 - [ ] Create `.yamllint.yaml` configuration
 - [ ] Create `.markdownlint.yaml` configuration
@@ -197,6 +203,7 @@ run = """
 - [ ] Install pre-commit framework: `mise install pre-commit`
 
 ### Phase 2: Security Focus (Day 1)
+
 - [ ] Install security tools: `mise install detect-secrets gitleaks`
 - [ ] Create initial secrets baseline: `detect-secrets scan --baseline .secrets.baseline`
 - [ ] Test secret detection with fake credentials
@@ -204,6 +211,7 @@ run = """
 - [ ] Fix any detected issues
 
 ### Phase 3: Validation Setup (Day 2)
+
 - [ ] Install validation tools: `mise install shellcheck markdownlint-cli`
 - [ ] Create `taskfiles/pre-commit.yml` with management tasks
 - [ ] Update main `Taskfile.yml` to include pre-commit tasks
@@ -211,6 +219,7 @@ run = """
 - [ ] Test shell script and Python validation
 
 ### Phase 4: Integration (Day 3)
+
 - [ ] Install hooks: `pre-commit install && pre-commit install --hook-type commit-msg`
 - [ ] Run full validation: `pre-commit run --all-files`
 - [ ] Fix any validation failures
@@ -218,6 +227,7 @@ run = """
 - [ ] Update README.md with workflow documentation
 
 ### Phase 5: Team Rollout (Week 1)
+
 - [ ] Document troubleshooting procedures
 - [ ] Create team training materials
 - [ ] Test performance with large changesets
@@ -227,18 +237,21 @@ run = """
 ## Success Metrics
 
 ### Security Improvements
+
 - ✅ Zero credential commits after implementation
 - ✅ All shell scripts pass security validation
 - ✅ No large files accidentally committed
 - ✅ All team members using hooks consistently
 
 ### Quality Improvements
+
 - ✅ Consistent YAML formatting across manifests
 - ✅ Valid Kubernetes manifests in all commits
 - ✅ Python code meets basic quality standards
 - ✅ Documentation follows markdown standards
 
 ### Developer Experience
+
 - ✅ Commit process remains fast (< 10 seconds typical)
 - ✅ Clear error messages for blocked commits
 - ✅ Easy bypass for emergency situations
@@ -247,17 +260,20 @@ run = """
 ## Maintenance
 
 ### Weekly Tasks
+
 - [ ] Review any new false positives in secret detection
 - [ ] Check for pre-commit hook updates: `task pre-commit:update`
 - [ ] Monitor hook performance and adjust if needed
 
 ### Monthly Tasks
+
 - [ ] Review and update `.secrets.baseline` if needed
 - [ ] Audit bypassed commits for patterns
 - [ ] Update hook configurations based on team feedback
 - [ ] Review security scan results and trends
 
 ### Quarterly Tasks
+
 - [ ] Full security audit of hook effectiveness
 - [ ] Performance optimization review
 - [ ] Team feedback collection and process improvements

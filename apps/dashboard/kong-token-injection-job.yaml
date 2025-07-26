@@ -138,28 +138,28 @@ spec:
                 - /api
                 strip_path: false
                 preserve_host: true
-                
+
               - name: dashboard-web-route
                 service: dashboard-web
                 paths:
                 - /
                 strip_path: false
                 preserve_host: true
-                
+
               - name: dashboard-auth-login
                 service: dashboard-auth
                 paths:
                 - /api/v1/login
                 strip_path: false
                 preserve_host: true
-                
+
               - name: dashboard-auth-csrf
                 service: dashboard-auth
                 paths:
                 - /api/v1/csrftoken/login
                 strip_path: false
                 preserve_host: true
-                
+
               - name: dashboard-auth-me
                 service: dashboard-auth
                 paths:

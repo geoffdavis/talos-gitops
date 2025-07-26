@@ -7,14 +7,17 @@ This document provides a comprehensive plan for implementing pre-commit hooks in
 ## Implementation Strategy
 
 ### Philosophy: Balanced Enforcement
+
 - **ENFORCED (Blocks commits)**: Security issues, syntax errors, critical validation failures
 - **WARNING (Allows commits)**: Formatting issues, style violations, non-critical linting
 
 ### File Types Analysis
+
 Based on repository analysis, we need to handle:
+
 - **YAML files**: Kubernetes manifests, Helm charts, Flux configurations
 - **Python scripts**: Authentication management, token management, testing
-- **Shell scripts**: Bootstrap, deployment, validation scripts  
+- **Shell scripts**: Bootstrap, deployment, validation scripts
 - **Markdown files**: Extensive documentation
 - **Configuration files**: Taskfile, mise, gitignore, etc.
 
@@ -30,14 +33,14 @@ repos:
   # ============================================================================
   # SECURITY HOOKS (ENFORCED - CRITICAL)
   # ============================================================================
-  
+
   # Secret detection - CRITICAL after security incident
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:
       - id: detect-secrets
         name: 🔒 Detect secrets
-        args: ['--baseline', '.secrets.baseline']
+        args: ["--baseline", ".secrets.baseline"]
         exclude: |
           (?x)^(
             \.git/.*|
@@ -56,14 +59,14 @@ repos:
   # ============================================================================
   # YAML VALIDATION (ENFORCED)
   # ============================================================================
-  
+
   # YAML syntax validation - ENFORCED
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.32.0
     hooks:
       - id: yamllint
         name: 📋 YAML syntax check
-        args: ['-c', '.yamllint.yaml']
+        args: ["-c", ".yamllint.yaml"]
         types: [yaml]
 
   # YAML formatting - WARNING ONLY
@@ -73,7 +76,7 @@ repos:
       - id: prettier
         name: 💅 YAML formatting (warning)
         types: [yaml]
-        args: ['--check']
+        args: ["--check"]
         verbose: true
         # Allow failure but show warnings
         stages: [manual]
@@ -81,7 +84,7 @@ repos:
   # ============================================================================
   # KUBERNETES VALIDATION (ENFORCED)
   # ============================================================================
-  
+
   # Kubernetes manifest validation
   - repo: https://github.com/instrumenta/kubeval
     rev: v0.16.1
@@ -94,7 +97,7 @@ repos:
             apps/.*\.yaml$|
             clusters/.*\.yaml$
           )
-        args: ['--strict', '--ignore-missing-schemas']
+        args: ["--strict", "--ignore-missing-schemas"]
 
   # Kustomize validation
   - repo: local
@@ -109,7 +112,7 @@ repos:
   # ============================================================================
   # PYTHON VALIDATION
   # ============================================================================
-  
+
   # Python syntax check - ENFORCED
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
@@ -123,7 +126,7 @@ repos:
     hooks:
       - id: isort
         name: 🐍 Python import sorting (warning)
-        args: ['--check-only', '--diff']
+        args: ["--check-only", "--diff"]
         stages: [manual]
 
   # Python code formatting - WARNING
@@ -132,7 +135,7 @@ repos:
     hooks:
       - id: black
         name: 🐍 Python formatting (warning)
-        args: ['--check', '--diff']
+        args: ["--check", "--diff"]
         stages: [manual]
 
   # Python linting - WARNING
@@ -141,7 +144,7 @@ repos:
     hooks:
       - id: flake8
         name: 🐍 Python linting (warning)
-        args: ['--max-line-length=88', '--extend-ignore=E203,W503']
+        args: ["--max-line-length=88", "--extend-ignore=E203,W503"]
         stages: [manual]
 
   # Python tests - ENFORCED for critical scripts
@@ -157,26 +160,26 @@ repos:
   # ============================================================================
   # SHELL SCRIPT VALIDATION (ENFORCED)
   # ============================================================================
-  
+
   # Shell script linting - ENFORCED for security
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.9.0.5
     hooks:
       - id: shellcheck
         name: 🐚 Shell script validation
-        args: ['-e', 'SC1091,SC2034']  # Ignore source and unused vars
+        args: ["-e", "SC1091,SC2034"] # Ignore source and unused vars
 
   # ============================================================================
   # MARKDOWN VALIDATION
   # ============================================================================
-  
+
   # Markdown linting - Basic checks ENFORCED
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.37.0
     hooks:
       - id: markdownlint
         name: 📝 Markdown basic checks
-        args: ['--config', '.markdownlint.yaml']
+        args: ["--config", ".markdownlint.yaml"]
 
   # Markdown formatting - WARNING
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -185,36 +188,36 @@ repos:
       - id: prettier
         name: 📝 Markdown formatting (warning)
         types: [markdown]
-        args: ['--check']
+        args: ["--check"]
         stages: [manual]
 
   # ============================================================================
   # GENERAL FILE CHECKS (ENFORCED)
   # ============================================================================
-  
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
       # File size check - ENFORCED for security
       - id: check-added-large-files
         name: 📏 Large file check
-        args: ['--maxkb=1024']
-      
+        args: ["--maxkb=1024"]
+
       # Encoding check - ENFORCED
       - id: check-byte-order-marker
         name: 🔤 Byte order marker check
-      
+
       # Line ending consistency - ENFORCED
       - id: mixed-line-ending
         name: 📄 Line ending check
-        args: ['--fix=lf']
-      
+        args: ["--fix=lf"]
+
       # Trailing whitespace - WARNING
       - id: trailing-whitespace
         name: 🧹 Trailing whitespace (warning)
         stages: [manual]
-      
-      # End of file newline - WARNING  
+
+      # End of file newline - WARNING
       - id: end-of-file-fixer
         name: 📄 End of file newline (warning)
         stages: [manual]
@@ -222,7 +225,7 @@ repos:
   # ============================================================================
   # COMMIT MESSAGE VALIDATION (WARNING)
   # ============================================================================
-  
+
   # Conventional commits - WARNING
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v2.4.0
@@ -263,28 +266,28 @@ extends: default
 
 rules:
   # ENFORCED RULES (syntax and security)
-  document-start: disable  # Not required for K8s manifests
-  document-end: disable    # Not required for K8s manifests
-  
+  document-start: disable # Not required for K8s manifests
+  document-end: disable # Not required for K8s manifests
+
   # Line length - WARNING (common in K8s manifests)
   line-length:
     max: 120
     level: warning
-  
+
   # Indentation - ENFORCED for consistency
   indentation:
     spaces: 2
     indent-sequences: true
     check-multi-line-strings: false
-  
+
   # Comments - WARNING
   comments:
     min-spaces-from-content: 1
     level: warning
-  
+
   # Truthy values - WARNING (K8s uses 'true'/'false')
   truthy:
-    allowed-values: ['true', 'false', 'yes', 'no']
+    allowed-values: ["true", "false", "yes", "no"]
     level: warning
 
 # Ignore patterns
@@ -303,23 +306,23 @@ ignore: |
 # Basic checks enforced, style as warnings
 
 # Disable style-only rules (warnings handled separately)
-MD013: false  # Line length
-MD033: false  # HTML tags (needed for some docs)
-MD041: false  # First line heading (not always needed)
+MD013: false # Line length
+MD033: false # HTML tags (needed for some docs)
+MD041: false # First line heading (not always needed)
 
 # Enforce basic structure
-MD001: true   # Heading levels
-MD003: true   # Heading style
-MD022: true   # Headings surrounded by blank lines
-MD025: true   # Single title
-MD032: true   # Lists surrounded by blank lines
+MD001: true # Heading levels
+MD003: true # Heading style
+MD022: true # Headings surrounded by blank lines
+MD025: true # Single title
+MD032: true # Lists surrounded by blank lines
 
 # Enforce link validity
-MD034: true   # Bare URLs
-MD039: true   # Spaces in link text
+MD034: true # Bare URLs
+MD039: true # Spaces in link text
 
 # Code block formatting
-MD040: true   # Fenced code blocks language
+MD040: true # Fenced code blocks language
 ```
 
 ### 4. Secrets Baseline (`.secrets.baseline`)
@@ -410,7 +413,7 @@ MD040: true   # Fenced code blocks language
 ```yaml
 # Pre-commit management tasks
 
-version: '3'
+version: "3"
 
 tasks:
   install:
@@ -418,36 +421,36 @@ tasks:
     cmds:
       - pre-commit install
       - pre-commit install --hook-type commit-msg
-    
+
   update:
     desc: Update pre-commit hooks
     cmds:
       - pre-commit autoupdate
       - pre-commit install
-    
+
   run:
     desc: Run pre-commit on all files
     cmds:
       - pre-commit run --all-files
-    
+
   run-manual:
     desc: Run manual/warning hooks on all files
     cmds:
       - pre-commit run --all-files --hook-stage manual
-    
+
   security-scan:
     desc: Run security-focused hooks only
     cmds:
       - pre-commit run detect-secrets --all-files
       - pre-commit run gitleaks --all-files
-    
+
   format:
     desc: Run formatting hooks (warnings)
     cmds:
       - pre-commit run prettier --all-files --hook-stage manual || true
       - pre-commit run black --all-files --hook-stage manual || true
       - pre-commit run isort --all-files --hook-stage manual || true
-    
+
   validate:
     desc: Run validation hooks only
     cmds:
@@ -455,12 +458,12 @@ tasks:
       - pre-commit run kubeval --all-files
       - pre-commit run shellcheck --all-files
       - pre-commit run check-ast --all-files
-    
+
   clean:
     desc: Clean pre-commit cache
     cmds:
       - pre-commit clean
-    
+
   baseline:
     desc: Update secrets baseline
     cmds:
@@ -474,7 +477,7 @@ tasks:
 
 # Pre-commit tools
 pre-commit = "latest"
-detect-secrets = "latest"
+detect-secrets = "latest"  # pragma: allowlist secret
 gitleaks = "latest"
 shellcheck = "latest"
 markdownlint-cli = "latest"
@@ -574,6 +577,7 @@ echo "  • Commit your changes to test the hooks"
 ### Hook Categories
 
 #### ENFORCED (Blocks commits)
+
 - 🔒 Secret detection (detect-secrets, gitleaks)
 - 📋 YAML syntax (yamllint)
 - ☸️ Kubernetes validation (kubeval, kustomize)
@@ -584,6 +588,7 @@ echo "  • Commit your changes to test the hooks"
 - 🔤 File encoding issues
 
 #### WARNING (Allows commits)
+
 - 💅 Code formatting (prettier, black, isort)
 - 🐍 Python linting (flake8)
 - 📝 Markdown style
@@ -593,12 +598,14 @@ echo "  • Commit your changes to test the hooks"
 ## Security Considerations
 
 ### Critical Security Features
+
 1. **Secret Detection**: Multiple layers (detect-secrets + gitleaks)
 2. **Baseline Management**: Tracks known false positives
 3. **File Size Limits**: Prevents accidental large file commits
 4. **Shell Script Security**: Shellcheck catches security issues
 
 ### Post-Security-Incident Improvements
+
 - Addresses all items from `SECURITY_INCIDENT_REPORT.md`
 - Prevents future credential commits
 - Automated scanning in development workflow
@@ -607,6 +614,7 @@ echo "  • Commit your changes to test the hooks"
 ## Testing Strategy
 
 ### Test Scenarios
+
 1. **Secret detection**: Try committing fake credentials
 2. **YAML validation**: Commit invalid YAML syntax
 3. **Python syntax**: Commit Python with syntax errors
@@ -615,6 +623,7 @@ echo "  • Commit your changes to test the hooks"
 6. **Formatting**: Commit unformatted code (should warn, not block)
 
 ### Validation Commands
+
 ```bash
 # Test all enforced hooks
 task pre-commit:validate
@@ -632,24 +641,28 @@ task pre-commit:run
 ## Implementation Priority
 
 ### Phase 1: Critical Security (Immediate)
+
 1. Install pre-commit framework
 2. Configure secret detection (detect-secrets, gitleaks)
 3. Set up basic YAML and Python syntax validation
 4. Create secrets baseline
 
 ### Phase 2: Core Validation (Week 1)
+
 1. Add Kubernetes manifest validation
 2. Configure shell script security checking
 3. Set up basic markdown validation
 4. Add file size and encoding checks
 
 ### Phase 3: Quality Improvements (Week 2)
+
 1. Add formatting hooks as warnings
 2. Configure Python linting
 3. Set up commit message validation
 4. Create comprehensive task integration
 
 ### Phase 4: Optimization (Ongoing)
+
 1. Fine-tune hook performance
 2. Add custom validation rules
 3. Integrate with CI/CD pipeline
@@ -658,18 +671,21 @@ task pre-commit:run
 ## Benefits
 
 ### Security Benefits
+
 - **Prevents credential commits** (addresses security incident)
 - **Validates infrastructure code** before deployment
 - **Catches security issues** in shell scripts
 - **Enforces file safety** (size, encoding)
 
 ### Quality Benefits
+
 - **Consistent YAML formatting** across manifests
 - **Python code quality** in automation scripts
 - **Documentation standards** in markdown files
 - **Shell script reliability** in deployment scripts
 
 ### Developer Experience
+
 - **Fast feedback** on issues before push
 - **Balanced enforcement** - security strict, style flexible
 - **Clear error messages** for quick fixes

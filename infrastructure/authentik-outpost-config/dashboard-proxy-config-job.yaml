@@ -131,10 +131,10 @@ spec:
                 local max_retries=5
                 local retry_count=0
                 local base_delay=2
-                
+
                 while [ $retry_count -lt $max_retries ]; do
                   echo "API call attempt $((retry_count + 1))/$max_retries: $method $url"
-                  
+
                   if [ "$method" = "POST" ] && [ -n "$data" ]; then
                     response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
                       -X POST \
@@ -154,14 +154,14 @@ spec:
                       -H "Authorization: Bearer ${ADMIN_TOKEN}" \
                       "$url")
                   fi
-                  
+
                   echo "Response code: $response"
-                  
+
                   if [ "$response" = "200" ] || [ "$response" = "201" ]; then
                     echo "API call successful"
                     return 0
                   fi
-                  
+
                   retry_count=$((retry_count + 1))
                   if [ $retry_count -lt $max_retries ]; then
                     delay=$((base_delay * retry_count))
@@ -171,7 +171,7 @@ spec:
                     sleep $delay
                   fi
                 done
-                
+
                 echo "ERROR: API call failed after $max_retries retries"
                 echo "Final response body:"
                 cat /tmp/api_response
@@ -219,7 +219,7 @@ spec:
                   \"basic_auth_password_attribute\": \"\",
                   \"basic_auth_user_attribute\": \"\"
                 }"
-                
+
                 if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "POST" "$PROVIDER_DATA"; then
                   PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                   echo "Created Dashboard proxy provider with PK: $PROVIDER_PK"
@@ -255,7 +255,7 @@ spec:
                   \"policy_engine_mode\": \"any\",
                   \"group\": \"\"
                 }"
-                
+
                 if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
                   echo "Dashboard application created successfully!"
                 else
@@ -280,7 +280,7 @@ spec:
                 echo "Found proxy outpost with PK: $OUTPOST_PK"
                 # Get current providers list
                 CURRENT_PROVIDERS=$(echo "$OUTPOST_RESPONSE" | grep -A10 '"name":"proxy-outpost"' | grep -o '"providers":\[[0-9,]*\]' | sed 's/"providers":\[\([0-9,]*\)\]/\1/')
-                
+
                 # Add new provider to the list if not already present
                 if echo "$CURRENT_PROVIDERS" | grep -q "$PROVIDER_PK"; then
                   echo "Provider already in outpost"
@@ -290,9 +290,9 @@ spec:
                   else
                     NEW_PROVIDERS="[$PROVIDER_PK]"
                   fi
-                  
+
                   UPDATE_DATA="{\"providers\": $NEW_PROVIDERS}"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/${OUTPOST_PK}/" "PATCH" "$UPDATE_DATA"; then
                     echo "Updated proxy outpost with Dashboard provider!"
                   else
