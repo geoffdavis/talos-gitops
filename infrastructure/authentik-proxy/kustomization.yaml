@@ -25,6 +25,9 @@ resources:
   
   # Configuration job (Python-based)
   - proxy-config-job-python.yaml
+  
+  # OAuth2 redirect URL fix job
+  - fix-oauth2-redirect-urls-job.yaml
 
 commonLabels:
   app.kubernetes.io/name: authentik-proxy
