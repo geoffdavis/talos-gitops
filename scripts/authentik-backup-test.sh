@@ -78,14 +78,14 @@ wait_for_condition() {
     local condition="$2"
     local timeout="${3:-300}"
     local namespace="${4:-}"
-    
+
     local ns_flag=""
     if [[ -n "$namespace" ]]; then
         ns_flag="-n $namespace"
     fi
-    
+
     log "Waiting for $resource to be $condition (timeout: ${timeout}s)..."
-    
+
     if timeout "$timeout" bash -c "
         while true; do
             if kubectl get $resource $ns_flag -o jsonpath='{.status.conditions[?(@.type==\"$condition\")].status}' 2>/dev/null | grep -q True; then
@@ -103,17 +103,17 @@ wait_for_condition() {
 # Test functions
 test_prerequisites() {
     section "Prerequisites Check"
-    
+
     test_start
     if check_command kubectl; then
         success "kubectl is available"
     fi
-    
+
     test_start
     if check_cluster_access; then
         success "Kubernetes cluster is accessible"
     fi
-    
+
     # Check required namespaces
     test_start
     if kubectl get namespace postgresql-system &> /dev/null; then
@@ -121,14 +121,14 @@ test_prerequisites() {
     else
         error "postgresql-system namespace not found"
     fi
-    
+
     test_start
     if kubectl get namespace authentik &> /dev/null; then
         success "authentik namespace exists"
     else
         error "authentik namespace not found"
     fi
-    
+
     test_start
     if kubectl get namespace longhorn-system &> /dev/null; then
         success "longhorn-system namespace exists"
@@ -139,7 +139,7 @@ test_prerequisites() {
 
 test_postgresql_backup_config() {
     section "PostgreSQL Backup Configuration Test"
-    
+
     # Check if scheduled backup exists
     test_start
     if kubectl get scheduledbackup -n postgresql-system postgresql-cluster-backup &> /dev/null; then
@@ -147,12 +147,12 @@ test_postgresql_backup_config() {
     else
         error "PostgreSQL scheduled backup not found"
     fi
-    
+
     # Check S3 credentials
     test_start
     if kubectl get secret -n postgresql-system postgresql-s3-backup-credentials &> /dev/null; then
         success "PostgreSQL S3 backup credentials exist"
-        
+
         # Verify credentials have required keys
         local keys
         keys=$(kubectl get secret -n postgresql-system postgresql-s3-backup-credentials -o jsonpath='{.data}' | jq -r 'keys | join(", ")' 2>/dev/null || echo "unknown")
@@ -160,14 +160,14 @@ test_postgresql_backup_config() {
     else
         error "PostgreSQL S3 backup credentials not found"
     fi
-    
+
     # Check cluster backup configuration
     test_start
     local backup_config
     backup_config=$(kubectl get cluster -n postgresql-system postgresql-cluster -o jsonpath='{.spec.backup}' 2>/dev/null || echo "")
     if [[ -n "$backup_config" ]]; then
         success "PostgreSQL cluster has backup configuration"
-        
+
         local retention
         retention=$(kubectl get cluster -n postgresql-system postgresql-cluster -o jsonpath='{.spec.backup.retentionPolicy}' 2>/dev/null || echo "unknown")
         info "Backup retention policy: $retention"
@@ -178,12 +178,12 @@ test_postgresql_backup_config() {
 
 test_create_manual_backup() {
     section "Manual PostgreSQL Backup Test"
-    
+
     local backup_name="test-backup-$TIMESTAMP"
-    
+
     test_start
     log "Creating manual backup: $backup_name"
-    
+
     # Create backup resource
     if kubectl apply -f - <<EOF
 apiVersion: postgresql.cnpg.io/v1
@@ -206,18 +206,18 @@ EOF
         error "Failed to create manual backup resource"
         return 1
     fi
-    
+
     # Wait for backup to complete
     test_start
     log "Waiting for backup to complete (timeout: 600s)..."
-    
+
     local backup_status=""
     local timeout=600
     local elapsed=0
-    
+
     while [[ $elapsed -lt $timeout ]]; do
         backup_status=$(kubectl get backup -n postgresql-system "$backup_name" -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
-        
+
         case "$backup_status" in
             "completed")
                 success "Manual backup completed successfully"
@@ -240,12 +240,12 @@ EOF
                 ;;
         esac
     done
-    
+
     if [[ "$backup_status" != "completed" ]]; then
         error "Backup did not complete within timeout"
         return 1
     fi
-    
+
     # Verify backup details
     test_start
     local backup_size
@@ -255,14 +255,14 @@ EOF
     else
         error "Backup missing backup ID"
     fi
-    
+
     # Store backup name for cleanup
     echo "$backup_name" > "/tmp/test-backup-name-$TIMESTAMP"
 }
 
 test_longhorn_snapshot_config() {
     section "Longhorn Snapshot Configuration Test"
-    
+
     # Check volume snapshot class
     test_start
     if kubectl get volumesnapshotclass longhorn-snapshot-vsc &> /dev/null; then
@@ -270,7 +270,7 @@ test_longhorn_snapshot_config() {
     else
         error "Longhorn volume snapshot class not found"
     fi
-    
+
     # Check recurring jobs for database backups
     test_start
     local database_jobs
@@ -280,7 +280,7 @@ test_longhorn_snapshot_config() {
     else
         error "No Longhorn database recurring jobs found"
     fi
-    
+
     # Check if Authentik Redis PVC exists
     test_start
     if kubectl get pvc -n authentik redis-data-authentik-redis-master-0 &> /dev/null; then
@@ -292,12 +292,12 @@ test_longhorn_snapshot_config() {
 
 test_create_volume_snapshot() {
     section "Volume Snapshot Test"
-    
+
     local snapshot_name="test-redis-snapshot-$TIMESTAMP"
-    
+
     test_start
     log "Creating volume snapshot: $snapshot_name"
-    
+
     # Create volume snapshot
     if kubectl apply -f - <<EOF
 apiVersion: snapshot.storage.k8s.io/v1
@@ -319,18 +319,18 @@ EOF
         error "Failed to create volume snapshot resource"
         return 1
     fi
-    
+
     # Wait for snapshot to be ready
     test_start
     log "Waiting for snapshot to be ready (timeout: 300s)..."
-    
+
     local snapshot_status=""
     local timeout=300
     local elapsed=0
-    
+
     while [[ $elapsed -lt $timeout ]]; do
         snapshot_status=$(kubectl get volumesnapshot -n authentik "$snapshot_name" -o jsonpath='{.status.readyToUse}' 2>/dev/null || echo "false")
-        
+
         if [[ "$snapshot_status" == "true" ]]; then
             success "Volume snapshot is ready"
             break
@@ -340,13 +340,13 @@ EOF
             ((elapsed += 10))
         fi
     done
-    
+
     if [[ "$snapshot_status" != "true" ]]; then
         error "Volume snapshot did not become ready within timeout"
         kubectl describe volumesnapshot -n authentik "$snapshot_name"
         return 1
     fi
-    
+
     # Verify snapshot details
     test_start
     local snapshot_size
@@ -356,24 +356,24 @@ EOF
     else
         warn "Snapshot size not available (may be normal)"
     fi
-    
+
     # Store snapshot name for cleanup
     echo "$snapshot_name" > "/tmp/test-snapshot-name-$TIMESTAMP"
 }
 
 test_point_in_time_recovery() {
     section "Point-in-Time Recovery Test"
-    
+
     test_start
     log "Testing point-in-time recovery capability..."
-    
+
     # Check if we can query WAL files
     local primary_pod
     primary_pod=$(kubectl get pods -n postgresql-system -l postgresql=postgresql-cluster,role=primary --no-headers 2>/dev/null | head -1 | awk '{print $1}' || echo "")
-    
+
     if [[ -n "$primary_pod" ]]; then
         success "PostgreSQL primary pod identified: $primary_pod"
-        
+
         # Check WAL archiving status
         test_start
         if kubectl exec -n postgresql-system "$primary_pod" -- psql -c "SELECT pg_is_in_recovery(), current_setting('archive_mode'), current_setting('wal_level');" 2>/dev/null; then
@@ -381,7 +381,7 @@ test_point_in_time_recovery() {
         else
             error "Failed to verify WAL archiving configuration"
         fi
-        
+
         # Check latest WAL file
         test_start
         local latest_wal
@@ -398,14 +398,14 @@ test_point_in_time_recovery() {
 
 test_backup_monitoring() {
     section "Backup Monitoring Test"
-    
+
     # Check recent backups
     test_start
     local recent_backups
     recent_backups=$(kubectl get backup -n postgresql-system --no-headers 2>/dev/null | wc -l || echo "0")
     if [[ "$recent_backups" -gt 0 ]]; then
         success "Found $recent_backups PostgreSQL backups"
-        
+
         # Show latest backup details
         local latest_backup
         latest_backup=$(kubectl get backup -n postgresql-system --sort-by='.metadata.creationTimestamp' --no-headers 2>/dev/null | tail -1 | awk '{print $1}' || echo "")
@@ -419,7 +419,7 @@ test_backup_monitoring() {
     else
         warn "No PostgreSQL backups found"
     fi
-    
+
     # Check volume snapshots
     test_start
     local recent_snapshots
@@ -429,7 +429,7 @@ test_backup_monitoring() {
     else
         warn "No volume snapshots found"
     fi
-    
+
     # Check backup job status
     test_start
     local backup_jobs
@@ -441,17 +441,17 @@ test_backup_monitoring() {
 
 test_restore_capability() {
     section "Restore Capability Test"
-    
+
     test_start
     log "Testing restore capability (dry-run)..."
-    
+
     # Test PVC restore from snapshot (dry-run)
     local snapshot_name
     if [[ -f "/tmp/test-snapshot-name-$TIMESTAMP" ]]; then
         snapshot_name=$(cat "/tmp/test-snapshot-name-$TIMESTAMP")
-        
+
         log "Testing PVC restore from snapshot: $snapshot_name"
-        
+
         # Create restore PVC manifest (dry-run)
         if kubectl apply --dry-run=client -f - <<EOF
 apiVersion: v1
@@ -479,11 +479,11 @@ EOF
     else
         warn "No test snapshot available for restore test"
     fi
-    
+
     # Test PostgreSQL cluster restore (dry-run)
     test_start
     log "Testing PostgreSQL cluster restore (dry-run)..."
-    
+
     if kubectl apply --dry-run=client -f - <<EOF
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
@@ -519,62 +519,62 @@ EOF
 
 cleanup_test_resources() {
     section "Cleanup Test Resources"
-    
+
     # Clean up test backup
     if [[ -f "/tmp/test-backup-name-$TIMESTAMP" ]]; then
         local backup_name
         backup_name=$(cat "/tmp/test-backup-name-$TIMESTAMP")
         log "Cleaning up test backup: $backup_name"
-        
+
         if kubectl delete backup -n postgresql-system "$backup_name" 2>/dev/null; then
             success "Test backup cleaned up"
         else
             warn "Failed to clean up test backup (may not exist)"
         fi
-        
+
         rm -f "/tmp/test-backup-name-$TIMESTAMP"
     fi
-    
+
     # Clean up test snapshot
     if [[ -f "/tmp/test-snapshot-name-$TIMESTAMP" ]]; then
         local snapshot_name
         snapshot_name=$(cat "/tmp/test-snapshot-name-$TIMESTAMP")
         log "Cleaning up test snapshot: $snapshot_name"
-        
+
         if kubectl delete volumesnapshot -n authentik "$snapshot_name" 2>/dev/null; then
             success "Test snapshot cleaned up"
         else
             warn "Failed to clean up test snapshot (may not exist)"
         fi
-        
+
         rm -f "/tmp/test-snapshot-name-$TIMESTAMP"
     fi
 }
 
 show_backup_recommendations() {
     section "Backup Recommendations"
-    
+
     echo -e "${YELLOW}Backup Strategy Recommendations:${NC}"
     echo ""
-    
+
     echo "1. PostgreSQL Backups:"
     echo "   - Schedule: Daily at 3 AM (configured)"
     echo "   - Retention: 30 days (configured)"
     echo "   - Test restore monthly"
     echo ""
-    
+
     echo "2. Volume Snapshots:"
     echo "   - Schedule: Daily at 1 AM (configured)"
     echo "   - Retention: 7 daily snapshots (configured)"
     echo "   - Test restore quarterly"
     echo ""
-    
+
     echo "3. Monitoring:"
     echo "   - Set up alerts for backup failures"
     echo "   - Monitor backup storage usage"
     echo "   - Verify backup integrity regularly"
     echo ""
-    
+
     echo "4. Documentation:"
     echo "   - Document restore procedures"
     echo "   - Test disaster recovery scenarios"
@@ -584,12 +584,12 @@ show_backup_recommendations() {
 
 show_summary() {
     section "Test Summary"
-    
+
     echo -e "${BOLD}Total tests: $TOTAL_TESTS${NC}"
     echo -e "${GREEN}Passed: $PASSED_TESTS${NC}"
     echo -e "${RED}Failed: $FAILED_TESTS${NC}"
     echo ""
-    
+
     if [[ "$TEST_FAILED" == "true" ]]; then
         echo -e "${RED}❌ Backup testing FAILED${NC}"
         echo ""
@@ -620,13 +620,13 @@ show_summary() {
 main() {
     log "Starting Authentik backup and recovery testing..."
     echo ""
-    
+
     # Change to repository root
     cd "$REPO_ROOT" || {
         error "Failed to change to repository root: $REPO_ROOT"
         exit 1
     }
-    
+
     # Run all tests
     test_prerequisites
     test_postgresql_backup_config
@@ -636,14 +636,14 @@ main() {
     test_point_in_time_recovery
     test_backup_monitoring
     test_restore_capability
-    
+
     # Cleanup
     cleanup_test_resources
-    
+
     # Show recommendations and summary
     show_backup_recommendations
     show_summary
-    
+
     # Exit with appropriate code
     if [[ "$TEST_FAILED" == "true" ]]; then
         exit 1

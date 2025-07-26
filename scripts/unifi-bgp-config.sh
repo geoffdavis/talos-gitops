@@ -42,7 +42,7 @@ check_udm_pro() {
 # Install FRR if not already installed
 install_frr() {
     log "Checking FRR installation..."
-    
+
     if ! command -v vtysh &> /dev/null; then
         log "Installing FRR..."
         apt-get update
@@ -50,21 +50,21 @@ install_frr() {
     else
         log "FRR is already installed"
     fi
-    
+
     # Enable BGP daemon
     sed -i 's/^bgpd=no$/bgpd=yes/' /etc/frr/daemons
-    
+
     # Start and enable FRR service
     systemctl enable frr
     systemctl start frr
-    
+
     log "FRR installation and configuration complete"
 }
 
 # Create FRR BGP configuration
 create_bgp_config() {
     log "Creating FRR BGP configuration..."
-    
+
     # Create the FRR configuration file
     cat > /etc/frr/frr.conf << EOF
 !
@@ -175,38 +175,38 @@ EOF
 # Configure iptables rules for BGP
 configure_iptables() {
     log "Configuring iptables rules for BGP..."
-    
+
     # Allow BGP traffic (port 179)
     iptables -I INPUT -p tcp --dport 179 -j ACCEPT
     iptables -I OUTPUT -p tcp --sport 179 -j ACCEPT
-    
+
     # Allow traffic from cluster nodes
     for node in "${CLUSTER_NODES[@]}"; do
         iptables -I INPUT -s "${node}" -j ACCEPT
         iptables -I OUTPUT -d "${node}" -j ACCEPT
     done
-    
+
     # Save iptables rules
     iptables-save > /etc/iptables/rules.v4
-    
+
     log "iptables rules configured"
 }
 
 # Enable IP forwarding
 enable_ip_forwarding() {
     log "Enabling IP forwarding..."
-    
+
     echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
     echo 'net.ipv4.conf.all.forwarding = 1' >> /etc/sysctl.conf
     sysctl -p
-    
+
     log "IP forwarding enabled"
 }
 
 # Create monitoring script
 create_monitoring_script() {
     log "Creating BGP monitoring script..."
-    
+
     cat > /usr/local/bin/bgp-monitor.sh << 'EOF'
 #!/bin/bash
 # BGP Monitoring Script for Talos Cluster Integration
@@ -246,17 +246,17 @@ echo "[$DATE] BGP monitoring check complete" >> $LOG_FILE
 EOF
 
     chmod +x /usr/local/bin/bgp-monitor.sh
-    
+
     # Create cron job for monitoring
     echo "*/5 * * * * /usr/local/bin/bgp-monitor.sh" | crontab -
-    
+
     log "BGP monitoring script created and scheduled"
 }
 
 # Create backup and restore functions
 create_backup_restore() {
     log "Creating backup and restore functions..."
-    
+
     cat > /usr/local/bin/bgp-backup.sh << 'EOF'
 #!/bin/bash
 # BGP Configuration Backup Script
@@ -277,17 +277,17 @@ echo "Backup created: $BACKUP_FILE"
 EOF
 
     chmod +x /usr/local/bin/bgp-backup.sh
-    
+
     # Schedule daily backup
     echo "0 2 * * * /usr/local/bin/bgp-backup.sh" | crontab -u root -
-    
+
     log "Backup script created and scheduled"
 }
 
 # Main execution
 main() {
     log "Starting Unifi BGP configuration for Talos cluster..."
-    
+
     check_udm_pro
     install_frr
     create_bgp_config
@@ -295,14 +295,14 @@ main() {
     enable_ip_forwarding
     create_monitoring_script
     create_backup_restore
-    
+
     # Restart FRR to apply configuration
     log "Restarting FRR service..."
     systemctl restart frr
-    
+
     # Wait for FRR to start
     sleep 5
-    
+
     # Display BGP status
     log "BGP Configuration Summary:"
     echo "==========================================="
@@ -311,10 +311,10 @@ main() {
     echo "Cluster Nodes: ${CLUSTER_NODES[*]}"
     echo "Load Balancer Pool: $LOADBALANCER_POOL"
     echo "==========================================="
-    
+
     log "Checking BGP neighbor status..."
     vtysh -c "show bgp summary" || warn "BGP neighbors not yet established (this is normal on first run)"
-    
+
     log "BGP configuration complete!"
     log "Monitor BGP status with: vtysh -c 'show bgp summary'"
     log "View BGP routes with: vtysh -c 'show ip route bgp'"

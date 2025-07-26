@@ -26,12 +26,12 @@ import sys
 try:
     with open('../../infrastructure/authentik-proxy/proxy-config-job-python.yaml', 'r') as f:
         yaml_content = yaml.safe_load(f)
-    
+
     print('✓ Main proxy config YAML structure is valid')
     print(f'✓ Kind: {yaml_content.get(\"kind\")}')
     print(f'✓ Name: {yaml_content.get(\"metadata\", {}).get(\"name\")}')
     print(f'✓ Namespace: {yaml_content.get(\"metadata\", {}).get(\"namespace\")}')
-    
+
 except yaml.YAMLError as e:
     print(f'✗ Main proxy config YAML syntax error: {e}')
     sys.exit(1)
@@ -43,12 +43,12 @@ except Exception as e:
 try:
     with open('../../infrastructure/authentik-proxy/fix-oauth2-redirect-urls-job.yaml', 'r') as f:
         yaml_content = yaml.safe_load(f)
-    
+
     print('✓ OAuth2 redirect fix YAML structure is valid')
     print(f'✓ Kind: {yaml_content.get(\"kind\")}')
     print(f'✓ Name: {yaml_content.get(\"metadata\", {}).get(\"name\")}')
     print(f'✓ Namespace: {yaml_content.get(\"metadata\", {}).get(\"namespace\")}')
-    
+
 except yaml.YAMLError as e:
     print(f'✗ OAuth2 redirect fix YAML syntax error: {e}')
     sys.exit(1)
@@ -129,18 +129,18 @@ if command -v kubectl >/dev/null 2>&1; then
     echo "Testing kubectl connectivity..."
     if kubectl cluster-info >/dev/null 2>&1; then
         echo "✓ Kubectl connectivity verified"
-        
+
         # Test if we can access the authentik-proxy namespace
         if kubectl get namespace authentik-proxy >/dev/null 2>&1; then
             echo "✓ Authentik-proxy namespace accessible"
-            
+
             # Test if proxy configuration job exists
             if kubectl get jobs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy >/dev/null 2>&1; then
                 echo "✓ Authentik proxy configuration jobs found"
             else
                 echo "⚠ No authentik proxy configuration jobs found"
             fi
-            
+
             # Test if authentik-proxy pods are running
             if kubectl get pods -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy >/dev/null 2>&1; then
                 echo "✓ Authentik proxy pods found"
@@ -175,10 +175,10 @@ test_instance.setUp()
 try:
     test_instance.test_service_configurations()
     print('✓ Service configurations validated')
-    
+
     test_instance.test_outpost_detection_logic()
     print('✓ Outpost detection logic validated')
-    
+
     print('✓ All service configuration tests passed')
 except Exception as e:
     print(f'✗ Service configuration test failed: {e}')

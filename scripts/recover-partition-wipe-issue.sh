@@ -39,29 +39,29 @@ log_error() {
 
 check_prerequisites() {
     log_info "Checking prerequisites..."
-    
+
     if ! command -v talosctl &> /dev/null; then
         log_error "talosctl not found. Please install Talos CLI."
         exit 1
     fi
-    
+
     if ! command -v kubectl &> /dev/null; then
         log_error "kubectl not found. Please install kubectl."
         exit 1
     fi
-    
+
     log_success "Prerequisites check passed"
 }
 
 diagnose_current_state() {
     log_info "Diagnosing current node states..."
-    
+
     export TALOSCONFIG="$TALOSCONFIG_PATH"
-    
+
     for node in "${NODES[@]}"; do
         echo
         log_info "Testing node $node..."
-        
+
         # Test network connectivity
         if ping -c 1 "$node" &>/dev/null; then
             log_success "  Network: Responsive"
@@ -69,11 +69,11 @@ diagnose_current_state() {
             log_error "  Network: Unresponsive"
             continue
         fi
-        
+
         # Test Talos API (authenticated)
         if talosctl version --nodes "$node" --endpoints "$node" &>/dev/null; then
             log_success "  Talos API: Authenticated access working"
-            
+
             # Check for read-only filesystem errors
             if talosctl dmesg --nodes "$node" --endpoints "$node" 2>/dev/null | grep -q "read-only file system"; then
                 log_warning "  Status: Read-only filesystem detected"
@@ -93,32 +93,32 @@ diagnose_current_state() {
 
 fix_mini01_readonly() {
     log_info "Attempting to fix mini01 read-only filesystem issue..."
-    
+
     export TALOSCONFIG="$TALOSCONFIG_PATH"
-    
+
     log_info "Option 1: Applying wipe configuration to force maintenance mode..."
     if talosctl apply-config --nodes 172.29.51.11 --file clusterconfig/home-ops-mini01.yaml --mode=reboot; then
         log_success "Configuration applied, waiting for reboot..."
         sleep 60
-        
+
         # Check if now in maintenance mode
         if talosctl version --nodes 172.29.51.11 --endpoints 172.29.51.11 --insecure 2>&1 | grep -q "maintenance mode"; then
             log_success "mini01 is now in maintenance mode!"
             return 0
         fi
     fi
-    
+
     log_warning "Option 1 failed, trying Option 2: Force reset..."
     if talosctl reset --nodes 172.29.51.11 --endpoints 172.29.51.11 --graceful=false --reboot; then
         log_success "Reset command sent, waiting for maintenance mode..."
         sleep 90
-        
+
         if talosctl version --nodes 172.29.51.11 --endpoints 172.29.51.11 --insecure 2>&1 | grep -q "maintenance mode"; then
             log_success "mini01 is now in maintenance mode after reset!"
             return 0
         fi
     fi
-    
+
     log_error "Automated fixes failed. Manual intervention required:"
     echo "  1. Physically power cycle mini01"
     echo "  2. Wait for boot completion"
@@ -128,13 +128,13 @@ fix_mini01_readonly() {
 
 generate_fresh_secrets() {
     log_info "Generating fresh cluster secrets..."
-    
+
     # Backup existing secrets
     if [[ -f "$TALOSCONFIG_PATH" ]]; then
         cp "$TALOSCONFIG_PATH" "${TALOSCONFIG_PATH}.backup.$(date +%Y%m%d-%H%M%S)"
         log_info "Backed up existing talosconfig"
     fi
-    
+
     # Generate new secrets
     if mise exec -- task talos:generate-config; then
         log_success "Fresh cluster secrets generated"
@@ -146,9 +146,9 @@ generate_fresh_secrets() {
 
 apply_fresh_configuration() {
     log_info "Applying fresh configuration to all nodes..."
-    
+
     export TALOSCONFIG="$TALOSCONFIG_PATH"
-    
+
     # Check node states and proceed with available nodes
     local available_nodes=()
     for node in "${NODES[@]}"; do
@@ -162,21 +162,21 @@ apply_fresh_configuration() {
             log_error "Node $node is not accessible - skipping"
         fi
     done
-    
+
     if [ ${#available_nodes[@]} -eq 0 ]; then
         log_error "No nodes are accessible. Cannot proceed."
         return 1
     fi
-    
+
     log_info "Proceeding with ${#available_nodes[@]} available nodes: ${available_nodes[*]}"
-    
+
     # Apply configuration to each available node
     local configs=("home-ops-mini01.yaml" "home-ops-mini02.yaml" "home-ops-mini03.yaml")
     local node_configs=()
     node_configs[0]="clusterconfig/home-ops-mini01.yaml"  # 172.29.51.11
     node_configs[1]="clusterconfig/home-ops-mini02.yaml"  # 172.29.51.12
     node_configs[2]="clusterconfig/home-ops-mini03.yaml"  # 172.29.51.13
-    
+
     for node in "${available_nodes[@]}"; do
         local config=""
         case "$node" in
@@ -185,7 +185,7 @@ apply_fresh_configuration() {
             "172.29.51.13") config="${node_configs[2]}" ;;
             *) log_error "Unknown node $node"; continue ;;
         esac
-        
+
         log_info "Applying configuration to $node..."
         if talosctl apply-config --nodes "$node" --endpoints "$node" --file "$config" --insecure; then
             log_success "Configuration applied to $node"
@@ -194,26 +194,26 @@ apply_fresh_configuration() {
             return 1
         fi
     done
-    
+
     log_info "Waiting for nodes to reboot and initialize..."
     sleep 120
 }
 
 bootstrap_cluster() {
     log_info "Bootstrapping new cluster..."
-    
+
     export TALOSCONFIG="$TALOSCONFIG_PATH"
-    
+
     if talosctl bootstrap --nodes 172.29.51.11 --endpoints 172.29.51.11; then
         log_success "Cluster bootstrap initiated"
     else
         log_error "Failed to bootstrap cluster"
         return 1
     fi
-    
+
     log_info "Waiting for cluster initialization..."
     sleep 60
-    
+
     # Generate fresh kubeconfig
     if talosctl kubeconfig --nodes 172.29.51.11 --endpoints 172.29.51.11 --force; then
         log_success "Fresh kubeconfig generated"
@@ -225,9 +225,9 @@ bootstrap_cluster() {
 
 verify_recovery() {
     log_info "Verifying recovery..."
-    
+
     export TALOSCONFIG="$TALOSCONFIG_PATH"
-    
+
     # Check node status
     log_info "Checking node status..."
     if kubectl get nodes; then
@@ -236,7 +236,7 @@ verify_recovery() {
         log_error "Cluster is not accessible"
         return 1
     fi
-    
+
     # Check for read-only filesystem errors
     log_info "Checking for read-only filesystem errors..."
     local readonly_errors=0
@@ -246,7 +246,7 @@ verify_recovery() {
             readonly_errors=$((readonly_errors + 1))
         fi
     done
-    
+
     if [[ $readonly_errors -eq 0 ]]; then
         log_success "No read-only filesystem errors detected"
     else
@@ -257,39 +257,39 @@ verify_recovery() {
 main() {
     echo "Starting partition wipe recovery process..."
     echo
-    
+
     check_prerequisites
     echo
-    
+
     diagnose_current_state
     echo
-    
+
     read -p "Continue with recovery? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         log_info "Recovery cancelled by user"
         exit 0
     fi
-    
+
     # Check if mini01 needs fixing
     export TALOSCONFIG="$TALOSCONFIG_PATH"
     if talosctl dmesg --nodes 172.29.51.11 --endpoints 172.29.51.11 2>/dev/null | grep -q "read-only file system"; then
         fix_mini01_readonly || exit 1
         echo
     fi
-    
+
     generate_fresh_secrets || exit 1
     echo
-    
+
     apply_fresh_configuration || exit 1
     echo
-    
+
     bootstrap_cluster || exit 1
     echo
-    
+
     verify_recovery
     echo
-    
+
     log_success "Recovery process completed!"
     echo
     echo "Next steps:"

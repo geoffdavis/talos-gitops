@@ -177,6 +177,6 @@ The deployment process has been transformed from requiring 20+ manual restart at
 
 ---
 
-_Report generated: 2025-07-19 20:30 UTC_  
-_Status: DEPLOYMENT SUCCESSFUL - FULLY REPEATABLE_  
+_Report generated: 2025-07-19 20:30 UTC_
+_Status: DEPLOYMENT SUCCESSFUL - FULLY REPEATABLE_
 _Next verification: Pods reaching ready state and Flux reconciliation completion_

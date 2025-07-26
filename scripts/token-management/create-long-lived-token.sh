@@ -90,53 +90,53 @@ done
 # Validation functions
 check_prerequisites() {
     log_info "Checking prerequisites..."
-    
+
     # Check kubectl
     if ! command -v kubectl &> /dev/null; then
         log_error "kubectl is not installed or not in PATH"
         exit 1
     fi
-    
+
     # Check cluster connectivity
     if ! kubectl cluster-info &> /dev/null; then
         log_error "Cannot connect to Kubernetes cluster"
         exit 1
     fi
-    
+
     # Check namespace exists
     if ! kubectl get namespace "$NAMESPACE" &> /dev/null; then
         log_error "Namespace '$NAMESPACE' does not exist"
         exit 1
     fi
-    
+
     # Check Authentik deployment
     if ! kubectl get deployment authentik-server -n "$NAMESPACE" &> /dev/null; then
         log_error "Authentik server deployment not found in namespace '$NAMESPACE'"
         exit 1
     fi
-    
+
     log_success "Prerequisites check passed"
 }
 
 # Wait for Authentik to be ready
 wait_for_authentik() {
     log_info "Waiting for Authentik server to be ready..."
-    
+
     local max_attempts=30
     local attempt=1
-    
+
     while [[ $attempt -le $max_attempts ]]; do
         if kubectl exec -n "$NAMESPACE" deployment/authentik-server -- \
            curl -f -s http://localhost:9000/if/flow/initial-setup/ > /dev/null 2>&1; then
             log_success "Authentik server is ready"
             return 0
         fi
-        
+
         log_info "Attempt $attempt/$max_attempts: Authentik not ready, waiting 10 seconds..."
         sleep 10
         ((attempt++))
     done
-    
+
     log_error "Authentik server did not become ready within $((max_attempts * 10)) seconds"
     exit 1
 }
@@ -144,12 +144,12 @@ wait_for_authentik() {
 # Create the long-lived token
 create_token() {
     log_info "Creating long-lived API token..."
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         log_warning "DRY RUN: Would create token with $EXPIRY_DAYS days expiry"
         return 0
     fi
-    
+
     # Create a temporary job to run the token creation
     local job_name
     job_name="create-long-lived-token-$(date +%s)"
@@ -223,9 +223,9 @@ spec:
               import base64
               import json
               import os
-              
+
               force_create = os.environ.get('FORCE_CREATE', 'false').lower() == 'true'
-              
+
               # Get admin user
               try:
                   user = User.objects.get(username='akadmin')
@@ -233,26 +233,26 @@ spec:
               except User.DoesNotExist:
                   print('ERROR: Admin user akadmin not found')
                   exit(1)
-              
+
               # Calculate expiry
               expiry_date = datetime.now() + timedelta(days=$EXPIRY_DAYS)
-              
+
               # Check existing tokens
               existing_tokens = Token.objects.filter(user=user, intent='api')
               valid_long_term_tokens = []
-              
+
               for token in existing_tokens:
                   if token.expires and token.expires > datetime.now():
                       days_remaining = (token.expires - datetime.now()).days
                       if days_remaining > 300:  # Consider long-term if > 300 days
                           valid_long_term_tokens.append(token)
                           print(f'Found valid long-term token: {token.key[:8]}... (expires in {days_remaining} days)')
-              
+
               # Create new token if needed
               if not valid_long_term_tokens or force_create:
                   if force_create and valid_long_term_tokens:
                       print('FORCE mode: Creating new token despite existing valid tokens')
-                  
+
                   # Generate new token
                   token_key = secrets.token_hex(32)
                   token = Token.objects.create(
@@ -263,7 +263,7 @@ spec:
                       expires=expiry_date,
                       expiring=True
                   )
-                  
+
                   print(f'SUCCESS: Created new token {token.key[:8]}... expires {expiry_date.strftime(\"%Y-%m-%d\")}')
                   print(f'TOKEN_KEY={token.key}')
                   print(f'TOKEN_B64=' + base64.b64encode(token.key.encode()).decode())
@@ -277,24 +277,24 @@ spec:
               "
 EOF
 )
-    
+
     # Apply the job
     echo "$job_manifest" | kubectl apply -f -
-    
+
     # Wait for job completion
     log_info "Waiting for token creation job to complete..."
     kubectl wait --for=condition=complete job/"$job_name" -n "$NAMESPACE" --timeout=300s
-    
+
     # Get the job output
     local pod_name
     pod_name=$(kubectl get pods -n "$NAMESPACE" -l job-name="$job_name" -o jsonpath='{.items[0].metadata.name}')
     local job_output
     job_output=$(kubectl logs -n "$NAMESPACE" "$pod_name")
-    
+
     # Parse output
     if echo "$job_output" | grep -q "SUCCESS:"; then
         log_success "Token creation completed successfully"
-        
+
         # Extract token information
         local token_key
         token_key=$(echo "$job_output" | grep "TOKEN_KEY=" | cut -d'=' -f2)
@@ -302,7 +302,7 @@ EOF
         token_b64=$(echo "$job_output" | grep "TOKEN_B64=" | cut -d'=' -f2)
         local expires
         expires=$(echo "$job_output" | grep "EXPIRES=" | cut -d'=' -f2)
-        
+
         echo ""
         log_info "Token Information:"
         echo "  Token: ${token_key:0:8}...${token_key: -8}"
@@ -318,7 +318,7 @@ EOF
         echo "$job_output"
         exit 1
     fi
-    
+
     # Cleanup job
     kubectl delete job "$job_name" -n "$NAMESPACE" --ignore-not-found=true
 }
@@ -326,11 +326,11 @@ EOF
 # Main execution
 main() {
     log_info "Starting long-lived token creation..."
-    
+
     check_prerequisites
     wait_for_authentik
     create_token
-    
+
     log_success "Long-lived token creation completed!"
 }
 

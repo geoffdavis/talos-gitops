@@ -33,46 +33,46 @@ error() {
 # Check prerequisites
 check_prerequisites() {
     log "Checking prerequisites for credential rotation..."
-    
+
     if ! command -v op &> /dev/null; then
         error "1Password CLI (op) is not installed. Please install it first."
     fi
-    
+
     if ! op account list &> /dev/null; then
         error "1Password CLI is not authenticated. Please run 'op signin' first."
     fi
-    
+
     if [[ -z "${OP_ACCOUNT:-}" ]]; then
         error "OP_ACCOUNT environment variable is not set. Please export OP_ACCOUNT=your-account-name"
     fi
-    
+
     success "All prerequisites met"
 }
 
 # Clean up old 1Password Connect credentials
 cleanup_old_credentials() {
     log "Cleaning up old 1Password Connect credentials..."
-    
+
     # Remove any local credential files
     local files_removed=0
-    
+
     if [[ -f "1password-credentials.json" ]]; then
         rm -f "1password-credentials.json"
         files_removed=$((files_removed + 1))
         success "Removed local 1password-credentials.json"
     fi
-    
+
     if [[ -f "connect-token.txt" ]]; then
         rm -f "connect-token.txt"
         files_removed=$((files_removed + 1))
         success "Removed local connect-token.txt"
     fi
-    
+
     # Clean up any temporary credential files
     find . -name "*credentials*.json" -type f -delete 2>/dev/null || true
     find . -name "*connect*.token" -type f -delete 2>/dev/null || true
     find /tmp -name "*1password*" -type f -delete 2>/dev/null || true
-    
+
     if [[ $files_removed -eq 0 ]]; then
         success "No local credential files found to clean up"
     else
@@ -83,7 +83,7 @@ cleanup_old_credentials() {
 # Clear Talos generated secrets
 clear_talos_secrets() {
     log "Clearing existing Talos generated secrets..."
-    
+
     # Remove generated directory contents
     if [[ -d "talos/generated" ]]; then
         rm -rf talos/generated/*
@@ -92,13 +92,13 @@ clear_talos_secrets() {
         mkdir -p talos/generated
         success "Created clean talos/generated/ directory"
     fi
-    
+
     # Remove talsecret.yaml if it exists
     if [[ -f "talos/talsecret.yaml" ]]; then
         rm -f "talos/talsecret.yaml"
         success "Removed existing talos/talsecret.yaml"
     fi
-    
+
     # Remove any local kubeconfig/talosconfig files
     rm -f kubeconfig talosconfig
     success "Removed local kubeconfig and talosconfig files"
@@ -107,9 +107,9 @@ clear_talos_secrets() {
 # Verify 1Password entries for cleanup
 verify_1password_entries() {
     log "Verifying 1Password entries that need new credentials..."
-    
+
     local entries_found=0
-    
+
     # Check for old 1Password Connect entries
     if op item get "1password connect" --vault="Automation" &> /dev/null; then
         warn "Found old '1password connect' entry - will need new credentials"
@@ -118,25 +118,25 @@ verify_1password_entries() {
         warn "Found old '1Password Connect' entry - will need new credentials"
         entries_found=$((entries_found + 1))
     fi
-    
+
     # Check for Connect credentials document
     if op document get "1Password Connect Credentials - $CLUSTER_NAME" --vault="Automation" &> /dev/null; then
         warn "Found old Connect credentials document - will need replacement"
         entries_found=$((entries_found + 1))
     fi
-    
+
     # Check for Connect token entry
     if op item get "1Password Connect Token - $CLUSTER_NAME" --vault="Automation" &> /dev/null; then
         warn "Found old Connect token entry - will need replacement"
         entries_found=$((entries_found + 1))
     fi
-    
+
     # Check for Cloudflare tunnel credentials
     if op item get "Home-ops cloudflare-tunnel.json" --vault="Automation" &> /dev/null; then
         warn "Found old Cloudflare tunnel credentials - will need replacement"
         entries_found=$((entries_found + 1))
     fi
-    
+
     # Check for Talos secrets
     if op item get "Talos Secrets - $CLUSTER_NAME" --vault="Automation" &> /dev/null; then
         warn "Found existing Talos secrets - will generate fresh ones"
@@ -145,7 +145,7 @@ verify_1password_entries() {
         warn "Found legacy Talos secrets - will generate fresh ones"
         entries_found=$((entries_found + 1))
     fi
-    
+
     if [[ $entries_found -eq 0 ]]; then
         success "No existing entries found - ready for fresh setup"
     else
@@ -156,31 +156,31 @@ verify_1password_entries() {
 # Prepare bootstrap process for new credentials
 prepare_bootstrap_process() {
     log "Preparing bootstrap process for credential rotation..."
-    
+
     # Verify bootstrap scripts are ready
     local scripts_ready=0
-    
+
     if [[ -x "scripts/bootstrap-1password-secrets.sh" ]]; then
         scripts_ready=$((scripts_ready + 1))
         success "1Password secrets bootstrap script ready"
     else
         error "scripts/bootstrap-1password-secrets.sh not found or not executable"
     fi
-    
+
     if [[ -x "scripts/validate-1password-secrets.sh" ]]; then
         scripts_ready=$((scripts_ready + 1))
         success "1Password secrets validation script ready"
     else
         warn "scripts/validate-1password-secrets.sh not found - validation may be limited"
     fi
-    
+
     # Check Taskfile tasks
     if grep -q "onepassword:create-connect-server" Taskfile.yml; then
         success "onepassword:create-connect-server task available"
     else
         error "onepassword:create-connect-server task not found in Taskfile.yml"
     fi
-    
+
     if grep -q "bootstrap:phased" Taskfile.yml; then
         success "bootstrap:phased task available for fresh cluster setup"
     else
@@ -191,13 +191,13 @@ prepare_bootstrap_process() {
 # Verify cluster is in maintenance mode
 verify_maintenance_mode() {
     log "Verifying cluster nodes are in maintenance mode..."
-    
+
     local nodes_in_maintenance=0
     local node_ips=("172.29.51.11" "172.29.51.12" "172.29.51.13")
-    
+
     for node_ip in "${node_ips[@]}"; do
         log "Checking node $node_ip..."
-        
+
         # Try to connect with insecure mode (expected for maintenance mode)
         if mise exec -- talosctl version --insecure --nodes "$node_ip" &> /dev/null; then
             # Check if it's actually in maintenance mode (no cluster config)
@@ -211,7 +211,7 @@ verify_maintenance_mode() {
             warn "Node $node_ip not accessible - may be powered off or network issue"
         fi
     done
-    
+
     if [[ $nodes_in_maintenance -eq 3 ]]; then
         success "All 3 nodes confirmed in maintenance mode - ready for fresh bootstrap"
     elif [[ $nodes_in_maintenance -gt 0 ]]; then
@@ -224,7 +224,7 @@ verify_maintenance_mode() {
 # Create credential rotation documentation
 create_rotation_documentation() {
     log "Creating credential rotation documentation..."
-    
+
     cat > docs/CREDENTIAL_ROTATION_PROCESS.md << 'EOF'
 # Credential Rotation Process
 
@@ -310,28 +310,28 @@ main() {
     echo "  1Password Credential Rotation Preparation"
     echo "=============================================="
     echo ""
-    
+
     check_prerequisites
     echo ""
-    
+
     cleanup_old_credentials
     echo ""
-    
+
     clear_talos_secrets
     echo ""
-    
+
     verify_1password_entries
     echo ""
-    
+
     prepare_bootstrap_process
     echo ""
-    
+
     verify_maintenance_mode
     echo ""
-    
+
     create_rotation_documentation
     echo ""
-    
+
     echo "=============================================="
     echo "  CREDENTIAL ROTATION PREPARATION COMPLETE"
     echo "=============================================="

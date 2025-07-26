@@ -190,8 +190,8 @@ kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy --tail
 
 #### Service Authentication Status
 
-| Service          | Status           | URL                                          | Notes                                             |
-| ---------------- | ---------------- | -------------------------------------------- | ------------------------------------------------- |
+| Service          | Status           | URL                                            | Notes                                             |
+| ---------------- | ---------------- | ---------------------------------------------- | ------------------------------------------------- |
 | **Longhorn**     | ✅ Working       | <https://longhorn.k8s.home.geoffdavis.com>     | Redirects to Authentik, authentication successful |
 | **Grafana**      | ✅ Working       | <https://grafana.k8s.home.geoffdavis.com>      | Redirects to Authentik, authentication successful |
 | **Prometheus**   | ✅ Working       | <https://prometheus.k8s.home.geoffdavis.com>   | Redirects to Authentik, authentication successful |
@@ -485,7 +485,6 @@ curl -I https://<service-name>.k8s.home.geoffdavis.com
 The external authentik-proxy system uses a hybrid URL architecture to resolve DNS conflicts:
 
 - **Internal Communication**: `http://authentik-server.authentik.svc.cluster.local:80`
-
   - Used by outpost pods to communicate with Authentik server
   - Resolves via cluster DNS
   - Avoids external DNS resolution issues
@@ -568,6 +567,6 @@ The external authentik-proxy system is now **production-ready** and provides rel
 
 ---
 
-_Documentation generated: 2025-07-26_  
-_External Outpost ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e_  
+_Documentation generated: 2025-07-26_
+_External Outpost ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e_
 _Status: ✅ OPERATIONAL (5/6 services)_

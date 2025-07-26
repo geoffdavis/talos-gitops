@@ -174,5 +174,5 @@ kubectl describe externalsecret -n NAMESPACE SECRET_NAME
 
 ---
 
-**Cluster**: home-ops  
+**Cluster**: home-ops
 **1Password Vaults**: Automation, Services

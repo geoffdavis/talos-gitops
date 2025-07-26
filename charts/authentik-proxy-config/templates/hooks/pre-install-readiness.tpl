@@ -46,13 +46,13 @@ spec:
             - |
               set -e
               echo "=== Authentik Proxy Configuration Pre-Install Readiness Check ==="
-              
+
               # Function to check Authentik server readiness
               check_authentik_server() {
                 echo "Checking Authentik server readiness..."
                 local attempt=0
                 local max_attempts=${MAX_RETRIES}
-                
+
                 while [ $attempt -lt $max_attempts ]; do
                   if curl -f -s "${AUTHENTIK_HOST}/if/flow/initial-setup/" > /dev/null 2>&1; then
                     echo "✓ Authentik server is ready!"
@@ -62,41 +62,41 @@ spec:
                   echo "Authentik not ready yet, attempt $attempt/$max_attempts, waiting ${BACKOFF_SECONDS} seconds..."
                   sleep ${BACKOFF_SECONDS}
                 done
-                
+
                 echo "✗ ERROR: Authentik server did not become ready within $((max_attempts * BACKOFF_SECONDS)) seconds"
                 return 1
               }
-              
+
               # Function to validate admin token
               validate_admin_token() {
                 echo "Validating admin token..."
                 local attempt=0
                 local max_attempts=${MAX_RETRIES}
-                
+
                 while [ $attempt -lt $max_attempts ]; do
                   response=$(curl -s -w "%{http_code}" -o /dev/null \
                     -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                     "${AUTHENTIK_HOST}/api/v3/core/users/me/")
-                  
+
                   if [ "$response" = "200" ]; then
                     echo "✓ Admin token is valid!"
                     return 0
                   fi
-                  
+
                   attempt=$((attempt + 1))
                   echo "Admin token not valid yet, attempt $attempt/$max_attempts (HTTP $response), waiting ${BACKOFF_SECONDS} seconds..."
                   sleep ${BACKOFF_SECONDS}
                 done
-                
+
                 echo "✗ ERROR: Admin token did not become valid within $((max_attempts * BACKOFF_SECONDS)) seconds"
                 echo "Please check the token in secret '${AUTHENTIK_TOKEN_SECRET_NAME}'"
                 return 1
               }
-              
+
               # Function to verify required secrets exist
               verify_secrets() {
                 echo "Verifying required secrets exist..."
-                
+
                 if [ -z "${AUTHENTIK_TOKEN}" ]; then
                   echo "✗ ERROR: AUTHENTIK_TOKEN environment variable is empty"
                   echo "This indicates the secret '{{ .Values.externalSecrets.tokenSecretName }}' is not properly mounted"
@@ -105,11 +105,11 @@ spec:
                 echo "✓ Required secrets are present and mounted"
                 return 0
               }
-              
+
               # Function to test API connectivity
               test_api_connectivity() {
                 echo "Testing API connectivity..."
-                
+
                 if curl -s -f "${AUTHENTIK_HOST}/api/v3/root/config/" > /dev/null 2>&1; then
                   echo "✓ API connectivity test successful"
                   return 0
@@ -118,13 +118,13 @@ spec:
                   return 1
                 fi
               }
-              
+
               # Run all checks
               echo "Starting readiness checks..."
-              
+
               verify_secrets
               check_authentik_server
               validate_admin_token
               test_api_connectivity
-              
+
               echo "=== All readiness checks passed! ==="

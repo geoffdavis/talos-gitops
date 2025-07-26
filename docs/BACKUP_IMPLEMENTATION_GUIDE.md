@@ -225,13 +225,11 @@ kubectl get csidriver driver.longhorn.io
 ## Security Best Practices
 
 1. **Credentials Management**
-
    - S3 credentials stored in 1Password
    - Regular credential rotation
    - Least privilege access policies
 
 2. **Access Control**
-
    - RBAC for backup operations
    - Separate service accounts
    - Namespace isolation
@@ -244,13 +242,11 @@ kubectl get csidriver driver.longhorn.io
 ## Cost Optimization Tips
 
 1. **S3 Lifecycle Policies**
-
    - Move to IA after 30 days
    - Archive to Glacier after 90 days
    - Delete after retention period
 
 2. **Backup Frequency Tuning**
-
    - Adjust based on actual RPO needs
    - Consider differential backups for large datasets
    - Monitor backup sizes and optimize

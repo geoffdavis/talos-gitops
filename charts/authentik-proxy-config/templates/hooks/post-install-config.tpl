@@ -60,11 +60,11 @@ spec:
             - |
               set -e
               echo "=== Authentik Proxy Configuration Post-Install Hook ==="
-              
+
               # Load service configuration
               SERVICES_JSON=$(cat /config/services.json)
               echo "Loaded service configuration for $(echo "$SERVICES_JSON" | grep -o '"key"' | wc -l) services"
-              
+
               # Retry function for API calls
               retry_api_call() {
                 local url="$1"
@@ -72,7 +72,7 @@ spec:
                 local data="${3:-}"
                 local max_retries=${MAX_RETRIES}
                 local retry_count=0
-                
+
                 while [ $retry_count -lt $max_retries ]; do
                   if [ "$method" = "POST" ] && [ -n "$data" ]; then
                     response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
@@ -93,23 +93,23 @@ spec:
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                       "$url")
                   fi
-                  
+
                   if [ "$response" = "200" ] || [ "$response" = "201" ]; then
                     return 0
                   fi
-                  
+
                   retry_count=$((retry_count + 1))
                   if [ $retry_count -lt $max_retries ]; then
                     echo "API call failed with status $response, retry $retry_count/$max_retries"
                     sleep ${BACKOFF_SECONDS}
                   fi
                 done
-                
+
                 echo "API call failed after $max_retries retries"
                 cat /tmp/api_response
                 return 1
               }
-              
+
               # Function to create provider and application atomically
               create_service_config() {
                 local service_key="$1"
@@ -119,19 +119,19 @@ spec:
                 local internal_host="$5"
                 local description="$6"
                 local publisher="$7"
-                
+
                 echo "=== Configuring $service_name ==="
-                
+
                 # Check if provider already exists
                 echo "Checking for existing $service_key proxy provider..."
                 if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/"; then
                   echo "Failed to check existing proxy providers"
                   return 1
                 fi
-                
+
                 PROVIDER_RESPONSE=$(cat /tmp/api_response)
                 PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o "\"name\":\"${service_key}-proxy\"" || echo "")
-                
+
                 if [ -z "$PROVIDER_EXISTS" ]; then
                   echo "Creating $service_key proxy provider..."
                   PROVIDER_DATA="{
@@ -147,7 +147,7 @@ spec:
                     \"basic_auth_password_attribute\": \"\",
                     \"basic_auth_user_attribute\": \"\"
                   }"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "POST" "$PROVIDER_DATA"; then
                     PROVIDER_PK=$(cat /tmp/api_response | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                     echo "✓ Created $service_key proxy provider with PK: $PROVIDER_PK"
@@ -160,17 +160,17 @@ spec:
                   PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A10 "\"name\":\"${service_key}-proxy\"" | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                   echo "Found existing provider with PK: $PROVIDER_PK"
                 fi
-                
+
                 # Check if Application already exists
                 echo "Checking for existing $service_key application..."
                 if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
                   echo "Failed to check existing applications"
                   return 1
                 fi
-                
+
                 APP_RESPONSE=$(cat /tmp/api_response)
                 APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o "\"name\":\"${service_name}\"" || echo "")
-                
+
                 if [ -z "$APP_EXISTS" ]; then
                   echo "Creating $service_key application..."
                   APP_DATA="{
@@ -183,7 +183,7 @@ spec:
                     \"policy_engine_mode\": \"any\",
                     \"group\": \"\"
                   }"
-                  
+
                   if retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/" "POST" "$APP_DATA"; then
                     echo "✓ $service_key application created successfully!"
                   else
@@ -193,13 +193,13 @@ spec:
                 else
                   echo "✓ $service_key application already exists"
                 fi
-                
+
                 # Store provider PK for later outpost update
                 echo "$PROVIDER_PK" >> /tmp/provider_pks
                 echo "✓ $service_key configuration completed!"
                 return 0
               }
-              
+
               # Test authentication
               echo "Testing authentication..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
@@ -207,10 +207,10 @@ spec:
                 exit 1
               fi
               echo "✓ Authentication successful"
-              
+
               # Initialize provider PKs file
               echo "" > /tmp/provider_pks
-              
+
               # Configure all enabled services atomically
               echo "$SERVICES_JSON" | grep -o '"services":\[[^]]*\]' | sed 's/"services":\[//' | sed 's/\]$//' | sed 's/},{/}\n{/g' | while IFS= read -r service_json; do
                 if [ -n "$service_json" ]; then
@@ -221,33 +221,33 @@ spec:
                   internal_host=$(echo "$service_json" | grep -o '"internalHost":"[^"]*"' | cut -d'"' -f4)
                   description=$(echo "$service_json" | grep -o '"description":"[^"]*"' | cut -d'"' -f4)
                   publisher=$(echo "$service_json" | grep -o '"publisher":"[^"]*"' | cut -d'"' -f4)
-                  
+
                   if ! create_service_config "$service_key" "$service_name" "$service_slug" "$external_host" "$internal_host" "$description" "$publisher"; then
                     echo "✗ Failed to configure $service_key, rolling back..."
                     exit 1
                   fi
                 fi
               done
-              
+
               # Update the proxy outpost with all providers at once
               echo "=== Updating proxy outpost with all providers ==="
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/"; then
                 echo "Failed to check existing outposts"
                 exit 1
               fi
-              
+
               OUTPOST_RESPONSE=$(cat /tmp/api_response)
               OUTPOST_PK=$(echo "$OUTPOST_RESPONSE" | grep -A10 "\"name\":\"${OUTPOST_NAME}\"" | grep -o '"pk":"[^"]*"' | cut -d'"' -f4)
-              
+
               if [ -n "$OUTPOST_PK" ]; then
                 echo "Found proxy outpost with PK: $OUTPOST_PK"
-                
+
                 # Get current providers list
                 CURRENT_PROVIDERS=$(echo "$OUTPOST_RESPONSE" | grep -A10 "\"name\":\"${OUTPOST_NAME}\"" | grep -o '"providers":\[[0-9,]*\]' | sed 's/"providers":\[\([0-9,]*\)\]/\1/')
-                
+
                 # Get new provider PKs
                 NEW_PROVIDER_PKS=$(cat /tmp/provider_pks | grep -v '^$' | tr '\n' ',' | sed 's/,$//')
-                
+
                 # Combine current and new providers
                 if [ -n "$CURRENT_PROVIDERS" ] && [ -n "$NEW_PROVIDER_PKS" ]; then
                   ALL_PROVIDERS="[$CURRENT_PROVIDERS,$NEW_PROVIDER_PKS]"
@@ -256,13 +256,13 @@ spec:
                 else
                   ALL_PROVIDERS="[$CURRENT_PROVIDERS]"
                 fi
-                
+
                 # Remove duplicates by converting to unique list
                 UNIQUE_PROVIDERS=$(echo "$ALL_PROVIDERS" | sed 's/\[//g' | sed 's/\]//g' | tr ',' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
                 FINAL_PROVIDERS="[$UNIQUE_PROVIDERS]"
-                
+
                 UPDATE_DATA="{\"providers\": $FINAL_PROVIDERS}"
-                
+
                 if retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/${OUTPOST_PK}/" "PATCH" "$UPDATE_DATA"; then
                   echo "✓ Updated proxy outpost with all providers!"
                 else
@@ -273,7 +273,7 @@ spec:
                 echo "✗ Proxy outpost '${OUTPOST_NAME}' not found"
                 exit 1
               fi
-              
+
               echo "=== All services proxy configuration completed successfully! ==="
       volumes:
         - name: service-config

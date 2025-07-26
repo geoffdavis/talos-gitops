@@ -21,19 +21,16 @@ The debug task revealed that while the authentication flow was working (proper 3
 ### Components Created
 
 1. **OAuth2 Redirect Fix Job** (`infrastructure/authentik-proxy/fix-oauth2-redirect-urls-job.yaml`)
-
    - Kubernetes Job that runs after the main proxy configuration
    - Uses ArgoCD PostSync hook with weight 25 (runs after main config job)
    - Fixes OAuth2 application configurations and provider settings
 
 2. **Python Fix Script** (embedded in the Job YAML)
-
    - Comprehensive OAuth2RedirectFixer class
    - Handles proxy providers, OAuth2 providers, and applications
    - Updates redirect URIs to use external hostnames
 
 3. **Test Suite** (`tests/authentik-proxy-config/test_oauth2_redirect_fix.py`)
-
    - Comprehensive pytest-based test coverage
    - Validates YAML structure, Python syntax, and functionality
    - Integration tests for the complete fix process
@@ -184,17 +181,14 @@ The job runs with strict security settings:
 ### Common Issues
 
 1. **Job Fails with Authentication Error**:
-
    - Verify `authentik-proxy-token` secret exists and contains valid token
    - Check Authentik server accessibility from cluster
 
 2. **Job Fails with API Errors**:
-
    - Check Authentik server logs for API request issues
    - Verify token has sufficient permissions for provider/application management
 
 3. **Redirect URLs Not Updated**:
-
    - Check job logs for specific service failures
    - Verify service names match between script and Authentik configuration
 

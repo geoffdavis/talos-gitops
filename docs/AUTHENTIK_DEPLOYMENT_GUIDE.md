@@ -670,8 +670,8 @@ kubectl run test-pod --image=busybox --rm -it -- /bin/sh
 
 ---
 
-**Cluster**: home-ops  
-**Identity Provider**: Authentik v2024.8.3  
-**Database**: PostgreSQL 16.4 (CNPG)  
-**Storage**: Longhorn SSD  
+**Cluster**: home-ops
+**Identity Provider**: Authentik v2024.8.3
+**Database**: PostgreSQL 16.4 (CNPG)
+**Storage**: Longhorn SSD
 **Backup**: S3 + Longhorn Snapshots

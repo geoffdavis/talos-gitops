@@ -2,9 +2,9 @@
 
 ## Incident Summary
 
-**Date**: 2025-07-16  
-**Incident**: 1Password Connect credentials compromised and committed to Git repository  
-**Severity**: High (credentials exposed in public repository)  
+**Date**: 2025-07-16
+**Incident**: 1Password Connect credentials compromised and committed to Git repository
+**Severity**: High (credentials exposed in public repository)
 **Status**: ✅ **RESOLVED** - Complete credential rotation implemented
 
 ## Response Actions Completed
@@ -205,7 +205,7 @@ The cluster is now ready for fresh credential generation and clean bootstrap wit
 
 ---
 
-**Incident Response Team**: Geoffrey Davis  
-**Resolution Date**: 2025-07-16  
-**Next Review**: After successful cluster recovery  
+**Incident Response Team**: Geoffrey Davis
+**Resolution Date**: 2025-07-16
+**Next Review**: After successful cluster recovery
 **Status**: ✅ **RESOLVED** - Ready for cluster recovery with fresh credentials

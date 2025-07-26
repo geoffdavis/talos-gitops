@@ -41,34 +41,34 @@ error() {
 # Check prerequisites
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     if ! command -v op &> /dev/null; then
         error "1Password CLI (op) is not installed. Please install it first."
     fi
-    
+
     if ! op account list &> /dev/null; then
         error "1Password CLI is not authenticated. Please run 'op signin' first."
     fi
-    
+
     if [[ -z "$OP_ACCOUNT" ]]; then
         error "OP_ACCOUNT environment variable is not set. Please export OP_ACCOUNT=your-account-name"
     fi
-    
+
     if ! command -v kubectl &> /dev/null; then
         error "kubectl is not installed. Please install it first."
     fi
-    
+
     if ! command -v jq &> /dev/null; then
         error "jq is not installed. Please install it first."
     fi
-    
+
     success "All prerequisites met"
 }
 
 # Check cluster accessibility
 check_cluster_accessibility() {
     log "Checking cluster accessibility..."
-    
+
     if kubectl get namespaces &> /dev/null; then
         success "Kubernetes cluster is accessible"
         return 0
@@ -81,23 +81,23 @@ check_cluster_accessibility() {
 # Create 1Password Connect secrets using new configuration system
 create_1password_connect_secrets() {
     log "Creating 1Password Connect secrets using configuration system..."
-    
+
     # Create temporary directory for secrets
     local temp_dir
     temp_dir=$(mktemp -d)
     trap 'rm -rf "$temp_dir"' EXIT
-    
+
     # Create onepassword-connect namespace
     kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
     success "Created/verified onepassword-connect namespace"
-    
+
     # Try to get credentials using configured sources
     if try_get_connect_credentials "$temp_dir"; then
         success "Successfully retrieved 1Password Connect credentials"
     else
         error "Failed to retrieve 1Password Connect credentials from any configured source"
     fi
-    
+
     # Create credentials secret
     if [[ -f "$temp_dir/1password-credentials.json" ]]; then
         kubectl create secret generic onepassword-connect-credentials \
@@ -108,7 +108,7 @@ create_1password_connect_secrets() {
     else
         error "Credentials file not found after retrieval"
     fi
-    
+
     # Create token secret
     if [[ -f "$temp_dir/connect-token.txt" ]]; then
         local token
@@ -126,11 +126,11 @@ create_1password_connect_secrets() {
 # Validate created secrets
 validate_created_secrets() {
     log "Validating created secrets..."
-    
+
     # Check credentials secret
     if kubectl get secret -n onepassword-connect onepassword-connect-credentials &> /dev/null; then
         success "onepassword-connect-credentials secret exists"
-        
+
         # Validate credentials format in secret
         if kubectl get secret -n onepassword-connect onepassword-connect-credentials -o jsonpath='{.data.1password-credentials\.json}' | base64 -d | jq -r '.version' 2>/dev/null | grep -q "2"; then
             success "Credentials in secret are version 2 format"
@@ -142,11 +142,11 @@ validate_created_secrets() {
     else
         error "onepassword-connect-credentials secret not found"
     fi
-    
+
     # Check token secret
     if kubectl get secret -n onepassword-connect onepassword-connect-token &> /dev/null; then
         success "onepassword-connect-token secret exists"
-        
+
         # Validate token length
         local token_length
         token_length=$(kubectl get secret -n onepassword-connect onepassword-connect-token -o jsonpath='{.data.token}' | base64 -d | wc -c)
@@ -167,10 +167,10 @@ show_config_summary() {
     echo "Account: $OP_ACCOUNT"
     echo ""
     echo "Configured credential sources:"
-    
+
     local sources
     sources=$(get_op_connect_credential_sources)
-    
+
     if [[ -z "$sources" ]]; then
         echo "  - Legacy single entry (fallback)"
     else
@@ -178,7 +178,7 @@ show_config_summary() {
         for source in $sources; do
             local source_index="${source%%:*}"
             local source_type="${source##*:}"
-            
+
             echo "  $source_num. $source_type"
             case "$source_type" in
                 "separate_entries")
@@ -204,16 +204,16 @@ show_config_summary() {
 main() {
     log "Starting enhanced 1Password Connect secrets bootstrap for $CLUSTER_NAME cluster..."
     echo ""
-    
+
     check_prerequisites
     show_config_summary
-    
+
     # Check if cluster is accessible
     if check_cluster_accessibility; then
         # Create the secrets
         create_1password_connect_secrets
         validate_created_secrets
-        
+
         log "1Password Connect secrets bootstrap completed successfully!"
         echo ""
         echo "Next steps:"

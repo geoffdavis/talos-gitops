@@ -193,12 +193,10 @@ echo "Generated webhook secret: $WEBHOOK_SECRET"
 #### 2. Create 1Password Entry
 
 1. **Access 1Password Web Interface**:
-
    - Navigate to <https://my.1password.com/>
    - Select the **"Automation"** vault
 
 2. **Create New Item**:
-
    - Click **"New Item"** → **"Secure Note"**
    - **Title**: `GitHub Flux Webhook Secret`
    - **Category**: Secure Note
@@ -252,13 +250,11 @@ op item get "GitHub Flux Webhook Secret" --vault="Automation" --fields="token"
    ```
 
 2. **Update 1Password Entry**:
-
    - Edit the "GitHub Flux Webhook Secret" item
    - Update the `token` field with the new value
    - Update the `created_date` field
 
 3. **Update GitHub Webhook**:
-
    - Navigate to repository Settings → Webhooks
    - Edit the webhook configuration
    - Update the secret field with the new value
@@ -511,7 +507,6 @@ kill %1  # Stop port-forward
 #### 1. Access Repository Webhook Settings
 
 1. **Navigate to Repository**:
-
    - Go to your GitHub repository (e.g., `https://github.com/your-username/talos-gitops`)
    - Click **"Settings"** tab
    - Click **"Webhooks"** in the left sidebar
@@ -546,7 +541,6 @@ kill %1  # Stop port-forward
 #### 3. Save and Test Webhook
 
 1. **Save Configuration**:
-
    - Click **"Add webhook"** to save
    - GitHub will automatically send a ping event
 
@@ -618,7 +612,6 @@ curl -I https://flux-webhook.geoffdavis.com/hook/github-webhook
 #### 2. GitHub Ping Test
 
 1. **Trigger Manual Ping**:
-
    - Go to repository Settings → Webhooks
    - Click on your webhook
    - Click **"Recent Deliveries"** tab
@@ -961,7 +954,6 @@ kubectl get certificate -n flux-system flux-webhook-tls
 **Weekly Verification** (5 minutes):
 
 1. **Check Recent Deliveries**:
-
    - Go to GitHub repository → Settings → Webhooks
    - Review recent deliveries for any failures
    - Verify response codes are consistently 200
@@ -1222,7 +1214,12 @@ kubectl run webhook-test --image=curlimages/curl --rm -it --restart=Never -- cur
 **Error Message**:
 
 ```json
-{"level":"error","ts":"2025-01-18T20:00:00.000Z","msg":"receiver not found","receiver":"github-webhook"}
+{
+  "level": "error",
+  "ts": "2025-01-18T20:00:00.000Z",
+  "msg": "receiver not found",
+  "receiver": "github-webhook"
+}
 ```
 
 **Solution**:
@@ -1265,7 +1262,11 @@ kubectl delete certificate -n flux-system flux-webhook-tls
 **Error Message**:
 
 ```json
-{"level":"error","ts":"2025-01-18T20:00:00.000Z","msg":"webhook signature validation failed"}
+{
+  "level": "error",
+  "ts": "2025-01-18T20:00:00.000Z",
+  "msg": "webhook signature validation failed"
+}
 ```
 
 **Solution**:
@@ -1813,8 +1814,8 @@ This comprehensive deployment guide provides all necessary procedures to success
 
 ---
 
-**Deployment Guide Version**: 1.0  
-**Last Updated**: 2025-01-18  
-**Cluster**: homelab  
-**Domain**: geoffdavis.com  
+**Deployment Guide Version**: 1.0
+**Last Updated**: 2025-01-18
+**Cluster**: homelab
+**Domain**: geoffdavis.com
 **Webhook Endpoint**: <https://flux-webhook.geoffdavis.com/hook>

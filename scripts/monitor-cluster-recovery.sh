@@ -33,7 +33,7 @@ check_virtual_device_errors() {
     else
         echo "✅ No virtual device errors on mini01"
     fi
-    
+
     echo "Checking mini03 (172.29.51.13):"
     if mise exec -- talosctl dmesg --nodes 172.29.51.13 | grep -i "dead loop\|virtual device" | tail -5; then
         echo "⚠️  Virtual device errors still present on mini03"
@@ -46,19 +46,19 @@ check_virtual_device_errors() {
 # Function to check cluster health
 check_cluster_health() {
     echo "--- Cluster Health Summary ---"
-    
+
     # Count ready nodes
     READY_NODES=$(mise exec -- kubectl get nodes --no-headers | grep -c "Ready" || echo "0")
     TOTAL_NODES=$(mise exec -- kubectl get nodes --no-headers | wc -l)
-    
+
     echo "Ready nodes: $READY_NODES/$TOTAL_NODES"
-    
+
     # Check Cilium status
     CILIUM_RUNNING=$(mise exec -- kubectl get pods -n kube-system | grep cilium | grep -c "Running" || echo "0")
     CILIUM_TOTAL=$(mise exec -- kubectl get pods -n kube-system | grep -c cilium)
-    
+
     echo "Cilium pods running: $CILIUM_RUNNING/$CILIUM_TOTAL"
-    
+
     if [ "$READY_NODES" -eq 3 ] && [ "$CILIUM_RUNNING" -gt 0 ]; then
         echo "🎉 Cluster recovery appears successful!"
         return 0
@@ -75,10 +75,10 @@ MAX_ATTEMPTS=30  # 15 minutes with 30-second intervals
 
 while [ "$RECOVERY_COMPLETE" = false ] && [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     echo "=== Recovery Check #$ATTEMPT ($(date)) ==="
-    
+
     check_nodes
     check_cilium
-    
+
     # Only check for virtual device errors if nodes are responsive
     if mise exec -- talosctl version --nodes 172.29.51.11,172.29.51.13 >/dev/null 2>&1; then
         check_virtual_device_errors
@@ -87,7 +87,7 @@ while [ "$RECOVERY_COMPLETE" = false ] && [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         echo "⏳ Nodes not yet responsive to talosctl commands"
         echo
     fi
-    
+
     if check_cluster_health; then
         RECOVERY_COMPLETE=true
         echo
@@ -96,14 +96,14 @@ while [ "$RECOVERY_COMPLETE" = false ] && [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         echo "Recovery completed at: $(date)"
         break
     fi
-    
+
     if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
         echo "Waiting 30 seconds before next check..."
         echo "========================================"
         echo
         sleep 30
     fi
-    
+
     ATTEMPT=$((ATTEMPT + 1))
 done
 

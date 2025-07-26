@@ -44,21 +44,21 @@ warn() {
 # Test functions
 test_basic_connectivity() {
     log "Testing basic network connectivity..."
-    
+
     # Test connectivity to Unifi gateway
     if ping -c 3 -W 2 "$UNIFI_GATEWAY" &> /dev/null; then
         pass "Can reach Unifi gateway ($UNIFI_GATEWAY)"
     else
         fail "Cannot reach Unifi gateway ($UNIFI_GATEWAY)"
     fi
-    
+
     # Test connectivity to cluster VIP
     if ping -c 3 -W 2 "$CLUSTER_VIP" &> /dev/null; then
         pass "Can reach cluster VIP ($CLUSTER_VIP)"
     else
         warn "Cannot reach cluster VIP ($CLUSTER_VIP) - cluster may not be running"
     fi
-    
+
     # Test connectivity to each cluster node
     for node in "${CLUSTER_NODES[@]}"; do
         if ping -c 3 -W 2 "$node" &> /dev/null; then
@@ -71,10 +71,10 @@ test_basic_connectivity() {
 
 test_dns_resolution() {
     log "Testing DNS resolution..."
-    
+
     # Test external DNS
     local external_hosts=("google.com" "github.com" "quay.io" "gcr.io")
-    
+
     for host in "${external_hosts[@]}"; do
         if nslookup "$host" &> /dev/null; then
             pass "Can resolve external host ($host)"
@@ -82,11 +82,11 @@ test_dns_resolution() {
             fail "Cannot resolve external host ($host)"
         fi
     done
-    
+
     # Test local DNS (if cluster is running)
     if kubectl get svc -n kube-system &> /dev/null; then
         local cluster_services=("kubernetes.default.svc.cluster.local")
-        
+
         for service in "${cluster_services[@]}"; do
             if nslookup "$service" &> /dev/null; then
                 pass "Can resolve cluster service ($service)"
@@ -99,20 +99,20 @@ test_dns_resolution() {
 
 test_kubernetes_api() {
     log "Testing Kubernetes API connectivity..."
-    
+
     # Test if kubectl is configured
     if kubectl config current-context &> /dev/null; then
         pass "kubectl is configured"
-        
+
         # Test API server connectivity
         if kubectl get nodes &> /dev/null; then
             pass "Can connect to Kubernetes API"
-            
+
             # Get cluster info
             local node_count
             node_count=$(kubectl get nodes --no-headers | wc -l)
             log "Found $node_count nodes in cluster"
-            
+
             # Test node status
             local ready_nodes
             ready_nodes=$(kubectl get nodes --no-headers | grep -c "Ready" || echo "0")
@@ -131,17 +131,17 @@ test_kubernetes_api() {
 
 test_cluster_networking() {
     log "Testing cluster networking..."
-    
+
     # Test if cluster is accessible
     if kubectl get nodes &> /dev/null; then
         # Test pod networking
         if kubectl get pods -A &> /dev/null; then
             pass "Can access cluster pods"
-            
+
             # Test system pods
             # For Talos, Cilium runs in kube-system, not cilium-system
             local system_namespaces=("kube-system" "flux-system" "longhorn-system")
-            
+
             for ns in "${system_namespaces[@]}"; do
                 if kubectl get pods -n "$ns" &> /dev/null; then
                     local pod_count
@@ -164,11 +164,11 @@ test_cluster_networking() {
         else
             warn "Cannot access cluster pods"
         fi
-        
+
         # Test services
         if kubectl get svc -A &> /dev/null; then
             pass "Can access cluster services"
-            
+
             # Test LoadBalancer services
             local lb_services
             lb_services=$(kubectl get svc -A --no-headers 2>/dev/null | grep -c "LoadBalancer" || echo "0")
@@ -188,11 +188,11 @@ test_cluster_networking() {
 
 test_cilium_connectivity() {
     log "Testing Cilium connectivity..."
-    
+
     # Cilium runs in kube-system for Talos
     if kubectl get pods -n kube-system -l k8s-app=cilium &> /dev/null; then
         pass "Cilium pods found in kube-system"
-        
+
         # Test Cilium pod status
         local cilium_pods
         cilium_pods=$(kubectl get pods -n kube-system -l k8s-app=cilium --no-headers 2>/dev/null | grep -c "Running" || echo "0")
@@ -201,11 +201,11 @@ test_cilium_connectivity() {
         else
             warn "No running Cilium pods found"
         fi
-        
+
         # Test Cilium configuration for Talos
         if kubectl get cm -n kube-system cilium-config &> /dev/null; then
             pass "Cilium config map exists"
-            
+
             # Check for kube-proxy replacement
             if kubectl get cm -n kube-system cilium-config -o yaml | grep -q "kube-proxy-replacement.*true"; then
                 pass "Cilium is configured for kube-proxy replacement (required for Talos)"
@@ -215,7 +215,7 @@ test_cilium_connectivity() {
         else
             warn "Cilium config map not found"
         fi
-        
+
         # Test Cilium connectivity (if cilium CLI is available)
         if command -v cilium &> /dev/null; then
             if cilium status &> /dev/null; then
@@ -223,7 +223,7 @@ test_cilium_connectivity() {
             else
                 warn "Cilium status check failed"
             fi
-            
+
             # Test connectivity
             if cilium connectivity test --test-concurrency 1 --junit-file /tmp/cilium-test.xml &> /dev/null; then
                 pass "Cilium connectivity test passed"
@@ -240,11 +240,11 @@ test_cilium_connectivity() {
 
 test_bgp_connectivity() {
     log "Testing BGP connectivity..."
-    
+
     # Test if BGP is configured in Cilium
     if kubectl get ciliumbgpclusterconfig &> /dev/null; then
         pass "Cilium BGP configuration exists"
-        
+
         # Test BGP peering status
         local bgp_peers
         bgp_peers=$(kubectl get ciliumbgpclusterconfig -o jsonpath='{.items[*].spec.bgpInstances[*].peers}' 2>/dev/null | grep -o "172.29.51.1" | wc -l || echo "0")
@@ -256,7 +256,7 @@ test_bgp_connectivity() {
     else
         warn "Cilium BGP configuration not found (BGP may not be deployed yet)"
     fi
-    
+
     # Test BGP routes (if running on cluster)
     if kubectl get nodes &> /dev/null; then
         # Try to check BGP status on nodes
@@ -272,27 +272,27 @@ test_bgp_connectivity() {
 
 test_loadbalancer_connectivity() {
     log "Testing LoadBalancer connectivity..."
-    
+
     # Test if LoadBalancer IP pool is configured
     if kubectl get ciliumloadbalancerippool &> /dev/null; then
         pass "Cilium LoadBalancer IP pool configuration exists"
-        
+
         # Test LoadBalancer services
         local lb_services
         lb_services=()
         while IFS= read -r line; do
             [[ -n "$line" ]] && lb_services+=("$line")
         done < <(kubectl get svc -A --no-headers 2>/dev/null | grep "LoadBalancer" | awk '{print $1 "/" $2 " " $5}' || true)
-        
+
         for service in "${lb_services[@]}"; do
             if [[ -n "$service" ]]; then
                 local ns_name ip
                 ns_name=$(echo "$service" | awk '{print $1}')
                 ip=$(echo "$service" | awk '{print $2}' | grep -oE '172\.29\.51\.[0-9]+')
-                
+
                 if [[ -n "$ip" ]]; then
                     pass "LoadBalancer service $ns_name has IP $ip"
-                    
+
                     # Test connectivity to LoadBalancer IP
                     if ping -c 1 -W 1 "$ip" &> /dev/null; then
                         pass "LoadBalancer IP $ip is reachable"
@@ -311,11 +311,11 @@ test_loadbalancer_connectivity() {
 
 test_storage_connectivity() {
     log "Testing storage connectivity..."
-    
+
     # Test if Longhorn is installed
     if kubectl get pods -n longhorn-system &> /dev/null; then
         pass "Longhorn namespace exists"
-        
+
         # Test Longhorn pod status
         local longhorn_pods
         longhorn_pods=$(kubectl get pods -n longhorn-system --no-headers 2>/dev/null | grep -c "Running" || echo "0")
@@ -325,7 +325,7 @@ test_storage_connectivity() {
         else
             warn "No running Longhorn pods found"
         fi
-        
+
         # Test storage classes
         if kubectl get storageclass &> /dev/null; then
             local longhorn_sc
@@ -348,7 +348,7 @@ test_storage_connectivity() {
 run_tests() {
     log "Starting Talos GitOps connectivity tests..."
     echo "=========================================="
-    
+
     test_basic_connectivity
     test_dns_resolution
     test_kubernetes_api
@@ -357,12 +357,12 @@ run_tests() {
     test_bgp_connectivity
     test_loadbalancer_connectivity
     test_storage_connectivity
-    
+
     echo "=========================================="
     log "Test Results:"
     echo -e "${GREEN}Tests passed: $TESTS_PASSED${NC}"
     echo -e "${RED}Tests failed: $TESTS_FAILED${NC}"
-    
+
     if [[ $TESTS_FAILED -eq 0 ]]; then
         echo -e "${GREEN}All connectivity tests passed! ✓${NC}"
         exit 0

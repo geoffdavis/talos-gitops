@@ -35,10 +35,10 @@ error() {
 # Validate 1Password credentials
 validate_1password_credentials() {
     log "Validating 1Password tunnel credentials..."
-    
+
     if op item get "$CREDENTIAL_TITLE" --vault="$VAULT_NAME" &> /dev/null; then
         success "Tunnel credentials found in 1Password"
-        
+
         # Test credential retrieval
         local temp_file="/tmp/validate-tunnel-creds.json"
         if op document get "$CREDENTIAL_TITLE" --vault="$VAULT_NAME" --output="$temp_file" 2>/dev/null; then
@@ -65,7 +65,7 @@ validate_1password_credentials() {
 # Validate Cloudflare tunnel
 validate_cloudflare_tunnel() {
     log "Validating Cloudflare tunnel..."
-    
+
     if command -v mise &> /dev/null && mise exec -- cloudflared --version &> /dev/null; then
         if mise exec -- cloudflared tunnel list 2>/dev/null | grep -q "$TUNNEL_NAME"; then
             local tunnel_id
@@ -85,20 +85,20 @@ validate_cloudflare_tunnel() {
 # Validate Kubernetes ExternalSecret
 validate_external_secret() {
     log "Validating Kubernetes ExternalSecret..."
-    
+
     if command -v kubectl &> /dev/null && kubectl cluster-info &> /dev/null; then
         # Check if namespace exists
         if kubectl get namespace cloudflare-tunnel &> /dev/null; then
             success "Cloudflare tunnel namespace exists"
-            
+
             # Check ExternalSecret
             if kubectl get externalsecret cloudflare-tunnel-credentials -n cloudflare-tunnel &> /dev/null; then
                 local secret_status
                 secret_status=$(kubectl get externalsecret cloudflare-tunnel-credentials -n cloudflare-tunnel -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
-                
+
                 if [[ "$secret_status" == "True" ]]; then
                     success "ExternalSecret is successfully syncing"
-                    
+
                     # Check if secret exists
                     if kubectl get secret cloudflare-tunnel-credentials -n cloudflare-tunnel &> /dev/null; then
                         success "Tunnel credentials secret exists in cluster"
@@ -122,20 +122,20 @@ validate_external_secret() {
 # Validate tunnel deployment
 validate_tunnel_deployment() {
     log "Validating tunnel deployment..."
-    
+
     if command -v kubectl &> /dev/null && kubectl cluster-info &> /dev/null; then
         if kubectl get deployment cloudflare-tunnel -n cloudflare-tunnel &> /dev/null; then
             local ready_replicas
             ready_replicas=$(kubectl get deployment cloudflare-tunnel -n cloudflare-tunnel -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
             local desired_replicas
             desired_replicas=$(kubectl get deployment cloudflare-tunnel -n cloudflare-tunnel -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
-            
+
             if [[ "$ready_replicas" == "$desired_replicas" && "$ready_replicas" -gt 0 ]]; then
                 success "Tunnel deployment is healthy ($ready_replicas/$desired_replicas replicas ready)"
             else
                 warn "Tunnel deployment not fully ready ($ready_replicas/$desired_replicas replicas ready)"
             fi
-            
+
             # Check pod status
             local pod_count
             pod_count=$(kubectl get pods -n cloudflare-tunnel -l app=cloudflare-tunnel --field-selector=status.phase=Running 2>/dev/null | wc -l || echo "0")
@@ -158,43 +158,43 @@ main() {
     echo "  Cloudflare Tunnel Setup Validation"
     echo "=============================================="
     echo ""
-    
+
     local validation_passed=0
     local total_checks=4
-    
+
     # Validate 1Password credentials
     if validate_1password_credentials; then
         validation_passed=$((validation_passed + 1))
     fi
     echo ""
-    
+
     # Validate Cloudflare tunnel
     local tunnel_id=""
     if tunnel_id=$(validate_cloudflare_tunnel); then
         validation_passed=$((validation_passed + 1))
     fi
     echo ""
-    
+
     # Validate ExternalSecret
     validate_external_secret
     echo ""
-    
+
     # Validate deployment
     validate_tunnel_deployment
     echo ""
-    
+
     # Summary
     echo "=============================================="
     echo "  VALIDATION SUMMARY"
     echo "=============================================="
     echo ""
-    
+
     if [[ $validation_passed -eq 2 ]]; then
         success "Core validation passed ($validation_passed/2 critical checks)"
         echo ""
         echo "✅ Tunnel credentials are properly configured"
         echo "✅ Ready for Kubernetes deployment"
-        
+
         if [[ -n "$tunnel_id" ]]; then
             echo ""
             echo "📋 Tunnel Information:"

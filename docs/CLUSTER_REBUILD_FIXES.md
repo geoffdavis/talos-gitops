@@ -92,14 +92,12 @@ mini03   Ready    control-plane   13h   v1.31.1
 ### Next Steps
 
 1. **Update 1Password Connect Credentials** (CRITICAL):
-
    - Follow instructions in `docs/1PASSWORD_CONNECT_SETUP.md`
    - Generate new version 2 credentials
    - Update the Kubernetes secret
    - Restart the 1Password Connect deployment
 
 2. **After credentials are updated**:
-
    - ClusterSecretStore should validate
    - External Secrets will start syncing
    - Dependent services will deploy automatically

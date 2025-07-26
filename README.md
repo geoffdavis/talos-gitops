@@ -178,9 +178,9 @@ geoffdavis.com (external via Cloudflare tunnel)
 
 3. **Install tools**:
 
-    ```bash
-    mise install
-    ```
+   ```bash
+   mise install
+   ```
 
 ## Cloudflare Setup
 
@@ -193,7 +193,6 @@ Before deploying, set up your Cloudflare tunnel:
    ```
 
 2. **Store Credentials in 1Password**:
-
    - Create item "Cloudflare Tunnel Credentials"
    - Add `credentials.json` field with tunnel credentials
    - Add `tunnel-token` field with tunnel token
@@ -275,7 +274,6 @@ The phased bootstrap approach provides systematic, resumable cluster deployment 
    ```
 
    This will execute all phases systematically:
-
    - **Phase 1**: Environment validation (mise, tools, connectivity)
    - **Phase 2**: Talos cluster initialization (etcd bootstrap)
    - **Phase 3**: CNI deployment (Cilium)
@@ -295,19 +293,19 @@ The phased bootstrap approach provides systematic, resumable cluster deployment 
 
 4. **Monitor progress**:
 
-    ```bash
-    # Check current status
-    task bootstrap:status
+   ```bash
+   # Check current status
+   task bootstrap:status
 
-    # View logs for specific phase
-    task bootstrap:logs PHASE=2
-    ```
+   # View logs for specific phase
+   task bootstrap:logs PHASE=2
+   ```
 
 5. **Configure BGP on Unifi UDM Pro**:
 
-    ```bash
-    task bgp:configure-unifi
-    ```
+   ```bash
+   task bgp:configure-unifi
+   ```
 
 ### 📖 Phased Bootstrap Benefits
 
@@ -334,7 +332,6 @@ For detailed information, see: **[Phased Bootstrap Guide](docs/PHASED_BOOTSTRAP_
    ```
 
    This single command will:
-
    - Bootstrap all secrets from 1Password
    - Generate Talos configuration
    - Apply configuration to nodes
@@ -415,9 +412,9 @@ If you prefer manual control over each step:
 
 10. Deploy GitOps stack:
 
-     ```bash
-     task flux:bootstrap
-     ```
+    ```bash
+    task flux:bootstrap
+    ```
 
 ### Converting Existing Cluster to All-Control-Plane
 

@@ -290,6 +290,6 @@ task talos:generate-config
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-07-16  
+**Document Version**: 1.0
+**Last Updated**: 2025-07-16
 **Security Incident**: Resolved via complete credential rotation

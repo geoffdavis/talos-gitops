@@ -284,19 +284,16 @@ rate(gotk_reconcile_condition{type="Ready",status="True"}[5m])
 ### Timeout Exceeded
 
 1. **Check Resource Availability**
-
    - CPU/Memory constraints
    - Storage availability
    - Network connectivity
 
 2. **Analyze Component Logs**
-
    - Application startup issues
    - Dependency failures
    - Configuration errors
 
 3. **Evaluate Timeout Appropriateness**
-
    - Compare with similar components
    - Consider environment factors
    - Review historical performance
@@ -309,13 +306,11 @@ rate(gotk_reconcile_condition{type="Ready",status="True"}[5m])
 ### Frequent Timeouts
 
 1. **Resource Optimization**
-
    - Increase cluster resources
    - Optimize application configuration
    - Improve storage performance
 
 2. **Dependency Analysis**
-
    - Review startup ordering
    - Check health check configuration
    - Validate network policies

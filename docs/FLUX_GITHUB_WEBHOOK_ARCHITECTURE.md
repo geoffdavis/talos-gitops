@@ -144,7 +144,7 @@ data:
           tlsTimeout: 10s
           keepAliveTimeout: 90s
           httpHostHeader: flux-webhook.geoffdavis.com
-      
+
       # Default rule - catch all
       - service: http_status:404
 ```
@@ -426,13 +426,11 @@ spec:
 #### Phase 1: Foundation Setup (Low Risk)
 
 1. **Create webhook namespace resources**
-
    - Namespace (if needed)
    - ServiceAccount
    - RBAC permissions
 
 2. **Configure secret management**
-
    - Create 1Password entry for webhook secret
    - Deploy ExternalSecret resource
    - Verify secret creation
@@ -444,7 +442,6 @@ spec:
 #### Phase 2: Ingress Configuration (Medium Risk)
 
 1. **Deploy public ingress resource**
-
    - Create ingress with security annotations
    - Verify certificate provisioning
    - Test internal connectivity
@@ -456,7 +453,6 @@ spec:
 #### Phase 3: Tunnel Configuration (Medium Risk)
 
 1. **Update Cloudflare tunnel config**
-
    - Add ingress rule for webhook domain
    - Deploy updated ConfigMap
    - Restart tunnel pods
@@ -469,7 +465,6 @@ spec:
 #### Phase 4: Flux Integration (High Risk)
 
 1. **Deploy Receiver resource**
-
    - Create GitHub webhook receiver
    - Configure event filtering
    - Test webhook endpoint
@@ -482,7 +477,6 @@ spec:
 #### Phase 5: Monitoring and Validation (Low Risk)
 
 1. **Deploy monitoring resources**
-
    - ServiceMonitor for metrics collection
    - PrometheusRule for alerting
    - Verify metrics collection
@@ -546,21 +540,18 @@ spec:
 **Common Issues**:
 
 1. **Webhook not reachable**:
-
    - Check Cloudflare tunnel logs
    - Verify ingress controller status
    - Test internal service connectivity
    - Validate DNS resolution
 
 2. **Certificate issues**:
-
    - Check cert-manager logs
    - Verify Let's Encrypt rate limits
    - Test DNS01 challenge resolution
    - Validate Cloudflare API token
 
 3. **Authentication failures**:
-
    - Verify webhook secret in 1Password
    - Check ExternalSecret status
    - Validate GitHub webhook configuration

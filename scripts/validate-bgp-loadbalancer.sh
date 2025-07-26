@@ -38,37 +38,37 @@ success() {
 
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     for tool in kubectl dig curl ping; do
         if ! command -v $tool &> /dev/null; then
             error "$tool is required but not installed"
         fi
     done
-    
+
     if ! kubectl get nodes &> /dev/null; then
         error "Cannot connect to Kubernetes cluster"
     fi
-    
+
     success "Prerequisites check passed"
 }
 
 validate_bgp_configuration() {
     log "Validating BGP configuration..."
-    
+
     # Check BGP cluster config exists
     if kubectl get ciliumbgpclusterconfig cilium-bgp-cluster &> /dev/null; then
         success "BGP cluster configuration found"
     else
         error "BGP cluster configuration not found"
     fi
-    
+
     # Check BGP advertisements
     if kubectl get ciliumbgpadvertisement bgp-loadbalancer-advertisements &> /dev/null; then
         success "BGP advertisements configuration found"
     else
         error "BGP advertisements configuration not found"
     fi
-    
+
     # Verify no L2 announcement policies exist
     l2_policies=$(kubectl get ciliuml2announcementpolicy -n kube-system --no-headers 2>/dev/null | wc -l)
     if [ "$l2_policies" -eq 0 ]; then
@@ -81,14 +81,14 @@ validate_bgp_configuration() {
 
 validate_load_balancer_pools() {
     log "Validating load balancer IP pools..."
-    
+
     # Check BGP load balancer pools
     pools=("bgp-default" "bgp-ingress" "bgp-reserved" "bgp-default-ipv6")
-    
+
     for pool in "${pools[@]}"; do
         if kubectl get ciliumloadbalancerippool "$pool" -n kube-system &> /dev/null; then
             success "Load balancer pool '$pool' found"
-            
+
             # Show pool details
             kubectl get ciliumloadbalancerippool "$pool" -n kube-system -o yaml | grep -A 10 "blocks:"
         else
@@ -99,7 +99,7 @@ validate_load_balancer_pools() {
 
 validate_cilium_configuration() {
     log "Validating Cilium configuration..."
-    
+
     # Check Cilium pods are running
     cilium_pods=$(kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium --no-headers | grep -c Running || echo "0")
     if [ "$cilium_pods" -gt 0 ]; then
@@ -107,7 +107,7 @@ validate_cilium_configuration() {
     else
         error "No Cilium pods running"
     fi
-    
+
     # Check BGP control plane is enabled
     bgp_enabled=$(kubectl get helmrelease cilium -n kube-system -o jsonpath='{.spec.values.bgpControlPlane.enabled}' 2>/dev/null || echo "false")
     if [ "$bgp_enabled" = "true" ]; then
@@ -115,7 +115,7 @@ validate_cilium_configuration() {
     else
         error "BGP control plane not enabled in Cilium"
     fi
-    
+
     # Check L2 announcements are disabled
     l2_enabled=$(kubectl get helmrelease cilium -n kube-system -o jsonpath='{.spec.values.l2announcements.enabled}' 2>/dev/null || echo "true")
     if [ "$l2_enabled" = "false" ]; then
@@ -127,27 +127,27 @@ validate_cilium_configuration() {
 
 validate_service_ips() {
     log "Validating LoadBalancer service IPs..."
-    
+
     # Get all LoadBalancer services
     services=$(kubectl get svc --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer") | "\(.metadata.namespace)/\(.metadata.name)/\(.status.loadBalancer.ingress[0].ip // "pending")"')
-    
+
     if [ -z "$services" ]; then
         warn "No LoadBalancer services found"
         return
     fi
-    
+
     service_count=0
     valid_ip_count=0
-    
+
     while IFS= read -r service_info; do
         if [ -z "$service_info" ]; then continue; fi
-        
+
         namespace=$(echo "$service_info" | cut -d'/' -f1)
         name=$(echo "$service_info" | cut -d'/' -f2)
         ip=$(echo "$service_info" | cut -d'/' -f3)
-        
+
         service_count=$((service_count + 1))
-        
+
         if [ "$ip" = "pending" ] || [ "$ip" = "null" ]; then
             warn "Service $namespace/$name has no IP assigned"
         else
@@ -160,23 +160,23 @@ validate_service_ips() {
             fi
         fi
     done <<< "$services"
-    
+
     log "LoadBalancer services summary: $valid_ip_count/$service_count have valid BGP IPs"
 }
 
 test_network_connectivity() {
     log "Testing network connectivity..."
-    
+
     # Test connectivity to new load balancer network
     if ping -c 1 -W 2 172.29.52.1 &> /dev/null; then
         success "New load balancer network (172.29.52.0/24) is reachable"
     else
         warn "New load balancer network may not be fully configured"
     fi
-    
+
     # Test connectivity to load balancer IPs
     services=$(kubectl get svc --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer" and .status.loadBalancer.ingress[0].ip != null) | .status.loadBalancer.ingress[0].ip')
-    
+
     if [ -n "$services" ]; then
         while IFS= read -r ip; do
             if [ -n "$ip" ] && [[ "$ip" =~ ^172\.29\.52\. ]]; then
@@ -192,7 +192,7 @@ test_network_connectivity() {
 
 test_service_endpoints() {
     log "Testing service endpoints..."
-    
+
     # Test common services
     services_to_test=(
         "longhorn-system/longhorn-frontend:80"
@@ -201,16 +201,16 @@ test_service_endpoints() {
         "monitoring/prometheus:9090"
         "monitoring/alertmanager:9093"
     )
-    
+
     for service_info in "${services_to_test[@]}"; do
         namespace=$(echo "$service_info" | cut -d'/' -f1)
         service_port=$(echo "$service_info" | cut -d'/' -f2)
         service_name=$(echo "$service_port" | cut -d':' -f1)
         port=$(echo "$service_port" | cut -d':' -f2)
-        
+
         if kubectl get svc "$service_name" -n "$namespace" &> /dev/null; then
             ip=$(kubectl get svc "$service_name" -n "$namespace" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-            
+
             if [ -n "$ip" ] && [ "$ip" != "null" ]; then
                 if curl -s --connect-timeout 5 "http://$ip:$port" &> /dev/null; then
                     success "Service $namespace/$service_name is accessible at $ip:$port"
@@ -226,7 +226,7 @@ test_service_endpoints() {
 
 validate_dns_resolution() {
     log "Validating DNS resolution..."
-    
+
     # Test DNS resolution for services with known domains
     domains_to_test=(
         "longhorn.k8s.home.geoffdavis.com"
@@ -234,7 +234,7 @@ validate_dns_resolution() {
         "prometheus.k8s.home.geoffdavis.com"
         "hubble.k8s.home.geoffdavis.com"
     )
-    
+
     for domain in "${domains_to_test[@]}"; do
         if dig +short "$domain" | grep -E '^172\.29\.52\.' &> /dev/null; then
             ip=$(dig +short "$domain" | head -1)
@@ -247,18 +247,18 @@ validate_dns_resolution() {
 
 check_bgp_peering_status() {
     log "Checking BGP peering status (requires UDM Pro access)..."
-    
+
     # This requires SSH access to UDM Pro - skip if not available
     if command -v ssh &> /dev/null && ssh -o ConnectTimeout=5 -o BatchMode=yes unifi-admin@udm-pro "echo test" &> /dev/null; then
         log "Testing BGP peering with UDM Pro..."
-        
+
         # Check BGP summary
         if ssh unifi-admin@udm-pro "vtysh -c 'show bgp summary'" 2>/dev/null | grep -q "172.29.51.1[1-3]"; then
             success "BGP peering with cluster nodes detected"
         else
             warn "BGP peering status unclear"
         fi
-        
+
         # Check advertised routes
         if ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv4 unicast'" 2>/dev/null | grep -q "172.29.52"; then
             success "Load balancer routes advertised via BGP"
@@ -273,33 +273,33 @@ check_bgp_peering_status() {
 
 generate_validation_report() {
     log "Generating validation report..."
-    
+
     report_file="$PROJECT_ROOT/bgp-validation-report-$(date +%Y%m%d-%H%M%S).txt"
-    
+
     {
         echo "BGP Load Balancer Validation Report"
         echo "Generated: $(date)"
         echo "========================================"
         echo
-        
+
         echo "BGP Configuration:"
         kubectl get ciliumbgpclusterconfig -o wide 2>/dev/null || echo "No BGP cluster config found"
         echo
-        
+
         echo "Load Balancer IP Pools:"
         kubectl get ciliumloadbalancerippool -o wide 2>/dev/null || echo "No load balancer pools found"
         echo
-        
+
         echo "LoadBalancer Services:"
         kubectl get svc --all-namespaces -o wide | grep LoadBalancer || echo "No LoadBalancer services found"
         echo
-        
+
         echo "L2 Announcement Policies (should be empty):"
         kubectl get ciliuml2announcementpolicy -n kube-system 2>/dev/null || echo "No L2 announcement policies found"
         echo
-        
+
     } > "$report_file"
-    
+
     success "Validation report saved to: $report_file"
 }
 
@@ -311,10 +311,10 @@ main() {
             exit 0
             ;;
     esac
-    
+
     log "Starting BGP load balancer validation..."
     echo
-    
+
     check_prerequisites
     validate_bgp_configuration
     validate_load_balancer_pools
@@ -325,7 +325,7 @@ main() {
     validate_dns_resolution
     check_bgp_peering_status
     generate_validation_report
-    
+
     success "BGP load balancer validation completed!"
     echo
     log "Next steps:"

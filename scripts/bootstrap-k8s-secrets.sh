@@ -32,30 +32,30 @@ error() {
 # Check prerequisites
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     if ! command -v op &> /dev/null; then
         error "1Password CLI (op) is not installed. Please install it first."
     fi
-    
+
     if ! op account list &> /dev/null; then
         error "1Password CLI is not authenticated. Please run 'op signin' first."
     fi
-    
+
     if [[ -z "${OP_ACCOUNT:-}" ]]; then
         error "OP_ACCOUNT environment variable is not set. Please export OP_ACCOUNT=your-account-name"
     fi
-    
+
     if ! command -v kubectl &> /dev/null; then
         error "kubectl is not installed. Please install it first."
     fi
-    
+
     success "All prerequisites met"
 }
 
 # Create 1Password items if they don't exist
 create_1password_items() {
     log "Creating 1Password items..."
-    
+
     # Check if Cloudflare Tunnel credentials exist
     if ! op item get "Cloudflare Tunnel Credentials" &> /dev/null; then
         warn "Cloudflare Tunnel Credentials item not found. Please create it manually with your tunnel credentials."
@@ -63,7 +63,7 @@ create_1password_items() {
     else
         success "Cloudflare Tunnel Credentials item exists"
     fi
-    
+
     # Check if BGP authentication exists
     if ! op item get "BGP Authentication - $CLUSTER_NAME" &> /dev/null; then
         log "Creating BGP Authentication - $CLUSTER_NAME item..."
@@ -76,7 +76,7 @@ create_1password_items() {
     else
         success "BGP Authentication - $CLUSTER_NAME item exists"
     fi
-    
+
     # Check if Cloudflare API token exists
     if ! op item get "Cloudflare API Token" &> /dev/null; then
         warn "Cloudflare API Token item not found. Please create it manually with your Cloudflare API token."
@@ -84,7 +84,7 @@ create_1password_items() {
     else
         success "Cloudflare API Token item exists"
     fi
-    
+
     # Check if 1Password Connect token exists
     if ! op item get "home Access Token: home-ops-automation" --vault="Automation" &> /dev/null; then
         warn "1Password Connect token not found. Please create it in the Automation vault."
@@ -92,7 +92,7 @@ create_1password_items() {
     else
         success "1Password Connect token exists"
     fi
-    
+
     # Check if Longhorn UI credentials exist
     if ! op item get "Longhorn UI Credentials - $CLUSTER_NAME" &> /dev/null; then
         log "Creating Longhorn UI Credentials - $CLUSTER_NAME item..."
@@ -100,7 +100,7 @@ create_1password_items() {
         password=$(openssl rand -base64 16)
         local auth_string
         auth_string=$(htpasswd -nb admin "$password" | base64 -w 0)
-        
+
         op item create \
             --category="Login" \
             --title="Longhorn UI Credentials - $CLUSTER_NAME" \
@@ -117,21 +117,21 @@ create_1password_items() {
 # Bootstrap cluster secrets
 bootstrap_cluster_secrets() {
     log "Bootstrapping Kubernetes secrets..."
-    
+
     # Check if cluster is accessible
     if ! kubectl get namespaces &> /dev/null; then
         error "Kubernetes cluster not accessible. Please ensure you have a valid kubeconfig."
     fi
-    
+
     # Create temporary directory for secrets
     local temp_dir
     temp_dir=$(mktemp -d)
-    
+
     log "Creating Kubernetes secrets..."
-    
+
     # Create 1Password Connect secrets
     kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
-    
+
     # Get 1Password Connect JWT token
     if op item get "home Access Token: home-ops-automation" --vault="Automation" --fields credential --reveal > "$temp_dir/op-token" 2>/dev/null; then
         local token
@@ -144,10 +144,10 @@ bootstrap_cluster_secrets() {
     else
         warn "1Password Connect token not found"
     fi
-    
+
     # Create BGP authentication secret (in kube-system for Talos-managed Cilium)
     kubectl create namespace kube-system --dry-run=client -o yaml | kubectl apply -f -
-    
+
     if op item get "BGP Authentication - $CLUSTER_NAME" --vault="Automation" --fields label=password --format json > "$temp_dir/bgp-auth.json" 2>/dev/null; then
         local bgp_password
         bgp_password=$(jq -r '.value' "$temp_dir/bgp-auth.json")
@@ -159,10 +159,10 @@ bootstrap_cluster_secrets() {
     else
         warn "BGP authentication password not found"
     fi
-    
+
     # Create Cloudflare API token secret
     kubectl create namespace external-dns-system --dry-run=client -o yaml | kubectl apply -f -
-    
+
     if op item get "Cloudflare API Token" --fields label=token --format json > "$temp_dir/cf-token.json" 2>/dev/null; then
         local cf_token
         cf_token=$(jq -r '.value' "$temp_dir/cf-token.json")
@@ -174,10 +174,10 @@ bootstrap_cluster_secrets() {
     else
         warn "Cloudflare API token not found"
     fi
-    
+
     # Create Longhorn auth secret
     kubectl create namespace longhorn-system --dry-run=client -o yaml | kubectl apply -f -
-    
+
     if op item get "Longhorn UI Credentials - $CLUSTER_NAME" --fields label=auth --format json > "$temp_dir/longhorn-auth.json" 2>/dev/null; then
         local auth_string
         auth_string=$(jq -r '.value' "$temp_dir/longhorn-auth.json")
@@ -189,7 +189,7 @@ bootstrap_cluster_secrets() {
     else
         warn "Longhorn auth credentials not found"
     fi
-    
+
     # Clean up temporary files
     rm -rf "$temp_dir"
     success "Kubernetes secrets bootstrapped"
@@ -198,7 +198,7 @@ bootstrap_cluster_secrets() {
 # Validate GitHub token for Renovate
 validate_github_token() {
     log "Validating GitHub token for Renovate..."
-    
+
     if op item get "GitHub Personal Access Token" &> /dev/null; then
         # Try different possible field names for the token
         local token_found=false
@@ -209,7 +209,7 @@ validate_github_token() {
                 break
             fi
         done
-        
+
         if [[ "$token_found" == "false" ]]; then
             warn "GitHub Personal Access Token item exists but no valid token field found"
             warn "Expected fields: token, password, or credential"
@@ -223,12 +223,12 @@ validate_github_token() {
 # Main execution
 main() {
     log "Starting Kubernetes secrets bootstrap process for $CLUSTER_NAME cluster..."
-    
+
     check_prerequisites
     create_1password_items
     bootstrap_cluster_secrets
     validate_github_token
-    
+
     log "Kubernetes secrets bootstrap completed successfully!"
     echo ""
     echo "Next steps:"

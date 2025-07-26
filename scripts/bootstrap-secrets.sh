@@ -32,30 +32,30 @@ error() {
 # Check prerequisites
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     if ! command -v op &> /dev/null; then
         error "1Password CLI (op) is not installed. Please install it first."
     fi
-    
+
     if ! op account list &> /dev/null; then
         error "1Password CLI is not authenticated. Please run 'op signin' first."
     fi
-    
+
     if [[ -z "${OP_ACCOUNT:-}" ]]; then
         error "OP_ACCOUNT environment variable is not set. Please export OP_ACCOUNT=your-account-name"
     fi
-    
+
     if ! command -v kubectl &> /dev/null; then
         error "kubectl is not installed. Please install it first."
     fi
-    
+
     success "All prerequisites met"
 }
 
 # Create 1Password items if they don't exist
 create_1password_items() {
     log "Creating 1Password items..."
-    
+
     # Check if Talos cluster secrets item exists
     if ! op item get "Talos Cluster Secrets - $CLUSTER_NAME" &> /dev/null; then
         log "Creating Talos Cluster Secrets - $CLUSTER_NAME item..."
@@ -70,7 +70,7 @@ create_1password_items() {
     else
         success "Talos Cluster Secrets - $CLUSTER_NAME item already exists"
     fi
-    
+
     # Check if Talos PKI certificates item exists
     if ! op item get "Talos PKI Certificates - $CLUSTER_NAME" &> /dev/null; then
         log "Creating Talos PKI Certificates - $CLUSTER_NAME item..."
@@ -83,7 +83,7 @@ create_1password_items() {
     else
         success "Talos PKI Certificates - $CLUSTER_NAME item already exists"
     fi
-    
+
     # Check if BGP authentication exists
     if ! op item get "BGP Authentication - $CLUSTER_NAME" &> /dev/null; then
         log "Creating BGP Authentication - $CLUSTER_NAME item..."
@@ -96,7 +96,7 @@ create_1password_items() {
     else
         success "BGP Authentication - $CLUSTER_NAME item exists"
     fi
-    
+
     # Check if Cloudflare API token exists
     if ! op item get "Cloudflare API Token" &> /dev/null; then
         warn "Cloudflare API Token item not found. Please create it manually with your Cloudflare API token."
@@ -104,7 +104,7 @@ create_1password_items() {
     else
         success "Cloudflare API Token item exists"
     fi
-    
+
     # Check if 1Password Connect credentials exist
     if ! op item get "1Password Connect Credentials - $CLUSTER_NAME" &> /dev/null; then
         warn "1Password Connect Credentials - $CLUSTER_NAME item not found. Please create it manually with your Connect credentials."
@@ -112,7 +112,7 @@ create_1password_items() {
     else
         success "1Password Connect Credentials - $CLUSTER_NAME item exists"
     fi
-    
+
     # Check if 1Password Connect token exists
     if ! op item get "1Password Connect Token - $CLUSTER_NAME" &> /dev/null; then
         warn "1Password Connect Token - $CLUSTER_NAME item not found. Please create it manually with your Connect token."
@@ -120,7 +120,7 @@ create_1password_items() {
     else
         success "1Password Connect Token - $CLUSTER_NAME item exists"
     fi
-    
+
     # Check if Longhorn UI credentials exist
     if ! op item get "Longhorn UI Credentials - $CLUSTER_NAME" &> /dev/null; then
         log "Creating Longhorn UI Credentials - $CLUSTER_NAME item..."
@@ -128,7 +128,7 @@ create_1password_items() {
         password=$(openssl rand -base64 16)
         local auth_string
         auth_string=$(htpasswd -nb admin "$password" | base64 -w 0)
-        
+
         op item create \
             --category="Login" \
             --title="Longhorn UI Credentials - $CLUSTER_NAME" \
@@ -145,23 +145,23 @@ create_1password_items() {
 # Bootstrap cluster secrets
 bootstrap_cluster_secrets() {
     log "Bootstrapping cluster secrets..."
-    
+
     # Create temporary directory for secrets
     local temp_dir
     temp_dir=$(mktemp -d)
-    
+
     # Export secrets to temporary files
     op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=cluster-secret --format json | jq -r '.value' > "$temp_dir/cluster-secret"
     op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=bootstrap-token --format json | jq -r '.value' > "$temp_dir/bootstrap-token"
     op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=secretbox-key --format json | jq -r '.value' > "$temp_dir/secretbox-key"
-    
+
     # Create Kubernetes secrets if cluster is accessible
     if kubectl get namespaces &> /dev/null; then
         log "Creating Kubernetes secrets..."
-        
+
         # Create 1Password Connect secrets
         kubectl create namespace onepassword-connect --dry-run=client -o yaml | kubectl apply -f -
-        
+
         # Get 1Password Connect credentials from document
         if op document get "1Password Connect Credentials - $CLUSTER_NAME" --vault="Automation" --out-file="$temp_dir/1password-credentials.json" 2>/dev/null; then
             kubectl create secret generic onepassword-connect-credentials \
@@ -172,7 +172,7 @@ bootstrap_cluster_secrets() {
         else
             warn "1Password Connect credentials document not found"
         fi
-        
+
         # Get 1Password Connect token
         if op item get "1Password Connect Token - $CLUSTER_NAME" --vault="Automation" --fields label=token --format json > "$temp_dir/op-token.json" 2>/dev/null; then
             local token
@@ -185,10 +185,10 @@ bootstrap_cluster_secrets() {
         else
             warn "1Password Connect token not found"
         fi
-        
+
         # Create BGP authentication secret
         kubectl create namespace cilium-system --dry-run=client -o yaml | kubectl apply -f -
-        
+
         if op item get "BGP Authentication - $CLUSTER_NAME" --fields label=password --format json > "$temp_dir/bgp-auth.json" 2>/dev/null; then
             local bgp_password
             bgp_password=$(jq -r '.value' "$temp_dir/bgp-auth.json")
@@ -200,10 +200,10 @@ bootstrap_cluster_secrets() {
         else
             warn "BGP authentication password not found"
         fi
-        
+
         # Create Cloudflare API token secret
         kubectl create namespace external-dns-system --dry-run=client -o yaml | kubectl apply -f -
-        
+
         if op item get "Cloudflare API Token" --fields label=token --format json > "$temp_dir/cf-token.json" 2>/dev/null; then
             local cf_token
             cf_token=$(jq -r '.value' "$temp_dir/cf-token.json")
@@ -215,10 +215,10 @@ bootstrap_cluster_secrets() {
         else
             warn "Cloudflare API token not found"
         fi
-        
+
         # Create Longhorn auth secret
         kubectl create namespace longhorn-system --dry-run=client -o yaml | kubectl apply -f -
-        
+
         if op item get "Longhorn UI Credentials - $CLUSTER_NAME" --fields label=auth --format json > "$temp_dir/longhorn-auth.json" 2>/dev/null; then
             local auth_string
             auth_string=$(jq -r '.value' "$temp_dir/longhorn-auth.json")
@@ -230,11 +230,11 @@ bootstrap_cluster_secrets() {
         else
             warn "Longhorn auth credentials not found"
         fi
-        
+
     else
         warn "Kubernetes cluster not accessible, skipping secret creation"
     fi
-    
+
     # Clean up temporary files
     rm -rf "$temp_dir"
     success "Cluster secrets bootstrapped"
@@ -243,17 +243,17 @@ bootstrap_cluster_secrets() {
 # Generate Talos configuration with secrets
 generate_talos_config() {
     log "Generating Talos configuration with secrets..."
-    
+
     # Create temporary directory for config generation
     local temp_dir
     temp_dir=$(mktemp -d)
-    
+
     # Export cluster secrets
     local cluster_secret bootstrap_token secretbox_key
     cluster_secret=$(op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=cluster-secret --format json | jq -r '.value')
     bootstrap_token=$(op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=bootstrap-token --format json | jq -r '.value')
     secretbox_key=$(op item get "Talos Cluster Secrets - $CLUSTER_NAME" --fields label=secretbox-key --format json | jq -r '.value')
-    
+
     # Create patch file with secrets
     cat > "$temp_dir/secrets-patch.yaml" << EOF
 cluster:
@@ -262,17 +262,17 @@ cluster:
   token: $bootstrap_token
   secretboxEncryptionSecret: $secretbox_key
 EOF
-    
+
     # Check if PKI certificates already exist in 1Password
     local pki_exists=false
     if op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=machine-ca-crt --format json &> /dev/null; then
         log "Found existing PKI certificates in 1Password, restoring them..."
         pki_exists=true
-        
+
         # Extract PKI certificates from 1Password
         local machine_ca_crt machine_ca_key cluster_ca_crt cluster_ca_key etcd_ca_crt etcd_ca_key
         local aggregator_ca_crt aggregator_ca_key service_account_key
-        
+
         machine_ca_crt=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=machine-ca-crt --format json | jq -r '.value')
         machine_ca_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=machine-ca-key --format json | jq -r '.value')
         cluster_ca_crt=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=cluster-ca-crt --format json | jq -r '.value')
@@ -282,7 +282,7 @@ EOF
         aggregator_ca_crt=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=aggregator-ca-crt --format json | jq -r '.value')
         aggregator_ca_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=aggregator-ca-key --format json | jq -r '.value')
         service_account_key=$(op item get "Talos PKI Certificates - $CLUSTER_NAME" --fields label=service-account-key --format json | jq -r '.value')
-        
+
         # Create PKI patch file with existing certificates
         cat > "$temp_dir/pki-patch.yaml" << EOF
 machine:
@@ -303,10 +303,10 @@ cluster:
   serviceAccount:
     key: $service_account_key
 EOF
-        
+
         success "Existing PKI certificates restored from 1Password"
     fi
-    
+
     # Generate Talos configuration
     mkdir -p talos/generated
     if [[ "$pki_exists" == "true" ]]; then
@@ -332,9 +332,9 @@ EOF
             --config-patch @"$temp_dir/secrets-patch.yaml" \
             --config-patch-control-plane @talos/patches/controlplane.yaml \
             --config-patch-worker @talos/patches/worker.yaml
-        
+
         log "Storing new PKI certificates in 1Password..."
-        
+
         # Extract and store PKI certificates from generated configuration files
         local config_file="talos/generated/controlplane.yaml"
         if [[ -f "$config_file" ]]; then
@@ -342,26 +342,26 @@ EOF
             local machine_ca_crt machine_ca_key
             machine_ca_crt=$(yq eval '.machine.ca.crt' "$config_file")
             machine_ca_key=$(yq eval '.machine.ca.key' "$config_file")
-            
+
             # Extract cluster CA certificate and key
             local cluster_ca_crt cluster_ca_key
             cluster_ca_crt=$(yq eval '.cluster.ca.crt' "$config_file")
             cluster_ca_key=$(yq eval '.cluster.ca.key' "$config_file")
-            
+
             # Extract etcd CA certificate and key
             local etcd_ca_crt etcd_ca_key
             etcd_ca_crt=$(yq eval '.cluster.etcd.ca.crt' "$config_file")
             etcd_ca_key=$(yq eval '.cluster.etcd.ca.key' "$config_file")
-            
+
             # Extract aggregator CA certificate and key
             local aggregator_ca_crt aggregator_ca_key
             aggregator_ca_crt=$(yq eval '.cluster.aggregatorCA.crt' "$config_file")
             aggregator_ca_key=$(yq eval '.cluster.aggregatorCA.key' "$config_file")
-            
+
             # Extract service account key
             local service_account_key
             service_account_key=$(yq eval '.cluster.serviceAccount.key' "$config_file")
-            
+
             # Store all certificates in 1Password
             op item edit "Talos PKI Certificates - $CLUSTER_NAME" \
                 "machine-ca-crt[password]=$machine_ca_crt" \
@@ -373,15 +373,15 @@ EOF
                 "aggregator-ca-crt[password]=$aggregator_ca_crt" \
                 "aggregator-ca-key[password]=$aggregator_ca_key" \
                 "service-account-key[password]=$service_account_key"
-            
+
             success "New PKI certificates stored in 1Password"
         else
             warn "Configuration file not found, PKI certificates may not have been generated"
         fi
-        
+
         success "Talos configuration generated with new PKI certificates"
     fi
-    
+
     # Clean up
     rm -rf "$temp_dir"
 }
@@ -389,7 +389,7 @@ EOF
 # Update secret references in manifests
 update_secret_references() {
     log "Updating secret references in manifests..."
-    
+
     # Update 1Password Connect auth secret
     local connect_token
     if connect_token=$(op item get "1Password Connect Token - $CLUSTER_NAME" --fields label=token --format json | jq -r '.value' 2>/dev/null); then
@@ -399,14 +399,14 @@ update_secret_references() {
             success "1Password Connect token reference updated"
         fi
     fi
-    
+
     success "Secret references updated"
 }
 
 # Validate GitHub token for Renovate
 validate_github_token() {
     log "Validating GitHub token for Renovate..."
-    
+
     if op item get "GitHub Personal Access Token" &> /dev/null; then
         # Try different possible field names for the token
         local token_found=false
@@ -417,7 +417,7 @@ validate_github_token() {
                 break
             fi
         done
-        
+
         if [[ "$token_found" == "false" ]]; then
             warn "GitHub Personal Access Token item exists but no valid token field found"
             warn "Expected fields: token, password, or credential"
@@ -431,14 +431,14 @@ validate_github_token() {
 # Main execution
 main() {
     log "Starting secrets bootstrap process for $CLUSTER_NAME cluster..."
-    
+
     check_prerequisites
     create_1password_items
     bootstrap_cluster_secrets
     generate_talos_config
     update_secret_references
     validate_github_token
-    
+
     log "Secrets bootstrap completed successfully!"
     echo ""
     echo "Next steps:"

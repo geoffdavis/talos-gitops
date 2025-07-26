@@ -97,7 +97,6 @@ The external authentik-proxy system uses a **dual provider architecture**:
    ```
 
 3. **Misunderstood Dual Provider Structure**
-
    - Script expected separate proxy and OAuth2 providers
    - Actual structure has both types with same names and PKs
 

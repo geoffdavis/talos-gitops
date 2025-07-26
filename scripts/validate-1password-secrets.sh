@@ -30,17 +30,17 @@ error() {
 # Check if cluster is accessible
 check_cluster() {
     log "Checking cluster accessibility..."
-    
+
     if ! command -v kubectl &> /dev/null; then
         error "kubectl is not installed"
         return 1
     fi
-    
+
     if ! kubectl get namespaces &> /dev/null; then
         error "Cannot connect to Kubernetes cluster"
         return 1
     fi
-    
+
     success "Kubernetes cluster is accessible"
     return 0
 }
@@ -48,9 +48,9 @@ check_cluster() {
 # Validate 1Password Connect secrets
 validate_secrets() {
     log "Validating 1Password Connect secrets..."
-    
+
     local validation_passed=true
-    
+
     # Check if namespace exists
     if kubectl get namespace onepassword-connect &> /dev/null; then
         success "onepassword-connect namespace exists"
@@ -58,11 +58,11 @@ validate_secrets() {
         error "onepassword-connect namespace does not exist"
         validation_passed=false
     fi
-    
+
     # Check credentials secret
     if kubectl get secret -n onepassword-connect onepassword-connect-credentials &> /dev/null; then
         success "onepassword-connect-credentials secret exists"
-        
+
         # Check if it contains the credentials file
         if kubectl get secret -n onepassword-connect onepassword-connect-credentials -o jsonpath='{.data.1password-credentials\.json}' | base64 -d | jq -r '.version' 2>/dev/null | grep -q "2"; then
             success "Credentials are version 2 format"
@@ -71,21 +71,21 @@ validate_secrets() {
             warn "This is likely due to 1Password field size limits"
             warn "1Password Connect may still function with truncated credentials"
         fi
-        
+
         # Check credentials file structure
         local creds_keys
         creds_keys=$(kubectl get secret -n onepassword-connect onepassword-connect-credentials -o jsonpath='{.data.1password-credentials\.json}' | base64 -d | jq -r 'keys | join(", ")' 2>/dev/null || echo "unknown")
         log "Credentials file contains keys: $creds_keys"
-        
+
     else
         error "onepassword-connect-credentials secret missing"
         validation_passed=false
     fi
-    
+
     # Check token secret
     if kubectl get secret -n onepassword-connect onepassword-connect-token &> /dev/null; then
         success "onepassword-connect-token secret exists"
-        
+
         # Check if token is not empty and reasonable length
         local token_length
         token_length=$(kubectl get secret -n onepassword-connect onepassword-connect-token -o jsonpath='{.data.token}' | base64 -d | wc -c)
@@ -99,20 +99,20 @@ validate_secrets() {
         error "onepassword-connect-token secret missing"
         validation_passed=false
     fi
-    
+
     return "$([[ "$validation_passed" == "true" ]] && echo 0 || echo 1)"
 }
 
 # Check if 1Password Connect deployment is ready (if deployed)
 check_deployment() {
     log "Checking 1Password Connect deployment status..."
-    
+
     if kubectl get deployment -n onepassword-connect onepassword-connect &> /dev/null; then
         local ready_replicas
         ready_replicas=$(kubectl get deployment -n onepassword-connect onepassword-connect -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
         local desired_replicas
         desired_replicas=$(kubectl get deployment -n onepassword-connect onepassword-connect -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
-        
+
         if [[ "$ready_replicas" == "$desired_replicas" && "$ready_replicas" != "0" ]]; then
             success "1Password Connect deployment is ready ($ready_replicas/$desired_replicas)"
         else
@@ -129,11 +129,11 @@ check_deployment() {
 main() {
     log "Validating 1Password Connect secrets..."
     echo ""
-    
+
     if ! check_cluster; then
         exit 1
     fi
-    
+
     if validate_secrets; then
         success "All 1Password Connect secrets are valid!"
         echo ""

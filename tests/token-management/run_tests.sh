@@ -28,11 +28,11 @@ if command -v kubectl >/dev/null 2>&1; then
     echo "Testing kubectl connectivity..."
     if kubectl cluster-info >/dev/null 2>&1; then
         echo "✓ Kubectl connectivity verified"
-        
+
         # Test if we can access the authentik namespace
         if kubectl get namespace authentik >/dev/null 2>&1; then
             echo "✓ Authentik namespace accessible"
-            
+
             # Test if enhanced token setup job exists
             if kubectl get jobs -n authentik -l app.kubernetes.io/name=authentik-enhanced-token-setup >/dev/null 2>&1; then
                 echo "✓ Enhanced token setup jobs found"

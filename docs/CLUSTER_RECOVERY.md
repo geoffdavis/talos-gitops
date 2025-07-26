@@ -182,7 +182,6 @@ If External Secrets shows ClusterSecretStore as ValidationFailed:
    ```
 
 2. **Common errors**:
-
    - "credentials file is not version 2" - Old or invalid credentials
    - "failed to FindCredentialsUniqueKey" - Mismatch between JWT token and credentials
    - "illegal base64 data" - Invalid dummy credentials file
@@ -242,13 +241,11 @@ If the API server is in CrashLoopBackOff or continuously exiting:
    ```
 
 2. **Common issues**:
-
    - **OIDC configuration errors**: Ensure the OIDC issuer URL is accessible
    - **PodSecurity admission errors**: Check for duplicate namespaces in exemptions (talhelper bug)
    - **Certificate errors**: Verify all certificates are valid
 
 3. **Fix and restart**:
-
    - Fix configuration issues in `talconfig.yaml`
    - If fixing generated files manually, use `task talos:apply-config-only`
    - Restart kubelet to force static pod recreation:

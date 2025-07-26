@@ -22,7 +22,7 @@ data:
       {{- end }}
       "services": {{ $serviceList | toJson }}
     }
-  
+
   authentik-config.json: |
     {
       "host": {{ .Values.authentik.host | quote }},

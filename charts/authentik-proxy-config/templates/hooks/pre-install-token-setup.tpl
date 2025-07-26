@@ -91,14 +91,14 @@ spec:
               set -e
               echo "=== Enhanced Token Setup with 1-Year Expiry ==="
               echo "Starting enhanced admin user and long-lived API token setup..."
-              
+
               # Install 1Password CLI
               echo "Installing 1Password CLI..."
               curl -sSfLo /tmp/op.zip https://cache.agilebits.com/dist/1P/op2/pkg/v2.29.0/op_linux_amd64_v2.29.0.zip
               unzip -o /tmp/op.zip -d /tmp/op-cli/
               chmod +x /tmp/op-cli/op
               export PATH="/tmp/op-cli:$PATH"
-              
+
               # Use ak shell to create admin user and long-lived token
               ak shell -c "
               from authentik.core.models import User, Token
@@ -107,7 +107,7 @@ spec:
               import secrets
               import base64
               import json
-              
+
               # Create or get the akadmin user
               user, created = User.objects.get_or_create(
                   username='akadmin',
@@ -124,16 +124,16 @@ spec:
                   user.is_superuser = True
                   user.save()
                   print(f'✓ Updated existing user: {user.username}')
-              
+
               # Calculate 1-year expiry date
               now = timezone.now()
               expiry_date = now + timedelta(days=365)
               print(f'✓ Token expiry set to: {expiry_date.isoformat()}')
-              
+
               # Check for existing tokens and their expiry
               existing_tokens = Token.objects.filter(user=user, intent='api')
               valid_tokens = []
-              
+
               for token in existing_tokens:
                   if token.expires and token.expires > now:
                       days_remaining = (token.expires - now).days
@@ -144,7 +144,7 @@ spec:
                           print(f'⚠ Token {token.key[:8]}... expires soon, will be replaced')
                   else:
                       print(f'⚠ Found expired/invalid token: {token.key[:8]}...')
-              
+
               # Create new token if no valid long-term tokens exist
               if not any(token for token in valid_tokens if (token.expires - now).days > 300):
                   # Delete old tokens to avoid conflicts
@@ -152,7 +152,7 @@ spec:
                   Token.objects.filter(user=user, intent='api').delete()
                   if old_count > 0:
                       print(f'✓ Cleaned up {old_count} old tokens')
-                  
+
                   # Create a new long-lived API token
                   token_key = secrets.token_hex(32)
                   token = Token.objects.create(
@@ -164,7 +164,7 @@ spec:
                       expiring=True
                   )
                   print(f'✓ Created new 1-year token: {token.key[:8]}...')
-                  
+
                   # Output token information for 1Password update
                   token_info = {
                       'token': token.key,
@@ -173,22 +173,22 @@ spec:
                       'description': token.description,
                       'user': user.username
                   }
-                  
+
                   # Output the token in base64 format for Kubernetes secret
                   token_b64 = base64.b64encode(token.key.encode()).decode()
                   print(f'✓ Token (base64): {token_b64}')
-                  
+
                   # Output JSON for 1Password
                   print(f'✓ Token Info JSON: {json.dumps(token_info, indent=2)}')
-                  
+
                   # Validate the token works
                   print('✓ Validating token...')
                   from django.test import Client
                   from django.contrib.auth import authenticate
-                  
+
                   # Simple validation - if we got here, the token was created successfully
                   print('✓ Token validation: Token created and stored successfully')
-                  
+
               else:
                   print('✓ Valid long-term token already exists, skipping creation')
                   for token in valid_tokens:
@@ -197,9 +197,9 @@ spec:
                           token_b64 = base64.b64encode(token.key.encode()).decode()
                           print(f'✓ Token (base64): {token_b64}')
                           break
-              
+
               print('✓ Enhanced token setup completed successfully!')
-              
+
               # Store the token info for 1Password update
               with open('/tmp/token_info.json', 'w') as f:
                   if 'token_info' in locals():
@@ -220,10 +220,10 @@ spec:
                               f.write(json.dumps(existing_info, indent=2))
                               break
               "
-              
+
               echo "=== Updating 1Password ==="
               echo "Updating 1Password item 'Authentik Admin Token' with new token information..."
-              
+
               # Check if token info file exists
               if [ -f /tmp/token_info.json ]; then
                 # Read token information
@@ -235,12 +235,12 @@ spec:
                 USER=$(echo "$TOKEN_DATA" | jq -r '.user')
                 LAST_ROTATION=$(echo "$TOKEN_DATA" | jq -r '.last_rotation // .created')
                 ROTATION_STATUS=$(echo "$TOKEN_DATA" | jq -r '.rotation_status // "active"')
-                
+
                 echo "✓ Token information loaded from Authentik"
-                
+
                 # Update 1Password item - create or update "Authentik Admin Token"
                 echo "Updating 1Password item: Authentik Admin Token"
-                
+
                 # Check if item exists
                 if op item get "Authentik Admin Token" --vault homelab >/dev/null 2>&1; then
                   echo "✓ Item exists, updating..."
@@ -272,7 +272,7 @@ spec:
               else
                 echo "⚠ No new token created, 1Password update skipped"
               fi
-              
+
               echo "=== Token Setup Summary ==="
               echo "✓ Admin user configured with superuser privileges"
               echo "✓ Long-lived API token created/validated (1 year expiry)"

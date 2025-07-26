@@ -2,8 +2,8 @@
 
 ## Issue Summary
 
-**Date**: 2025-07-14  
-**Status**: RESOLVED  
+**Date**: 2025-07-14
+**Status**: RESOLVED
 **Root Cause**: Certificate Authority mismatch from multiple bootstrap operations
 
 ## Problem Description

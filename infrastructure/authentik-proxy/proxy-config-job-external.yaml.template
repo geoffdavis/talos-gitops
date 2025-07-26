@@ -94,7 +94,7 @@ spec:
               echo "=== Installing Python Dependencies ==="
               pip install --no-cache-dir --target /tmp/python-packages urllib3
               export PYTHONPATH="/tmp/python-packages:$PYTHONPATH"
-              
+
               echo "=== Downloading Configuration Script ==="
               # In a real deployment, this would be from a ConfigMap or mounted volume
               # For now, we'll create the script inline (but much smaller)
@@ -110,28 +110,28 @@ import urllib.error
 def main():
     authentik_host = os.environ.get('AUTHENTIK_HOST')
     authentik_token = os.environ.get('AUTHENTIK_TOKEN')
-    
+
     if not all([authentik_host, authentik_token]):
         print("✗ Missing required environment variables")
         sys.exit(1)
-    
+
     print(f"✓ Using Authentik host: {authentik_host}")
     print("✓ Configuration script executed successfully")
     print("✓ External URL configuration applied")
-    
+
     # Write a dummy outpost ID for now
     with open('/shared/outpost_id', 'w') as f:
         f.write('3f0970c5-d6a3-43b2-9a36-d74665c6b24e')
-    
+
     return True
 
 if __name__ == "__main__":
     main()
 EOF
-              
+
               echo "=== Running Configuration Script ==="
               python3 /tmp/configure_proxy.py
-              
+
               echo "=== Configuration Complete ==="
           volumeMounts:
             - name: shared-data
@@ -154,7 +154,7 @@ EOF
             - |
               set -e
               echo "=== Waiting for outpost ID from configuration container ==="
-              
+
               # Wait for outpost ID file to be created
               max_attempts=30
               attempt=0
@@ -170,12 +170,12 @@ EOF
                 echo "Waiting for outpost ID, attempt $attempt/$max_attempts..."
                 sleep 5
               done
-              
+
               if [ $attempt -eq $max_attempts ]; then
                 echo "ERROR: Timeout waiting for outpost ID"
                 exit 1
               fi
-              
+
               echo "=== Updating ConfigMap with Outpost ID ==="
               # Update ConfigMap with outpost ID
               cat <<EOF | kubectl apply -f -
@@ -190,7 +190,7 @@ EOF
               data:
                 outpost_id: "$OUTPOST_ID"
               EOF
-              
+
               echo "✓ ConfigMap updated with outpost ID: $OUTPOST_ID"
               echo "=== Configuration Job Complete ==="
           volumeMounts:

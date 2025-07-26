@@ -121,7 +121,7 @@ ITEM_ID=$(echo "$ITEM_SEARCH" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4
 
 if [[ -n "$ITEM_ID" ]]; then
     echo "✅ Found existing item with ID: $ITEM_ID"
-    
+
     # First, get the current item structure
     echo "🔍 Getting current item structure..."
     CURRENT_ITEM=$(kubectl run op-item-get --rm -i --image=curlimages/curl:8.5.0 --restart=Never -- \
@@ -129,12 +129,12 @@ if [[ -n "$ITEM_ID" ]]; then
         "http://onepassword-connect.onepassword-connect.svc.cluster.local:8080/v1/vaults/$VAULT_ID/items/$ITEM_ID" 2>/dev/null)
 
     echo "🔍 DEBUG: Current item structure: $CURRENT_ITEM"
-    
+
     # Extract the current version for the update
     ITEM_VERSION=$(echo "$CURRENT_ITEM" | grep -o '"version":[0-9]*' | cut -d: -f2)
-    
+
     echo "🔄 Updating existing item (version: $ITEM_VERSION)..."
-    
+
     # Create a proper full item update with the correct structure
     # Based on the debug output, we need to update the password field while preserving all other fields
     UPDATED_ITEM_JSON=$(cat <<EOF
@@ -186,7 +186,7 @@ EOF
         'http://onepassword-connect.onepassword-connect.svc.cluster.local:8080/v1/vaults/$VAULT_ID/items/$ITEM_ID'" 2>/dev/null)
 
     echo "🔍 DEBUG: Update result: $UPDATE_RESULT"
-    
+
     if echo "$UPDATE_RESULT" | grep -q '"id"'; then
         echo "✅ Successfully updated 1Password item!"
     else
@@ -204,7 +204,7 @@ EOF
     fi
 else
     echo "⚠️  Item not found, creating new item..."
-    
+
     # Create new item
     CREATE_PAYLOAD=$(cat <<EOF
 {
@@ -243,7 +243,7 @@ EOF
         'http://onepassword-connect.onepassword-connect.svc.cluster.local:8080/v1/vaults/$VAULT_ID/items'" 2>/dev/null)
 
     echo "🔍 DEBUG: Create result: $CREATE_RESULT"
-    
+
     if echo "$CREATE_RESULT" | grep -q '"id"'; then
         echo "✅ Successfully created 1Password item!"
     else
@@ -265,10 +265,10 @@ if [[ "$CURRENT_SECRET" == "$TOKEN_KEY" ]]; then
 else
     echo "⏳ Waiting for External Secrets to sync the updated token..."
     sleep 30
-    
+
     echo "🔍 Checking if External Secrets has synced the new token..."
     SYNCED_TOKEN=$(kubectl get secret authentik-radius-token -n authentik -o jsonpath='{.data.token}' | base64 -d)
-    
+
     if [[ "$SYNCED_TOKEN" == "$TOKEN_KEY" ]]; then
         echo "✅ External Secrets has successfully synced the new token!"
     else

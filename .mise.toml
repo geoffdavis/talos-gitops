@@ -28,6 +28,7 @@ yamllint = "latest"
 # Pre-commit tools
 pre-commit = "latest"
 shellcheck = "latest"
+prettier = "latest"
 
 [env]
 # Python path for token management scripts

@@ -14,14 +14,12 @@ This Talos cluster is configured to run all three nodes as both control plane an
 ### Key Modifications Made
 
 1. **Taskfile.yml Updates**:
-
    - Removed worker configuration patch from config generation
    - Updated bootstrap process to handle multiple control plane nodes
    - Added conversion task for existing clusters
    - Enhanced cluster status reporting
 
 2. **Control Plane Optimizations**:
-
    - Added leader election tuning for better performance
    - Optimized etcd settings for 3-node cluster
    - Enabled scheduling on control planes (already configured)
