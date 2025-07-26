@@ -2,7 +2,7 @@
 
 **Date**: 2025-07-16  
 **Severity**: CATASTROPHIC  
-**Status**: REMEDIATED  
+**Status**: REMEDIATED
 
 ## INCIDENT SUMMARY
 
@@ -13,13 +13,15 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 **URGENT**: Further investigation revealed additional catastrophic secret exposures that were committed to git history:
 
 ### NEWLY DISCOVERED CRITICAL EXPOSURES:
+
 1. **Complete Talos cluster secrets** (talos/talsecret.yaml) - CATASTROPHIC
-2. **Kubernetes admin credentials** (kubeconfig) - CATASTROPHIC  
+2. **Kubernetes admin credentials** (kubeconfig) - CATASTROPHIC
 3. **Talos configuration files** (talos/generated/talosconfig) - CRITICAL
 
 ## SECRETS IDENTIFIED AND REMOVED
 
 ### 1. 1Password Connect Credentials (CRITICAL)
+
 - **File**: `1password-credentials.json`
 - **First Committed**: Commit `6e3dc82` - "docs: Update README and clean up redundant documentation"
 - **Content**: Encrypted 1Password Connect credentials (version 2 format)
@@ -27,6 +29,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 - **Status**: ✅ REMOVED from git history
 
 **Exposed Data**:
+
 ```json
 {
   "version": "2",
@@ -51,6 +54,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 ```
 
 ### 2. Talos Cluster Master Secrets (CATASTROPHIC)
+
 - **File**: `talos/talsecret.yaml`
 - **First Committed**: Commit `3c8b0a2` - "feat: Complete talhelper migration with 1Password integration"
 - **Last Committed**: Commit `d902c72` - "feat: integrate LLDPD configuration fix into bootstrap process"
@@ -59,6 +63,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 - **Status**: ✅ REMOVED from git history
 
 **Exposed Master Secrets**:
+
 - Cluster ID: `2vVmp-g8hb-wj1PQnVLe9owxcu_Y4TnR1pXE1_Q6o7s=`
 - Cluster secret: `E10oFqMY7TZ19PzhhLc0LjWr6PfzbtshvzHuKJBoLUw=`
 - Bootstrap token: `ln6f0v.3s0n0nbhsa8aenk3`
@@ -66,11 +71,12 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 - Trust info token: `xhc00o.j4mnrlx1h4whm4mr`
 - **Complete PKI Infrastructure**:
   - etcd CA certificate and private key
-  - Kubernetes API server CA certificate and private key  
+  - Kubernetes API server CA certificate and private key
   - Kubernetes aggregator CA certificate and private key
   - Kubernetes service account signing key (RSA private key)
 
 ### 3. Kubernetes Admin Credentials (CATASTROPHIC)
+
 - **File**: `kubeconfig`
 - **First Committed**: Commit `3c8b0a2` - "feat: Complete talhelper migration with 1Password integration"
 - **Last Committed**: Commit `d902c72` - "feat: integrate LLDPD configuration fix into bootstrap process"
@@ -79,6 +85,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 - **Status**: ✅ REMOVED from git history
 
 **Exposed Kubernetes Credentials**:
+
 - Cluster CA certificate (base64 encoded)
 - Admin client certificate (base64 encoded)
 - Admin client private key (base64 encoded)
@@ -86,6 +93,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 - Admin context: `admin@home-ops`
 
 ### 4. Talos Configuration Files (CRITICAL)
+
 - **File**: `talos/generated/talosconfig`
 - **Commits**: Multiple commits in git history
 - **Content**: Talos client configuration with cluster access
@@ -95,6 +103,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 ## REMEDIATION ACTIONS TAKEN
 
 ### 1. Immediate Response (Phase 1 - 1Password Credentials)
+
 - ✅ Created backup branch: `backup-before-cleanup`
 - ✅ Updated `.gitignore` to prevent future secret commits
 - ✅ Used `git filter-branch` to remove `1password-credentials.json` from ALL commits
@@ -102,6 +111,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 - ✅ Verified complete removal from git history
 
 ### 2. Emergency Response (Phase 2 - Additional Critical Exposures)
+
 - ✅ Created backup branch: `backup-before-filter-repo-20250716-172740`
 - ✅ Installed `git-filter-repo` for comprehensive history rewriting
 - ✅ Used `git filter-repo` to remove ALL exposed secrets from entire git history
@@ -109,6 +119,7 @@ Multiple critical security breaches discovered in the talos-gitops repository. B
 - ✅ Verified complete removal from git history
 
 ### 3. Comprehensive Git History Cleanup
+
 ```bash
 # Phase 1 - 1Password credentials (git filter-branch):
 git branch backup-before-cleanup
@@ -127,7 +138,9 @@ rm -f ./kubeconfig ./talos/talsecret.yaml ./talos/generated/talosconfig
 ```
 
 ### 4. Enhanced .gitignore Protection
+
 Added comprehensive secret patterns:
+
 ```gitignore
 # Secrets and credentials (as backup, though they should be in 1Password)
 *.key
@@ -149,6 +162,7 @@ kubeconfig
 ### CATASTROPHIC - IMMEDIATE ROTATION REQUIRED
 
 #### 1. COMPLETE TALOS CLUSTER REBUILD (CATASTROPHIC PRIORITY)
+
 - **Reason**: Complete Talos cluster secrets exposed including all PKI certificates
 - **Action**: Full cluster rebuild with new secrets
 - **Command**: `task bootstrap:phased` (after credential rotation)
@@ -156,30 +170,35 @@ kubeconfig
 - **Timeline**: IMMEDIATE - Cluster is completely compromised
 
 **Exposed Talos Infrastructure**:
+
 - All cluster PKI certificates and private keys
 - Cluster encryption secrets
 - Bootstrap tokens
 - Trust infrastructure
 - Node authentication credentials
 
-#### 2. KUBERNETES CLUSTER CERTIFICATES (CATASTROPHIC PRIORITY)  
+#### 2. KUBERNETES CLUSTER CERTIFICATES (CATASTROPHIC PRIORITY)
+
 - **Reason**: Admin kubeconfig with full cluster access was exposed
 - **Action**: Regenerate all Kubernetes certificates and admin credentials
 - **Impact**: All kubectl access must be regenerated
 - **Timeline**: IMMEDIATE - Full administrative access compromised
 
 #### 3. 1Password Connect Server (CRITICAL)
+
 - **Action**: Generate new Connect server with fresh credentials
 - **Command**: `task onepassword:create-connect-server`
 - **Impact**: All 1Password Connect access must be regenerated
 - **Dependencies**: All External Secrets depending on 1Password Connect
 
 #### 4. 1Password Connect Token (CRITICAL)
+
 - **Location**: 1Password item "1Password Connect Token - home-ops"
 - **Action**: Regenerate Connect token
 - **Impact**: Kubernetes secret `onepassword-connect-token` needs update
 
 ### NETWORK SECURITY ASSESSMENT REQUIRED
+
 - **BGP Configuration**: Verify no unauthorized route advertisements
 - **Firewall Rules**: Check for any unauthorized access attempts
 - **Network Monitoring**: Review logs for suspicious activity
@@ -188,6 +207,7 @@ kubeconfig
 ## VERIFICATION STEPS
 
 ### 1. Confirm Complete Secret Removal
+
 ```bash
 # Verify all exposed secrets are completely removed from git history
 git log --all --full-history -- kubeconfig talos/talsecret.yaml talos/generated/talosconfig
@@ -202,6 +222,7 @@ ls -la kubeconfig talos/talsecret.yaml talos/generated/talosconfig 1password-cre
 ```
 
 ### 2. Verify .gitignore Protection
+
 ```bash
 # Check ignored files
 git status --ignored
@@ -209,6 +230,7 @@ git status --ignored
 ```
 
 ### 3. Verify Git History Integrity
+
 ```bash
 # Check that git history was properly rewritten
 git log --oneline | head -10
@@ -222,20 +244,23 @@ git branch | grep backup-before-filter-repo
 ## NEXT STEPS
 
 ### 1. CATASTROPHIC PRIORITY - IMMEDIATE CLUSTER REBUILD
+
 - [ ] **STOP ALL CLUSTER OPERATIONS** - Cluster is completely compromised
-- [ ] Regenerate 1Password Connect server and credentials  
+- [ ] Regenerate 1Password Connect server and credentials
 - [ ] Generate completely new Talos cluster secrets
 - [ ] Rebuild entire Talos cluster from scratch
 - [ ] Generate new Kubernetes certificates and admin credentials
 - [ ] Validate no unauthorized access occurred during exposure window
 
 ### 2. FORCE PUSH CLEANED HISTORY
+
 ```bash
 # WARNING: This will rewrite public git history
 git push --force-with-lease origin main
 ```
 
 ### 3. EMERGENCY TEAM NOTIFICATION
+
 - [ ] **IMMEDIATE**: Notify all team members of CATASTROPHIC security breach
 - [ ] Ensure all local clones are updated after force push
 - [ ] Review access logs for any unauthorized access during exposure window
@@ -243,6 +268,7 @@ git push --force-with-lease origin main
 - [ ] Monitor for any suspicious network activity
 
 ### 4. SECURITY AUDIT REQUIRED
+
 - [ ] Full security audit of all systems that had access to exposed credentials
 - [ ] Review all 1Password vault access logs
 - [ ] Check Kubernetes audit logs for unauthorized API calls
@@ -250,6 +276,7 @@ git push --force-with-lease origin main
 - [ ] Verify integrity of all deployed applications
 
 ### 5. PROCESS IMPROVEMENTS (After immediate crisis resolved)
+
 - [ ] Implement pre-commit hooks to scan for secrets
 - [ ] Add automated secret scanning to CI/CD pipeline
 - [ ] Review and update secret management procedures
@@ -269,6 +296,7 @@ git push --force-with-lease origin main
 ## INCIDENT TIMELINE
 
 ### Phase 1 - Initial 1Password Credential Exposure
+
 - **Detection**: GitHub secret scanning alert
 - **Response Start**: 2025-07-16 15:00 UTC
 - **Secret Identification**: 15:01 UTC
@@ -277,6 +305,7 @@ git push --force-with-lease origin main
 - **Initial Report**: 15:06 UTC
 
 ### Phase 2 - Additional Critical Exposures Discovered
+
 - **Additional Investigation**: 2025-07-16 17:23 UTC
 - **CATASTROPHIC Discovery**: Complete Talos and Kubernetes secrets exposed
 - **Emergency Response**: 17:24 UTC
@@ -295,14 +324,15 @@ git push --force-with-lease origin main
 ✅ Enhanced .gitignore protection implemented  
 🚨 **CATASTROPHIC**: Complete Talos cluster rebuild required  
 🚨 **CATASTROPHIC**: Complete Kubernetes certificate regeneration required  
-⚠️  1Password Connect credentials require rotation  
-⚠️  Force push required to update remote repository  
+⚠️ 1Password Connect credentials require rotation  
+⚠️ Force push required to update remote repository
 
 **CRITICAL WARNING**: The repository git history is now clean, but the ENTIRE INFRASTRUCTURE must be considered completely compromised and rebuilt from scratch. All exposed credentials provide full administrative access to the cluster.
 
 ### EXPOSURE IMPACT ASSESSMENT:
+
 - **Talos Cluster**: COMPLETE COMPROMISE - Full node administrative access
-- **Kubernetes Cluster**: COMPLETE COMPROMISE - Full cluster administrative access  
+- **Kubernetes Cluster**: COMPLETE COMPROMISE - Full cluster administrative access
 - **1Password Connect**: COMPLETE COMPROMISE - Full secret management access
 - **Network Infrastructure**: POTENTIAL COMPROMISE - Review required
 

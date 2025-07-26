@@ -7,6 +7,7 @@ This guide provides comprehensive instructions for deploying and managing Authen
 ## Architecture
 
 ### Components
+
 - **Authentik Server**: Main identity provider application (2 replicas)
 - **Authentik Worker**: Background task processor (1 replica)
 - **Authentik RADIUS**: RADIUS server for WiFi authentication (2 replicas)
@@ -16,6 +17,7 @@ This guide provides comprehensive instructions for deploying and managing Authen
 - **External Secrets**: 1Password integration for credentials
 
 ### Network Architecture
+
 ```
 Internet → Cloudflare Tunnel → Internal Ingress → Authentik Server
 WiFi Clients → RADIUS LoadBalancer → Authentik RADIUS → Authentik Server
@@ -25,6 +27,7 @@ Applications → OIDC/SAML → Authentik Server → PostgreSQL Cluster
 ## Prerequisites
 
 ### Required Components
+
 - ✅ Talos Kubernetes cluster (v1.28+)
 - ✅ CNPG Operator deployed
 - ✅ External Secrets Operator deployed
@@ -36,7 +39,9 @@ Applications → OIDC/SAML → Authentik Server → PostgreSQL Cluster
 ### Required 1Password Secrets
 
 #### 1. Authentik Configuration (`Authentik Configuration - home-ops`)
+
 Create in **Automation** vault:
+
 ```
 Title: Authentik Configuration - home-ops
 Fields:
@@ -51,7 +56,9 @@ Fields:
 ```
 
 #### 2. PostgreSQL User (`PostgreSQL User - authentik - home-ops`)
+
 Create in **Automation** vault:
+
 ```
 Title: PostgreSQL User - authentik - home-ops
 Fields:
@@ -60,7 +67,9 @@ Fields:
 ```
 
 #### 3. PostgreSQL Superuser (`PostgreSQL Superuser - home-ops`)
+
 Create in **Automation** vault:
+
 ```
 Title: PostgreSQL Superuser - home-ops
 Fields:
@@ -69,7 +78,9 @@ Fields:
 ```
 
 #### 4. PostgreSQL S3 Backup (`PostgreSQL S3 Backup - home-ops`)
+
 Create in **Automation** vault:
+
 ```
 Title: PostgreSQL S3 Backup - home-ops
 Fields:
@@ -137,6 +148,7 @@ kubectl get externalsecrets -n authentik
 ### Web Interface
 
 #### Method 1: Internal Network (Recommended)
+
 ```bash
 # Access via internal domain
 https://authentik.k8s.home.geoffdavis.com
@@ -147,6 +159,7 @@ https://authentik.k8s.home.geoffdavis.com
 ```
 
 #### Method 2: Port Forward (Testing)
+
 ```bash
 # Port forward to ingress controller
 kubectl port-forward -n ingress-nginx-internal svc/ingress-nginx-internal-controller 8443:443
@@ -156,6 +169,7 @@ kubectl port-forward -n ingress-nginx-internal svc/ingress-nginx-internal-contro
 ```
 
 #### Method 3: NodePort (Fallback)
+
 ```bash
 # Find NodePort
 kubectl get svc -n ingress-nginx-internal ingress-nginx-internal-controller
@@ -167,6 +181,7 @@ kubectl get svc -n ingress-nginx-internal ingress-nginx-internal-controller
 ### Initial Login
 
 **Default Credentials** (Bootstrap):
+
 - **Username**: `admin@k8s.home.geoffdavis.com`
 - **Password**: `changeme-bootstrap-password`
 
@@ -175,6 +190,7 @@ kubectl get svc -n ingress-nginx-internal ingress-nginx-internal-controller
 ## RADIUS Configuration
 
 ### RADIUS Service Details
+
 - **Service Type**: LoadBalancer (Cilium)
 - **Authentication Port**: 1812/UDP
 - **Accounting Port**: 1813/UDP
@@ -183,6 +199,7 @@ kubectl get svc -n ingress-nginx-internal ingress-nginx-internal-controller
 ### WiFi Integration
 
 #### UniFi Configuration
+
 1. Navigate to **Settings** → **Profiles** → **RADIUS**
 2. Create new RADIUS profile:
    ```
@@ -196,6 +213,7 @@ kubectl get svc -n ingress-nginx-internal ingress-nginx-internal-controller
    ```
 
 #### WiFi Network Setup
+
 1. Create new WiFi network
 2. Security: WPA2/WPA3 Enterprise
 3. RADIUS Profile: Authentik RADIUS
@@ -219,6 +237,7 @@ radtest username password <radius-ip> 1812 <shared-secret>
 2. Navigate to **Applications** → **Applications**
 3. Click **Create**
 4. Configure:
+
    ```
    Name: My Application
    Slug: my-application
@@ -252,6 +271,7 @@ data:
 ### SAML Integration
 
 1. Create SAML Provider:
+
    ```
    ACS URL: https://myapp.example.com/saml/acs
    Issuer: https://authentik.k8s.home.geoffdavis.com
@@ -269,12 +289,14 @@ data:
 ### Automated Backups
 
 #### PostgreSQL Backups
+
 - **Schedule**: Daily at 3 AM
 - **Retention**: 30 days
 - **Method**: CNPG barman with S3 storage
 - **Location**: Longhorn S3 gateway
 
 #### Longhorn Volume Snapshots
+
 - **Schedule**: Daily at 1 AM (before PostgreSQL backup)
 - **Retention**: 7 daily snapshots
 - **Weekly**: Sunday at 4 AM, 8 weeks retention
@@ -312,6 +334,7 @@ EOF
 ### Recovery Procedures
 
 #### PostgreSQL Point-in-Time Recovery
+
 ```bash
 # Create new cluster from backup
 kubectl apply -f - <<EOF
@@ -342,6 +365,7 @@ EOF
 ```
 
 #### Volume Restore from Snapshot
+
 ```bash
 # Restore PVC from snapshot
 kubectl apply -f - <<EOF
@@ -367,11 +391,13 @@ EOF
 ## Monitoring and Observability
 
 ### Metrics Collection
+
 - **Prometheus**: ServiceMonitor configured for Authentik server
 - **Grafana**: Dashboard available (see monitoring-dashboard.yaml)
 - **Alerts**: PrometheusRule for critical conditions
 
 ### Key Metrics
+
 - `authentik_admin_workers_total`: Worker process count
 - `authentik_events_total`: Authentication events
 - `authentik_outpost_last_update`: RADIUS outpost health
@@ -411,51 +437,62 @@ kubectl logs -n external-secrets-system -l app.kubernetes.io/name=external-secre
 ### Common Issues
 
 #### 1. External Secrets Not Syncing
+
 **Symptoms**: ExternalSecret shows `SecretSyncError`
 
 **Diagnosis**:
+
 ```bash
 kubectl describe externalsecret -n authentik authentik-config
 kubectl logs -n onepassword-connect deployment/onepassword-connect
 ```
 
 **Solutions**:
+
 - Verify 1Password item names match exactly
 - Check 1Password Connect token validity
 - Ensure vault permissions are correct
 
 #### 2. Database Connection Failures
+
 **Symptoms**: Authentik pods crash with database errors
 
 **Diagnosis**:
+
 ```bash
 kubectl logs -n authentik deployment/authentik-server
 kubectl get cluster -n postgresql-system postgresql-cluster
 ```
 
 **Solutions**:
+
 - Verify PostgreSQL cluster is healthy
 - Check database credentials in external secrets
 - Ensure database initialization job completed
 
 #### 3. RADIUS Authentication Failures
+
 **Symptoms**: WiFi clients cannot authenticate
 
 **Diagnosis**:
+
 ```bash
 kubectl logs -n authentik deployment/authentik-radius
 kubectl get svc -n authentik authentik-radius
 ```
 
 **Solutions**:
+
 - Verify RADIUS shared secret matches
 - Check LoadBalancer IP assignment
 - Ensure RADIUS outpost is connected to Authentik
 
 #### 4. Ingress Access Issues
+
 **Symptoms**: Cannot access Authentik web interface
 
 **Diagnosis**:
+
 ```bash
 kubectl get ingress -n authentik
 kubectl get pods -n ingress-nginx-internal
@@ -463,6 +500,7 @@ kubectl describe certificate -n authentik authentik-tls-certificate
 ```
 
 **Solutions**:
+
 - Verify DNS resolution
 - Check TLS certificate status
 - Ensure ingress controller is running
@@ -470,6 +508,7 @@ kubectl describe certificate -n authentik authentik-tls-certificate
 ### Emergency Procedures
 
 #### Reset Authentik Admin Password
+
 ```bash
 # Access Authentik server pod
 kubectl exec -it -n authentik deployment/authentik-server -- /bin/bash
@@ -484,12 +523,14 @@ user.save()
 ```
 
 #### Force PostgreSQL Failover
+
 ```bash
 # Promote replica to primary (if primary fails)
 kubectl patch cluster -n postgresql-system postgresql-cluster --type='merge' -p='{"spec":{"switchoverTo":"postgresql-cluster-2"}}'
 ```
 
 #### Restart All Components
+
 ```bash
 # Restart Authentik components
 kubectl rollout restart deployment -n authentik authentik-server
@@ -503,18 +544,21 @@ kubectl delete pod -n postgresql-system -l postgresql=postgresql-cluster
 ## Security Considerations
 
 ### Network Security
+
 - Authentik web interface accessible only via internal ingress
 - RADIUS service exposed via LoadBalancer (required for WiFi)
 - PostgreSQL accessible only within cluster
 - TLS encryption for all web traffic
 
 ### Authentication Security
+
 - Strong password policies enforced
 - MFA support available
 - Session management with Redis
 - RADIUS shared secret rotation
 
 ### Data Protection
+
 - Database encryption at rest (Longhorn)
 - Backup encryption (S3)
 - Secret management via 1Password
@@ -525,6 +569,7 @@ kubectl delete pod -n postgresql-system -l postgresql=postgresql-cluster
 ### Regular Maintenance
 
 #### Weekly Tasks
+
 ```bash
 # Check backup status
 kubectl get backup -n postgresql-system
@@ -538,6 +583,7 @@ kubectl logs -n authentik -l app.kubernetes.io/name=authentik --since=168h | gre
 ```
 
 #### Monthly Tasks
+
 ```bash
 # Update Authentik version (if needed)
 # Edit infrastructure/authentik/kustomization.yaml
@@ -553,6 +599,7 @@ kubectl logs -n authentik -l app.kubernetes.io/name=authentik --since=168h | gre
 ### Scaling Operations
 
 #### Scale Authentik Components
+
 ```bash
 # Scale server replicas
 kubectl scale deployment -n authentik authentik-server --replicas=3
@@ -562,6 +609,7 @@ kubectl scale deployment -n authentik authentik-radius --replicas=3
 ```
 
 #### Scale PostgreSQL Cluster
+
 ```bash
 # Edit cluster specification
 kubectl patch cluster -n postgresql-system postgresql-cluster --type='merge' -p='{"spec":{"instances":5}}'
@@ -570,6 +618,7 @@ kubectl patch cluster -n postgresql-system postgresql-cluster --type='merge' -p=
 ## Integration Examples
 
 ### Grafana OIDC Integration
+
 ```yaml
 # Grafana values.yaml excerpt
 grafana:
@@ -588,6 +637,7 @@ grafana:
 ```
 
 ### Longhorn OIDC Integration
+
 ```yaml
 # Longhorn settings
 auth:

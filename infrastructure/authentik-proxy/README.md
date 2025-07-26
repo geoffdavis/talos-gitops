@@ -1,6 +1,6 @@
 # Authentik External Proxy Outpost
 
-This directory contains the configuration for the external Authentik proxy outpost that replaces the problematic embedded outpost system. The external outpost provides a more robust and maintainable authentication architecture for all *.k8s.home.geoffdavis.com services.
+This directory contains the configuration for the external Authentik proxy outpost that replaces the problematic embedded outpost system. The external outpost provides a more robust and maintainable authentication architecture for all \*.k8s.home.geoffdavis.com services.
 
 ## Architecture Overview
 
@@ -8,7 +8,7 @@ The external outpost consists of:
 
 - **Dedicated Namespace**: `authentik-proxy` with proper security policies
 - **External Proxy Deployment**: 2 replicas using `ghcr.io/goauthentik/proxy:2024.8.3`
-- **Single Ingress**: Handles all *.k8s.home.geoffdavis.com domains
+- **Single Ingress**: Handles all \*.k8s.home.geoffdavis.com domains
 - **Service Routing**: ConfigMap-based backend service discovery
 - **BGP Integration**: Uses nginx-internal ingress class with BGP load balancer
 
@@ -54,6 +54,7 @@ The external outpost depends on:
 ## Validation Commands
 
 ### Check Deployment Status
+
 ```bash
 # Check Flux Kustomization
 flux get kustomizations infrastructure-authentik-proxy
@@ -68,6 +69,7 @@ kubectl get ingress -n authentik-proxy
 ```
 
 ### Verify Network Connectivity
+
 ```bash
 # Test ingress IP assignment
 kubectl get svc -n ingress-nginx-internal nginx-internal-ingress-nginx-controller
@@ -81,6 +83,7 @@ kubectl get certificates -n authentik-proxy
 ```
 
 ### Test Authentication Flow
+
 ```bash
 # Test service accessibility (should redirect to Authentik)
 curl -I https://longhorn.k8s.home.geoffdavis.com
@@ -92,6 +95,7 @@ curl http://localhost:9000/outpost.goauthentik.io/ping
 ```
 
 ### Monitor Logs
+
 ```bash
 # Check proxy logs
 kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy

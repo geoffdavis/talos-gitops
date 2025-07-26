@@ -8,89 +8,89 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: fix-ssl-verification
-        image: curlimages/curl:latest
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 65534
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-          seccompProfile:
-            type: RuntimeDefault
-        env:
-        - name: AUTHENTIK_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: authentik-admin-token
-              key: token
-        - name: AUTHENTIK_URL
-          value: "https://authentik.k8s.home.geoffdavis.com"
-        command:
-        - /bin/sh
-        - -c
-        - |
-          set -e
-          echo "=== FIXING KUBERNETES SERVICE CONNECTION SSL VERIFICATION ==="
-          
-          # Test API connectivity first
-          echo "Testing API connectivity..."
-          response=$(curl -k -s -w "%{http_code}" -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/core/users/me/")
-          http_code="${response: -3}"
-          if [ "$http_code" != "200" ]; then
-            echo "ERROR: API test failed with HTTP $http_code"
-            echo "Response: $response"
-            exit 1
-          fi
-          echo "API connectivity test passed"
-          
-          # Get all service connections
-          echo "Getting service connections..."
-          connections_response=$(curl -k -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/service_connections/")
-          
-          # Find Kubernetes service connection
-          echo "Looking for Kubernetes service connection..."
-          connection_id=$(echo "$connections_response" | grep -o '"pk":"[^"]*"[^}]*"name":"[^"]*Kubernetes[^"]*"' | head -1 | grep -o '"pk":"[^"]*"' | cut -d'"' -f4)
-          
-          if [ -z "$connection_id" ]; then
-            echo "ERROR: Could not find Kubernetes service connection"
-            echo "Available connections:"
-            echo "$connections_response" | grep -o '"name":"[^"]*"' | head -10
-            exit 1
-          fi
-          echo "Found Kubernetes service connection ID: $connection_id"
-          
-          # Get current connection details
-          echo "Getting current connection details..."
-          current_connection=$(curl -k -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/service_connections/kubernetes/$connection_id/")
-          
-          # Update connection to disable SSL verification
-          echo "Disabling SSL verification for Kubernetes service connection..."
-          update_data='{
-            "verify_ssl": false
-          }'
-          
-          update_response=$(curl -k -s -X PATCH \
-            -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "$update_data" \
-            "$AUTHENTIK_URL/api/v3/outposts/service_connections/kubernetes/$connection_id/")
-          
-          echo "Update response: $update_response"
-          
-          # Verify the change
-          echo "Verifying SSL verification is disabled..."
-          updated_connection=$(curl -k -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/service_connections/kubernetes/$connection_id/")
-          
-          verify_ssl=$(echo "$updated_connection" | grep -o '"verify_ssl":[^,}]*' | cut -d':' -f2 | tr -d ' ')
-          
-          if [ "$verify_ssl" = "false" ]; then
-            echo "✓ SSL verification successfully disabled for Kubernetes service connection"
-          else
-            echo "✗ Failed to disable SSL verification. Current value: $verify_ssl"
-            exit 1
-          fi
-          
-          echo "=== SSL VERIFICATION FIX COMPLETED ==="
+        - name: fix-ssl-verification
+          image: curlimages/curl:latest
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-admin-token
+                  key: token
+            - name: AUTHENTIK_URL
+              value: "https://authentik.k8s.home.geoffdavis.com"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== FIXING KUBERNETES SERVICE CONNECTION SSL VERIFICATION ==="
+
+              # Test API connectivity first
+              echo "Testing API connectivity..."
+              response=$(curl -k -s -w "%{http_code}" -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/core/users/me/")
+              http_code="${response: -3}"
+              if [ "$http_code" != "200" ]; then
+                echo "ERROR: API test failed with HTTP $http_code"
+                echo "Response: $response"
+                exit 1
+              fi
+              echo "API connectivity test passed"
+
+              # Get all service connections
+              echo "Getting service connections..."
+              connections_response=$(curl -k -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/service_connections/")
+
+              # Find Kubernetes service connection
+              echo "Looking for Kubernetes service connection..."
+              connection_id=$(echo "$connections_response" | grep -o '"pk":"[^"]*"[^}]*"name":"[^"]*Kubernetes[^"]*"' | head -1 | grep -o '"pk":"[^"]*"' | cut -d'"' -f4)
+
+              if [ -z "$connection_id" ]; then
+                echo "ERROR: Could not find Kubernetes service connection"
+                echo "Available connections:"
+                echo "$connections_response" | grep -o '"name":"[^"]*"' | head -10
+                exit 1
+              fi
+              echo "Found Kubernetes service connection ID: $connection_id"
+
+              # Get current connection details
+              echo "Getting current connection details..."
+              current_connection=$(curl -k -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/service_connections/kubernetes/$connection_id/")
+
+              # Update connection to disable SSL verification
+              echo "Disabling SSL verification for Kubernetes service connection..."
+              update_data='{
+                "verify_ssl": false
+              }'
+
+              update_response=$(curl -k -s -X PATCH \
+                -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$update_data" \
+                "$AUTHENTIK_URL/api/v3/outposts/service_connections/kubernetes/$connection_id/")
+
+              echo "Update response: $update_response"
+
+              # Verify the change
+              echo "Verifying SSL verification is disabled..."
+              updated_connection=$(curl -k -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_URL/api/v3/outposts/service_connections/kubernetes/$connection_id/")
+
+              verify_ssl=$(echo "$updated_connection" | grep -o '"verify_ssl":[^,}]*' | cut -d':' -f2 | tr -d ' ')
+
+              if [ "$verify_ssl" = "false" ]; then
+                echo "✓ SSL verification successfully disabled for Kubernetes service connection"
+              else
+                echo "✗ Failed to disable SSL verification. Current value: $verify_ssl"
+                exit 1
+              fi
+
+              echo "=== SSL VERIFICATION FIX COMPLETED ==="

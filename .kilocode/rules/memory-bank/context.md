@@ -13,6 +13,7 @@
 **Infrastructure Foundation Complete**: All Kubernetes infrastructure components are operational including authentik-proxy pods, Redis, ingress controller, and BGP load balancer. External outpost connection established with Authentik server using correct token and proper internal/external URL separation.
 
 **Current Status**:
+
 - ✅ BGP peering established and stable (ASN 64512 ↔ ASN 64513)
 - ✅ Cilium v1.17.6 deployed with XDP disabled for Mac mini compatibility
 - ✅ LoadBalancer IPAM working (services getting IPs from BGP pools)
@@ -27,6 +28,7 @@
 - ✅ **COMPLETED**: External outpost infrastructure fully operational
 
 **🎉 External Authentik Outpost Connection Fix (COMPLETED - MAJOR SUCCESS)**:
+
 - ✅ **TOKEN CONFIGURATION RESOLVED**: Fixed token mismatch using correct external outpost token from 1Password
 - ✅ **PROXY PROVIDER ASSIGNMENTS FIXED**: All 6 proxy providers successfully migrated from embedded to external outpost
 - ✅ **ENVIRONMENT VARIABLES CORRECTED**: Hybrid URL architecture implemented with proper internal/external URL separation
@@ -38,9 +40,11 @@
 ## Recent Changes
 
 ### 🎉 Kubernetes Dashboard Bearer Token Elimination Project Complete (July 2025 - COMPLETED)
+
 **MAJOR ACHIEVEMENT**: Successfully eliminated manual bearer token requirement for Kubernetes Dashboard access through comprehensive authentication integration. Dashboard now provides seamless SSO access with full administrative capabilities, completing the authentication system integration.
 
 **Dashboard Authentication Integration Completed**:
+
 - **✅ KONG CONFIGURATION CONFLICT RESOLUTION**: Identified and removed problematic `kong-config-override-job.yaml` that was overriding proper Dashboard configuration
 - **✅ RBAC PERMISSIONS ENHANCEMENT**: Updated Dashboard service account with proper cluster-admin permissions for full administrative access
 - **✅ BEARER TOKEN ELIMINATION**: Removed manual bearer token requirement through proper authentication integration
@@ -49,9 +53,11 @@
 - **✅ PRODUCTION DEPLOYMENT**: All changes committed to Git and deployed via GitOps for production use
 
 ### 🎉 External Authentik Outpost System Complete (July 2025 - COMPLETED)
+
 **MAJOR ACHIEVEMENT**: Successfully completed comprehensive external Authentik outpost system with all critical configuration issues resolved. External outpost now connects properly with authentication working for all 6 services. System is production-ready.
 
 **External Outpost Connection Fix Completed**:
+
 - **✅ TOKEN CONFIGURATION RESOLVED**: Fixed 1Password token mismatch - updated to correct external outpost token for `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
 - **✅ PROXY PROVIDER ASSIGNMENTS FIXED**: Successfully migrated all 6 proxy providers from embedded outpost to external outpost using automated fix script
 - **✅ ENVIRONMENT VARIABLE CORRECTIONS**: Updated `AUTHENTIK_HOST` to use internal cluster DNS, `AUTHENTIK_HOST_BROWSER` for external redirects
@@ -60,6 +66,7 @@
 - **✅ POD CONNECTIVITY SUCCESS**: Both authentik-proxy pods connecting successfully to correct external outpost with websocket connections established
 
 **Key Technical Achievements**:
+
 - **Root Cause Analysis**: Identified token mismatch, proxy provider assignment conflicts, and environment variable issues
 - **Systematic Resolution**: Applied step-by-step fix process covering token extraction, configuration updates, and validation
 - **Automated Fix Scripts**: Deployed [`fix-outpost-assignments-job.yaml`](../scripts/authentik-proxy-config/fix-outpost-assignments-job.yaml) to migrate provider assignments
@@ -67,6 +74,7 @@
 - **Service Validation**: Confirmed all 6 services working correctly with authentication
 
 **Current Operational Status**:
+
 - **External Outpost Status**: Connected and operational (`3f0970c5-d6a3-43b2-9a36-d74665c6b24e`)
 - **Service Authentication**: 6/6 services working (Longhorn, Grafana, Prometheus, AlertManager, Hubble, Dashboard)
 - **Dashboard Service**: Kong service configuration issue resolved via GitOps database update job
@@ -74,6 +82,7 @@
 - **Provider Assignments**: All 6 proxy providers correctly assigned to external outpost, embedded outpost cleared
 
 ### External Authentik-Proxy Deployment Issues and Resolutions (July 2025)
+
 - **LLDPD Networking Issue (RESOLVED)**: Mini03 node restart caused LLDPD service failure, leading to networking problems
   - **Root Cause**: LLDPD configuration lost after node restart, causing webhook connectivity issues
   - **Solution**: Applied `task talos:apply-lldpd-config` to restore ext-lldpd service on all nodes
@@ -91,12 +100,13 @@
 ## Previous Changes
 
 ### Flux Circular Dependency Resolution (COMPLETED - January 2025)
+
 - **Root Cause Identified**: Circular dependency chain in Flux Kustomizations:
   ```
   infrastructure-monitoring (Failed: Grafana service issue)
       ↓ blocks
   infrastructure-ingress-nginx-internal (Not ready)
-      ↓ blocks  
+      ↓ blocks
   infrastructure-authentik (Not ready)
       ↓ blocks
   infrastructure-authentik-outpost-config (Not ready)
@@ -109,6 +119,7 @@
   - 🔄 `infrastructure-monitoring`: Still has Grafana service issues but no longer blocking other components
 
 ### BGP LoadBalancer Migration (COMPLETED - January 2025)
+
 - **BGP Peering Success**: Established stable BGP peering between cluster nodes (ASN 64512) and UDM Pro (ASN 64513)
 - **Cilium v1.17.6 Deployment**: Upgraded from v1.16.1 with XDP disabled for Mac mini compatibility
 - **LoadBalancer IPAM Operational**: Services successfully getting external IPs from BGP pools (172.29.52.x range)
@@ -119,12 +130,14 @@
 - **Service Accessibility**: All services accessible via BGP IPs (Longhorn: 172.29.52.100, Ingress: 172.29.52.200)
 
 ### Infrastructure Stability
+
 - **LLDPD Configuration**: Integrated into main Talos config to prevent periodic reboots
 - **Bootstrap Process**: Phased bootstrap system with resumable deployment stages
 - **Safety Procedures**: Enhanced cluster reset procedures that preserve OS installation
 - **USB SSD Storage**: Optimized configuration for Samsung Portable SSD T5 devices
 
 ### Network Architecture
+
 - **Dual-Stack IPv6**: Full IPv4/IPv6 support with proper CIDR allocation
 - **BGP LoadBalancer Migration**: Successfully completed with working route advertisement
 - **Cilium v1.17.6**: Upgraded CNI with XDP disabled for Mac mini compatibility and LoadBalancer IPAM enabled
@@ -135,6 +148,7 @@
 ## Current State
 
 ### Operational Status
+
 - **Cluster Health**: All-control-plane setup running on 3 Intel Mac mini devices
 - **Storage**: Longhorn distributed storage across 3x 1TB USB SSDs
 - **Networking**: Cilium v1.17.6 CNI with BGP peering established and route advertisement working
@@ -142,10 +156,12 @@
 - **GitOps**: Flux v2.4.0 managing infrastructure and application deployments
 
 ### Active Components
+
 - **Bootstrap Phase**: Talos OS, Kubernetes cluster, Cilium CNI core, 1Password Connect, External Secrets, Flux system
 - **GitOps Phase**: Infrastructure services (cert-manager, ingress-nginx, monitoring), Authentik identity provider, Longhorn storage, BGP configuration, External authentik-proxy
 
 ### Flux Kustomization Status (RESOLVED)
+
 - **infrastructure-sources**: ✅ Ready
 - **infrastructure-external-secrets**: ✅ Ready
 - **infrastructure-onepassword**: ✅ Ready
@@ -156,6 +172,7 @@
 - **infrastructure-monitoring**: ❌ Still failing due to HelmRelease issues, but no longer blocking other components
 
 ### 🎉 External Authentik Outpost System Status (SYSTEM COMPLETE - PRODUCTION READY)
+
 - **System Completion**: ✅ **COMPLETE** - Successfully resolved all token configuration, proxy provider assignment, and service configuration issues
 - **External Outpost**: ✅ **CONNECTED** - External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered and fully operational
 - **Token Management**: ✅ **RESOLVED** - Correct external outpost token configured and validated from 1Password
@@ -167,12 +184,14 @@
 ## Next Steps
 
 ### Immediate Priorities (System Complete)
+
 1. **✅ Dashboard Service Configuration**: Completed - Kong service configuration issue resolved via GitOps database update job
 2. **✅ Service Functionality Validation**: Completed - All 6 services working correctly with authentication
 3. **✅ Authentication Flow Testing**: Completed - end-to-end authentication validated for all services
-4. **✅ DNS Record Validation**: Confirmed - DNS records properly created for *.k8s.home.geoffdavis.com services
+4. **✅ DNS Record Validation**: Confirmed - DNS records properly created for \*.k8s.home.geoffdavis.com services
 
 ### Operational Excellence
+
 1. **Configuration Optimization**: Fine-tune external authentik-proxy and Redis configuration for production use
 2. **Monitoring Integration**: Add comprehensive monitoring for external authentik-proxy and Redis health
 3. **Documentation Updates**: Update all operational procedures to reflect new external outpost architecture
@@ -181,16 +200,19 @@
 ## Key Operational Patterns
 
 ### Bootstrap vs GitOps Decision Framework
+
 - **Bootstrap Phase**: Use for system-level changes, node configuration, core networking, secret management foundation
 - **GitOps Phase**: Use for application deployments, infrastructure services, operational configuration, scaling operations
 
 ### Daily Operations
+
 - **Health Checks**: `task cluster:status` for overall cluster health
 - **GitOps Monitoring**: `flux get kustomizations` for deployment status
 - **Application Updates**: Git commits to trigger automated deployments
 - **Infrastructure Changes**: Version-controlled modifications through Git
 
 ### Emergency Procedures
+
 - **Safe Reset**: `task cluster:safe-reset` preserves OS, wipes only user data
 - **Recovery**: `task cluster:emergency-recovery` for systematic troubleshooting
 - **Network Issues**: `task apps:deploy-cilium` for CNI problems
@@ -198,6 +220,7 @@
 ## Current Challenges
 
 ### External Outpost System Tasks (SYSTEM COMPLETE)
+
 - **✅ Token Configuration**: Resolved - correct external outpost token configured for `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
 - **✅ Service Functionality**: Validated - All 6 services working correctly with authentication
 - **✅ DNS Record Management**: Confirmed - proper DNS record creation and management for service access
@@ -205,17 +228,20 @@
 - **✅ Performance Monitoring**: System operational - Redis and authentik-proxy performance stable with hybrid URL architecture
 
 ### Infrastructure Monitoring
+
 - **Grafana Service**: Manually created service needs integration with HelmRelease
 - **HelmRelease Issues**: Monitoring stack HelmRelease still failing, needs resolution
 - **Service Dependencies**: Ensure monitoring doesn't create new circular dependencies
 
 ### Operational Excellence
+
 - **Dependency Management**: Prevent future circular dependencies in Flux configurations
 - **Service Integration**: Streamline process for adding new authenticated services
 - **Automation**: Improve automated configuration to reduce manual intervention needs
 - **Testing Coverage**: Add comprehensive tests for Flux dependency chains and authentication system integrity
 
 ### Technical Debt
+
 - **Monitoring Integration**: Properly integrate manually created Grafana service with Helm chart
 - **Configuration Validation**: Implement automated checks for Flux dependency cycles
 - **Authentication Monitoring**: Implement automated monitoring and alerting for external authentik-proxy health
@@ -228,6 +254,7 @@ This context reflects a cluster that has **successfully completed both the compr
 **Key Successes Achieved**:
 
 ### Dashboard Bearer Token Elimination Project (COMPLETED)
+
 - ✅ **Manual Bearer Token Requirement Eliminated**: Dashboard now provides seamless SSO access without manual token entry
 - ✅ **Kong Configuration Conflicts Resolved**: Removed problematic configuration jobs that were overriding proper settings
 - ✅ **RBAC Permissions Enhanced**: Updated service account with proper cluster-admin permissions for full administrative access
@@ -235,6 +262,7 @@ This context reflects a cluster that has **successfully completed both the compr
 - ✅ **Production Deployment**: All changes committed to Git and deployed via GitOps for production use
 
 ### External Authentik Outpost System (COMPLETED)
+
 - ✅ **Token Configuration Resolved**: Fixed 1Password token mismatch for correct external outpost connection
 - ✅ **Proxy Provider Assignments Fixed**: All 6 providers successfully migrated from embedded to external outpost
 - ✅ **Environment Variables Corrected**: Hybrid URL architecture fully implemented and operational

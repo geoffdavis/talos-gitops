@@ -31,12 +31,12 @@ spec:
   values:
     # Enable CRD installation
     installCRDs: true
-    
+
     # Configure for homelab use
     global:
       leaderElection:
         namespace: cert-manager
-        
+
     # Controller configuration
     controller:
       resources:
@@ -46,17 +46,17 @@ spec:
         requests:
           cpu: 10m
           memory: 32Mi
-          
+
       # Enable metrics
       prometheus:
         enabled: true
         servicemonitor:
           enabled: true
-          
+
       # Node selector and tolerations
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -64,21 +64,21 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
       # Security context
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
-        
+
       # Pod security context
       podSecurityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
-        
+
     # Webhook configuration
     webhook:
       resources:
@@ -88,10 +88,10 @@ spec:
         requests:
           cpu: 10m
           memory: 32Mi
-          
+
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -99,14 +99,14 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
       # Security context
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
-        
+
     # CA Injector configuration
     cainjector:
       resources:
@@ -116,10 +116,10 @@ spec:
         requests:
           cpu: 10m
           memory: 32Mi
-          
+
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -127,46 +127,46 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
       # Security context
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
-        
+
     # RBAC configuration
     rbac:
       create: true
-      
+
     # Service account configuration
     serviceAccount:
       create: true
-      
+
     # Enable feature gates
     featureGates: ""
-    
+
     # Configure logging
     logLevel: 2
-    
+
     # Configure leader election
     leaderElection:
       namespace: cert-manager
-      
+
     # Configure DNS policy
     dnsPolicy: "ClusterFirst"
-    
+
     # Configure pod disruption budget
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
-      
+
     # Configure startup API check
     startupapicheck:
       enabled: true
       timeout: 1m
       backoffLimit: 4
-      
+
       resources:
         limits:
           cpu: 100m
@@ -174,10 +174,10 @@ spec:
         requests:
           cpu: 10m
           memory: 32Mi
-          
+
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -185,7 +185,7 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
       # Security context
       securityContext:
         runAsNonRoot: true

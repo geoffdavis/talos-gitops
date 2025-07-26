@@ -54,3 +54,9 @@ age.key
 # Runtime state directories
 .bootstrap-state/
 .task/
+
+# Pre-commit cache
+.pre-commit-cache/
+
+# Secret scanning
+.secrets.baseline.tmp

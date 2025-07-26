@@ -1,12 +1,14 @@
 # Authentik Outpost Configuration
 
 This directory contains the configuration for automatically setting up outposts in Authentik via API calls, including:
+
 - RADIUS outpost for network authentication
 - Proxy outpost for web application authentication (Longhorn UI)
 
 ## Prerequisites
 
 The outpost configuration job requires:
+
 1. A valid Authentik API token to authenticate with the Authentik API
 2. Admin credentials stored in 1Password for web interface access
 
@@ -15,6 +17,7 @@ The outpost configuration job requires:
 ### 0. Setup Admin Credentials in 1Password
 
 Create an item in your 1Password Services vault named `authentik-admin-credentials` with the following fields:
+
 - `username`: admin
 - `password`: [generate a secure password]
 - `email`: admin@k8s.home.geoffdavis.com
@@ -101,6 +104,7 @@ The Longhorn proxy configuration job performs the following actions:
 ## Configuration Details
 
 ### RADIUS Configuration
+
 - **Provider Name**: `radius-provider`
 - **Outpost Name**: `radius-outpost`
 - **Shared Secret**: `radius-shared-secret-change-me` (should be changed in production)
@@ -110,6 +114,7 @@ The Longhorn proxy configuration job performs the following actions:
 - **Replicas**: 2
 
 ### Longhorn Proxy Configuration
+
 - **Provider Name**: `longhorn-proxy`
 - **Application Name**: `Longhorn Storage`
 - **External Host**: `https://longhorn.k8s.home.geoffdavis.com`
@@ -128,6 +133,7 @@ The Longhorn proxy configuration job performs the following actions:
 If the job fails with authentication errors, the token may be invalid or expired. Follow these steps:
 
 1. Check the job logs:
+
    ```bash
    kubectl logs -n authentik job/authentik-radius-outpost-config
    ```
@@ -141,6 +147,7 @@ If the job fails with authentication errors, the token may be invalid or expired
 If the job is stuck or failed:
 
 1. Delete the failed job:
+
    ```bash
    kubectl delete job authentik-radius-outpost-config -n authentik
    kubectl delete job authentik-longhorn-proxy-config -n authentik
@@ -172,16 +179,19 @@ After deployment, test the Longhorn authentication:
 If authentication isn't working:
 
 1. **Check Outpost Status**:
+
    ```bash
    kubectl get pods -n authentik -l app.kubernetes.io/name=authentik-proxy
    ```
 
 2. **Check Ingress Configuration**:
+
    ```bash
    kubectl describe ingress longhorn -n longhorn-system
    ```
 
 3. **Check Authentik Logs**:
+
    ```bash
    kubectl logs -n authentik -l app.kubernetes.io/component=server
    ```
@@ -196,6 +206,7 @@ If authentication isn't working:
 If the automated configuration jobs fail, you can manually configure through the Authentik web interface:
 
 1. **Create Proxy Provider**:
+
    - Go to Applications → Providers
    - Create new Proxy Provider
    - Name: `longhorn-proxy`
@@ -203,6 +214,7 @@ If the automated configuration jobs fail, you can manually configure through the
    - Internal host: `http://longhorn-frontend.longhorn-system.svc.cluster.local`
 
 2. **Create Application**:
+
    - Go to Applications → Applications
    - Create new Application
    - Name: `Longhorn Storage`

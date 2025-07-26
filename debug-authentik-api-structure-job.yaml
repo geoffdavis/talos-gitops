@@ -86,21 +86,21 @@ spec:
               echo "=== Installing Python Dependencies ==="
               pip install --no-cache-dir --target /tmp/python-packages urllib3
               export PYTHONPATH="/tmp/python-packages:$PYTHONPATH"
-              
+
               echo "=== Creating API Structure Debug Script ==="
               cat > /tmp/debug_api.py << 'EOF'
               #!/usr/bin/env python3
               """
               Debug script to investigate actual Authentik API structure
               """
-              
+
               import os
               import json
               import urllib.request
               import urllib.parse
               import urllib.error
-              
-              
+
+
               def make_api_request(url, headers):
                   """Make an API request to Authentik."""
                   try:
@@ -121,8 +121,8 @@ spec:
                       except (json.JSONDecodeError, UnicodeDecodeError):
                           error_data = {'error': 'Failed to parse error response'}
                       return status_code, error_data
-              
-              
+
+
               def main():
                   # Configuration from environment
                   authentik_host = os.environ.get('AUTHENTIK_HOST')
@@ -239,14 +239,14 @@ spec:
                   
                   print("\n=== Investigation Complete ===")
                   return 0
-              
-              
+
+
               if __name__ == "__main__":
                   exit(main())
               EOF
-              
+
               echo "=== Running API Structure Debug Script ==="
               python3 /tmp/debug_api.py
-              
+
               echo "=== Debug Complete ==="
       volumes: []

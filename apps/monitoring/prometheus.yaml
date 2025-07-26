@@ -22,14 +22,14 @@ spec:
         loadBalancerIP: "172.29.51.160"
         annotations:
           io.cilium/lb-ipam-pool: "default"
-      
+
     prometheus:
       service:
         type: LoadBalancer
         loadBalancerIP: "172.29.51.161"
         annotations:
           io.cilium/lb-ipam-pool: "default"
-      
+
       prometheusSpec:
         storageSpec:
           volumeClaimTemplate:
@@ -39,10 +39,10 @@ spec:
               resources:
                 requests:
                   storage: 50Gi
-        
+
         nodeSelector:
           kubernetes.io/os: linux
-        
+
         tolerations:
           - key: node-role.kubernetes.io/control-plane
             operator: Exists
@@ -50,22 +50,22 @@ spec:
           - key: node-role.kubernetes.io/master
             operator: Exists
             effect: NoSchedule
-    
+
     grafana:
       service:
         type: LoadBalancer
         loadBalancerIP: "172.29.51.162"
         annotations:
           io.cilium/lb-ipam-pool: "default"
-      
+
       persistence:
         enabled: true
         storageClassName: longhorn
         size: 10Gi
-        
+
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists

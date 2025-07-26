@@ -21,18 +21,18 @@ The current cluster uses L2 announcements (`CiliumL2AnnouncementPolicy`) on the 
 
 ### Current vs New IP Allocation
 
-| Component | Current (172.29.51.0/24) | New (172.29.52.0/24) |
-|-----------|---------------------------|----------------------|
-| Cluster VIP | 172.29.51.10 | 172.29.51.10 (unchanged) |
-| Node IPs | 172.29.51.11-13 | 172.29.51.11-13 (unchanged) |
-| Load Balancer Pool | 172.29.51.100-199 | 172.29.52.100-199 |
-| Ingress Pool | 172.29.51.200-220 | 172.29.52.200-220 |
-| Reserved Pool | N/A | 172.29.52.50-99 |
+| Component          | Current (172.29.51.0/24) | New (172.29.52.0/24)        |
+| ------------------ | ------------------------ | --------------------------- |
+| Cluster VIP        | 172.29.51.10             | 172.29.51.10 (unchanged)    |
+| Node IPs           | 172.29.51.11-13          | 172.29.51.11-13 (unchanged) |
+| Load Balancer Pool | 172.29.51.100-199        | 172.29.52.100-199           |
+| Ingress Pool       | 172.29.51.200-220        | 172.29.52.200-220           |
+| Reserved Pool      | N/A                      | 172.29.52.50-99             |
 
 ### IPv6 Changes
 
-| Component | Current | New |
-|-----------|---------|-----|
+| Component          | Current                     | New                         |
+| ------------------ | --------------------------- | --------------------------- |
 | Load Balancer Pool | fd47:25e1:2f96:51:100::/120 | fd47:25e1:2f96:52:100::/120 |
 
 ## Migration Process
@@ -40,6 +40,7 @@ The current cluster uses L2 announcements (`CiliumL2AnnouncementPolicy`) on the 
 ### Prerequisites
 
 1. **Network Infrastructure**
+
    - VLAN 52 (172.29.52.0/24) configured on UDM Pro
    - IPv6 ULA segment: fd47:25e1:2f96:52::/64
    - BGP peering configured between cluster and UDM Pro
@@ -52,12 +53,14 @@ The current cluster uses L2 announcements (`CiliumL2AnnouncementPolicy`) on the 
 ### Phase 1: Pre-Migration Preparation
 
 1. **Backup Current Configuration**
+
    ```bash
    # Automated backup via migration script
    ./scripts/migrate-to-bgp-only-loadbalancer.sh
    ```
 
 2. **Validate Network Setup**
+
    ```bash
    # Test connectivity to new network segment
    ping 172.29.52.1
@@ -76,6 +79,7 @@ kubectl apply -f infrastructure/cilium/loadbalancer-pool-bgp.yaml
 ```
 
 **New Pools Created:**
+
 - `bgp-default`: 172.29.52.100-199 (100 IPs)
 - `bgp-ingress`: 172.29.52.200-220 (21 IPs)
 - `bgp-reserved`: 172.29.52.50-99 (50 IPs)
@@ -88,6 +92,7 @@ kubectl apply -f infrastructure/cilium-bgp/bgp-policy-bgp-only.yaml
 ```
 
 **Key Changes:**
+
 - Enhanced BGP advertisements with communities
 - Improved peer configuration
 - IPv4/IPv6 dual-stack support
@@ -103,6 +108,7 @@ git push
 ```
 
 **Critical Changes:**
+
 - `l2announcements.enabled: false` (disables L2 announcements)
 - `bgpControlPlane.enabled: true` (enables BGP control plane)
 - Optimized load balancer configuration
@@ -144,22 +150,26 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
 #### Manual Validation Steps
 
 1. **Verify BGP Configuration**
+
    ```bash
    kubectl get ciliumbgpclusterconfig -o wide
    kubectl get ciliumbgpadvertisement -o wide
    ```
 
 2. **Check Load Balancer Pools**
+
    ```bash
    kubectl get ciliumloadbalancerippool -o wide
    ```
 
 3. **Verify Service IPs**
+
    ```bash
    kubectl get svc --all-namespaces -o wide | grep LoadBalancer
    ```
 
 4. **Test Connectivity**
+
    ```bash
    # Test each service IP
    curl -I http://<service-ip>:<port>
@@ -175,16 +185,19 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
 ### New Configuration Files
 
 1. **`infrastructure/cilium/loadbalancer-pool-bgp.yaml`**
+
    - BGP-only load balancer IP pools
    - Dedicated network segment (172.29.52.0/24)
    - IPv4/IPv6 dual-stack support
 
 2. **`infrastructure/cilium-bgp/bgp-policy-bgp-only.yaml`**
+
    - Enhanced BGP advertisements
    - Community tagging for route identification
    - Improved peer configuration
 
 3. **`infrastructure/cilium/helmrelease-bgp-only.yaml`**
+
    - L2 announcements disabled
    - BGP control plane enabled
    - Optimized for BGP-only operation
@@ -197,6 +210,7 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
 ### Migration Scripts
 
 1. **`scripts/migrate-to-bgp-only-loadbalancer.sh`**
+
    - Automated migration process
    - Backup and rollback capabilities
    - Comprehensive validation
@@ -217,6 +231,7 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
 ### Manual Rollback Steps
 
 1. **Restore Original Configuration**
+
    ```bash
    kubectl apply -f backups/bgp-migration-<timestamp>/current-loadbalancer-pools.yaml
    kubectl apply -f backups/bgp-migration-<timestamp>/current-l2-policies.yaml
@@ -224,6 +239,7 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
    ```
 
 2. **Update DNS Records**
+
    - Revert DNS records to original IP addresses
    - Wait for DNS propagation
 
@@ -247,6 +263,7 @@ prometheus.k8s.home.geoffdavis.com -> 172.29.52.xxx
 ### Monitoring Updates
 
 1. **Update Monitoring Dashboards**
+
    - Modify Grafana dashboards for new IP ranges
    - Update Prometheus targets if using static configuration
 
@@ -257,6 +274,7 @@ prometheus.k8s.home.geoffdavis.com -> 172.29.52.xxx
 ### Documentation Updates
 
 1. **Update Network Documentation**
+
    - Document new IP allocation scheme
    - Update network diagrams
 
@@ -269,28 +287,31 @@ prometheus.k8s.home.geoffdavis.com -> 172.29.52.xxx
 ### Common Issues
 
 1. **Services Not Getting IPs**
+
    ```bash
    # Check load balancer pools
    kubectl get ciliumloadbalancerippool -o wide
-   
+
    # Check service labels
    kubectl get svc <service-name> -o yaml | grep labels -A 10
    ```
 
 2. **BGP Peering Issues**
+
    ```bash
    # Check BGP configuration
    kubectl get ciliumbgpclusterconfig -o yaml
-   
+
    # Verify UDM Pro BGP status
    ssh unifi-admin@udm-pro "vtysh -c 'show bgp summary'"
    ```
 
 3. **Connectivity Issues**
+
    ```bash
    # Test network connectivity
    ping 172.29.52.1
-   
+
    # Check routing
    ip route show | grep 172.29.52
    ```
@@ -311,18 +332,22 @@ kubectl get svc --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE
 ## Benefits of BGP-Only Architecture
 
 1. **Clean Network Separation**
+
    - Load balancer traffic isolated from cluster management
    - Eliminates ARP conflicts and L2/L3 boundary confusion
 
 2. **True Load Balancing**
+
    - BGP provides actual load balancing across multiple nodes
    - Better failover and traffic distribution
 
 3. **Scalability**
+
    - Dedicated /24 network provides 254 usable IPs
    - Easy to expand with additional network segments
 
 4. **Operational Simplicity**
+
    - Single announcement mechanism (BGP only)
    - Consistent with enterprise networking practices
 
@@ -335,11 +360,13 @@ kubectl get svc --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE
 ### Regular Checks
 
 1. **Weekly BGP Health Check**
+
    ```bash
    ./scripts/validate-bgp-loadbalancer.sh
    ```
 
 2. **Monthly IP Utilization Review**
+
    ```bash
    kubectl get ciliumloadbalancerippool -o yaml | grep -A 5 -B 5 "start\|stop"
    ```

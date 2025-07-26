@@ -52,13 +52,13 @@ spec:
             - -c
             - |
               set -euo pipefail
-              
+
               echo "=== Authentik External Outpost Connection Verification ==="
               echo "Current Status: Pods are connecting to embedded outpost instead of external outpost"
               echo "Expected: Connect to external outpost 3f0970c5-d6a3-43b2-9a36-d74665c6b24e"
               echo "Actual: Connecting to embedded outpost 26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083"
               echo ""
-              
+
               cat > /tmp/verify-connection.py << 'EOF'
               #!/usr/bin/env python3
               import os
@@ -67,15 +67,15 @@ spec:
               import urllib.request
               import urllib.parse
               import urllib.error
-              
+
               authentik_host = os.environ.get('AUTHENTIK_HOST')
               token = os.environ.get('AUTHENTIK_TOKEN')
-              
+
               headers = {
                   'Authorization': f'Bearer {token}',
                   'Content-Type': 'application/json'
               }
-              
+
               def make_request(url, method='GET', data=None):
                   try:
                       req_data = None
@@ -97,13 +97,13 @@ spec:
                   except Exception as e:
                       print(f"Error: {e}")
                       return None
-              
+
               print("=== Current Token Analysis ===")
-              
+
               # Test current token
               me_url = f'{authentik_host}/api/v3/core/users/me/'
               me_data = make_request(me_url)
-              
+
               if me_data:
                   print(f"Current token user: {me_data.get('username', 'unknown')}")
                   print(f"Is superuser: {me_data.get('is_superuser', False)}")
@@ -111,13 +111,13 @@ spec:
               else:
                   print("Failed to get current user info")
                   sys.exit(1)
-              
+
               print("\n=== Current Outpost Status ===")
-              
+
               # Get all outposts
               outposts_url = f'{authentik_host}/api/v3/outposts/instances/'
               outposts_data = make_request(outposts_url)
-              
+
               if outposts_data:
                   for outpost in outposts_data.get('results', []):
                       outpost_id = outpost['pk']
@@ -133,36 +133,36 @@ spec:
                           print(f"  → This is our TARGET external outpost")
                       elif outpost_id == "26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083":
                           print(f"  → This is the embedded outpost (pods are wrongly connecting here)")
-              
+
               print(f"\n=== Root Cause Analysis ===")
               print("The issue is likely one of the following:")
               print("1. The token from 1Password is still an admin token, not an external outpost token")
               print("2. The AUTHENTIK_OUTPOST_ID environment variable is not being respected")
               print("3. The external outpost token in 1Password is incorrect or expired")
-              
+
               print(f"\n=== Solution Summary ===")
               print("Based on our analysis, the most effective solution is:")
               print("1. ✓ Use the existing admin token (it works and has proper access)")
               print("2. ✓ Force connection to external outpost using AUTHENTIK_OUTPOST_ID")
               print("3. ✓ Ensure the 1Password 'Authentik Outpost Token - home-ops' contains the admin token")
               print("4. ✓ Verify the deployment has the correct AUTHENTIK_OUTPOST_ID environment variable")
-              
+
               print(f"\n=== Current Configuration Status ===")
               print("✓ ExternalSecret updated to use 'Authentik Outpost Token - home-ops'")
               print("✓ Deployment updated with AUTHENTIK_OUTPOST_ID=3f0970c5-d6a3-43b2-9a36-d74665c6b24e")
               print("✓ Pods are running and healthy")
               print("✗ Pods are still connecting to embedded outpost instead of external outpost")
-              
+
               print(f"\n=== Recommended Next Steps ===")
               print("1. Verify the 1Password entry 'Authentik Outpost Token - home-ops' contains the admin token")
               print("2. Check if the AUTHENTIK_OUTPOST_ID environment variable is properly set in the pods")
               print("3. Consider restarting the pods to ensure they pick up the correct configuration")
               print("4. Test the authentication flow to verify it's working correctly")
-              
+
               EOF
-              
+
               python3 /tmp/verify-connection.py
-              
+
               echo ""
               echo "=== Connection Verification Complete ==="
               echo "Check the analysis above for next steps"

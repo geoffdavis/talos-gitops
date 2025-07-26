@@ -380,6 +380,6 @@ spec:
               if __name__ == "__main__":
                   main()
               EOF
-              
+
               echo "=== Running Fix Script ==="
               python3 /tmp/fix_outpost_assignments.py

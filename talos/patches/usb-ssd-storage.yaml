@@ -6,7 +6,7 @@ machine:
     - device: /dev/disk/by-id/usb-Samsung_Portable_SSD_T5*
       partitions:
         - mountpoint: /var/lib/longhorn-ssd
-          size: 0  # Use entire disk
+          size: 0 # Use entire disk
           format: ext4
 
   # Udev rules for Samsung Portable SSD T5 optimization

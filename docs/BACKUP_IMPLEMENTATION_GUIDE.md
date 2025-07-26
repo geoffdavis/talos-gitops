@@ -125,16 +125,16 @@ kubectl get pvc -n database -l app=postgresql
 
 ## Backup Schedule Overview
 
-| Time | Job | Description |
-|------|-----|-------------|
-| 1:00 AM | Database snapshots | Daily snapshots of all databases |
-| 2:00 AM | Monitoring snapshots | Daily snapshots of Prometheus/Grafana |
-| 3:00 AM | Monitoring S3 backup | Weekly S3 backup of monitoring data |
-| 4:00 AM | Database S3 backup | Weekly S3 backup of database data |
-| 5:00 AM | Application snapshots | Weekly snapshots of other applications |
-| 7:00 AM | Cleanup | Remove old snapshots |
-| 8:00 AM | Verification | Verify backup health |
-| 10:00 AM | Restore test | Weekly restore testing (Sundays) |
+| Time     | Job                   | Description                            |
+| -------- | --------------------- | -------------------------------------- |
+| 1:00 AM  | Database snapshots    | Daily snapshots of all databases       |
+| 2:00 AM  | Monitoring snapshots  | Daily snapshots of Prometheus/Grafana  |
+| 3:00 AM  | Monitoring S3 backup  | Weekly S3 backup of monitoring data    |
+| 4:00 AM  | Database S3 backup    | Weekly S3 backup of database data      |
+| 5:00 AM  | Application snapshots | Weekly snapshots of other applications |
+| 7:00 AM  | Cleanup               | Remove old snapshots                   |
+| 8:00 AM  | Verification          | Verify backup health                   |
+| 10:00 AM | Restore test          | Weekly restore testing (Sundays)       |
 
 ## Monitoring Backup Health
 
@@ -225,11 +225,13 @@ kubectl get csidriver driver.longhorn.io
 ## Security Best Practices
 
 1. **Credentials Management**
+
    - S3 credentials stored in 1Password
    - Regular credential rotation
    - Least privilege access policies
 
 2. **Access Control**
+
    - RBAC for backup operations
    - Separate service accounts
    - Namespace isolation
@@ -242,11 +244,13 @@ kubectl get csidriver driver.longhorn.io
 ## Cost Optimization Tips
 
 1. **S3 Lifecycle Policies**
+
    - Move to IA after 30 days
    - Archive to Glacier after 90 days
    - Delete after retention period
 
 2. **Backup Frequency Tuning**
+
    - Adjust based on actual RPO needs
    - Consider differential backups for large datasets
    - Monitor backup sizes and optimize

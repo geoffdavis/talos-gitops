@@ -25,6 +25,9 @@ cloudflared = "2025.7.0"
 # renovate: datasource=github-releases depName=python/cpython
 python = "3.12.8"
 yamllint = "latest"
+# Pre-commit tools
+pre-commit = "latest"
+shellcheck = "latest"
 
 [env]
 # Python path for token management scripts
@@ -53,3 +56,23 @@ run = "cd scripts/token-management && python authentik_token_manager.py rotate"
 [tasks.list-tokens]
 description = "List all Authentik tokens"
 run = "cd scripts/token-management && python authentik_token_manager.py list"
+
+[tasks.setup-pre-commit]
+description = "Setup pre-commit hooks"
+run = """
+  mise install pre-commit detect-secrets gitleaks shellcheck markdownlint-cli
+  pre-commit install
+  pre-commit install --hook-type commit-msg
+  detect-secrets scan --baseline .secrets.baseline
+"""
+
+[tasks.pre-commit-all]
+description = "Run all pre-commit hooks"
+run = "pre-commit run --all-files"
+
+[tasks.pre-commit-security]
+description = "Run security pre-commit hooks"
+run = """
+  pre-commit run detect-secrets --all-files
+  pre-commit run gitleaks --all-files
+"""

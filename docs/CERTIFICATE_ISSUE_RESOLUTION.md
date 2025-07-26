@@ -9,6 +9,7 @@
 ## Problem Description
 
 The cluster experienced certificate/authentication failures with the error:
+
 ```
 rpc error: code = Unavailable desc = connection error: desc = "transport: authentication handshake failed: tls: failed to verify certificate: x509: certificate signed by unknown authority"
 ```
@@ -16,7 +17,7 @@ rpc error: code = Unavailable desc = connection error: desc = "transport: authen
 ## Root Cause Analysis
 
 1. **Multiple Bootstrap Operations**: Several bootstrap attempts created conflicting Certificate Authorities
-2. **Configuration File Inconsistency**: 
+2. **Configuration File Inconsistency**:
    - Main `Taskfile.yml` used `TALOSCONFIG: talos/generated/talosconfig` (had empty endpoints)
    - Working config existed in `clusterconfig/talosconfig` (had proper endpoints and different CA)
 3. **CA Mismatch**: The certificates in both locations had different Certificate Authorities, causing authentication failures
@@ -31,7 +32,7 @@ rpc error: code = Unavailable desc = connection error: desc = "transport: authen
 ## Resolution Steps
 
 1. **Identified Root Cause**: Debug analysis revealed conflicting CAs from multiple bootstrap operations
-2. **Configuration Analysis**: 
+2. **Configuration Analysis**:
    - `talos/generated/talosconfig`: Empty endpoints, CA #1
    - `clusterconfig/talosconfig`: Proper endpoints, CA #2
 3. **Clean Slate Approach**: Purged all conflicting configuration files
@@ -50,14 +51,17 @@ rpc error: code = Unavailable desc = connection error: desc = "transport: authen
 ## Technical Details
 
 ### Original Configuration Paths
+
 - **Main Config**: `talos/generated/talosconfig` (correct location per project structure)
 - **Working Config**: `clusterconfig/talosconfig` (had proper endpoints but wrong location)
 
 ### Certificate Authority Comparison
+
 - **Generated Config CA**: `LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJQekNCOHFBREFnRUNBaEVBcEdISkhxanJJZkxZQUNrdmZTMnArakFGQmdNclpYQXdFREVPTUF3R0ExVUU...`
 - **Cluster Config CA**: `LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJQakNCOGFBREFnRUNBaEIxVXBUK3ljb25UMjBzRGM5aGlOYnVNQVVHQXl0bGNEQVFNUTR3REFZRFZRUUs...`
 
 ### Endpoints Configuration
+
 - **Generated Config**: `endpoints: []` (empty - caused connection issues)
 - **Cluster Config**: Proper endpoints `[172.29.51.11, 172.29.51.12, 172.29.51.13]`
 

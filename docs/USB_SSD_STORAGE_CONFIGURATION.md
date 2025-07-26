@@ -20,6 +20,7 @@ The cluster is configured to use external Samsung Portable SSD T5 drives for hig
 ### Why Samsung Portable SSD T5
 
 The configuration specifically targets Samsung Portable SSD T5 drives for several reasons:
+
 - **Consistent performance**: Reliable 540 MB/s speeds across all capacity variants
 - **Hardware compatibility**: Proven compatibility with Mac mini USB ports
 - **Model-based detection**: Reliable device identification through model string matching
@@ -31,6 +32,7 @@ The configuration specifically targets Samsung Portable SSD T5 drives for severa
 ### Mac Mini USB Ports
 
 Each Mac mini has multiple USB ports available:
+
 - **USB-A ports**: 2x USB 3.0 ports (rear)
 - **USB-C/Thunderbolt ports**: 2x Thunderbolt 3/4 ports (rear)
 
@@ -59,6 +61,7 @@ The Talos configuration detects Samsung Portable SSD T5 drives using model-speci
 ### Device Identification
 
 Samsung Portable SSD T5 drives are identified by:
+
 - **Model string**: "Portable SSD T5" in the device model field
 - **Vendor**: Samsung Electronics
 - **Device path**: Specific USB device ID pattern matching T5 drives
@@ -76,7 +79,7 @@ machine:
     - device: /dev/disk/by-id/usb-Samsung_Portable_SSD_T5*
       partitions:
         - mountpoint: /var/lib/longhorn-ssd
-          size: 0  # Use entire disk
+          size: 0 # Use entire disk
           format: ext4
           options:
             - defaults
@@ -122,6 +125,7 @@ parameters:
 ### Disk Discovery
 
 Longhorn automatically discovers Samsung Portable SSD T5 drives through:
+
 - **Mount point**: `/var/lib/longhorn-ssd`
 - **Disk label**: `ssd` tag applied via udev rules
 - **Disk selector**: Matches `diskSelector: "ssd"` in storage class
@@ -213,6 +217,7 @@ talosctl -n mini01 cat /sys/block/*/device/model
 **Symptoms**: Samsung Portable SSD T5 not appearing in Talos disk list
 
 **Troubleshooting**:
+
 1. Check physical connection
 2. Verify T5 power (try different port)
 3. Check device detection: `talosctl dmesg | grep "Portable SSD T5"`
@@ -220,6 +225,7 @@ talosctl -n mini01 cat /sys/block/*/device/model
 5. Confirm model string: `talosctl cat /sys/block/*/device/model`
 
 **Resolution**:
+
 ```bash
 # Check Samsung T5 devices
 talosctl ls /dev/disk/by-id/usb-Samsung_Portable_SSD_T5*
@@ -236,12 +242,14 @@ talosctl get udev
 **Symptoms**: Samsung T5 detected but not mounted
 
 **Troubleshooting**:
+
 1. Check filesystem format
 2. Verify mount point permissions
 3. Review system logs
 4. Confirm T5 model verification
 
 **Resolution**:
+
 ```bash
 # Check mount status
 talosctl df | grep longhorn-ssd
@@ -258,12 +266,14 @@ talosctl mount /dev/disk/by-id/usb-Samsung_Portable_SSD_T5* /var/lib/longhorn-ss
 **Symptoms**: Samsung T5 mounted but not available in Longhorn
 
 **Troubleshooting**:
+
 1. Check disk labeling
 2. Verify Longhorn disk discovery
 3. Review storage class configuration
 4. Confirm T5 model verification
 
 **Resolution**:
+
 ```bash
 # Check Longhorn disks
 kubectl get disks -n longhorn-system
@@ -285,11 +295,13 @@ kubectl rollout restart deployment/longhorn-manager -n longhorn-system
 **Symptoms**: Poor storage performance compared to expected SSD speeds
 
 **Troubleshooting**:
+
 1. Check I/O scheduler settings
 2. Verify USB connection speed
 3. Monitor system load
 
 **Resolution**:
+
 ```bash
 # Check I/O scheduler
 talosctl cat /sys/block/*/queue/scheduler
@@ -306,11 +318,13 @@ talosctl dd if=/dev/zero of=/var/lib/longhorn-ssd/test bs=1M count=1000
 ### Samsung T5 Disconnection
 
 **Automatic Handling**:
+
 - Longhorn automatically handles temporary disconnections
 - Replicas on other nodes maintain data availability
 - Automatic reconnection when Samsung T5 is restored
 
 **Manual Recovery**:
+
 1. **Identify affected volumes**: Check Longhorn UI for degraded volumes
 2. **Reconnect Samsung T5**: Ensure physical connection is restored
 3. **Verify mount**: Confirm mount point is restored
@@ -319,6 +333,7 @@ talosctl dd if=/dev/zero of=/var/lib/longhorn-ssd/test bs=1M count=1000
 ### Node Replacement
 
 **Procedure**:
+
 1. **Drain node**: Move workloads to other nodes
 2. **Replace hardware**: Install new Mac mini and Samsung Portable SSD T5
 3. **Apply configuration**: Deploy Talos configuration to new node
@@ -348,21 +363,22 @@ The configuration includes several SSD optimizations:
 # Mount options for SSD performance
 options:
   - defaults
-  - noatime      # Disable access time updates
-  - nodiratime   # Disable directory access time updates
-  - discard      # Enable TRIM support
+  - noatime # Disable access time updates
+  - nodiratime # Disable directory access time updates
+  - discard # Enable TRIM support
 
 # System-level SSD optimizations
 sysctls:
-  vm.dirty_ratio: "5"                    # Reduce dirty page ratio
-  vm.dirty_background_ratio: "2"         # Background writeback threshold
-  vm.dirty_expire_centisecs: "3000"      # Dirty page expiration
-  vm.dirty_writeback_centisecs: "500"    # Writeback frequency
+  vm.dirty_ratio: "5" # Reduce dirty page ratio
+  vm.dirty_background_ratio: "2" # Background writeback threshold
+  vm.dirty_expire_centisecs: "3000" # Dirty page expiration
+  vm.dirty_writeback_centisecs: "500" # Writeback frequency
 ```
 
 ### I/O Scheduler
 
 The configuration sets the `mq-deadline` scheduler for optimal SSD performance:
+
 - Better suited for SSDs than CFQ scheduler
 - Reduces latency for random I/O operations
 - Optimizes for the parallel nature of SSD storage

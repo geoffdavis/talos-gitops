@@ -15,6 +15,7 @@ This guide provides comprehensive, step-by-step instructions for deploying and c
 ### Architecture Overview
 
 The webhook system consists of:
+
 - **Flux Receiver**: Processes GitHub webhook events and triggers reconciliation
 - **Public Ingress**: Exposes webhook endpoint via `https://flux-webhook.geoffdavis.com/hook`
 - **Cloudflare Tunnel**: Provides secure public access through existing tunnel infrastructure
@@ -165,13 +166,13 @@ kubectl get deployment -n ingress-nginx-public ingress-nginx-public-controller -
 
 ### Expected Deployment Timeline
 
-| Phase | Duration | Risk Level | Rollback Time |
-|-------|----------|------------|---------------|
-| **1Password Setup** | 5 minutes | Low | 2 minutes |
-| **Infrastructure Deployment** | 10-15 minutes | Medium | 5 minutes |
-| **GitHub Configuration** | 5 minutes | Low | 2 minutes |
-| **End-to-end Testing** | 10 minutes | Low | N/A |
-| **Total Deployment** | **30-35 minutes** | **Medium** | **10 minutes** |
+| Phase                         | Duration          | Risk Level | Rollback Time  |
+| ----------------------------- | ----------------- | ---------- | -------------- |
+| **1Password Setup**           | 5 minutes         | Low        | 2 minutes      |
+| **Infrastructure Deployment** | 10-15 minutes     | Medium     | 5 minutes      |
+| **GitHub Configuration**      | 5 minutes         | Low        | 2 minutes      |
+| **End-to-end Testing**        | 10 minutes        | Low        | N/A            |
+| **Total Deployment**          | **30-35 minutes** | **Medium** | **10 minutes** |
 
 ## 1Password Secret Management
 
@@ -192,15 +193,18 @@ echo "Generated webhook secret: $WEBHOOK_SECRET"
 #### 2. Create 1Password Entry
 
 1. **Access 1Password Web Interface**:
+
    - Navigate to https://my.1password.com/
    - Select the **"Automation"** vault
 
 2. **Create New Item**:
+
    - Click **"New Item"** → **"Secure Note"**
    - **Title**: `GitHub Flux Webhook Secret`
    - **Category**: Secure Note
 
 3. **Configure Required Fields**:
+
    ```
    Field Name: token
    Field Type: Password
@@ -208,15 +212,16 @@ echo "Generated webhook secret: $WEBHOOK_SECRET"
    ```
 
 4. **Add Metadata** (Optional but recommended):
+
    ```
    Field Name: description
    Field Type: Text
    Field Value: Webhook secret for GitHub integration with Flux GitOps
-   
+
    Field Name: repository
    Field Type: Text
    Field Value: https://github.com/your-username/talos-gitops
-   
+
    Field Name: created_date
    Field Type: Text
    Field Value: [current date]
@@ -240,27 +245,31 @@ op item get "GitHub Flux Webhook Secret" --vault="Automation" --fields="token"
 **Quarterly Rotation Schedule** (Recommended):
 
 1. **Generate New Secret**:
+
    ```bash
    NEW_WEBHOOK_SECRET=$(openssl rand -hex 32)
    echo "New webhook secret: $NEW_WEBHOOK_SECRET"
    ```
 
 2. **Update 1Password Entry**:
+
    - Edit the "GitHub Flux Webhook Secret" item
    - Update the `token` field with the new value
    - Update the `created_date` field
 
 3. **Update GitHub Webhook**:
+
    - Navigate to repository Settings → Webhooks
    - Edit the webhook configuration
    - Update the secret field with the new value
 
 4. **Verify Rotation**:
+
    ```bash
    # The ExternalSecret will automatically sync the new value within 1 hour
    # Force immediate sync if needed:
    kubectl annotate externalsecret -n flux-system github-webhook-secret force-sync="$(date)"
-   
+
    # Verify secret updated
    kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.token}' | base64 -d
    ```
@@ -433,6 +442,7 @@ kubectl get configmap -n cloudflare-tunnel cloudflare-tunnel-config -o yaml
 ```
 
 The configuration should include:
+
 ```yaml
 ingress:
   # Flux webhook endpoint
@@ -501,6 +511,7 @@ kill %1  # Stop port-forward
 #### 1. Access Repository Webhook Settings
 
 1. **Navigate to Repository**:
+
    - Go to your GitHub repository (e.g., `https://github.com/your-username/talos-gitops`)
    - Click **"Settings"** tab
    - Click **"Webhooks"** in the left sidebar
@@ -512,14 +523,15 @@ kill %1  # Stop port-forward
 
 **Webhook Configuration**:
 
-| Field | Value | Notes |
-|-------|-------|-------|
-| **Payload URL** | `https://flux-webhook.geoffdavis.com/hook` | Must match ingress configuration |
-| **Content type** | `application/json` | Required for Flux receiver |
-| **Secret** | `[webhook secret from 1Password]` | Use the token value from your 1Password entry |
-| **SSL verification** | ✅ **Enable SSL verification** | Important for security |
+| Field                | Value                                      | Notes                                         |
+| -------------------- | ------------------------------------------ | --------------------------------------------- |
+| **Payload URL**      | `https://flux-webhook.geoffdavis.com/hook` | Must match ingress configuration              |
+| **Content type**     | `application/json`                         | Required for Flux receiver                    |
+| **Secret**           | `[webhook secret from 1Password]`          | Use the token value from your 1Password entry |
+| **SSL verification** | ✅ **Enable SSL verification**             | Important for security                        |
 
 **Event Selection**:
+
 - Select **"Let me select individual events"**
 - Check the following events:
   - ✅ **Pushes** - Triggers on code pushes
@@ -528,11 +540,13 @@ kill %1  # Stop port-forward
 - Uncheck all other events
 
 **Webhook Status**:
+
 - ✅ **Active** - Ensure webhook is enabled
 
 #### 3. Save and Test Webhook
 
 1. **Save Configuration**:
+
    - Click **"Add webhook"** to save
    - GitHub will automatically send a ping event
 
@@ -544,11 +558,13 @@ kill %1  # Stop port-forward
 #### 4. Webhook URL Structure
 
 The webhook URL follows this pattern:
+
 ```
 https://flux-webhook.geoffdavis.com/hook/{receiver-name}
 ```
 
 Where:
+
 - **Base URL**: `https://flux-webhook.geoffdavis.com/hook`
 - **Receiver Name**: `github-webhook` (from [`infrastructure/flux-webhook/receiver.yaml`](../infrastructure/flux-webhook/receiver.yaml))
 - **Full URL**: `https://flux-webhook.geoffdavis.com/hook/github-webhook`
@@ -574,6 +590,7 @@ The Flux receiver is configured to handle these GitHub events:
 #### Repository Targeting
 
 The receiver is configured to reconcile these GitRepository resources:
+
 - **flux-system**: Main GitOps repository (this repository)
 
 Additional repositories can be added by editing [`infrastructure/flux-webhook/receiver.yaml`](../infrastructure/flux-webhook/receiver.yaml).
@@ -601,6 +618,7 @@ curl -I https://flux-webhook.geoffdavis.com/hook/github-webhook
 #### 2. GitHub Ping Test
 
 1. **Trigger Manual Ping**:
+
    - Go to repository Settings → Webhooks
    - Click on your webhook
    - Click **"Recent Deliveries"** tab
@@ -731,6 +749,7 @@ kubectl get prometheusrule -n monitoring flux-webhook-alerts -o yaml
 #### 1. Successful Webhook Processing
 
 **Expected Log Entries** (in notification-controller):
+
 ```
 {"level":"info","ts":"2025-01-18T20:00:00.000Z","msg":"handling request","receiver":"github-webhook","event":"push"}
 {"level":"info","ts":"2025-01-18T20:00:00.000Z","msg":"triggering reconciliation","receiver":"github-webhook","resource":"GitRepository/flux-system"}
@@ -739,6 +758,7 @@ kubectl get prometheusrule -n monitoring flux-webhook-alerts -o yaml
 #### 2. Flux Reconciliation Behavior
 
 **Expected Reconciliation Flow**:
+
 1. Webhook received and validated
 2. GitRepository resource reconciliation triggered
 3. Kustomization resources reconciled based on repository changes
@@ -747,6 +767,7 @@ kubectl get prometheusrule -n monitoring flux-webhook-alerts -o yaml
 #### 3. Performance Benchmarks
 
 **Expected Performance Characteristics**:
+
 - **Webhook Response Time**: < 500ms for ping events
 - **Reconciliation Trigger Time**: < 5 seconds from webhook to reconciliation start
 - **End-to-End Latency**: < 30 seconds from git push to deployment update
@@ -761,6 +782,7 @@ The flux-webhook integration requires adding it to the main infrastructure manag
 #### 1. Integration Point
 
 The flux-webhook is integrated into the existing infrastructure through the networking configuration file:
+
 - **File**: [`clusters/home-ops/infrastructure/networking.yaml`](../clusters/home-ops/infrastructure/networking.yaml)
 - **Integration Type**: GitOps Phase (managed by Flux)
 - **Dependencies**: Multiple infrastructure components
@@ -776,13 +798,13 @@ graph TD
     C[infrastructure-external-dns] --> E
     D[infrastructure-ingress-nginx-public] --> E
     F[infrastructure-cloudflare-tunnel] --> E
-    
+
     A --> G[Secret Management]
     B --> H[TLS Certificates]
     C --> I[DNS Records]
     D --> J[Public Ingress]
     F --> K[External Access]
-    
+
     E --> L[GitHub Webhook Integration]
 ```
 
@@ -850,6 +872,7 @@ This prevents dependent resources from deploying until the webhook receiver is c
 #### 1. Workflow Enhancement
 
 **Before Webhook Integration**:
+
 ```bash
 # Manual reconciliation required after git push
 git push origin main
@@ -858,6 +881,7 @@ flux reconcile kustomization flux-system
 ```
 
 **After Webhook Integration**:
+
 ```bash
 # Automatic reconciliation triggered by webhook
 git push origin main
@@ -916,11 +940,13 @@ flux get all
 #### 1. Webhook Health Monitoring
 
 **Automated Monitoring** (No manual intervention required):
+
 - Webhook endpoint health checks via ingress controller
 - Prometheus metrics collection every 30 seconds
 - Alert rules monitor for failures and performance issues
 
 **Daily Health Check** (2 minutes):
+
 ```bash
 # Quick webhook system health check
 kubectl get receiver -n flux-system github-webhook
@@ -933,16 +959,19 @@ kubectl get certificate -n flux-system flux-webhook-tls
 #### 2. GitHub Webhook Status Verification
 
 **Weekly Verification** (5 minutes):
+
 1. **Check Recent Deliveries**:
+
    - Go to GitHub repository → Settings → Webhooks
    - Review recent deliveries for any failures
    - Verify response codes are consistently 200
 
 2. **Validate Webhook Events**:
+
    ```bash
    # Check recent webhook processing logs
    kubectl logs -n flux-system -l app=notification-controller --since=24h | grep webhook
-   
+
    # Expected: Regular webhook events with successful processing
    ```
 
@@ -983,11 +1012,13 @@ kubectl logs -n ingress-nginx-public -l app.kubernetes.io/name=ingress-nginx --s
 #### 1. Webhook Not Receiving Events
 
 **Symptoms**:
+
 - GitHub shows webhook delivery failures
 - No reconciliation triggered after git push
 - Webhook endpoint returns errors
 
 **Diagnostic Steps**:
+
 ```bash
 # 1. Check webhook endpoint accessibility
 curl -I https://flux-webhook.geoffdavis.com/hook
@@ -1006,11 +1037,12 @@ kubectl logs -n cloudflare-tunnel -l app=cloudflare-tunnel --tail=20
 ```
 
 **Common Solutions**:
+
 - **DNS Issues**: Verify external-dns is operational and DNS records exist
 - **Certificate Issues**: Check cert-manager logs and certificate renewal
 - **Tunnel Issues**: Restart cloudflare-tunnel deployment
-- **
-**Common Solutions**:
+- \*\*
+  **Common Solutions**:
 - **DNS Issues**: Verify external-dns is operational and DNS records exist
 - **Certificate Issues**: Check cert-manager logs and certificate renewal
 - **Tunnel Issues**: Restart cloudflare-tunnel deployment
@@ -1019,11 +1051,13 @@ kubectl logs -n cloudflare-tunnel -l app=cloudflare-tunnel --tail=20
 #### 2. Authentication Failures
 
 **Symptoms**:
+
 - GitHub webhook deliveries show authentication errors
 - Webhook logs show signature validation failures
 - HTTP 401 or 403 responses from webhook endpoint
 
 **Diagnostic Steps**:
+
 ```bash
 # 1. Verify webhook secret in Kubernetes
 kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.token}' | base64 -d
@@ -1040,6 +1074,7 @@ kubectl describe externalsecret -n flux-system github-webhook-secret
 ```
 
 **Common Solutions**:
+
 - **Secret Mismatch**: Update GitHub webhook secret to match 1Password
 - **ExternalSecret Issues**: Force sync or recreate ExternalSecret
 - **1Password Connectivity**: Verify 1Password Connect is operational
@@ -1047,11 +1082,13 @@ kubectl describe externalsecret -n flux-system github-webhook-secret
 #### 3. High Latency or Timeouts
 
 **Symptoms**:
+
 - Webhook processing takes longer than expected
 - GitHub webhook deliveries show timeout errors
 - Slow reconciliation after git pushes
 
 **Diagnostic Steps**:
+
 ```bash
 # 1. Check webhook processing latency
 kubectl logs -n flux-system -l app=notification-controller --since=1h | grep webhook | grep duration
@@ -1067,6 +1104,7 @@ time curl -I https://flux-webhook.geoffdavis.com/hook
 ```
 
 **Common Solutions**:
+
 - **Resource Constraints**: Increase notification-controller resources
 - **Network Issues**: Check tunnel connectivity and ingress performance
 - **Rate Limiting**: Verify rate limits are appropriate for usage patterns
@@ -1076,6 +1114,7 @@ time curl -I https://flux-webhook.geoffdavis.com/hook
 #### 1. Monthly Health Assessment
 
 **Webhook Performance Review** (15 minutes monthly):
+
 ```bash
 # 1. Review webhook success rate over past month
 kubectl logs -n flux-system -l app=notification-controller --since=720h | grep webhook | grep -c "successfully processed"
@@ -1094,6 +1133,7 @@ op item get "GitHub Flux Webhook Secret" --vault="Automation" --fields="created_
 #### 2. Quarterly Security Review
 
 **Security Assessment** (30 minutes quarterly):
+
 1. **Rotate Webhook Secret**: Follow secret rotation procedures
 2. **Review Access Logs**: Check for any suspicious webhook activity
 3. **Update Dependencies**: Ensure all infrastructure components are up-to-date
@@ -1102,6 +1142,7 @@ op item get "GitHub Flux Webhook Secret" --vault="Automation" --fields="created_
 #### 3. Annual Disaster Recovery Test
 
 **DR Testing** (2 hours annually):
+
 1. **Backup Current Configuration**: Export all webhook-related resources
 2. **Simulate Failure**: Temporarily disable webhook system
 3. **Recovery Test**: Restore from backup and verify functionality
@@ -1179,11 +1220,13 @@ kubectl run webhook-test --image=curlimages/curl --rm -it --restart=Never -- cur
 #### 1. "receiver not found" Error
 
 **Error Message**:
+
 ```
 {"level":"error","ts":"2025-01-18T20:00:00.000Z","msg":"receiver not found","receiver":"github-webhook"}
 ```
 
 **Solution**:
+
 ```bash
 # Verify receiver resource exists
 kubectl get receiver -n flux-system github-webhook
@@ -1198,11 +1241,13 @@ flux reconcile kustomization infrastructure-flux-webhook
 #### 2. "certificate not ready" Error
 
 **Error Message**:
+
 ```
 Warning  Failed     certificate/flux-webhook-tls   Failed to determine issuer: certificate not ready
 ```
 
 **Solution**:
+
 ```bash
 # Check certificate status
 kubectl describe certificate -n flux-system flux-webhook-tls
@@ -1218,11 +1263,13 @@ kubectl delete certificate -n flux-system flux-webhook-tls
 #### 3. "webhook signature validation failed" Error
 
 **Error Message**:
+
 ```
 {"level":"error","ts":"2025-01-18T20:00:00.000Z","msg":"webhook signature validation failed"}
 ```
 
 **Solution**:
+
 ```bash
 # Verify webhook secret
 kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.token}' | base64 -d
@@ -1286,17 +1333,20 @@ kubectl patch ingress -n flux-system flux-webhook --type='merge' -p='{"spec":{"r
 The webhook system implements multiple security layers:
 
 **Network Security**:
+
 - **Cloudflare Protection**: DDoS protection and WAF at edge
 - **Rate Limiting**: 10 requests per minute per IP at ingress level
 - **Connection Limiting**: Maximum 5 concurrent connections
 - **TLS Encryption**: End-to-end TLS 1.2/1.3 encryption
 
 **Authentication Security**:
+
 - **Webhook Secret Validation**: GitHub HMAC-SHA256 signature verification
 - **Secret Rotation**: Quarterly rotation of webhook secrets
 - **1Password Integration**: Secure secret storage with audit trail
 
 **Application Security**:
+
 - **Input Validation**: Webhook payload validation by Flux receiver
 - **Path Restriction**: Only `/hook` path exposed publicly
 - **Request Size Limiting**: 1MB maximum payload size
@@ -1318,6 +1368,7 @@ nginx.ingress.kubernetes.io/configuration-snippet: |
 #### 3. Certificate Security
 
 **TLS Certificate Management**:
+
 - **Let's Encrypt Certificates**: Automated certificate issuance and renewal
 - **Certificate Transparency**: All certificates logged in CT logs
 - **HSTS Enforcement**: Strict Transport Security with subdomain inclusion
@@ -1328,12 +1379,14 @@ nginx.ingress.kubernetes.io/configuration-snippet: |
 #### 1. Secret Management
 
 **Webhook Secret Security**:
+
 - **Complexity Requirements**: Minimum 32 hex characters (256-bit entropy)
 - **Storage Security**: Secrets stored in 1Password with encryption at rest
 - **Access Control**: Limited access to 1Password vault
 - **Rotation Schedule**: Quarterly rotation or after security incidents
 
 **Secret Rotation Procedure**:
+
 ```bash
 # 1. Generate new cryptographically secure secret
 NEW_SECRET=$(openssl rand -hex 32)
@@ -1351,12 +1404,14 @@ kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.toke
 #### 2. Access Control
 
 **Network Access Control**:
+
 - **Public Endpoint**: Only webhook endpoint exposed publicly
 - **Path Restrictions**: Only `/hook` path accessible
 - **Rate Limiting**: Prevents abuse and DoS attacks
 - **Geographic Restrictions**: Can be implemented via Cloudflare if needed
 
 **Administrative Access**:
+
 - **Kubernetes RBAC**: Proper role-based access control
 - **1Password Access**: Limited to essential personnel
 - **GitHub Access**: Repository admin rights required for webhook configuration
@@ -1364,12 +1419,14 @@ kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.toke
 #### 3. Monitoring and Alerting
 
 **Security Monitoring**:
+
 - **Failed Authentication Attempts**: Alert on repeated webhook auth failures
 - **Unusual Traffic Patterns**: Monitor for suspicious request patterns
 - **Certificate Expiration**: Automated alerts before certificate expiry
 - **Secret Access**: 1Password audit logs for secret access
 
 **Alert Configuration**:
+
 ```yaml
 # Example alert for authentication failures
 - alert: FluxWebhookAuthFailures
@@ -1387,6 +1444,7 @@ kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.toke
 #### 1. Data Protection
 
 **Data Handling**:
+
 - **No Sensitive Data**: Webhook payloads contain only repository metadata
 - **Audit Trail**: All webhook events logged with timestamps
 - **Data Retention**: Logs retained according to organizational policy
@@ -1395,6 +1453,7 @@ kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.toke
 #### 2. Access Auditing
 
 **Audit Requirements**:
+
 - **1Password Audit Logs**: Track secret access and modifications
 - **Kubernetes Audit Logs**: Track resource access and changes
 - **GitHub Audit Logs**: Track webhook configuration changes
@@ -1405,6 +1464,7 @@ kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.toke
 #### 1. Incident Classification
 
 **Security Incident Types**:
+
 - **Level 1 - Critical**: Webhook endpoint compromised or under active attack
 - **Level 2 - High**: Authentication bypass or unauthorized access
 - **Level 3 - Medium**: Suspicious activity or potential reconnaissance
@@ -1413,6 +1473,7 @@ kubectl get secret -n flux-system github-webhook-secret -o jsonpath='{.data.toke
 #### 2. Response Procedures
 
 **Immediate Response** (< 5 minutes):
+
 ```bash
 # 1. Disable webhook in GitHub
 # Repository → Settings → Webhooks → Deactivate
@@ -1426,6 +1487,7 @@ kubectl logs -n ingress-nginx-public -l app.kubernetes.io/name=ingress-nginx --s
 ```
 
 **Investigation Phase** (< 30 minutes):
+
 ```bash
 # 1. Analyze logs for attack patterns
 grep -i "error\|fail\|attack\|suspicious" webhook-incident-logs.txt
@@ -1438,6 +1500,7 @@ kubectl get secret -n flux-system github-webhook-secret -o yaml
 ```
 
 **Recovery Phase** (< 60 minutes):
+
 ```bash
 # 1. Rotate webhook secret
 NEW_SECRET=$(openssl rand -hex 32)
@@ -1484,7 +1547,7 @@ data:
     credentials-file: /etc/cloudflared/creds/credentials.json
     metrics: 0.0.0.0:2000
     no-autoupdate: true
-    
+
     ingress:
       # Default rule - catch all
       - service: http_status:404
@@ -1685,14 +1748,14 @@ echo "Manual interventions required: [list]" >> recovery-test-results.log
 
 ### Recovery Time Objectives
 
-| Scenario | Target RTO | Actual RTO | Recovery Steps |
-|----------|------------|------------|----------------|
-| **Immediate Rollback** | 5 minutes | _TBD_ | Disable webhook, suspend receiver |
-| **Partial Rollback** | 15 minutes | _TBD_ | Remove from infrastructure management |
-| **Complete Rollback** | 30 minutes | _TBD_ | Full system removal |
-| **Secret Recovery** | 10 minutes | _TBD_ | Regenerate and update secret |
-| **Certificate Recovery** | 15 minutes | _TBD_ | Force certificate renewal |
-| **Full System Recovery** | 45 minutes | _TBD_ | Complete redeployment |
+| Scenario                 | Target RTO | Actual RTO | Recovery Steps                        |
+| ------------------------ | ---------- | ---------- | ------------------------------------- |
+| **Immediate Rollback**   | 5 minutes  | _TBD_      | Disable webhook, suspend receiver     |
+| **Partial Rollback**     | 15 minutes | _TBD_      | Remove from infrastructure management |
+| **Complete Rollback**    | 30 minutes | _TBD_      | Full system removal                   |
+| **Secret Recovery**      | 10 minutes | _TBD_      | Regenerate and update secret          |
+| **Certificate Recovery** | 15 minutes | _TBD_      | Force certificate renewal             |
+| **Full System Recovery** | 45 minutes | _TBD_      | Complete redeployment                 |
 
 ### Post-Recovery Validation
 

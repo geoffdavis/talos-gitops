@@ -73,7 +73,7 @@ spec:
             - |
               set -e
               echo "Configuring RADIUS outpost..."
-              
+
               # Function to retry API calls
               retry_api_call() {
                 local url="$1"
@@ -111,10 +111,10 @@ spec:
                 cat /tmp/api_response
                 return 1
               }
-              
+
               # Get admin token (using API token created via management command)
               ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
-              
+
               # Test authentication first with retry
               echo "Testing authentication..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
@@ -124,19 +124,19 @@ spec:
                 exit 1
               fi
               echo "Authentication successful"
-              
+
               # Check if RADIUS provider already exists
               echo "Checking for existing RADIUS provider..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/radius/"; then
                 echo "Failed to check existing RADIUS providers"
                 exit 1
               fi
-              
+
               PROVIDER_RESPONSE=$(cat /tmp/api_response)
               echo "Provider response: $PROVIDER_RESPONSE"
-              
+
               PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o '"name":"radius-provider"' || echo "")
-              
+
               if [ -z "$PROVIDER_EXISTS" ]; then
                 echo "Creating RADIUS provider..."
                 PROVIDER_DATA='{
@@ -158,19 +158,19 @@ spec:
                 PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A5 '"name":"radius-provider"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                 echo "Found existing provider with PK: $PROVIDER_PK"
               fi
-              
+
               # Check if RADIUS Application already exists
               echo "Checking for existing RADIUS application..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
                 echo "Failed to check existing applications"
                 exit 1
               fi
-              
+
               APP_RESPONSE=$(cat /tmp/api_response)
               echo "Application response: $APP_RESPONSE"
-              
+
               APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o '"name":"RADIUS Application"' || echo "")
-              
+
               if [ -z "$APP_EXISTS" ]; then
                 echo "Creating RADIUS application..."
                 APP_DATA="{
@@ -191,19 +191,19 @@ spec:
               else
                 echo "RADIUS application already exists"
               fi
-              
+
               # Check if RADIUS outpost already exists
               echo "Checking for existing RADIUS outpost..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/"; then
                 echo "Failed to check existing outposts"
                 exit 1
               fi
-              
+
               OUTPOST_RESPONSE=$(cat /tmp/api_response)
               echo "Outpost response: $OUTPOST_RESPONSE"
-              
+
               OUTPOST_EXISTS=$(echo "$OUTPOST_RESPONSE" | grep -o '"name":"radius-outpost"' || echo "")
-              
+
               if [ -z "$OUTPOST_EXISTS" ]; then
                 echo "Creating RADIUS outpost..."
                 OUTPOST_DATA="{
@@ -238,5 +238,5 @@ spec:
               else
                 echo "RADIUS outpost already exists"
               fi
-              
+
               echo "RADIUS outpost configuration completed!"

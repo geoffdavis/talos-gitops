@@ -16,18 +16,21 @@ The solution uses two separate External-DNS instances:
 ### Components
 
 #### 1. UniFi Webhook (`external-dns-unifi-webhook`)
+
 - **Location**: [`infrastructure/external-dns-unifi/`](../infrastructure/external-dns-unifi/)
 - **Purpose**: Provides webhook interface for External-DNS to manage UniFi DNS records
 - **Image**: `ghcr.io/kashalls/external-dns-unifi-webhook:v0.2.0`
 - **Namespace**: `external-dns-unifi-system`
 
 #### 2. Internal External-DNS (`external-dns-internal`)
+
 - **Location**: [`infrastructure/external-dns-internal/`](../infrastructure/external-dns-internal/)
 - **Purpose**: Manages internal domain DNS records via UniFi webhook
 - **Provider**: `webhook`
 - **Namespace**: `external-dns-internal-system`
 
 #### 3. External External-DNS (`external-dns`)
+
 - **Location**: [`infrastructure/external-dns/`](../infrastructure/external-dns/)
 - **Purpose**: Manages external domain DNS records via Cloudflare
 - **Provider**: `cloudflare`
@@ -38,28 +41,34 @@ The solution uses two separate External-DNS instances:
 ### Domain Separation
 
 #### External Domains (Cloudflare)
+
 ```yaml
 domainFilters:
-  - geoffdavis.com  # Only manage Cloudflare tunnel domains
+  - geoffdavis.com # Only manage Cloudflare tunnel domains
 ```
 
 #### Internal Domains (UniFi)
+
 ```yaml
 domainFilters:
-  - k8s.home.geoffdavis.com  # Only manage internal domains
+  - k8s.home.geoffdavis.com # Only manage internal domains
 ```
 
 ### Annotation Filters
 
 #### External Services
+
 Use standard external-dns annotations:
+
 ```yaml
 annotations:
   external-dns.alpha.kubernetes.io/hostname: "service.geoffdavis.com"
 ```
 
 #### Internal Services
+
 Use internal-specific annotations:
+
 ```yaml
 annotations:
   external-dns-internal.alpha.kubernetes.io/hostname: "service.k8s.home.geoffdavis.com"
@@ -71,6 +80,7 @@ annotations:
 ### 1. UniFi API Key in 1Password
 
 The UniFi API key should already be available in 1Password:
+
 - **Item Name**: `Home-ops Unifi API`
 - **Field**: `password` (contains the API key)
 
@@ -85,17 +95,18 @@ Ensure the UDM is accessible at the configured IP address (default: `https://192
 **File**: [`infrastructure/external-dns-unifi/deployment.yaml`](../infrastructure/external-dns-unifi/deployment.yaml)
 
 Key configuration:
+
 ```yaml
 env:
-- name: UNIFI_HOST
-  value: "https://192.168.1.1"  # Update with your UDM IP
-- name: UNIFI_API_KEY
-  valueFrom:
-    secretKeyRef:
-      name: external-dns-unifi-secret
-      key: api-key
-- name: UNIFI_VERSION
-  value: "unifiOS"
+  - name: UNIFI_HOST
+    value: "https://192.168.1.1" # Update with your UDM IP
+  - name: UNIFI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: external-dns-unifi-secret
+        key: api-key
+  - name: UNIFI_VERSION
+    value: "unifiOS"
 ```
 
 ### 2. External Secret for UniFi Credentials
@@ -114,11 +125,11 @@ Configured to use webhook provider pointing to UniFi webhook service.
 
 The following internal DNS records are now automatically managed:
 
-| Service | FQDN | Target IP | Management |
-|---------|------|-----------|------------|
-| Grafana | `grafana.k8s.home.geoffdavis.com` | `172.29.51.200` | Automated via UniFi webhook |
-| Longhorn | `longhorn.k8s.home.geoffdavis.com` | `172.29.51.200` | Automated via UniFi webhook |
-| Prometheus | `prometheus.k8s.home.geoffdavis.com` | `172.29.51.200` | Automated via UniFi webhook |
+| Service      | FQDN                                   | Target IP       | Management                  |
+| ------------ | -------------------------------------- | --------------- | --------------------------- |
+| Grafana      | `grafana.k8s.home.geoffdavis.com`      | `172.29.51.200` | Automated via UniFi webhook |
+| Longhorn     | `longhorn.k8s.home.geoffdavis.com`     | `172.29.51.200` | Automated via UniFi webhook |
+| Prometheus   | `prometheus.k8s.home.geoffdavis.com`   | `172.29.51.200` | Automated via UniFi webhook |
 | Alertmanager | `alertmanager.k8s.home.geoffdavis.com` | `172.29.51.200` | Automated via UniFi webhook |
 
 ## Updated Ingress Configurations
@@ -128,6 +139,7 @@ The following internal DNS records are now automatically managed:
 Updated to use internal external-dns annotations:
 
 **Longhorn** ([`infrastructure/longhorn/ingress.yaml`](../infrastructure/longhorn/ingress.yaml)):
+
 ```yaml
 annotations:
   external-dns-internal.alpha.kubernetes.io/hostname: "longhorn.k8s.home.geoffdavis.com"
@@ -135,6 +147,7 @@ annotations:
 ```
 
 **Monitoring Services** ([`apps/monitoring/grafana.yaml`](../apps/monitoring/grafana.yaml)):
+
 ```yaml
 annotations:
   external-dns-internal.alpha.kubernetes.io/hostname: "grafana.k8s.home.geoffdavis.com"
@@ -162,18 +175,21 @@ infrastructure-onepassword
 ## Validation
 
 ### 1. Check Webhook Deployment
+
 ```bash
 kubectl get pods -n external-dns-unifi-system
 kubectl logs -n external-dns-unifi-system deployment/external-dns-unifi-webhook
 ```
 
 ### 2. Check Internal External-DNS
+
 ```bash
 kubectl get pods -n external-dns-internal-system
 kubectl logs -n external-dns-internal-system deployment/external-dns-internal
 ```
 
 ### 3. Verify DNS Records
+
 ```bash
 # Check if DNS records are created in UniFi
 nslookup grafana.k8s.home.geoffdavis.com
@@ -185,16 +201,19 @@ nslookup longhorn.k8s.home.geoffdavis.com
 ### Common Issues
 
 #### 1. UniFi Authentication Failures
+
 - Verify credentials in 1Password
 - Check UDM IP address configuration
 - Ensure UDM is accessible from cluster
 
 #### 2. Webhook Connection Issues
+
 - Verify webhook service is running
 - Check network connectivity to UniFi webhook
 - Review webhook logs for errors
 
 #### 3. DNS Record Creation Failures
+
 - Check external-dns-internal logs
 - Verify annotation filters match ingress annotations
 - Ensure domain filters are correctly configured
@@ -202,11 +221,13 @@ nslookup longhorn.k8s.home.geoffdavis.com
 ### Log Analysis
 
 #### UniFi Webhook Logs
+
 ```bash
 kubectl logs -n external-dns-unifi-system deployment/external-dns-unifi-webhook -f
 ```
 
 #### Internal External-DNS Logs
+
 ```bash
 kubectl logs -n external-dns-internal-system deployment/external-dns-internal -f
 ```
@@ -214,16 +235,19 @@ kubectl logs -n external-dns-internal-system deployment/external-dns-internal -f
 ## Benefits
 
 ### 1. Full Automation
+
 - No manual DNS record management required
 - Automatic creation/deletion of DNS records
 - Consistent DNS management across environments
 
 ### 2. Clear Separation
+
 - External domains managed by Cloudflare
 - Internal domains managed by UniFi
 - No configuration conflicts
 
 ### 3. GitOps Integration
+
 - All configuration managed via Git
 - Automated deployment via Flux
 - Version controlled DNS management
@@ -231,11 +255,13 @@ kubectl logs -n external-dns-internal-system deployment/external-dns-internal -f
 ## Security Considerations
 
 ### 1. Credential Management
+
 - UniFi credentials stored securely in 1Password
 - Automatic credential rotation supported
 - Kubernetes secrets managed by External Secrets
 
 ### 2. Network Security
+
 - Webhook communication within cluster
 - UniFi access limited to necessary permissions
 - TLS encryption for all communications
@@ -243,12 +269,15 @@ kubectl logs -n external-dns-internal-system deployment/external-dns-internal -f
 ## Maintenance
 
 ### 1. Credential Rotation
+
 Update credentials in 1Password - External Secrets will automatically sync.
 
 ### 2. UniFi Webhook Updates
+
 Monitor for new releases of `external-dns-unifi-webhook` and update image tags.
 
 ### 3. Configuration Changes
+
 All configuration changes should be made via Git and deployed through GitOps.
 
 ## References

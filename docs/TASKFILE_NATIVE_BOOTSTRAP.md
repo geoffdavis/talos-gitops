@@ -25,21 +25,25 @@ taskfiles/
 ### Native Taskfile Features
 
 #### **Dependencies (`deps:`)**
+
 - Automatic phase ordering through task dependencies
 - Parallel execution where possible
 - Clear dependency visualization
 
 #### **Preconditions (`preconditions:`)**
+
 - Environment validation before task execution
 - Clear error messages for failed prerequisites
 - Tool availability and connectivity checks
 
 #### **Status Checks (`status:`)**
+
 - Idempotent operations using file and command-based checks
 - Prevents re-running completed phases
 - Automatic rebuild when dependencies change
 
 #### **Sources and Generates (`sources:`, `generates:`)**
+
 - File-based dependency tracking
 - Configuration change detection
 - Automatic rebuilds when source files change
@@ -54,29 +58,29 @@ graph TD
     D --> E[Phase 4: Services]
     E --> F[Phase 5: GitOps]
     F --> G[Phase 6: Applications]
-    
+
     B --> B1[validation:environment]
     B1 --> B2[validation:tools]
     B1 --> B3[validation:onepassword]
     B1 --> B4[validation:connectivity]
-    
+
     C --> C1[talos:bootstrap-cluster]
     C1 --> C2[talos:generate-config]
     C1 --> C3[talos:apply-configs]
     C1 --> C4[talos:bootstrap-etcd]
-    
+
     D --> D1[networking:deploy-cilium]
     D1 --> D2[networking:wait-ready]
     D1 --> D3[networking:validate]
-    
+
     E --> E1[services:deploy-core]
     E1 --> E2[services:deploy-external-secrets]
     E1 --> E3[services:deploy-onepassword-connect]
     E1 --> E4[services:deploy-longhorn]
-    
+
     F --> F1[gitops:bootstrap-flux]
     F1 --> F2[gitops:verify-gitops-sync]
-    
+
     G --> G1[applications:deploy]
     G1 --> G2[applications:validate]
 ```
@@ -126,6 +130,7 @@ Instead of custom JSON state files, the system uses marker files:
 ### Status Check Examples
 
 #### File-based Status
+
 ```yaml
 status:
   - test -f .bootstrap-state/phase-1-complete
@@ -133,6 +138,7 @@ status:
 ```
 
 #### Command-based Status
+
 ```yaml
 status:
   - mise exec -- kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"
@@ -140,6 +146,7 @@ status:
 ```
 
 #### Combined Status
+
 ```yaml
 status:
   - test -f .bootstrap-state/phase-3-complete
@@ -152,26 +159,31 @@ status:
 ### Basic Commands
 
 #### Start Fresh Bootstrap
+
 ```bash
 task bootstrap:phased
 ```
 
 #### Resume from Current State
+
 ```bash
 task bootstrap:resume
 ```
 
 #### Check Status
+
 ```bash
 task bootstrap:status
 ```
 
 #### Reset State
+
 ```bash
 task bootstrap:reset
 ```
 
 #### Validate Phases
+
 ```bash
 task bootstrap:validate
 ```
@@ -197,6 +209,7 @@ task bootstrap:validate-phase PHASE=2
 ### Component-specific Tasks
 
 #### Validation
+
 ```bash
 task validation:environment
 task validation:tools
@@ -205,6 +218,7 @@ task validation:connectivity
 ```
 
 #### Talos Management
+
 ```bash
 task talos:bootstrap-cluster
 task talos:generate-config
@@ -213,6 +227,7 @@ task talos:status
 ```
 
 #### Networking
+
 ```bash
 task networking:deploy-cilium
 task networking:validate
@@ -220,6 +235,7 @@ task networking:status
 ```
 
 #### Services
+
 ```bash
 task services:deploy-core
 task services:validate
@@ -227,6 +243,7 @@ task services:status
 ```
 
 #### GitOps
+
 ```bash
 task gitops:bootstrap-flux
 task gitops:validate
@@ -234,6 +251,7 @@ task gitops:status
 ```
 
 #### Applications
+
 ```bash
 task applications:deploy
 task applications:validate
@@ -243,11 +261,13 @@ task applications:health
 ## Error Handling and Recovery
 
 ### Automatic Recovery
+
 - Tasks automatically determine what needs to be rebuilt
 - Status checks prevent unnecessary re-execution
 - Dependencies ensure proper ordering
 
 ### Manual Recovery
+
 ```bash
 # Reset specific component state
 task validation:reset
@@ -264,6 +284,7 @@ task applications:redeploy
 ```
 
 ### Troubleshooting
+
 ```bash
 # Show logs
 task services:logs
@@ -283,31 +304,37 @@ task validation:cluster-health
 ## Benefits of Taskfile-Native Approach
 
 ### 🚀 **Performance**
+
 - No shell script overhead
 - Built-in parallel execution
 - Native caching and status checks
 
 ### 🔍 **Clarity**
+
 - Visual dependency graph
 - Explicit prerequisites
 - Clear task descriptions
 
 ### 🛠️ **Maintainability**
+
 - Modular structure
 - Reusable components
 - Configuration-driven behavior
 
 ### 📊 **Observability**
+
 - Task execution tracing
 - Clear success/failure indicators
 - Structured output
 
 ### 🔄 **Reliability**
+
 - Native error handling
 - Robust state management
 - Idempotent operations
 
 ### 🎯 **Flexibility**
+
 - Granular task execution
 - Easy debugging and recovery
 - Component-specific operations
@@ -315,11 +342,13 @@ task validation:cluster-health
 ## Migration from Script-based System
 
 ### Compatibility
+
 - Existing tasks remain available
 - Gradual migration path
 - Maintains current workflows
 
 ### Key Differences
+
 1. **State Management**: File-based markers instead of JSON
 2. **Dependencies**: Native Taskfile deps instead of shell logic
 3. **Validation**: Preconditions instead of custom validation scripts
@@ -327,6 +356,7 @@ task validation:cluster-health
 5. **Error Handling**: Native Taskfile features instead of custom logic
 
 ### Migration Steps
+
 1. Use new `task bootstrap:phased` for fresh deployments
 2. Existing clusters can use individual component tasks
 3. Gradually adopt new validation and status tasks
@@ -335,6 +365,7 @@ task validation:cluster-health
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 export OP_ACCOUNT=your-account-name
 export CLUSTER_NAME=home-ops
@@ -344,12 +375,15 @@ export NODE_3_IP=172.29.51.13
 ```
 
 ### Taskfile Variables
+
 Variables can be overridden at runtime:
+
 ```bash
 task bootstrap:phased CLUSTER_NAME=production NODE_1_IP=10.0.1.10
 ```
 
 ### Configuration Files
+
 - `bootstrap-config.yaml` - Bootstrap configuration
 - `.mise.toml` - Tool management
 - `talconfig.yaml` - Talos configuration
@@ -358,22 +392,28 @@ task bootstrap:phased CLUSTER_NAME=production NODE_1_IP=10.0.1.10
 ## Advanced Usage
 
 ### Custom Validation
+
 Add custom preconditions to any task:
+
 ```yaml
 preconditions:
-  - sh: 'custom-validation-command'
-    msg: 'Custom validation failed'
+  - sh: "custom-validation-command"
+    msg: "Custom validation failed"
 ```
 
 ### Custom Status Checks
+
 Add custom status checks:
+
 ```yaml
 status:
   - custom-status-check-command
 ```
 
 ### Environment-specific Behavior
+
 Use `when:` conditions for environment-specific tasks:
+
 ```yaml
 when: '{{eq .ENVIRONMENT "production"}}'
 ```
@@ -383,21 +423,25 @@ when: '{{eq .ENVIRONMENT "production"}}'
 ### Common Issues
 
 #### Phase Not Starting
+
 - Check preconditions: `task bootstrap:validate-phase PHASE=X`
 - Verify dependencies: `task --list-all | grep phase`
 - Check state files: `ls -la .bootstrap-state/`
 
 #### Status Check Failures
+
 - Manual validation: Run status commands manually
 - Reset state: `task bootstrap:reset` or component-specific reset
 - Check logs: Component-specific log tasks
 
 #### Dependency Issues
+
 - Verify tool availability: `task validation:tools`
 - Check connectivity: `task validation:connectivity`
 - Validate 1Password: `task validation:onepassword`
 
 ### Debug Commands
+
 ```bash
 # Show all available tasks
 task --list-all
@@ -415,6 +459,7 @@ task --force bootstrap:phase-1
 ## Future Enhancements
 
 ### Planned Features
+
 1. **Parallel Phase Execution**: Where dependencies allow
 2. **Custom Hooks**: Pre/post phase execution hooks
 3. **Configuration Validation**: Enhanced bootstrap-config.yaml validation
@@ -422,6 +467,7 @@ task --force bootstrap:phase-1
 5. **Interactive Mode**: Guided bootstrap with user prompts
 
 ### Extension Points
+
 - Custom validation tasks
 - Environment-specific configurations
 - Additional service integrations

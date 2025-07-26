@@ -14,15 +14,15 @@ data:
   overlap_days: "30"
   check_interval: "24h"
   warning_days: "60"
-  
+
   # 1Password configuration
   onepassword_vault: "Automation"
   onepassword_item: "Authentik Outpost Token - home-ops"
-  
+
   # Notification configuration
   notification_enabled: "false"
   notification_webhook: ""
-  
+
   # Token validation configuration
   validation_enabled: "true"
   validation_timeout: "30s"

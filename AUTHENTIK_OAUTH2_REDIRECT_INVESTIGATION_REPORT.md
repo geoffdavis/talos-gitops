@@ -11,11 +11,13 @@ The OAuth2 redirect fix job ran successfully but reported that 7 providers were 
 ## Investigation Methodology
 
 ### 1. Examined Current Configuration Files
+
 - Reviewed [`infrastructure/authentik-proxy/fix-oauth2-redirect-urls-job.yaml`](infrastructure/authentik-proxy/fix-oauth2-redirect-urls-job.yaml)
 - Analyzed the embedded Python script and its assumptions
 - Reviewed test files to understand expected behavior
 
 ### 2. Created Diagnostic Script
+
 - Deployed [`debug-authentik-api-structure-job.yaml`](debug-authentik-api-structure-job.yaml) to investigate actual API structure
 - Comprehensive analysis of applications, providers, and outposts
 
@@ -24,6 +26,7 @@ The OAuth2 redirect fix job ran successfully but reported that 7 providers were 
 ### Actual Authentik Configuration Structure
 
 #### Applications (8 found)
+
 ```
 - Name: 'Longhorn Storage', Slug: 'longhorn', Provider: 2, Launch URL: 'https://longhorn.k8s.home.geoffdavis.com'
 - Name: 'Grafana', Slug: 'grafana', Provider: 5, Launch URL: 'https://grafana.k8s.home.geoffdavis.com'
@@ -34,6 +37,7 @@ The OAuth2 redirect fix job ran successfully but reported that 7 providers were 
 ```
 
 #### Proxy Providers (7 found)
+
 ```
 - Name: 'longhorn-proxy', PK: 2, Mode: 'proxy', External Host: 'https://longhorn.k8s.home.geoffdavis.com'
 - Name: 'grafana-proxy', PK: 5, Mode: 'proxy', External Host: 'https://grafana.k8s.home.geoffdavis.com'
@@ -44,6 +48,7 @@ The OAuth2 redirect fix job ran successfully but reported that 7 providers were 
 ```
 
 #### OAuth2 Providers (7 found)
+
 ```
 - Name: 'longhorn-proxy', PK: 2, Redirect URIs: 'https://longhorn.k8s.home.geoffdavis.com/outpost.goauthentik.io/callback?X-authentik-auth-callback=true'
 - Name: 'grafana-proxy', PK: 5, Redirect URIs: 'https://grafana.k8s.home.geoffdavis.com/outpost.goauthentik.io/callback?X-authentik-auth-callback=true'
@@ -51,6 +56,7 @@ The OAuth2 redirect fix job ran successfully but reported that 7 providers were 
 ```
 
 #### Outposts (3 found)
+
 ```
 - Name: 'authentik Embedded Outpost', PK: '26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083', Providers: [] (correctly empty)
 - Name: 'k8s-external-proxy-outpost', PK: '3f0970c5-d6a3-43b2-9a36-d74665c6b24e', Providers: [2, 5, 6, 7, 3, 4]
@@ -60,6 +66,7 @@ The OAuth2 redirect fix job ran successfully but reported that 7 providers were 
 ### Critical Discovery: Dual Provider Architecture
 
 The external authentik-proxy system uses a **dual provider architecture**:
+
 - Each service has **both** a proxy provider AND an OAuth2 provider with the **same name**
 - Both providers share the **same PK** (Primary Key)
 - The OAuth2 providers handle redirect URLs
@@ -70,24 +77,27 @@ The external authentik-proxy system uses a **dual provider architecture**:
 #### Why the OAuth2 Redirect Fix Failed
 
 1. **Wrong Provider Type Detection**
+
    ```python
    # Script checked this (WRONG):
    if provider.get('provider_type') == 'proxy':
-   
+
    # But API doesn't return 'provider_type' field
    # Should check 'component' field or endpoint used
    ```
 
 2. **Wrong Application Lookup**
+
    ```python
    # Script looked for this (WRONG):
    if service.name in applications:  # e.g., "longhorn"
-   
+
    # But applications use display names like "Longhorn Storage"
    # Should look by slug: applications[service.slug]
    ```
 
 3. **Misunderstood Dual Provider Structure**
+
    - Script expected separate proxy and OAuth2 providers
    - Actual structure has both types with same names and PKs
 
@@ -114,6 +124,7 @@ Browser URL: 'https://authentik.k8s.home.geoffdavis.com'                # Extern
 Based on the investigation, the correct API endpoints are:
 
 ### 1. Applications API
+
 ```
 GET /api/v3/core/applications/
 - Returns applications with display names and slugs
@@ -121,6 +132,7 @@ GET /api/v3/core/applications/
 ```
 
 ### 2. Proxy Providers API
+
 ```
 GET /api/v3/providers/proxy/
 - Returns proxy providers with component: 'ak-provider-proxy-form'
@@ -128,6 +140,7 @@ GET /api/v3/providers/proxy/
 ```
 
 ### 3. OAuth2 Providers API
+
 ```
 GET /api/v3/providers/oauth2/
 - Returns OAuth2 providers with component: 'ak-provider-oauth2-form'
@@ -136,6 +149,7 @@ GET /api/v3/providers/oauth2/
 ```
 
 ### 4. Outposts API
+
 ```
 GET /api/v3/outposts/instances/
 PATCH /api/v3/outposts/instances/{outpost_id}/
@@ -155,8 +169,8 @@ PATCH /api/v3/outposts/instances/{outpost_id}/
 ```yaml
 # Fix the external outpost configuration:
 config:
-  authentik_host: "http://authentik-server.authentik.svc.cluster.local:80"  # Internal cluster DNS
-  authentik_host_browser: "https://authentik.k8s.home.geoffdavis.com"       # External domain
+  authentik_host: "http://authentik-server.authentik.svc.cluster.local:80" # Internal cluster DNS
+  authentik_host_browser: "https://authentik.k8s.home.geoffdavis.com" # External domain
 ```
 
 ### Why This Fixes the Authentication Flow
@@ -169,16 +183,19 @@ config:
 ## Validation Steps
 
 ### 1. Deploy the Correct Fix
+
 ```bash
 kubectl apply -f fix-outpost-internal-url-job.yaml
 ```
 
 ### 2. Monitor Fix Execution
+
 ```bash
 kubectl logs -n authentik-proxy -l job-name=fix-outpost-internal-url
 ```
 
 ### 3. Test Authentication Flow
+
 ```bash
 # Test each service:
 curl -I https://longhorn.k8s.home.geoffdavis.com
@@ -187,6 +204,7 @@ curl -I https://grafana.k8s.home.geoffdavis.com
 ```
 
 ### 4. Verify Outpost Configuration
+
 ```bash
 # Check outpost status in Authentik admin interface
 # Verify internal URL is now: http://authentik-server.authentik.svc.cluster.local:80

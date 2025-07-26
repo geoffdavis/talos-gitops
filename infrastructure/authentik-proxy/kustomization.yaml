@@ -9,21 +9,21 @@ resources:
   # Core namespace and RBAC
   - namespace.yaml
   - rbac.yaml
-  
+
   # Configuration and secrets
   - configmap.yaml
   - secret.yaml
   - external-outpost-secret.yaml
   - outpost-id-configmap.yaml
-  
+
   # Redis for session storage
   - redis.yaml
-  
+
   # Application deployment
   - deployment.yaml
   - service.yaml
   - ingress.yaml
-  
+
   # Configuration jobs
   - proxy-config-job-simple.yaml
   - fix-dashboard-kong-service-job.yaml

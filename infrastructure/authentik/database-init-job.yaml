@@ -70,10 +70,10 @@ spec:
             - |
               set -e
               echo "Connecting to PostgreSQL cluster..."
-              
+
               # Check if database exists
               DB_EXISTS=$(psql -tAc "SELECT 1 FROM pg_database WHERE datname='authentik';" || echo "0")
-              
+
               if [ "$DB_EXISTS" != "1" ]; then
                 echo "Creating authentik database..."
                 psql -c "CREATE DATABASE authentik OWNER ${AUTHENTIK_DB_USER};"
@@ -81,10 +81,10 @@ spec:
               else
                 echo "Database authentik already exists"
               fi
-              
+
               # Check if user exists
               USER_EXISTS=$(psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${AUTHENTIK_DB_USER}';" || echo "0")
-              
+
               if [ "$USER_EXISTS" != "1" ]; then
                 echo "Creating authentik user..."
                 psql -c "CREATE USER ${AUTHENTIK_DB_USER} WITH PASSWORD '${AUTHENTIK_DB_PASSWORD}';"
@@ -94,7 +94,7 @@ spec:
                 echo "Updating password..."
                 psql -c "ALTER USER ${AUTHENTIK_DB_USER} WITH PASSWORD '${AUTHENTIK_DB_PASSWORD}';"
               fi
-              
+
               # Grant permissions
               echo "Granting permissions..."
               psql -c "GRANT ALL PRIVILEGES ON DATABASE authentik TO ${AUTHENTIK_DB_USER};"
@@ -103,7 +103,7 @@ spec:
               psql -d authentik -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${AUTHENTIK_DB_USER};"
               psql -d authentik -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${AUTHENTIK_DB_USER};"
               psql -d authentik -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${AUTHENTIK_DB_USER};"
-              
+
               echo "Database initialization completed successfully"
           volumeMounts:
             - name: tmp

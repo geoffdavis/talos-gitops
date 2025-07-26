@@ -24,30 +24,30 @@ spec:
             - |
               set -e
               echo "=== Fixing Outpost Provider Conflicts ==="
-              
+
               # Get Authentik credentials
               AUTHENTIK_HOST="${AUTHENTIK_HOST}"
               AUTHENTIK_TOKEN="${AUTHENTIK_TOKEN}"
-              
+
               echo "Connecting to Authentik at: $AUTHENTIK_HOST"
-              
+
               # Get all outposts
               echo "Getting all outposts..."
               OUTPOSTS_RESPONSE=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
                 "$AUTHENTIK_HOST/api/v3/outposts/instances/")
-              
+
               echo "Outposts response: $OUTPOSTS_RESPONSE"
-              
+
               # Find embedded outpost ID
               EMBEDDED_OUTPOST_ID=$(echo "$OUTPOSTS_RESPONSE" | grep -o '"pk":"[^"]*"' | grep -B5 -A5 -i embedded | grep '"pk"' | head -1 | cut -d'"' -f4)
-              
+
               if [ -z "$EMBEDDED_OUTPOST_ID" ]; then
                 echo "ERROR: Could not find embedded outpost ID"
                 exit 1
               fi
-              
+
               echo "Found embedded outpost ID: $EMBEDDED_OUTPOST_ID"
-              
+
               # Remove all providers from embedded outpost
               echo "Removing all providers from embedded outpost..."
               curl -X PATCH \
@@ -55,34 +55,34 @@ spec:
                 -H "Content-Type: application/json" \
                 -d '{"providers": []}' \
                 "$AUTHENTIK_HOST/api/v3/outposts/instances/$EMBEDDED_OUTPOST_ID/"
-              
+
               echo "✓ Removed all providers from embedded outpost"
-              
+
               # Find k8s-external-proxy-outpost ID
               EXTERNAL_OUTPOST_ID=$(echo "$OUTPOSTS_RESPONSE" | grep -o '"pk":"[^"]*"' | grep -B5 -A5 k8s-external-proxy-outpost | grep '"pk"' | head -1 | cut -d'"' -f4)
-              
+
               if [ -z "$EXTERNAL_OUTPOST_ID" ]; then
                 echo "ERROR: Could not find k8s-external-proxy-outpost ID"
                 exit 1
               fi
-              
+
               echo "Found external outpost ID: $EXTERNAL_OUTPOST_ID"
-              
+
               # Get all proxy providers
               echo "Getting all proxy providers..."
               PROVIDERS_RESPONSE=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
                 "$AUTHENTIK_HOST/api/v3/providers/proxy/")
-              
+
               # Extract provider IDs for our services
               PROVIDER_IDS=$(echo "$PROVIDERS_RESPONSE" | grep -o '"pk":[0-9]*' | cut -d':' -f2 | tr '\n' ',' | sed 's/,$//')
-              
+
               if [ -z "$PROVIDER_IDS" ]; then
                 echo "ERROR: Could not find any proxy provider IDs"
                 exit 1
               fi
-              
+
               echo "Found provider IDs: $PROVIDER_IDS"
-              
+
               # Assign all providers to external outpost
               echo "Assigning all providers to external outpost..."
               curl -X PATCH \
@@ -90,7 +90,7 @@ spec:
                 -H "Content-Type: application/json" \
                 -d "{\"providers\": [$PROVIDER_IDS]}" \
                 "$AUTHENTIK_HOST/api/v3/outposts/instances/$EXTERNAL_OUTPOST_ID/"
-              
+
               echo "✓ Assigned all providers to external outpost"
               echo "=== Outpost conflict resolution complete ==="
           env:

@@ -7,17 +7,20 @@ The Longhorn dashboard is **fully functional** and accessible through multiple m
 ## Verification Results
 
 ### ✅ Ingress Controller Status
+
 - nginx-ingress controller: **Running** (2/2 pods ready)
 - Service type: LoadBalancer (pending external IP, as expected without BGP)
 - NodePort access: HTTP:30334, HTTPS:31752
 
 ### ✅ Longhorn Components Status
+
 - Longhorn UI: **Running** (2/2 pods ready)
 - Longhorn Manager: **Running** (2/3 pods ready, sufficient for operation)
 - Longhorn Frontend Service: **Available**
 - Authentication: **Configured** (basic auth with 1Password integration)
 
 ### ✅ Ingress Configuration
+
 - Ingress resource: **Applied** and **functional**
 - Hostname: `longhorn.k8s.home.geoffdavis.com`
 - TLS: **Configured** with cert-manager
@@ -64,14 +67,16 @@ kubectl port-forward -n longhorn-system svc/longhorn-frontend 8081:80 --address=
 To access via the intended hostname `longhorn.k8s.home.geoffdavis.com`:
 
 1. **Option A: Router DNS Override**
+
    - Configure router to resolve `longhorn.k8s.home.geoffdavis.com` to `172.29.51.200`
    - Access via: `https://longhorn.k8s.home.geoffdavis.com:31752`
 
 2. **Option B: Local /etc/hosts**
+
    ```bash
    # Add to /etc/hosts on client machine:
    172.29.51.200 longhorn.k8s.home.geoffdavis.com
-   
+
    # Then access via: https://longhorn.k8s.home.geoffdavis.com:31752
    ```
 
@@ -89,6 +94,7 @@ To access via the intended hostname `longhorn.k8s.home.geoffdavis.com`:
 ## Troubleshooting
 
 ### If Dashboard Shows 502 Errors
+
 ```bash
 # Check Longhorn manager pods
 kubectl get pods -n longhorn-system -l app=longhorn-manager
@@ -101,6 +107,7 @@ kubectl wait --for=condition=ready pod -l app=longhorn-manager -n longhorn-syste
 ```
 
 ### If Ingress Not Working
+
 ```bash
 # Check ingress controller
 kubectl get pods -n ingress-nginx
@@ -140,3 +147,4 @@ kubectl get all -n ingress-nginx
 # Test ingress functionality
 kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8443:443 &
 curl -k -I -H "Host: longhorn.k8s.home.geoffdavis.com" https://localhost:8443
+```

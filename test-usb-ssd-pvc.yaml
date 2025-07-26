@@ -18,15 +18,16 @@ metadata:
   namespace: default
 spec:
   containers:
-  - name: test-container
-    image: busybox:1.35
-    command: ["/bin/sh"]
-    args: ["-c", "while true; do echo $(date) >> /data/test.log; sleep 30; done"]
-    volumeMounts:
-    - name: test-storage
-      mountPath: /data
+    - name: test-container
+      image: busybox:1.35
+      command: ["/bin/sh"]
+      args:
+        ["-c", "while true; do echo $(date) >> /data/test.log; sleep 30; done"]
+      volumeMounts:
+        - name: test-storage
+          mountPath: /data
   volumes:
-  - name: test-storage
-    persistentVolumeClaim:
-      claimName: test-usb-ssd-pvc
+    - name: test-storage
+      persistentVolumeClaim:
+        claimName: test-usb-ssd-pvc
   restartPolicy: Always

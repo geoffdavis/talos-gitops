@@ -46,11 +46,13 @@ kubectl get events -n longhorn-system --sort-by='.lastTimestamp' | tail -10
 ### Monitoring Dashboard Access
 
 **Internal Access** (Home Network):
+
 - Longhorn UI: https://longhorn.k8s.home.geoffdavis.com
 - Grafana: https://grafana.k8s.home.geoffdavis.com
 - Prometheus: https://prometheus.k8s.home.geoffdavis.com
 
 **External Access** (Internet):
+
 - Longhorn UI: https://longhorn.geoffdavis.com
 - Grafana: https://grafana.geoffdavis.com
 - Prometheus: https://prometheus.geoffdavis.com
@@ -71,18 +73,21 @@ kubectl get events -n longhorn-system --sort-by='.lastTimestamp' | tail -10
 ### Key Metrics to Monitor
 
 #### Storage Capacity
+
 - **Total USB SSD capacity**: 3TB (3x 1TB USB SSDs)
 - **Usable capacity**: ~2.7TB (accounting for Longhorn overhead)
 - **Warning threshold**: 80% capacity
 - **Critical threshold**: 90% capacity
 
 #### Performance Metrics
+
 - **IOPS**: Monitor read/write operations per second
 - **Latency**: Track storage response times
 - **Throughput**: Monitor data transfer rates
 - **Queue depth**: Check storage queue utilization
 
 #### Health Indicators
+
 - **Node availability**: All 3 nodes should be Ready
 - **USB device detection**: All USB SSDs should be mounted
 - **Longhorn replica health**: Replicas should be healthy across nodes
@@ -112,12 +117,14 @@ kubectl get replicas.longhorn.io -n longhorn-system -o wide
 ### Automated Monitoring Setup
 
 **Grafana Dashboards**:
+
 - Longhorn storage metrics
 - Node storage utilization
 - USB device health
 - Performance trends
 
 **Prometheus Alerts**:
+
 - USB SSD disconnection
 - High storage utilization
 - Replica degradation
@@ -271,11 +278,13 @@ kubectl get events -A | grep -i storage | grep -i warning
 #### USB SSD Not Detected
 
 **Symptoms**:
+
 - Node shows reduced storage capacity
 - Longhorn reports missing disk
 - Mount failures in logs
 
 **Diagnosis**:
+
 ```bash
 # Check USB device detection
 talosctl -n $NODE_IP get disks
@@ -286,17 +295,21 @@ talosctl -n $NODE_IP ls /var/lib/longhorn/
 ```
 
 **Solutions**:
+
 1. **Soft reboot** (try first):
+
    ```bash
    talosctl -n $NODE_IP reboot
    ```
 
 2. **Hard reboot** (if soft reboot fails):
+
    ```bash
    talosctl -n $NODE_IP reboot --mode=hard
    ```
 
 3. **USB device reseat**:
+
    - Shutdown node
    - Physically disconnect and reconnect USB SSD
    - Boot node
@@ -308,11 +321,13 @@ talosctl -n $NODE_IP ls /var/lib/longhorn/
 #### Longhorn Volume Stuck in Attaching State
 
 **Symptoms**:
+
 - Pods stuck in ContainerCreating
 - Volume shows "Attaching" status
 - Mount timeouts in events
 
 **Diagnosis**:
+
 ```bash
 # Check volume status
 kubectl get volumes.longhorn.io -n longhorn-system
@@ -324,12 +339,15 @@ kubectl get replicas.longhorn.io -n longhorn-system
 ```
 
 **Solutions**:
+
 1. **Restart Longhorn manager**:
+
    ```bash
    kubectl rollout restart daemonset/longhorn-manager -n longhorn-system
    ```
 
 2. **Detach and reattach volume**:
+
    ```bash
    # Via Longhorn UI or kubectl patch
    kubectl patch volume $VOLUME_NAME -n longhorn-system --type=merge -p '{"spec":{"nodeID":""}}'
@@ -343,11 +361,13 @@ kubectl get replicas.longhorn.io -n longhorn-system
 #### Performance Degradation
 
 **Symptoms**:
+
 - Slow application response times
 - High storage latency
 - I/O wait times
 
 **Diagnosis**:
+
 ```bash
 # Check storage performance
 ./scripts/validate-complete-usb-ssd-setup.sh --performance
@@ -358,13 +378,16 @@ kubectl get --raw /api/v1/nodes/$NODE_NAME/proxy/stats/summary
 ```
 
 **Solutions**:
+
 1. **Check USB SSD health**:
+
    ```bash
    # Check for USB errors
    talosctl -n $NODE_IP dmesg | grep -i "usb\|error"
    ```
 
 2. **Rebalance replicas**:
+
    - Use Longhorn UI to rebalance replicas across nodes
    - Ensure even distribution of storage load
 
@@ -379,11 +402,13 @@ kubectl get --raw /api/v1/nodes/$NODE_NAME/proxy/stats/summary
 #### Storage Capacity Issues
 
 **Symptoms**:
+
 - PVC creation failures
 - "Insufficient storage" errors
 - High storage utilization alerts
 
 **Diagnosis**:
+
 ```bash
 # Check overall capacity
 kubectl get nodes.longhorn.io -n longhorn-system -o yaml | grep -A 5 storage
@@ -394,16 +419,19 @@ df -h /var/lib/longhorn  # On each node
 ```
 
 **Solutions**:
+
 1. **Clean up unused volumes**:
+
    ```bash
    # Identify orphaned volumes
    kubectl get pv | grep Released
-   
+
    # Clean up via Longhorn UI or kubectl
    kubectl delete pv $ORPHANED_VOLUME
    ```
 
 2. **Expand existing volumes**:
+
    ```bash
    # Resize PVC (if storage class allows expansion)
    kubectl patch pvc $PVC_NAME -p '{"spec":{"resources":{"requests":{"storage":"20Gi"}}}}'
@@ -441,6 +469,7 @@ kubectl run fio-test --image=ljishen/fio --rm -it -- \
 #### Longhorn Configuration Tuning
 
 **Via GitOps** (infrastructure/longhorn/helmrelease.yaml):
+
 ```yaml
 values:
   defaultSettings:
@@ -453,13 +482,14 @@ values:
 #### Storage Class Optimization
 
 **Via GitOps** (infrastructure/longhorn/storage-class-ssd.yaml):
+
 ```yaml
 parameters:
-  numberOfReplicas: "2"  # Optimize for performance vs redundancy
+  numberOfReplicas: "2" # Optimize for performance vs redundancy
   staleReplicaTimeout: "2880"
   diskSelector: "ssd"
   nodeSelector: "storage-node"
-  fsType: "ext4"  # Optimize filesystem choice
+  fsType: "ext4" # Optimize filesystem choice
 ```
 
 ## Backup and Disaster Recovery
@@ -589,11 +619,13 @@ kubectl get pv | grep longhorn-ssd | awk '{sum+=$4} END {print "Total allocated:
 #### Expansion Planning
 
 **Vertical Scaling** (Larger USB SSDs):
+
 - Replace 1TB USB SSDs with 2TB or 4TB models
 - Requires node-by-node replacement
 - Minimal downtime with proper planning
 
 **Horizontal Scaling** (Additional Nodes):
+
 - Add new nodes with USB SSDs
 - Requires cluster configuration updates
 - Increases both capacity and performance
@@ -601,11 +633,13 @@ kubectl get pv | grep longhorn-ssd | awk '{sum+=$4} END {print "Total allocated:
 ### Capacity Alerts
 
 **Warning Thresholds**:
+
 - 80% capacity utilization
 - Rapid growth rate (>10% per week)
 - Low available space on any node
 
 **Critical Thresholds**:
+
 - 90% capacity utilization
 - Unable to create new volumes
 - Storage exhaustion predicted within 7 days
@@ -617,11 +651,13 @@ kubectl get pv | grep longhorn-ssd | awk '{sum+=$4} END {print "Total allocated:
 #### Longhorn UI Security
 
 **Internal Access**:
+
 - Protected by Kubernetes RBAC
 - Ingress with TLS certificates
 - Network-level access control
 
 **External Access**:
+
 - Cloudflare tunnel with authentication
 - Additional authentication layer recommended
 - Audit logging enabled
@@ -657,16 +693,19 @@ kubectl get certificates -A
 ### GitOps-Managed Components
 
 **Storage Classes**:
+
 - Location: `infrastructure/longhorn/storage-class-*.yaml`
 - Changes: Commit to Git, Flux applies automatically
 - Validation: Monitor Flux reconciliation
 
 **Longhorn Configuration**:
+
 - Location: `infrastructure/longhorn/helmrelease.yaml`
 - Changes: Update values, commit, push
 - Rollback: Git revert + Flux reconciliation
 
 **Monitoring Configuration**:
+
 - Location: `infrastructure/monitoring/`
 - Changes: Update dashboards, alerts via Git
 - Deployment: Automatic via Flux
@@ -674,11 +713,13 @@ kubectl get certificates -A
 ### Bootstrap-Managed Components
 
 **USB SSD Hardware**:
+
 - Detection: Node-level, requires bootstrap scripts
 - Configuration: Talos configuration files
 - Changes: `task talos:apply-config`
 
 **Node Storage Labels**:
+
 - Management: Talos node configuration
 - Updates: `talconfig.yaml` + `task talos:generate-config`
 - Application: `task talos:apply-config`
@@ -718,6 +759,7 @@ git push
 #### Storage System Failure
 
 1. **Immediate Assessment** (< 5 minutes):
+
    ```bash
    kubectl get nodes
    kubectl get pods -n longhorn-system
@@ -725,6 +767,7 @@ git push
    ```
 
 2. **Isolate Problem** (< 10 minutes):
+
    ```bash
    # Identify failed components
    kubectl describe nodes | grep -A 10 "Conditions"
@@ -732,10 +775,11 @@ git push
    ```
 
 3. **Implement Workaround** (< 30 minutes):
+
    ```bash
    # Scale down affected applications
    kubectl scale deployment $APP_NAME --replicas=0
-   
+
    # Force volume detachment if needed
    kubectl patch volume $VOLUME_NAME -n longhorn-system --type=merge -p '{"spec":{"nodeID":""}}'
    ```
@@ -749,17 +793,20 @@ git push
 #### Data Corruption Detection
 
 1. **Stop Applications**:
+
    ```bash
    kubectl scale deployment $AFFECTED_APP --replicas=0
    ```
 
 2. **Assess Corruption Scope**:
+
    ```bash
    # Check volume integrity
    kubectl exec -it longhorn-manager-pod -- longhorn volume check $VOLUME_NAME
    ```
 
 3. **Restore from Backup**:
+
    ```bash
    # Create restore job
    kubectl apply -f emergency-restore.yaml
@@ -773,12 +820,14 @@ git push
 ### Emergency Contacts and Escalation
 
 **Internal Escalation**:
+
 1. Check cluster status and logs
 2. Attempt automated recovery procedures
 3. Review recent changes in Git history
 4. Escalate to senior operations if needed
 
 **External Escalation**:
+
 1. Longhorn community support
 2. Talos community support
 3. Hardware vendor support (for USB SSD issues)
@@ -816,6 +865,7 @@ This operational procedures document provides comprehensive guidance for managin
 - **Quarterly**: Emergency procedure testing and training
 
 For additional support and detailed technical information, refer to:
+
 - [USB SSD Deployment Script](../scripts/deploy-usb-ssd-storage.sh)
 - [Comprehensive Validation Script](../scripts/validate-complete-usb-ssd-setup.sh)
 - [Operational Workflows Guide](OPERATIONAL_WORKFLOWS.md)

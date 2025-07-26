@@ -20,12 +20,14 @@ This guide provides procedures for safely migrating components between Bootstrap
 ### When to Consider Migration
 
 **Bootstrap → GitOps**:
+
 - Component no longer required for cluster bootstrap
 - Benefits from version control and collaborative management
 - Has stable APIs and doesn't require system-level access
 - Can be deployed after cluster is operational
 
 **GitOps → Bootstrap**:
+
 - Component becomes foundational to cluster operation
 - Required for GitOps system itself to function
 - Needs system-level access or configuration
@@ -63,12 +65,12 @@ kubectl get all -A | grep component-name
 
 ### Risk Assessment Matrix
 
-| Risk Level | Criteria | Migration Approach |
-|------------|----------|-------------------|
-| **Low** | Non-critical, no dependencies, well-tested | Standard migration |
-| **Medium** | Some dependencies, operational impact | Staged migration with testing |
-| **High** | Critical path, many dependencies | Extensive testing, gradual rollout |
-| **Critical** | Core cluster functionality | Avoid migration or expert review |
+| Risk Level   | Criteria                                   | Migration Approach                 |
+| ------------ | ------------------------------------------ | ---------------------------------- |
+| **Low**      | Non-critical, no dependencies, well-tested | Standard migration                 |
+| **Medium**   | Some dependencies, operational impact      | Staged migration with testing      |
+| **High**     | Critical path, many dependencies           | Extensive testing, gradual rollout |
+| **Critical** | Core cluster functionality                 | Avoid migration or expert review   |
 
 ## Bootstrap to GitOps Migration
 
@@ -188,6 +190,7 @@ task apps:deploy-core  # Should be idempotent now
 This component is currently in bootstrap but could potentially be moved to GitOps:
 
 #### Assessment
+
 - **Dependencies**: Required by 1Password Connect and other secret management
 - **Risk**: High - critical for secret management
 - **Recommendation**: Keep in bootstrap (foundational component)
@@ -298,11 +301,13 @@ Cilium demonstrates a successful hybrid approach that could serve as a model for
 ### Current Architecture
 
 **Bootstrap Phase**:
+
 - Core CNI installation via Helm
 - Basic networking functionality
 - Required for pod networking
 
 **GitOps Phase**:
+
 - BGP configuration
 - Load balancer pools
 - Advanced networking features
@@ -379,13 +384,13 @@ echo "Testing bootstrap idempotency..."
 for i in {1..3}; do
     echo "Bootstrap run $i..."
     task apps:deploy-core
-    
+
     # Check for errors
     if kubectl get events --all-namespaces | grep -i error | grep -v "Normal"; then
         echo "ERROR: Found errors in run $i"
         exit 1
     fi
-    
+
     # Wait between runs
     sleep 30
 done
@@ -397,13 +402,13 @@ for i in {1..3}; do
     echo "GitOps reconciliation $i..."
     flux reconcile kustomization flux-system
     flux reconcile kustomization infrastructure-sources
-    
+
     # Check Flux status
     if ! flux get kustomizations | grep -q "True.*True"; then
         echo "ERROR: GitOps not healthy in run $i"
         exit 1
     fi
-    
+
     sleep 30
 done
 
@@ -522,24 +527,28 @@ echo "Migration test suite completed!"
 ## Best Practices
 
 ### Planning
+
 1. **Document the rationale** for migration
 2. **Assess all dependencies** thoroughly
 3. **Plan rollback procedures** before starting
 4. **Test in development** environment first
 
 ### Execution
+
 1. **Make incremental changes** when possible
 2. **Verify each step** before proceeding
 3. **Monitor cluster health** throughout process
 4. **Keep detailed logs** of changes made
 
 ### Validation
+
 1. **Test idempotency** of new deployment method
 2. **Verify all functionality** works as expected
 3. **Check performance impact** of migration
 4. **Update documentation** to reflect changes
 
 ### Maintenance
+
 1. **Monitor for issues** after migration
 2. **Update runbooks** and procedures
 3. **Train team members** on new processes

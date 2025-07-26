@@ -21,13 +21,13 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-pool: "bgp-default"
-      
+
     prometheus:
       service:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-pool: "bgp-default"
-      
+
       prometheusSpec:
         storageSpec:
           volumeClaimTemplate:
@@ -42,10 +42,10 @@ spec:
               resources:
                 requests:
                   storage: 50Gi
-        
+
         nodeSelector:
           kubernetes.io/os: linux
-        
+
         tolerations:
           - key: node-role.kubernetes.io/control-plane
             operator: Exists
@@ -53,13 +53,13 @@ spec:
           - key: node-role.kubernetes.io/master
             operator: Exists
             effect: NoSchedule
-    
+
     grafana:
       service:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-pool: "bgp-default"
-      
+
       persistence:
         enabled: true
         storageClassName: longhorn
@@ -68,7 +68,7 @@ spec:
           backup-tier: "critical"
           backup-group: "monitoring"
           app: "grafana"
-      
+
       # Fix pod security policy violations
       securityContext:
         runAsNonRoot: true
@@ -77,7 +77,7 @@ spec:
         fsGroup: 472
         seccompProfile:
           type: RuntimeDefault
-      
+
       containerSecurityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: false
@@ -89,14 +89,14 @@ spec:
             - ALL
         seccompProfile:
           type: RuntimeDefault
-      
+
       # Disable the problematic init container and use fsGroup instead
       initChownData:
         enabled: false
-        
+
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists

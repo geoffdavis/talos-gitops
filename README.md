@@ -27,12 +27,14 @@ This repository contains the configuration and automation for managing a Talos K
 🛡️ **[SUBTASK SAFETY GUIDELINES](docs/SUBTASK_SAFETY_GUIDELINES.md)** - **REQUIRED FOR ALL OPERATIONS**
 
 ### Safe Operations Available:
+
 - [`task cluster:safe-reset`](Taskfile.yml:829) - Safe partition-only reset (preserves OS)
 - [`task cluster:safe-reboot`](Taskfile.yml:883) - Safe cluster reboot
 - [`task cluster:emergency-recovery`](Taskfile.yml:861) - Emergency recovery procedures
 - [`task cluster:verify-safety`](Taskfile.yml:913) - Verify safety before operations
 
 ### ❌ NEVER USE THESE DANGEROUS COMMANDS:
+
 - `talosctl reset` (without partition specifications) - **WILL WIPE ENTIRE OS**
 - Any reset command that doesn't specify partitions
 
@@ -66,6 +68,7 @@ This configuration is optimized for Intel Mac mini devices with:
 - **Network discovery**: LLDP configuration for network topology visibility
 
 **Storage Layout**:
+
 - **OS**: Apple internal storage (automatically detected by model selector)
 - **Longhorn Storage**: External 1TB USB SSDs for distributed storage
   - **Total Capacity**: 3TB raw (3x 1TB USB SSDs)
@@ -76,6 +79,7 @@ This configuration is optimized for Intel Mac mini devices with:
 ## DNS Architecture (Fits Existing Home Domain)
 
 ### Internal Access (Home Network)
+
 - **Domain**: `*.k8s.home.geoffdavis.com`
 - **Fits with existing**: `iot.home.geoffdavis.com`, `not.home.geoffdavis.com`, `security.home.geoffdavis.com`
 - **Ingress IP**: 172.29.51.200
@@ -88,6 +92,7 @@ This configuration is optimized for Intel Mac mini devices with:
   - Dashboard: https://dashboard.k8s.home.geoffdavis.com
 
 ### External Access (Cloudflare Tunnel)
+
 - **Domain**: `*.geoffdavis.com` (root domain)
 - **TLS**: Handled by Cloudflare (no Let's Encrypt needed)
 - **Tunnel**: home-ops-tunnel
@@ -114,10 +119,11 @@ This configuration is optimized for Intel Mac mini devices with:
 ✅ **Future-Proof**: Easy to add more k8s services without conflicting with other home services
 
 ## Domain Layout
+
 ```
 home.geoffdavis.com
 ├── iot.home.geoffdavis.com          (existing)
-├── not.home.geoffdavis.com          (existing)  
+├── not.home.geoffdavis.com          (existing)
 ├── security.home.geoffdavis.com     (existing)
 └── k8s.home.geoffdavis.com          (new - Kubernetes services)
     ├── grafana.k8s.home.geoffdavis.com
@@ -127,7 +133,7 @@ home.geoffdavis.com
 
 geoffdavis.com (external via Cloudflare tunnel)
 ├── grafana.geoffdavis.com
-├── prometheus.geoffdavis.com  
+├── prometheus.geoffdavis.com
 ├── longhorn.geoffdavis.com
 └── k8s.geoffdavis.com
 ```
@@ -136,7 +142,7 @@ geoffdavis.com (external via Cloudflare tunnel)
 
 - **Internal Services**: Use Let's Encrypt certificates for `*.k8s.home.geoffdavis.com`
 - **External Services**: Cloudflare provides TLS termination at their edge
-- **Benefits**: 
+- **Benefits**:
   - Simplified certificate management
   - Cloudflare handles certificate renewal for external domains
   - Internal services maintain proper TLS for local access
@@ -158,12 +164,14 @@ geoffdavis.com (external via Cloudflare tunnel)
 ## Environment Setup
 
 1. **Create environment file**:
+
    ```bash
    cp .env.example .env
    ```
 
 2. **Configure 1Password account**:
    Edit `.env` and set your 1Password account:
+
    ```bash
    OP_ACCOUNT=YourAccountName
    ```
@@ -178,16 +186,19 @@ geoffdavis.com (external via Cloudflare tunnel)
 Before deploying, set up your Cloudflare tunnel:
 
 1. **Create Tunnel**:
+
    ```bash
    cloudflared tunnel create home-ops-tunnel
    ```
 
 2. **Store Credentials in 1Password**:
+
    - Create item "Cloudflare Tunnel Credentials"
    - Add `credentials.json` field with tunnel credentials
    - Add `tunnel-token` field with tunnel token
 
 3. **Configure DNS Records** in Cloudflare dashboard:
+
    ```
    # External services (root domain via tunnel)
    grafana.geoffdavis.com → home-ops-tunnel.cfargotunnel.com
@@ -196,7 +207,7 @@ Before deploying, set up your Cloudflare tunnel:
    k8s.geoffdavis.com → home-ops-tunnel.cfargotunnel.com
    alerts.geoffdavis.com → home-ops-tunnel.cfargotunnel.com
    hubble.geoffdavis.com → home-ops-tunnel.cfargotunnel.com
-   
+
    # Internal services (A record to ingress IP)
    *.k8s.home.geoffdavis.com → 172.29.51.200
    ```
@@ -212,12 +223,14 @@ This cluster uses 1Password Connect for secure secret management. The bootstrap 
 ### Prerequisites for 1Password Connect
 
 Before bootstrapping, ensure you have a **"1password connect"** entry in your **Automation vault** with:
+
 - **credentials** field: Contains your 1password-credentials.json file (version 2 format)
 - **token** field: Contains your Connect token
 
 ### Streamlined Bootstrap Process
 
 The new bootstrap process automatically:
+
 1. Retrieves credentials from your "1password connect" entry
 2. Validates the credentials format (ensures version 2)
 3. Creates the necessary Kubernetes secrets
@@ -235,6 +248,7 @@ task bootstrap:validate-1password-secrets
 ```
 
 ### 1Password Item Structure
+
 - **Automation Vault**: BGP auth, Longhorn credentials, **1Password Connect credentials**
 - **Services Vault**: API tokens, tunnel credentials
 
@@ -248,15 +262,19 @@ For detailed setup instructions, see:
 The phased bootstrap approach provides systematic, resumable cluster deployment with comprehensive validation at each step.
 
 1. **Install dependencies**:
+
    ```bash
    mise install
    ```
 
 2. **Start phased bootstrap**:
+
    ```bash
    task bootstrap:phased
    ```
+
    This will execute all phases systematically:
+
    - **Phase 1**: Environment validation (mise, tools, connectivity)
    - **Phase 2**: Talos cluster initialization (etcd bootstrap)
    - **Phase 3**: CNI deployment (Cilium)
@@ -265,19 +283,21 @@ The phased bootstrap approach provides systematic, resumable cluster deployment 
    - **Phase 6**: Application deployment
 
 3. **If bootstrap fails, resume from the failed phase**:
+
    ```bash
    # Resume from last failed phase
    task bootstrap:resume
-   
+
    # Or resume from specific phase
    task bootstrap:resume-from PHASE=3
    ```
 
 4. **Monitor progress**:
+
    ```bash
    # Check current status
    task bootstrap:status
-   
+
    # View logs for specific phase
    task bootstrap:logs PHASE=2
    ```
@@ -300,15 +320,19 @@ For detailed information, see: **[Phased Bootstrap Guide](docs/PHASED_BOOTSTRAP_
 ### 🔧 Legacy: Streamlined Bootstrap (Original Approach)
 
 1. Install dependencies:
+
    ```bash
    mise install
    ```
 
 2. **Complete cluster bootstrap** (includes 1Password secrets):
+
    ```bash
    task bootstrap:cluster
    ```
+
    This single command will:
+
    - Bootstrap all secrets from 1Password
    - Generate Talos configuration
    - Apply configuration to nodes
@@ -319,6 +343,7 @@ For detailed information, see: **[Phased Bootstrap Guide](docs/PHASED_BOOTSTRAP_
    - Deploy core applications
 
 3. If USB devices aren't detected, perform hard reboot:
+
    ```bash
    task talos:reboot
    ```
@@ -333,46 +358,55 @@ For detailed information, see: **[Phased Bootstrap Guide](docs/PHASED_BOOTSTRAP_
 If you prefer manual control over each step:
 
 1. Install dependencies:
+
    ```bash
    mise install
    ```
 
 2. Bootstrap secrets:
+
    ```bash
    task bootstrap:secrets
    ```
 
 3. Generate Talos configuration (all-control-plane setup):
+
    ```bash
    task talos:generate-config
    ```
 
 4. Apply configuration to nodes (ensure DHCP assigns correct IPs):
+
    ```bash
    task talos:apply-config
    ```
 
 5. Bootstrap cluster:
+
    ```bash
    task talos:bootstrap
    ```
 
 6. **Bootstrap 1Password Connect secrets** (for fresh cluster):
+
    ```bash
    task bootstrap:1password-secrets
    ```
 
 7. **Validate 1Password secrets**:
+
    ```bash
    task bootstrap:validate-1password-secrets
    ```
 
 8. If USB devices aren't detected, perform hard reboot:
+
    ```bash
    task talos:reboot
    ```
 
 9. Configure BGP on Unifi UDM Pro:
+
    ```bash
    task bgp:configure-unifi
    ```
@@ -395,13 +429,16 @@ This will safely convert all nodes to control plane nodes with proper configurat
 ## Network Configuration
 
 ### DHCP Setup
+
 Configure your Unifi UDM Pro DHCP server to assign static IPs:
+
 - Node 1: 172.29.51.11
-- Node 2: 172.29.51.12  
+- Node 2: 172.29.51.12
 - Node 3: 172.29.51.13
 - VIP: 172.29.51.10
 
 ### BGP Peering
+
 - **Cluster ASN**: 64512
 - **UDM Pro ASN**: 64513
 - **IPv4 LoadBalancer Pool**: 172.29.51.100-199
@@ -409,6 +446,7 @@ Configure your Unifi UDM Pro DHCP server to assign static IPs:
 - **Ingress IP**: 172.29.51.200 (IPv4)
 
 ### IPv6 Dual-Stack Configuration
+
 - **IPv6 Base**: fd47:25e1:2f96:51::/64 (follows your ULA VLAN pattern)
 - **Node IPs**: fd47:25e1:2f96:51::11-13
 - **Pod Network**: fd47:25e1:2f96:51:2000::/64
@@ -416,27 +454,34 @@ Configure your Unifi UDM Pro DHCP server to assign static IPs:
 - **Benefits**: Future-proofing, simplified routing, end-to-end connectivity
 
 ### DNS Management
+
 - **External DNS**: Manages both geoffdavis.com and k8s.home.geoffdavis.com zones
 - **Internal Resolution**: Services resolve to internal IPs with Let's Encrypt TLS
 - **External Resolution**: Cloudflare tunnel with Cloudflare-managed TLS
 - **Fits Existing Structure**: Integrates seamlessly with your current home domain layout
+
 ## BGP Configuration
 
 The cluster uses Cilium BGP to advertise LoadBalancer service IPs. Two methods are available for configuring BGP peering with UniFi UDM Pro:
 
 ### Method 1: Configuration File Upload (Recommended)
+
 For newer UniFi UDM Pro releases with BGP configuration upload support:
+
 ```bash
 task bgp:generate-config
 ```
 
 ### Method 2: SSH Script (Legacy)
+
 For older UniFi UDM Pro releases or manual configuration:
+
 ```bash
 task bgp:configure-unifi
 ```
 
 ### Verify BGP Peering
+
 ```bash
 task bgp:verify-peering
 ```
@@ -450,6 +495,7 @@ For comprehensive IPv6 dual-stack setup and configuration details, see:
 ## Access Patterns
 
 ### Local Development (Home Network)
+
 ```bash
 # Access internal services directly (fits with your existing pattern)
 curl https://grafana.k8s.home.geoffdavis.com
@@ -461,6 +507,7 @@ curl https://security.home.geoffdavis.com
 ```
 
 ### Remote Access (Internet)
+
 ```bash
 # Access external services via Cloudflare tunnel
 curl https://grafana.geoffdavis.com
@@ -468,6 +515,7 @@ curl https://longhorn.geoffdavis.com
 ```
 
 ### No Conflicts with Existing Infrastructure
+
 - Internal k8s services use `k8s.home.geoffdavis.com` subdomain
 - Existing services remain on their current subdomains
 - External services use root domain via tunnel
@@ -476,11 +524,13 @@ curl https://longhorn.geoffdavis.com
 ## Testing
 
 Run comprehensive tests before deployment:
+
 ```bash
 task test:all
 ```
 
 Specific test categories:
+
 ```bash
 task test:config       # Configuration validation
 task test:connectivity # Network connectivity
@@ -651,23 +701,28 @@ For comprehensive USB SSD operational procedures, see:
 ## Troubleshooting
 
 ### USB Devices Not Detected
+
 1. Ensure hard reboot mode is configured
 2. Run `task talos:reboot` to perform hard reboot
 3. Check USB detection with `task network:check-usb`
 
 ### Disk Configuration Issues
+
 **Problem**: Talos installation fails with disk not found
 
 **Solutions**:
+
 1. **Default configuration uses smart selection**: The configuration uses `installDiskSelector` with `model: APPLE*` to automatically find genuine Apple internal storage
+
    ```yaml
    machine:
      install:
        installDiskSelector:
-         model: APPLE*  # Automatically selects Apple internal storage
+         model: APPLE* # Automatically selects Apple internal storage
    ```
 
 2. **Verify disk detection**: Boot from Talos ISO and check available disks:
+
    ```bash
    # From Talos ISO console
    lsblk
@@ -676,11 +731,12 @@ For comprehensive USB SSD operational procedures, see:
    ```
 
 3. **Alternative selectors** (if needed):
+
    ```yaml
    # For replaced non-Apple drives, use size selector
    installDiskSelector:
-     size: ">= 240GB"  # Select drives larger than 240GB
-   
+     size: ">= 240GB" # Select drives larger than 240GB
+
    # Or use specific disk path (last resort)
    disk: /dev/sda
    ```
@@ -692,11 +748,13 @@ For comprehensive USB SSD operational procedures, see:
    - Prevents accidentally installing on USB devices
 
 ### DNS Resolution Issues
+
 - **Internal services**: Check Let's Encrypt certificates and internal DNS
 - **External services**: Verify Cloudflare tunnel configuration and DNS records
 - **Integration**: Ensure k8s.home.geoffdavis.com doesn't conflict with existing home services
 
 ### Certificate Issues
+
 - **Internal services**: Check cert-manager logs and Let's Encrypt rate limits
 - **External services**: Verify Cloudflare TLS settings and tunnel configuration
 
@@ -713,12 +771,14 @@ For comprehensive USB SSD operational procedures, see:
 ## Maintenance
 
 ### Regular Tasks
+
 ```bash
 task maintenance:backup    # Backup cluster state
 task maintenance:cleanup   # Clean up old resources
 ```
 
 ### Updates
+
 ```bash
 task talos:upgrade        # Upgrade Talos version
 task flux:reconcile       # Force GitOps reconciliation
@@ -729,6 +789,7 @@ task flux:reconcile       # Force GitOps reconciliation
 This repository uses Renovate for automated dependency updates. You can also run Renovate manually:
 
 ### Manual Renovate Operations
+
 ```bash
 # Install Renovate CLI
 task renovate:install
@@ -744,6 +805,7 @@ task renovate:run
 ```
 
 ### What Renovate Manages
+
 - **Talos OS versions** (manual review required)
 - **Helm chart versions** in all HelmRelease files
 - **Container images** in all Kubernetes manifests
@@ -772,12 +834,14 @@ This cluster uses a carefully designed separation between **Bootstrap Script Dep
 ### 🚀 5-Second Decision Rules
 
 **Use Bootstrap Phase when**:
+
 - ✅ Node configuration changes → `task talos:*`
 - ✅ Cluster won't start → `task bootstrap:*`
 - ✅ Network/CNI issues → `task apps:deploy-cilium`
 - ✅ System-level problems → `talosctl` commands
 
 **Use GitOps Phase when**:
+
 - ✅ Application deployments → Git commit to `apps/`
 - ✅ Infrastructure services → Git commit to `infrastructure/`
 - ✅ Configuration updates → Git commit + Flux reconcile
@@ -785,18 +849,19 @@ This cluster uses a carefully designed separation between **Bootstrap Script Dep
 
 ### 📊 Quick Decision Matrix
 
-| Change Type | Bootstrap | GitOps | Command |
-|-------------|-----------|---------|---------|
-| Add new application | ❌ | ✅ | `git commit && git push` |
-| Change node networking | ✅ | ❌ | `task talos:apply-config` |
-| Update infrastructure service | ❌ | ✅ | `git commit && git push` |
-| Modify cluster CIDR | ✅ | ❌ | `task talos:generate-config` |
-| Configure monitoring | ❌ | ✅ | `git commit && git push` |
-| Add node labels | ✅ | ❌ | `task talos:apply-config` |
+| Change Type                   | Bootstrap | GitOps | Command                      |
+| ----------------------------- | --------- | ------ | ---------------------------- |
+| Add new application           | ❌        | ✅     | `git commit && git push`     |
+| Change node networking        | ✅        | ❌     | `task talos:apply-config`    |
+| Update infrastructure service | ❌        | ✅     | `git commit && git push`     |
+| Modify cluster CIDR           | ✅        | ❌     | `task talos:generate-config` |
+| Configure monitoring          | ❌        | ✅     | `git commit && git push`     |
+| Add node labels               | ✅        | ❌     | `task talos:apply-config`    |
 
 ### 🎯 Architecture Overview
 
 **Bootstrap Phase** (Direct Deployment):
+
 - **Talos OS Configuration** - Node operating system setup
 - **Kubernetes Cluster** - Control plane initialization
 - **Cilium CNI Core** - Pod networking foundation
@@ -804,6 +869,7 @@ This cluster uses a carefully designed separation between **Bootstrap Script Dep
 - **Flux GitOps System** - GitOps operator deployment
 
 **GitOps Phase** (Git-Managed):
+
 - **Infrastructure Services** - cert-manager, ingress, monitoring
 - **Cilium BGP Configuration** - Load balancer IP advertisement
 - **Application Deployments** - User applications and services
@@ -813,6 +879,7 @@ This cluster uses a carefully designed separation between **Bootstrap Script Dep
 ### 🔧 Common Operations
 
 **Daily Health Check**:
+
 ```bash
 task cluster:status                    # Overall cluster status
 flux get kustomizations               # GitOps health
@@ -820,6 +887,7 @@ kubectl get pods -A | grep -v Running # Check for issues
 ```
 
 **Deploy New Application** (GitOps):
+
 ```bash
 mkdir apps/my-app
 # Create manifests
@@ -829,6 +897,7 @@ git push
 ```
 
 **Update Node Configuration** (Bootstrap):
+
 ```bash
 vim talconfig.yaml
 task talos:generate-config

@@ -38,7 +38,7 @@ spec:
           external-dns.alpha.kubernetes.io/hostname: "*.homelab.local"
           external-dns.alpha.kubernetes.io/target: "172.29.52.201"
         externalTrafficPolicy: Cluster
-        
+
       # Enable metrics
       metrics:
         enabled: true
@@ -46,9 +46,9 @@ spec:
           enabled: true
           namespace: ingress-nginx
         prometheusRule:
-          enabled: false  # Disabled until monitoring stack is ready
+          enabled: false # Disabled until monitoring stack is ready
           namespace: ingress-nginx
-          
+
       # Configure for homelab use
       config:
         use-forwarded-headers: "true"
@@ -68,11 +68,11 @@ spec:
         enable-brotli: "true"
         brotli-level: "6"
         brotli-types: "application/xml+rss application/atom+xml image/svg+xml application/javascript application/x-javascript text/javascript text/css"
-        
+
       # Enable geoip2 for location-based routing
       geoip2:
-        enabled: false  # Disabled for homelab
-        
+        enabled: false # Disabled for homelab
+
       # Resource limits
       resources:
         limits:
@@ -81,7 +81,7 @@ spec:
         requests:
           cpu: 100m
           memory: 128Mi
-          
+
       # Autoscaling
       autoscaling:
         enabled: true
@@ -89,16 +89,16 @@ spec:
         maxReplicas: 5
         targetCPUUtilizationPercentage: 70
         targetMemoryUtilizationPercentage: 80
-        
+
       # Pod disruption budget
       podDisruptionBudget:
         enabled: true
         minAvailable: 1
-        
+
       # Node affinity for control plane scheduling
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -106,29 +106,29 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
       # Enable admission webhooks
       admissionWebhooks:
         enabled: true
         patch:
           enabled: true
-          
+
       # Ingress class configuration
       ingressClassResource:
         name: nginx
         enabled: true
         default: true
         controllerValue: "k8s.io/ingress-nginx"
-        
+
       # Enable real IP preservation
       enableRealIp: true
-      
+
       # Configure logging
       logLevel: 2
-      
+
       # Configure health checks
       healthCheckPath: /healthz
-      
+
       # Configure default backend
       defaultBackend:
         enabled: true
@@ -142,7 +142,7 @@ spec:
           requests:
             cpu: 10m
             memory: 20Mi
-            
+
     # Configure default backend separately
     defaultBackend:
       enabled: true
@@ -165,23 +165,23 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
     # Configure RBAC
     rbac:
       create: true
-      
+
     # Configure service account
     serviceAccount:
       create: true
       name: ingress-nginx
-      
+
     # Configure pod security context
     podSecurityContext:
       runAsNonRoot: true
       runAsUser: 101
       runAsGroup: 82
       fsGroup: 82
-      
+
     # Configure security context
     securityContext:
       allowPrivilegeEscalation: false

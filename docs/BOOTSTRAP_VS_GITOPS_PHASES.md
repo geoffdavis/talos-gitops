@@ -18,6 +18,7 @@ This is the **definitive operational guide** for the Bootstrap vs GitOps archite
 ## 5-Second Decision Rules
 
 ### When to Use Bootstrap Phase
+
 ```
 ✅ Node configuration changes     → task talos:*
 ✅ Cluster won't start           → task bootstrap:*
@@ -27,6 +28,7 @@ This is the **definitive operational guide** for the Bootstrap vs GitOps archite
 ```
 
 ### When to Use GitOps Phase
+
 ```
 ✅ Application deployments       → Git commit to apps/
 ✅ Infrastructure services       → Git commit to infrastructure/
@@ -36,6 +38,7 @@ This is the **definitive operational guide** for the Bootstrap vs GitOps archite
 ```
 
 ### Emergency Override
+
 ```
 🚨 Cluster completely broken    → Bootstrap phase only
 🚨 GitOps system down          → kubectl apply directly, then fix GitOps
@@ -59,7 +62,7 @@ graph TD
     F -->|No| H{Does it need system access?}
     H -->|Yes| C
     H -->|No| G
-    
+
     C --> I[Use Taskfile commands<br/>talosctl/kubectl direct]
     G --> J[Update Git repository<br/>Flux handles deployment]
 ```
@@ -67,12 +70,14 @@ graph TD
 ### Secondary Considerations
 
 **Choose Bootstrap if**:
+
 - Component required for cluster to start
 - Needs direct hardware/OS access
 - Required for GitOps system to function
 - Emergency situation requiring immediate action
 
 **Choose GitOps if**:
+
 - Kubernetes-native resource
 - Benefits from version control
 - Part of application or infrastructure layer
@@ -82,41 +87,42 @@ graph TD
 
 ### Bootstrap Phase Components
 
-| Component | Files | Commands | Dependencies | Why Bootstrap |
-|-----------|-------|----------|--------------|---------------|
-| **Talos OS Configuration** | [`talconfig.yaml`](../talconfig.yaml)<br/>[`talos/patches/`](../talos/patches/) | `task talos:generate-config`<br/>`task talos:apply-config` | None | Must exist before Kubernetes |
-| **LLDPD Stability Fix** | [`talos/manifests/lldpd-extension-config.yaml`](../talos/manifests/lldpd-extension-config.yaml) | `task talos:apply-lldpd-config` | Talos OS | System-level configuration |
-| **Kubernetes Cluster** | Generated configs | `task talos:bootstrap` | Talos OS | No API exists yet |
-| **Cilium CNI Core** | [`Taskfile.yml:410-444`](../Taskfile.yml#L410-L444) | `task apps:deploy-cilium` | Kubernetes API | Required for pod networking |
-| **1Password Connect** | [`scripts/bootstrap-1password-secrets.sh`](../scripts/bootstrap-1password-secrets.sh)<br/>[`infrastructure/onepassword-connect/`](../infrastructure/onepassword-connect/) | `task bootstrap:1password-secrets`<br/>`task apps:deploy-onepassword-connect` | Pod networking | Required for GitOps secrets |
-| **External Secrets Operator** | [`Taskfile.yml:446-457`](../Taskfile.yml#L446-L457) | `task apps:deploy-external-secrets` | Pod networking | Required for secret management |
-| **Flux GitOps System** | [`Taskfile.yml:379-393`](../Taskfile.yml#L379-L393) | `task flux:bootstrap` | Secrets management | Must exist to manage GitOps |
+| Component                     | Files                                                                                                                                                                     | Commands                                                                      | Dependencies       | Why Bootstrap                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------ | ------------------------------ |
+| **Talos OS Configuration**    | [`talconfig.yaml`](../talconfig.yaml)<br/>[`talos/patches/`](../talos/patches/)                                                                                           | `task talos:generate-config`<br/>`task talos:apply-config`                    | None               | Must exist before Kubernetes   |
+| **LLDPD Stability Fix**       | [`talos/manifests/lldpd-extension-config.yaml`](../talos/manifests/lldpd-extension-config.yaml)                                                                           | `task talos:apply-lldpd-config`                                               | Talos OS           | System-level configuration     |
+| **Kubernetes Cluster**        | Generated configs                                                                                                                                                         | `task talos:bootstrap`                                                        | Talos OS           | No API exists yet              |
+| **Cilium CNI Core**           | [`Taskfile.yml:410-444`](../Taskfile.yml#L410-L444)                                                                                                                       | `task apps:deploy-cilium`                                                     | Kubernetes API     | Required for pod networking    |
+| **1Password Connect**         | [`scripts/bootstrap-1password-secrets.sh`](../scripts/bootstrap-1password-secrets.sh)<br/>[`infrastructure/onepassword-connect/`](../infrastructure/onepassword-connect/) | `task bootstrap:1password-secrets`<br/>`task apps:deploy-onepassword-connect` | Pod networking     | Required for GitOps secrets    |
+| **External Secrets Operator** | [`Taskfile.yml:446-457`](../Taskfile.yml#L446-L457)                                                                                                                       | `task apps:deploy-external-secrets`                                           | Pod networking     | Required for secret management |
+| **Flux GitOps System**        | [`Taskfile.yml:379-393`](../Taskfile.yml#L379-L393)                                                                                                                       | `task flux:bootstrap`                                                         | Secrets management | Must exist to manage GitOps    |
 
 ### GitOps Phase Components
 
-| Component | Files | Management | Dependencies | Why GitOps |
-|-----------|-------|------------|--------------|------------|
-| **Cilium BGP Configuration** | [`infrastructure/cilium-bgp/bgp-policy.yaml`](../infrastructure/cilium-bgp/bgp-policy.yaml) | Git commit → Flux | Cilium CNI | Operational configuration |
-| **Load Balancer Pools** | [`infrastructure/cilium/loadbalancer-pool.yaml`](../infrastructure/cilium/loadbalancer-pool.yaml)<br/>[`infrastructure/cilium/loadbalancer-pool-ipv6.yaml`](../infrastructure/cilium/loadbalancer-pool-ipv6.yaml) | Git commit → Flux | Cilium CNI | Network operations |
-| **Cert-Manager** | [`infrastructure/cert-manager/helmrelease.yaml`](../infrastructure/cert-manager/helmrelease.yaml) | Git commit → Flux | External Secrets | TLS certificate management |
-| **Ingress-Nginx** | [`infrastructure/ingress-nginx/helmrelease.yaml`](../infrastructure/ingress-nginx/helmrelease.yaml) | Git commit → Flux | Cert-Manager | HTTP/HTTPS ingress |
-| **Longhorn Storage** | [`infrastructure/longhorn/helmrelease.yaml`](../infrastructure/longhorn/helmrelease.yaml) | Git commit → Flux | Kubernetes API | Distributed storage |
-| **External-DNS** | [`infrastructure/external-dns/helmrelease.yaml`](../infrastructure/external-dns/helmrelease.yaml) | Git commit → Flux | 1Password secrets | DNS automation |
-| **Monitoring Stack** | [`infrastructure/monitoring/`](../infrastructure/monitoring/) | Git commit → Flux | Storage, Ingress | Observability |
-| **Applications** | [`apps/`](../apps/) | Git commit → Flux | Infrastructure services | User workloads |
+| Component                    | Files                                                                                                                                                                                                             | Management        | Dependencies            | Why GitOps                 |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ----------------------- | -------------------------- |
+| **Cilium BGP Configuration** | [`infrastructure/cilium-bgp/bgp-policy.yaml`](../infrastructure/cilium-bgp/bgp-policy.yaml)                                                                                                                       | Git commit → Flux | Cilium CNI              | Operational configuration  |
+| **Load Balancer Pools**      | [`infrastructure/cilium/loadbalancer-pool.yaml`](../infrastructure/cilium/loadbalancer-pool.yaml)<br/>[`infrastructure/cilium/loadbalancer-pool-ipv6.yaml`](../infrastructure/cilium/loadbalancer-pool-ipv6.yaml) | Git commit → Flux | Cilium CNI              | Network operations         |
+| **Cert-Manager**             | [`infrastructure/cert-manager/helmrelease.yaml`](../infrastructure/cert-manager/helmrelease.yaml)                                                                                                                 | Git commit → Flux | External Secrets        | TLS certificate management |
+| **Ingress-Nginx**            | [`infrastructure/ingress-nginx/helmrelease.yaml`](../infrastructure/ingress-nginx/helmrelease.yaml)                                                                                                               | Git commit → Flux | Cert-Manager            | HTTP/HTTPS ingress         |
+| **Longhorn Storage**         | [`infrastructure/longhorn/helmrelease.yaml`](../infrastructure/longhorn/helmrelease.yaml)                                                                                                                         | Git commit → Flux | Kubernetes API          | Distributed storage        |
+| **External-DNS**             | [`infrastructure/external-dns/helmrelease.yaml`](../infrastructure/external-dns/helmrelease.yaml)                                                                                                                 | Git commit → Flux | 1Password secrets       | DNS automation             |
+| **Monitoring Stack**         | [`infrastructure/monitoring/`](../infrastructure/monitoring/)                                                                                                                                                     | Git commit → Flux | Storage, Ingress        | Observability              |
+| **Applications**             | [`apps/`](../apps/)                                                                                                                                                                                               | Git commit → Flux | Infrastructure services | User workloads             |
 
 ### Hybrid Components
 
-| Component | Bootstrap Part | GitOps Part | Rationale |
-|-----------|----------------|-------------|-----------|
-| **Cilium** | Core CNI installation | BGP policies, LB pools | CNI required first, BGP is operational |
-| **Secret Management** | Initial K8s secrets | ExternalSecrets, SecretStores | Bootstrap needs secrets, ongoing via GitOps |
+| Component             | Bootstrap Part        | GitOps Part                   | Rationale                                   |
+| --------------------- | --------------------- | ----------------------------- | ------------------------------------------- |
+| **Cilium**            | Core CNI installation | BGP policies, LB pools        | CNI required first, BGP is operational      |
+| **Secret Management** | Initial K8s secrets   | ExternalSecrets, SecretStores | Bootstrap needs secrets, ongoing via GitOps |
 
 ## Common Scenarios
 
 ### Application Management
 
 #### ✅ Adding a New Application
+
 **Phase**: GitOps
 **Time**: 5-10 minutes
 
@@ -191,6 +197,7 @@ kubectl get pods -n my-new-app
 ```
 
 #### ✅ Updating an Application
+
 **Phase**: GitOps
 **Time**: 2-3 minutes
 
@@ -211,6 +218,7 @@ kubectl rollout status deployment/my-app -n my-app
 ### Infrastructure Changes
 
 #### ✅ Adding Infrastructure Service
+
 **Phase**: GitOps
 **Example**: Adding Redis
 
@@ -252,6 +260,7 @@ git push
 ```
 
 #### ✅ Scaling Infrastructure
+
 **Phase**: GitOps
 
 ```bash
@@ -272,6 +281,7 @@ kubectl get pods -n longhorn-system
 ### Network Configuration
 
 #### ✅ Changing Cluster Network Settings
+
 **Phase**: Bootstrap
 **Example**: Updating pod CIDR
 
@@ -292,6 +302,7 @@ kubectl get pods -n kube-system
 ```
 
 #### ✅ Adding BGP Peering
+
 **Phase**: GitOps
 
 ```bash
@@ -314,6 +325,7 @@ kubectl get ciliumbgpclusterconfig
 ### Node Management
 
 #### ✅ Adding Node Labels
+
 **Phase**: Bootstrap
 
 ```bash
@@ -330,6 +342,7 @@ kubectl get nodes --show-labels
 ```
 
 #### ✅ Node Maintenance
+
 **Phase**: Bootstrap
 
 ```bash
@@ -414,7 +427,7 @@ graph TD
     I -->|Yes| C
     I -->|No| F
     H -->|No| J[Monitoring/Alerting Issue]
-    
+
     C --> K[Use Bootstrap Tools]
     F --> L[Check Git/Flux]
     G --> M[Check App Manifests]
@@ -424,6 +437,7 @@ graph TD
 ### Bootstrap Phase Issues
 
 #### Cluster Won't Start
+
 ```bash
 # 1. Check node status
 talosctl health --nodes 172.29.51.11,172.29.51.12,172.29.51.13
@@ -439,6 +453,7 @@ task cluster:emergency-recovery
 ```
 
 #### Network Issues
+
 ```bash
 # 1. Check Cilium status
 kubectl get pods -n kube-system -l k8s-app=cilium
@@ -455,6 +470,7 @@ task network:check-ipv6
 ```
 
 #### Secret Management Issues
+
 ```bash
 # 1. Check 1Password Connect
 kubectl get pods -n onepassword-connect
@@ -473,6 +489,7 @@ task apps:deploy-external-secrets
 ### GitOps Phase Issues
 
 #### Applications Not Deploying
+
 ```bash
 # 1. Check Flux status
 flux get kustomizations
@@ -492,6 +509,7 @@ kubectl describe pod <pod-name> -n <app-namespace>
 ```
 
 #### Infrastructure Service Issues
+
 ```bash
 # 1. Check HelmRelease status
 flux get helmreleases -n <namespace>
@@ -511,6 +529,7 @@ git log --oneline infrastructure/<service>/
 ### Hybrid Component Issues
 
 #### Cilium Problems
+
 ```bash
 # Core CNI Issues (Bootstrap)
 kubectl get pods -n kube-system -l k8s-app=cilium
@@ -530,6 +549,7 @@ kubectl get svc --all-namespaces | grep LoadBalancer
 ### Emergency Changes
 
 **When GitOps is Down**:
+
 ```bash
 # 1. Apply critical fixes directly
 kubectl apply -f critical-fix.yaml
@@ -543,6 +563,7 @@ flux reconcile source git flux-system
 ```
 
 **When Bootstrap is Needed**:
+
 ```bash
 # 1. Use emergency recovery
 task cluster:emergency-recovery
@@ -558,6 +579,7 @@ flux get kustomizations
 ### Planned Maintenance
 
 #### Coordinated Changes
+
 ```bash
 # 1. Plan the change
 # - Identify affected components
@@ -581,6 +603,7 @@ kubectl get pods --all-namespaces
 ### Rollback Procedures
 
 #### Bootstrap Rollback
+
 ```bash
 # 1. Revert configuration files
 git checkout HEAD~1 talconfig.yaml
@@ -594,6 +617,7 @@ task cluster:status
 ```
 
 #### GitOps Rollback
+
 ```bash
 # 1. Revert Git changes
 git revert <commit-hash>
@@ -660,18 +684,21 @@ kubectl get ciliumbgpclusterconfig
 ## Best Practices
 
 ### Daily Operations
+
 1. **Always check cluster health** before making changes
 2. **Use the decision framework** for every operational decision
 3. **Monitor both phases** - Bootstrap and GitOps health
 4. **Document emergency changes** for later GitOps integration
 
 ### Change Management
+
 1. **Test in development** before production changes
 2. **Use feature branches** for complex GitOps changes
 3. **Have rollback procedures** ready before making changes
 4. **Coordinate between phases** for complex operations
 
 ### Troubleshooting
+
 1. **Identify the correct phase** before starting troubleshooting
 2. **Use phase-appropriate tools** (talosctl vs kubectl vs flux)
 3. **Check dependencies** in the correct order
@@ -680,6 +707,7 @@ kubectl get ciliumbgpclusterconfig
 ## Quick Reference Commands
 
 ### Bootstrap Phase
+
 ```bash
 # Cluster operations
 task cluster:status
@@ -698,6 +726,7 @@ task bootstrap:1password-secrets
 ```
 
 ### GitOps Phase
+
 ```bash
 # Flux operations
 flux get kustomizations
@@ -711,6 +740,7 @@ kubectl top nodes
 ```
 
 ### Emergency Commands
+
 ```bash
 # Immediate cluster access
 task talos:recover-kubeconfig

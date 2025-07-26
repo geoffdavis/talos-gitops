@@ -14,12 +14,14 @@ This Talos cluster is configured to run all three nodes as both control plane an
 ### Key Modifications Made
 
 1. **Taskfile.yml Updates**:
+
    - Removed worker configuration patch from config generation
    - Updated bootstrap process to handle multiple control plane nodes
    - Added conversion task for existing clusters
    - Enhanced cluster status reporting
 
 2. **Control Plane Optimizations**:
+
    - Added leader election tuning for better performance
    - Optimized etcd settings for 3-node cluster
    - Enabled scheduling on control planes (already configured)
@@ -53,6 +55,7 @@ task talos:convert-to-all-controlplane
 ```
 
 This will:
+
 1. Generate new control plane configuration
 2. Apply it to all nodes
 3. Wait for nodes to restart and rejoin
@@ -67,6 +70,7 @@ task cluster:status
 ```
 
 This will show:
+
 - All nodes with `control-plane` role
 - etcd pods running on all nodes
 - Control plane components distributed across nodes
@@ -104,11 +108,13 @@ talosctl -n 172.29.51.11,172.29.51.12,172.29.51.13 service etcd
 ### Node Not Joining as Control Plane
 
 1. Check node configuration:
+
    ```bash
    talosctl get machineconfig -n <node-ip>
    ```
 
 2. Verify control plane components:
+
    ```bash
    kubectl get pods -n kube-system -l tier=control-plane
    ```
@@ -121,11 +127,13 @@ talosctl -n 172.29.51.11,172.29.51.12,172.29.51.13 service etcd
 ### Control Plane Component Issues
 
 1. Check component logs:
+
    ```bash
    kubectl logs -n kube-system <component-pod>
    ```
 
 2. Verify API server accessibility:
+
    ```bash
    kubectl get nodes
    ```
@@ -133,3 +141,4 @@ talosctl -n 172.29.51.11,172.29.51.12,172.29.51.13 service etcd
 3. Check scheduler/controller manager:
    ```bash
    kubectl get pods -n kube-system -l tier=control-plane
+   ```

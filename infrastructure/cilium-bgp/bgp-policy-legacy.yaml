@@ -14,7 +14,7 @@ spec:
     # Single virtual router for all LoadBalancer services (testing approach)
     - localASN: 64512
       exportPodCIDR: true
-      serviceSelector: {}  # Empty selector matches all services
+      serviceSelector: {} # Empty selector matches all services
       serviceAdvertisements:
         - LoadBalancerIP
       neighbors:

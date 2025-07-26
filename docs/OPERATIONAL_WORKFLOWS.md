@@ -19,6 +19,7 @@ This guide provides practical, step-by-step workflows for common operational tas
 ## Quick Decision Reference
 
 ### When to Use Bootstrap (Taskfile Commands)
+
 - ✅ Node-level configuration changes
 - ✅ Cluster networking modifications
 - ✅ Talos OS updates
@@ -27,6 +28,7 @@ This guide provides practical, step-by-step workflows for common operational tas
 - ✅ System-level troubleshooting
 
 ### When to Use GitOps (Git Commits)
+
 - ✅ Application deployments
 - ✅ Infrastructure service updates
 - ✅ Configuration changes
@@ -42,6 +44,7 @@ This guide provides practical, step-by-step workflows for common operational tas
 **Rationale**: Applications are operational workloads that benefit from version control and collaborative development
 
 **Workflow**:
+
 ```bash
 # 1. Create application directory structure
 mkdir -p apps/my-new-app
@@ -141,6 +144,7 @@ kubectl get pods -n my-new-app
 
 **Approach**: GitOps Phase
 **Workflow**:
+
 ```bash
 # 1. Update the application manifest
 vim apps/my-app/deployment.yaml
@@ -159,6 +163,7 @@ kubectl rollout status deployment/my-app -n my-app
 
 **Approach**: GitOps Phase
 **Workflow**:
+
 ```bash
 # 1. Remove from GitOps management
 # Edit clusters/home-ops/infrastructure/apps.yaml
@@ -181,6 +186,7 @@ kubectl get all -n my-old-app
 **Example**: Adding Redis for application caching
 
 **Workflow**:
+
 ```bash
 # 1. Create infrastructure directory
 mkdir -p infrastructure/redis
@@ -242,6 +248,7 @@ git push
 **Example**: Scaling Longhorn replicas
 
 **Workflow**:
+
 ```bash
 # 1. Update HelmRelease values
 vim infrastructure/longhorn/helmrelease.yaml
@@ -267,6 +274,7 @@ kubectl get pods -n longhorn-system
 **Example**: Changing pod CIDR ranges
 
 **Workflow**:
+
 ```bash
 # 1. Update cluster configuration
 vim talconfig.yaml
@@ -292,6 +300,7 @@ kubectl get pods -n kube-system
 **Rationale**: BGP configuration is operational and benefits from change tracking
 
 **Workflow**:
+
 ```bash
 # 1. Update BGP policy
 vim infrastructure/cilium-bgp/bgp-policy.yaml
@@ -315,6 +324,7 @@ cilium bgp peers
 **Approach**: Depends on scope
 
 **For External DNS (GitOps)**:
+
 ```bash
 # Update external-dns configuration
 vim infrastructure/external-dns/helmrelease.yaml
@@ -324,6 +334,7 @@ git push
 ```
 
 **For Cluster DNS (Bootstrap)**:
+
 ```bash
 # Update cluster DNS domain
 vim talconfig.yaml
@@ -338,6 +349,7 @@ task talos:apply-config
 **Approach**: Hybrid (Bootstrap for initial setup, GitOps for ongoing management)
 
 **For 1Password-managed secrets (GitOps)**:
+
 ```bash
 # 1. Add secret to 1Password vault
 op item create --category="Secure Note" \
@@ -382,6 +394,7 @@ git push
 **Rationale**: Cluster certificates are fundamental to cluster security
 
 **Workflow**:
+
 ```bash
 # 1. Generate new certificates (if needed)
 task talos:generate-config
@@ -399,6 +412,7 @@ kubectl rollout restart deployment -n kube-system
 **Rationale**: Application certificates are managed by cert-manager
 
 **Workflow**:
+
 ```bash
 # 1. Update certificate configuration
 vim infrastructure/cert-manager-issuers/cluster-issuer.yaml
@@ -419,6 +433,7 @@ kubectl describe certificate my-cert -n my-namespace
 
 **Approach**: GitOps Phase
 **Workflow**:
+
 ```bash
 # 1. Create storage class manifest
 cat > infrastructure/longhorn/storage-class-fast.yaml << EOF
@@ -451,6 +466,7 @@ git push
 **Rationale**: Node labels are system-level configuration
 
 **Workflow**:
+
 ```bash
 # 1. Update node configuration
 vim talconfig.yaml
@@ -470,6 +486,7 @@ kubectl get nodes --show-labels
 
 **Approach**: GitOps Phase
 **Workflow**:
+
 ```bash
 # 1. Create ConfigMap with dashboard JSON
 cat > infrastructure/monitoring/dashboard-my-app.yaml << EOF
@@ -503,6 +520,7 @@ git push
 
 **Approach**: GitOps Phase
 **Workflow**:
+
 ```bash
 # 1. Update Prometheus HelmRelease
 vim infrastructure/monitoring/prometheus.yaml
@@ -525,6 +543,7 @@ kubectl rollout status statefulset/prometheus-server -n monitoring
 **Rationale**: Fundamental cluster recovery requires bootstrap procedures
 
 **Workflow**:
+
 ```bash
 # 1. Verify node accessibility
 task cluster:status
@@ -548,12 +567,14 @@ flux get kustomizations
 **Approach**: Hybrid
 
 **For Longhorn volumes (GitOps)**:
+
 ```bash
 # Restore via Longhorn UI or kubectl
 kubectl apply -f backup-restore-manifest.yaml
 ```
 
 **For etcd backup (Bootstrap)**:
+
 ```bash
 # Use Talos etcd recovery procedures
 talosctl etcd snapshot /path/to/backup.db
@@ -564,6 +585,7 @@ talosctl etcd snapshot /path/to/backup.db
 ### Application Not Starting
 
 **Diagnostic Approach**:
+
 ```bash
 # 1. Check GitOps status
 flux get kustomizations
@@ -584,6 +606,7 @@ kubectl get events -n my-app --sort-by='.lastTimestamp'
 ### Network Connectivity Issues
 
 **Diagnostic Approach**:
+
 ```bash
 # 1. Check Cilium status (Bootstrap component)
 kubectl get pods -n kube-system -l k8s-app=cilium
@@ -604,6 +627,7 @@ kubectl run test-pod --image=busybox --rm -it -- /bin/sh
 ### Storage Issues
 
 **Diagnostic Approach**:
+
 ```bash
 # 1. Check Longhorn status
 kubectl get pods -n longhorn-system
@@ -622,18 +646,21 @@ kubectl describe nodes | grep -A 5 "Allocated resources"
 ## Best Practices Summary
 
 ### Bootstrap Phase Operations
+
 1. **Test in Development**: Always test bootstrap changes in a dev environment
 2. **Backup First**: Ensure you have backups before making system-level changes
 3. **Document Changes**: Keep clear records of what was changed and why
 4. **Verify Dependencies**: Understand what depends on the component you're changing
 
 ### GitOps Phase Operations
+
 1. **Use Feature Branches**: Make changes in branches and use pull requests
 2. **Small Changes**: Make incremental changes that are easy to review and rollback
 3. **Monitor Deployments**: Watch Flux logs during deployments
 4. **Test Rollbacks**: Ensure you can rollback changes if needed
 
 ### General Guidelines
+
 1. **Understand the Boundary**: Know why a component is in Bootstrap vs GitOps
 2. **Follow Dependencies**: Respect the dependency chain
 3. **Monitor Health**: Use health checks and monitoring to verify changes
@@ -642,6 +669,7 @@ kubectl describe nodes | grep -A 5 "Allocated resources"
 ## Emergency Procedures
 
 ### When GitOps is Broken
+
 ```bash
 # 1. Check Flux system
 kubectl get pods -n flux-system
@@ -656,6 +684,7 @@ flux reconcile kustomization flux-system
 ```
 
 ### When Bootstrap Components Fail
+
 ```bash
 # 1. Use emergency recovery
 task cluster:emergency-recovery

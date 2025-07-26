@@ -5,7 +5,7 @@ cluster:
   name: "home-ops"
   endpoint: "https://172.29.51.10:6443"
   domain: "k8s.home.geoffdavis.com"
-  
+
 network:
   vip: "172.29.51.10"
   nodes:
@@ -15,11 +15,11 @@ network:
       name: "mini02"
     - ip: "172.29.51.13"
       name: "mini03"
-  
+
   # Pod and service networks
   pod_cidr: "10.244.0.0/16"
   service_cidr: "10.96.0.0/12"
-  
+
   # BGP configuration
   bgp:
     cluster_asn: 64512
@@ -33,26 +33,26 @@ onepassword:
     automation: "Automation"
     services: "Services"
     private: "Private"
-  
+
   # 1Password Connect credentials (two separate entries for different formats)
   connect:
     # Legacy entry with combined credentials and token (may have truncation issues)
     legacy_entry: "1password connect"
-    
+
     # Separate entries for newer format (recommended)
     credentials_entry: "1Password Connect Credentials - ${cluster.name}"
     token_entry: "1Password Connect Token - ${cluster.name}"
-    
+
     # Credential format preferences (try in order)
     credential_sources:
-      - type: "separate_entries"  # Try separate entries first
+      - type: "separate_entries" # Try separate entries first
         credentials_item: "1Password Connect Credentials - ${cluster.name}"
         token_item: "1Password Connect Token - ${cluster.name}"
-      - type: "legacy_entry"      # Fallback to legacy single entry
+      - type: "legacy_entry" # Fallback to legacy single entry
         item: "1password connect"
         credentials_field: "credentials"
         token_field: "token"
-  
+
   # Other required 1Password items
   items:
     cloudflare_token: "Cloudflare API Token"
@@ -63,11 +63,11 @@ onepassword:
 talos:
   version: "v1.10.5"
   kubernetes_version: "v1.31.1"
-  
+
   # Talos configuration files
   config_dir: "clusterconfig"
   patches_dir: "talos/patches"
-  
+
   # Node configuration templates
   node_configs:
     - "${cluster.name}-mini01.yaml"
@@ -80,7 +80,7 @@ gitops:
     name: "talos-gitops"
     branch: "main"
     path: "clusters/home-ops"
-  
+
   # Flux configuration
   flux:
     namespace: "flux-system"
@@ -91,37 +91,37 @@ bootstrap:
   phases:
     1:
       name: "Environment Validation"
-      timeout: 300  # 5 minutes
+      timeout: 300 # 5 minutes
     2:
       name: "Talos Cluster Initialization"
-      timeout: 600  # 10 minutes
+      timeout: 600 # 10 minutes
     3:
       name: "CNI Deployment (Cilium)"
-      timeout: 600  # 10 minutes
+      timeout: 600 # 10 minutes
     4:
       name: "Core Services Validation"
-      timeout: 900  # 15 minutes
+      timeout: 900 # 15 minutes
     5:
       name: "GitOps Deployment (Flux)"
-      timeout: 600  # 10 minutes
+      timeout: 600 # 10 minutes
     6:
       name: "Application Deployment"
       timeout: 1200 # 20 minutes
-  
+
   # Logging configuration
   logging:
     dir: "logs/bootstrap"
-    level: "info"  # debug, info, warn, error
+    level: "info" # debug, info, warn, error
     retention_days: 30
-  
+
   # State management
   state_file: ".bootstrap-state.json"
-  
+
   # Validation settings
   validation:
     retry_attempts: 3
-    retry_delay: 10  # seconds
-    health_check_interval: 15  # seconds
+    retry_delay: 10 # seconds
+    health_check_interval: 15 # seconds
 
 # Tool requirements
 tools:

@@ -25,12 +25,12 @@ spec:
             - |
               set -e
               echo "Fixing dashboard proxy provider..."
-              
+
               # Update provider PK 7 with correct internal host
               curl -X PATCH \
                 -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                 -H "Content-Type: application/json" \
                 -d '{"internal_host": "http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000"}' \
                 "http://authentik-server.authentik.svc.cluster.local/api/v3/providers/proxy/7/"
-              
+
               echo "Dashboard proxy provider updated!"

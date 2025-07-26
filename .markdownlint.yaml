@@ -1,0 +1,21 @@
+# Markdown lint configuration
+# Basic checks enforced, style as warnings
+
+# Disable style-only rules (warnings handled separately)
+MD013: false  # Line length
+MD033: false  # HTML tags (needed for some docs)
+MD041: false  # First line heading (not always needed)
+
+# Enforce basic structure
+MD001: true   # Heading levels
+MD003: true   # Heading style
+MD022: true   # Headings surrounded by blank lines
+MD025: true   # Single title
+MD032: true   # Lists surrounded by blank lines
+
+# Enforce link validity
+MD034: true   # Bare URLs
+MD039: true   # Spaces in link text
+
+# Code block formatting
+MD040: true   # Fenced code blocks language

@@ -8,7 +8,7 @@ spec:
   # Based on fd47:25e1:2f96:51::/64 (VLAN 51)
   # Reserve fd47:25e1:2f96:51:100::/120 for LoadBalancer services
   blocks:
-  - cidr: fd47:25e1:2f96:51:100::/120
+    - cidr: fd47:25e1:2f96:51:100::/120
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumL2AnnouncementPolicy
@@ -22,7 +22,7 @@ spec:
     matchLabels:
       node-role.kubernetes.io/control-plane: ""
   interfaces:
-  - enp3s0f0
+    - enp3s0f0
   # IPv6 service announcement
   serviceSelector:
     matchLabels: {}

@@ -94,17 +94,17 @@ spec:
               echo "=== Installing Python Dependencies ==="
               pip install --no-cache-dir --target /tmp/python-packages urllib3
               export PYTHONPATH="/tmp/python-packages:$PYTHONPATH"
-              
+
               echo "=== Creating OAuth2 Redirect Fix Script ==="
               cat > /tmp/fix_oauth2_redirects.py << 'EOF'
               #!/usr/bin/env python3
               """
               Fix OAuth2 Redirect URLs in Authentik Applications
-              
+
               This script fixes OAuth2 application configurations to use external hostnames
               instead of internal cluster DNS names for redirect URLs.
               """
-              
+
               import os
               import sys
               import json
@@ -115,8 +115,8 @@ spec:
               import urllib.error
               from typing import Dict, List, Optional, Tuple
               from dataclasses import dataclass
-              
-              
+
+
               @dataclass
               class ServiceConfig:
                   """Configuration for a service with OAuth2 redirect URLs."""
@@ -142,8 +142,8 @@ spec:
                           f"{self.external_url}/auth/callback",
                           f"{self.external_url}/oauth/callback"
                       ]
-              
-              
+
+
               @dataclass
               class AuthentikConfig:
                   """Authentik API configuration."""
@@ -151,8 +151,8 @@ spec:
                   token: str
                   external_domain: str
                   authentik_external_url: str
-              
-              
+
+
               class AuthentikAPIError(Exception):
                   """Custom exception for Authentik API errors."""
                   def __init__(self, message: str, status_code: Optional[int] = None, 
@@ -160,8 +160,8 @@ spec:
                       super().__init__(message)
                       self.status_code = status_code
                       self.response_body = response_body
-              
-              
+
+
               class OAuth2RedirectFixer:
                   """Main class for fixing OAuth2 redirect URLs in Authentik applications."""
                   
@@ -546,8 +546,8 @@ spec:
                       else:
                           self.logger.warning(f"⚠ {total_services - success_count} services had issues")
                           return False
-              
-              
+
+
               def main():
                   """Main entry point for the script."""
                   # Get configuration from environment variables
@@ -579,14 +579,14 @@ spec:
                   except Exception as e:
                       fixer.logger.error(f"✗ Unexpected error: {e}")
                       sys.exit(1)
-              
-              
+
+
               if __name__ == "__main__":
                   main()
               EOF
-              
+
               echo "=== Running OAuth2 Redirect Fix Script ==="
               python3 /tmp/fix_oauth2_redirects.py
-              
+
               echo "=== OAuth2 Redirect Fix Complete ==="
       volumes: []

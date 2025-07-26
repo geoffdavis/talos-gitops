@@ -31,30 +31,34 @@ This document describes the migration of LLDPD configuration from a separate boo
 
 ### 3. Configuration Path Changes
 
-| Aspect | Previous | Current |
-|--------|----------|---------|
-| **Application Method** | Separate `talosctl patch` command | Integrated into talhelper config generation |
-| **Configuration File Path** | `/usr/local/etc/lldpd/lldpd.conf` | `/etc/lldpd.conf` |
-| **Workflow Step** | After Talos config application | During Talos config application |
-| **Extension Service Config** | Required separate manifest | Integrated into machine config |
+| Aspect                       | Previous                          | Current                                     |
+| ---------------------------- | --------------------------------- | ------------------------------------------- |
+| **Application Method**       | Separate `talosctl patch` command | Integrated into talhelper config generation |
+| **Configuration File Path**  | `/usr/local/etc/lldpd/lldpd.conf` | `/etc/lldpd.conf`                           |
+| **Workflow Step**            | After Talos config application    | During Talos config application             |
+| **Extension Service Config** | Required separate manifest        | Integrated into machine config              |
 
 ## Benefits
 
 ### 1. **Logical Workflow**
+
 - LLDPD is a Talos-level configuration, so it belongs with other Talos configurations
 - Eliminates artificial separation between Talos config and LLDPD config
 
 ### 2. **Simplified Bootstrap Process**
+
 - Reduces bootstrap steps from 7 to 6
 - Eliminates potential timing issues between config application and LLDPD patching
 - Single point of configuration management
 
 ### 3. **Better Configuration Management**
+
 - LLDPD configuration is now version-controlled with the main Talos config
 - Changes to LLDPD settings are applied consistently with other Talos changes
 - No separate manifest files to maintain
 
 ### 4. **Improved Reliability**
+
 - LLDPD configuration is applied atomically with the rest of the machine config
 - Reduces risk of configuration drift between nodes
 - Eliminates dependency on separate patch operations
@@ -62,11 +66,13 @@ This document describes the migration of LLDPD configuration from a separate boo
 ## Migration Impact
 
 ### Existing Clusters
+
 - **No immediate action required** - existing LLDPD configurations will continue to work
 - **Recommended**: Regenerate and reapply Talos configuration to use integrated approach
 - **Deprecated task** [`talos:apply-lldpd-config`](../Taskfile.yml:248) remains available for backward compatibility
 
 ### New Deployments
+
 - **Automatic integration** - LLDPD configuration is applied during initial Talos config application
 - **Streamlined workflow** - no separate LLDPD configuration step required
 
@@ -79,6 +85,7 @@ task network:verify-lldpd-config
 ```
 
 This will check:
+
 - LLDPD service status on all nodes
 - Configuration file presence at `/etc/lldpd.conf`
 - Environment variables (`LLDPD_OPTS`)

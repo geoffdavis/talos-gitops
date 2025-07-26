@@ -53,12 +53,12 @@ spec:
               authentik_token = os.environ.get('AUTHENTIK_TOKEN')
               current_outpost_id = os.environ.get('CURRENT_OUTPOST_ID')
               headers = {'Authorization': f'Bearer {authentik_token}', 'Content-Type': 'application/json'}
-              
+
               print('=== Debugging Authentik Outpost Configuration ===')
               print(f'Authentik Host: {authentik_host}')
               print(f'Current Outpost ID: {current_outpost_id}')
               print()
-              
+
               # Get current outpost configuration
               try:
                   req = urllib.request.Request(f'{authentik_host}/api/v3/outposts/instances/{current_outpost_id}/', headers=headers)
@@ -77,7 +77,7 @@ spec:
                       print()
               except Exception as e:
                   print(f'ERROR getting current outpost: {e}')
-              
+
               # List all outposts to understand the situation
               try:
                   req = urllib.request.Request(f'{authentik_host}/api/v3/outposts/instances/', headers=headers)
@@ -101,7 +101,7 @@ spec:
                           print('  ---')
               except Exception as e:
                   print(f'ERROR listing outposts: {e}')
-              
+
               # Check proxy providers
               try:
                   req = urllib.request.Request(f'{authentik_host}/api/v3/providers/proxy/', headers=headers)

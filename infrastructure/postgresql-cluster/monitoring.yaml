@@ -13,7 +13,7 @@ spec:
     matchLabels:
       postgresql: postgresql-cluster
       cnpg.io/cluster: postgresql-cluster
-  
+
   # Endpoints configuration
   endpoints:
     - port: metrics
@@ -43,7 +43,7 @@ spec:
         - sourceLabels: [__meta_kubernetes_pod_name]
           targetLabel: pod
           replacement: "${1}"
-  
+
   # Namespace selector
   namespaceSelector:
     matchNames:
@@ -64,7 +64,7 @@ spec:
     matchLabels:
       cnpg.io/cluster: postgresql-cluster
       cnpg.io/poolerName: postgresql-cluster-pooler
-  
+
   # Endpoints configuration for PgBouncer
   endpoints:
     - port: metrics
@@ -93,7 +93,7 @@ spec:
           replacement: "${1}"
         - targetLabel: component
           replacement: "pgbouncer"
-  
+
   # Namespace selector
   namespaceSelector:
     matchNames:
@@ -122,7 +122,7 @@ spec:
           annotations:
             summary: "PostgreSQL cluster {{ $labels.cluster }} is down"
             description: "PostgreSQL cluster {{ $labels.cluster }} has been down for more than 5 minutes."
-            
+
         - alert: PostgreSQLHighConnections
           expr: cnpg_backends_total{cluster="postgresql-cluster"} / cnpg_backends_max{cluster="postgresql-cluster"} > 0.8
           for: 5m
@@ -132,7 +132,7 @@ spec:
           annotations:
             summary: "PostgreSQL cluster {{ $labels.cluster }} has high connection usage"
             description: "PostgreSQL cluster {{ $labels.cluster }} is using {{ $value | humanizePercentage }} of available connections."
-            
+
         - alert: PostgreSQLReplicationLag
           expr: cnpg_pg_replication_lag{cluster="postgresql-cluster"} > 300
           for: 5m
@@ -142,7 +142,7 @@ spec:
           annotations:
             summary: "PostgreSQL replica lag is high"
             description: "PostgreSQL replica {{ $labels.instance }} is lagging behind primary by {{ $value }} seconds."
-            
+
         - alert: PostgreSQLBackupFailed
           expr: increase(cnpg_backup_failed_total{cluster="postgresql-cluster"}[1h]) > 0
           for: 0m
@@ -152,7 +152,7 @@ spec:
           annotations:
             summary: "PostgreSQL backup failed"
             description: "PostgreSQL cluster {{ $labels.cluster }} backup has failed."
-            
+
         - alert: PostgreSQLDiskSpaceHigh
           expr: cnpg_pg_database_size_bytes{cluster="postgresql-cluster"} / cnpg_pg_settings_max_wal_size_bytes{cluster="postgresql-cluster"} > 0.8
           for: 10m

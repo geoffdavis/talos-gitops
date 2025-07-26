@@ -53,27 +53,27 @@ spec:
             - -c
             - |
               set -euo pipefail
-              
+
               echo "=== Authentik External Outpost Token Extraction ==="
               echo "Starting token extraction process..."
-              
+
               # Create the extraction script (urllib is built-in, no need to install)
               cat > /tmp/extract-outpost-tokens.py << 'EOF'
               #!/usr/bin/env python3
               """
               Authentik External Outpost Token Extraction Script
-              
+
               This script extracts the correct API tokens for external outposts 
               from Authentik and prepares them for 1Password storage.
-              
+
               The issue: External outpost pods are using admin tokens instead of 
               their specific external outpost tokens, causing them to connect to 
               wrong outpost IDs.
-              
+
               Author: Kilo Code
               Version: 1.0.0
               """
-              
+
               import os
               import sys
               import json
@@ -82,8 +82,8 @@ spec:
               import urllib.parse
               import urllib.error
               from typing import Dict, Optional, Tuple
-              
-              
+
+
               class AuthentikAPIError(Exception):
                   """Custom exception for Authentik API errors."""
                   def __init__(self, message: str, status_code: Optional[int] = None, 
@@ -91,8 +91,8 @@ spec:
                       super().__init__(message)
                       self.status_code = status_code
                       self.response_body = response_body
-              
-              
+
+
               class OutpostTokenExtractor:
                   """Extract external outpost tokens from Authentik API."""
                   
@@ -448,8 +448,8 @@ spec:
                       except Exception as e:
                           self.logger.error(f"✗ Extraction failed: {e}")
                           return False
-              
-              
+
+
               def main():
                   """Main entry point for the script."""
                   # Get configuration from environment variables
@@ -471,18 +471,18 @@ spec:
                   except Exception as e:
                       extractor.logger.error(f"✗ Unexpected error: {e}")
                       sys.exit(1)
-              
-              
+
+
               if __name__ == "__main__":
                   main()
               EOF
-              
+
               # Run the extraction script
               python3 /tmp/extract-outpost-tokens.py
-              
+
               echo "=== Token extraction completed ==="
               echo "Check the logs above for results"
-              
+
               # Keep the results available for inspection
               if [ -f /tmp/outpost-tokens-extraction.json ]; then
                 echo "=== Extraction Results File ==="

@@ -52,12 +52,12 @@ spec:
             - -c
             - |
               set -euo pipefail
-              
+
               echo "=== Authentik External Outpost Connection Fix ==="
               echo "The issue: External outpost pods are using admin token and connecting to wrong outpost ID"
               echo "The solution: Use admin token but force connection to correct external outpost ID"
               echo ""
-              
+
               cat > /tmp/fix-connection.py << 'EOF'
               #!/usr/bin/env python3
               import os
@@ -66,15 +66,15 @@ spec:
               import urllib.request
               import urllib.parse
               import urllib.error
-              
+
               authentik_host = os.environ.get('AUTHENTIK_HOST')
               admin_token = os.environ.get('AUTHENTIK_ADMIN_TOKEN')
-              
+
               headers = {
                   'Authorization': f'Bearer {admin_token}',
                   'Content-Type': 'application/json'
               }
-              
+
               def make_request(url, method='GET', data=None):
                   try:
                       req_data = None
@@ -96,13 +96,13 @@ spec:
                   except Exception as e:
                       print(f"Error: {e}")
                       return None
-              
+
               print("=== Current Situation Analysis ===")
-              
+
               # Check current outpost status
               outposts_url = f'{authentik_host}/api/v3/outposts/instances/'
               outposts_data = make_request(outposts_url)
-              
+
               if outposts_data:
                   print("Current outposts:")
                   for outpost in outposts_data.get('results', []):
@@ -115,26 +115,26 @@ spec:
                           print(f"    → This is our TARGET external outpost")
                       elif outpost_id == "26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083":
                           print(f"    → This is the embedded outpost (pods are wrongly connecting here)")
-              
+
               print(f"\n=== Root Cause Analysis ===")
               print("1. External outpost pods are using admin token: ✓ CONFIRMED")
               print("2. Admin token allows connection to any outpost: ✓ CONFIRMED") 
               print("3. Pods are auto-discovering and connecting to embedded outpost: ✓ CONFIRMED")
               print("4. We need to force pods to connect to external outpost ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e")
-              
+
               print(f"\n=== Solution Strategy ===")
               print("Since we cannot get outpost-specific tokens from the API, we will:")
               print("1. Continue using the admin token (it works)")
               print("2. Configure the outpost pods to connect to the correct external outpost ID")
               print("3. Use environment variable AUTHENTIK_OUTPOST_ID to force the connection")
-              
+
               print(f"\n=== Verification ===")
               print("Testing admin token access to external outpost...")
-              
+
               # Test access to the external outpost specifically
               external_outpost_url = f'{authentik_host}/api/v3/outposts/instances/3f0970c5-d6a3-43b2-9a36-d74665c6b24e/'
               external_outpost = make_request(external_outpost_url)
-              
+
               if external_outpost:
                   print("✓ Admin token can access external outpost successfully")
                   print(f"  Outpost Name: {external_outpost.get('name', 'unknown')}")
@@ -144,29 +144,29 @@ spec:
               else:
                   print("✗ Admin token cannot access external outpost")
                   sys.exit(1)
-              
+
               print(f"\n=== Configuration Fix Required ===")
               print("The authentik-proxy deployment needs these environment variables:")
               print("  AUTHENTIK_TOKEN: <admin-token> (already configured)")
               print("  AUTHENTIK_HOST: http://authentik-server.authentik.svc.cluster.local:80 (already configured)")
               print("  AUTHENTIK_OUTPOST_ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e (MISSING - this is the fix)")
-              
+
               print(f"\n=== Next Steps ===")
               print("1. The admin token is working correctly")
               print("2. Update the deployment to include AUTHENTIK_OUTPOST_ID environment variable")
               print("3. Restart the authentik-proxy pods")
               print("4. Verify pods connect to the correct external outpost")
-              
+
               print(f"\n=== Summary ===")
               print("✓ Admin token authentication: WORKING")
               print("✓ External outpost access: WORKING") 
               print("✓ Root cause identified: Missing AUTHENTIK_OUTPOST_ID environment variable")
               print("✓ Solution: Add AUTHENTIK_OUTPOST_ID=3f0970c5-d6a3-43b2-9a36-d74665c6b24e to deployment")
-              
+
               EOF
-              
+
               python3 /tmp/fix-connection.py
-              
+
               echo ""
               echo "=== Connection Analysis Complete ==="
               echo "The fix is to add AUTHENTIK_OUTPOST_ID environment variable to the deployment"

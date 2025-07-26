@@ -1,9 +1,9 @@
 # Authentik configuration
 authentik:
-  enabled: false  # Authentik should be deployed separately
+  enabled: false # Authentik should be deployed separately
   host: "http://authentik-server.authentik.svc.cluster.local"
   authFlowUuid: "be0ee023-11fe-4a43-b453-bc67957cafbf"
-  
+
 # Service definitions for proxy configuration
 services:
   dashboard:
@@ -14,7 +14,7 @@ services:
     description: "Kubernetes cluster management dashboard"
     publisher: "Kubernetes"
     enabled: true
-    
+
   hubble:
     name: "Hubble UI"
     slug: "hubble"
@@ -23,7 +23,7 @@ services:
     description: "Cilium Hubble network observability interface"
     publisher: "Cilium"
     enabled: true
-    
+
   grafana:
     name: "Grafana"
     slug: "grafana"
@@ -32,7 +32,7 @@ services:
     description: "Grafana monitoring and visualization dashboard"
     publisher: "Grafana Labs"
     enabled: true
-    
+
   prometheus:
     name: "Prometheus"
     slug: "prometheus"
@@ -41,7 +41,7 @@ services:
     description: "Prometheus metrics collection and querying interface"
     publisher: "Prometheus"
     enabled: true
-    
+
   alertmanager:
     name: "AlertManager"
     slug: "alertmanager"
@@ -50,7 +50,7 @@ services:
     description: "AlertManager alert routing and management interface"
     publisher: "Prometheus"
     enabled: true
-    
+
   longhorn:
     name: "Longhorn Storage"
     slug: "longhorn"
@@ -66,12 +66,12 @@ hooks:
   retries: 3
   backoff: 15
   image: "curlimages/curl:8.5.0"
-  
+
 # RBAC configuration
 rbac:
   create: true
   serviceAccountName: "authentik-proxy-config"
-  
+
 # Security context for hook containers
 securityContext:
   runAsNonRoot: true
@@ -79,7 +79,7 @@ securityContext:
   runAsGroup: 65534
   seccompProfile:
     type: RuntimeDefault
-    
+
 containerSecurityContext:
   allowPrivilegeEscalation: false
   runAsNonRoot: true
@@ -103,7 +103,7 @@ proxyProvider:
 outpost:
   name: "proxy-outpost"
   namespace: "authentik"
-  
+
 # External secrets configuration
 externalSecrets:
   tokenSecretName: "authentik-radius-token"

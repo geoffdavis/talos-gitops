@@ -5,6 +5,7 @@ This guide covers the IPv6 dual-stack configuration for the Talos Kubernetes clu
 ## IPv6 Network Architecture
 
 ### Your Existing ULA Scheme
+
 - **Base ULA Prefix**: `fd47:25e1:2f96::/48`
 - **VLAN Pattern**: `fd47:25e1:2f96:<VLAN_ID>::/64`
 - **Cluster VLAN**: 51
@@ -32,11 +33,11 @@ The cluster is configured with dual-stack subnets:
 cluster:
   network:
     podSubnets:
-      - 10.244.0.0/16                          # IPv4 pods
-      - fd47:25e1:2f96:51:2000::/64            # IPv6 pods
+      - 10.244.0.0/16 # IPv4 pods
+      - fd47:25e1:2f96:51:2000::/64 # IPv6 pods
     serviceSubnets:
-      - 10.96.0.0/12                           # IPv4 services
-      - fd47:25e1:2f96:51:1000::/108           # IPv6 services
+      - 10.96.0.0/12 # IPv4 services
+      - fd47:25e1:2f96:51:1000::/108 # IPv6 services
 ```
 
 ### 2. Cilium CNI Configuration
@@ -57,17 +58,19 @@ values:
 Separate pools for IPv4 and IPv6:
 
 **IPv4 Pool** (`infrastructure/cilium/loadbalancer-pool.yaml`):
+
 ```yaml
 spec:
   blocks:
-  - cidr: 172.29.51.100/25
+    - cidr: 172.29.51.100/25
 ```
 
 **IPv6 Pool** (`infrastructure/cilium/loadbalancer-pool-ipv6.yaml`):
+
 ```yaml
 spec:
   blocks:
-  - cidr: fd47:25e1:2f96:51:100::/120
+    - cidr: fd47:25e1:2f96:51:100::/120
 ```
 
 ### 4. BGP Configuration
@@ -82,21 +85,25 @@ The UniFi UDM Pro BGP configuration supports both address families with simplifi
 ## Benefits of IPv6 Dual-Stack
 
 ### 1. **Future-Proofing**
+
 - Native IPv6 support for modern applications
 - Preparation for IPv6-only services
 - Compatibility with IPv6-native cloud services
 
 ### 2. **Network Efficiency**
+
 - Larger address space eliminates NAT complexity
 - End-to-end connectivity
 - Simplified network topology
 
 ### 3. **Integration with Existing Infrastructure**
+
 - Follows your established ULA addressing scheme
 - Maintains consistency with VLAN-based network segmentation
 - Seamless integration with existing home network
 
 ### 4. **Enhanced Security**
+
 - IPSec built into IPv6 protocol
 - Simplified firewall rules
 - Better network visibility
@@ -161,11 +168,11 @@ spec:
   type: LoadBalancer
   ipFamilyPolicy: PreferDualStack
   ipFamilies:
-  - IPv4
-  - IPv6
+    - IPv4
+    - IPv6
   ports:
-  - port: 80
-    targetPort: 8080
+    - port: 80
+      targetPort: 8080
   selector:
     app: example
 ```
@@ -181,10 +188,10 @@ spec:
   type: LoadBalancer
   ipFamilyPolicy: SingleStack
   ipFamilies:
-  - IPv6
+    - IPv6
   ports:
-  - port: 80
-    targetPort: 8080
+    - port: 80
+      targetPort: 8080
   selector:
     app: example
 ```
@@ -250,16 +257,19 @@ task monitoring:ipv6-stats
 ## Security Considerations
 
 ### 1. **Firewall Rules**
+
 - Configure UDM Pro firewall for IPv6 traffic
 - Allow BGP (port 179) for IPv6 neighbors
 - Restrict LoadBalancer pool access as needed
 
 ### 2. **Network Segmentation**
+
 - IPv6 maintains network isolation
 - VLAN-based segmentation continues to work
 - Consider IPv6 privacy extensions for client networks
 
 ### 3. **Monitoring**
+
 - Monitor IPv6 BGP peering status
 - Track IPv6 LoadBalancer IP allocation
 - Alert on IPv6 connectivity issues
@@ -267,16 +277,19 @@ task monitoring:ipv6-stats
 ## Integration with Existing Services
 
 ### 1. **DNS**
+
 - Add AAAA records for IPv6 services
 - Update external-dns configuration for IPv6
 - Consider dual-stack DNS resolution
 
 ### 2. **Ingress**
+
 - Configure ingress controllers for IPv6
 - Update DNS records for ingress endpoints
 - Test IPv6 accessibility from external networks
 
 ### 3. **Monitoring**
+
 - Update Prometheus targets for IPv6
 - Configure Grafana dashboards for IPv6 metrics
 - Monitor IPv6 traffic patterns
@@ -284,16 +297,19 @@ task monitoring:ipv6-stats
 ## Migration Strategy
 
 ### 1. **Phase 1: Infrastructure**
+
 - ✅ Enable IPv6 on network infrastructure
 - ✅ Configure BGP dual-stack peering
 - ✅ Deploy IPv6 LoadBalancer pools
 
 ### 2. **Phase 2: Services**
+
 - Deploy dual-stack services
 - Update DNS records
 - Test IPv6 connectivity
 
 ### 3. **Phase 3: Optimization**
+
 - Monitor IPv6 traffic patterns
 - Optimize routing policies
 - Consider IPv6-only services where appropriate

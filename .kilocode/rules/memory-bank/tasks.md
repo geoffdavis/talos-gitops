@@ -5,12 +5,15 @@ This file documents repetitive tasks and operational workflows that follow estab
 ## Cluster Operations
 
 ### Complete Cluster Bootstrap
+
 **Last performed:** Initial setup
 **Files to modify:**
+
 - `.env` - Set OP_ACCOUNT environment variable
 - `talconfig.yaml` - Node configuration if needed
 
 **Steps:**
+
 1. Install dependencies: `mise install`
 2. Configure environment: `cp .env.example .env` and set OP_ACCOUNT
 3. Run phased bootstrap: `task bootstrap:phased`
@@ -18,21 +21,25 @@ This file documents repetitive tasks and operational workflows that follow estab
 5. Verify cluster status: `task cluster:status`
 
 **Important notes:**
+
 - Phased bootstrap is resumable if it fails at any stage
 - Use `task bootstrap:resume` to continue from last failed phase
 - Safe reset available with `task cluster:safe-reset` if needed
 
 ### Safe Cluster Reset
+
 **Last performed:** As needed for troubleshooting
 **Files to modify:** None (preserves OS)
 
 **Steps:**
+
 1. Confirm reset intention: `task cluster:safe-reset CONFIRM=SAFE-RESET`
 2. Wait for nodes to reboot and enter maintenance mode
 3. Verify nodes accessible: `talosctl version --insecure --nodes <ip>`
 4. Re-bootstrap if needed: `task bootstrap:phased`
 
 **Important notes:**
+
 - Only wipes STATE and EPHEMERAL partitions, preserves OS
 - Never use `talosctl reset` without partition specifications
 - Nodes will be in maintenance mode after reset
@@ -40,12 +47,15 @@ This file documents repetitive tasks and operational workflows that follow estab
 ## Application Management
 
 ### Add New Application via GitOps
+
 **Last performed:** Regularly for new services
 **Files to modify:**
+
 - `apps/<app-name>/` - Create new application directory
 - `clusters/home-ops/infrastructure/apps.yaml` - Add Kustomization
 
 **Steps:**
+
 1. Create application directory: `mkdir -p apps/<app-name>`
 2. Create namespace.yaml, deployment.yaml, service.yaml
 3. Create kustomization.yaml listing all resources
@@ -54,22 +64,27 @@ This file documents repetitive tasks and operational workflows that follow estab
 6. Monitor deployment: `flux get kustomizations --watch`
 
 **Important notes:**
+
 - Follow existing patterns for namespace and resource naming
 - Include proper dependencies in Flux Kustomization
 - Use health checks for critical applications
 
 ### Update Application Configuration
+
 **Last performed:** Ongoing maintenance
 **Files to modify:**
+
 - `apps/<app-name>/*.yaml` - Application manifests
 
 **Steps:**
+
 1. Update application manifests (image tags, resources, config)
 2. Commit changes: `git add apps/<app-name>/`
 3. Push to trigger deployment: `git push`
 4. Monitor rollout: `kubectl rollout status deployment/<app> -n <namespace>`
 
 **Important notes:**
+
 - Test changes in development environment first
 - Use semantic versioning for image tags
 - Monitor application health after updates
@@ -77,12 +92,15 @@ This file documents repetitive tasks and operational workflows that follow estab
 ## Infrastructure Management
 
 ### Add New Infrastructure Service
+
 **Last performed:** When adding Redis, monitoring components
 **Files to modify:**
+
 - `infrastructure/<service>/` - Create service directory
 - `clusters/home-ops/infrastructure/<category>.yaml` - Add Kustomization
 
 **Steps:**
+
 1. Create infrastructure directory: `mkdir -p infrastructure/<service>`
 2. Create namespace.yaml and helmrelease.yaml (or raw manifests)
 3. Create kustomization.yaml
@@ -91,16 +109,20 @@ This file documents repetitive tasks and operational workflows that follow estab
 6. Commit and deploy: `git add infrastructure/<service>/ clusters/home-ops/infrastructure/`
 
 **Important notes:**
+
 - Choose appropriate category file for the service
 - Include health checks for reliable deployments
 - Consider resource requirements and node affinity
 
 ### Update Infrastructure Service
+
 **Last performed:** Regular maintenance and upgrades
 **Files to modify:**
+
 - `infrastructure/<service>/helmrelease.yaml` - Helm chart versions and values
 
 **Steps:**
+
 1. Update Helm chart version or values in helmrelease.yaml
 2. Commit changes: `git add infrastructure/<service>/`
 3. Push to deploy: `git push`
@@ -108,6 +130,7 @@ This file documents repetitive tasks and operational workflows that follow estab
 5. Verify service health: `kubectl get pods -n <namespace>`
 
 **Important notes:**
+
 - Check Helm chart changelog for breaking changes
 - Update dependencies if chart version requires it
 - Test in development environment for major updates
@@ -115,12 +138,15 @@ This file documents repetitive tasks and operational workflows that follow estab
 ## Network Configuration
 
 ### Update BGP Configuration
+
 **Last performed:** When adding new network segments
 **Files to modify:**
+
 - `infrastructure/cilium-bgp/bgp-policy.yaml` - BGP peering configuration
 - `infrastructure/cilium/loadbalancer-pool*.yaml` - IP pools
 
 **Steps:**
+
 1. Update BGP policy with new peer configurations
 2. Update load balancer IP pools if needed
 3. Commit changes: `git add infrastructure/cilium-bgp/ infrastructure/cilium/`
@@ -129,17 +155,21 @@ This file documents repetitive tasks and operational workflows that follow estab
 6. Test load balancer functionality: `kubectl get svc --all-namespaces | grep LoadBalancer`
 
 **Important notes:**
+
 - Coordinate with network team for BGP ASN and IP ranges
 - Test connectivity after BGP changes
 - Monitor for route flapping or connectivity issues
 
 ### Add DNS Records
+
 **Last performed:** When exposing new services
 **Files to modify:**
+
 - Service ingress configurations
 - External DNS automatically manages records
 
 **Steps:**
+
 1. Create or update ingress with proper hostname
 2. Ensure external-dns annotations are correct
 3. Commit and deploy ingress changes
@@ -147,6 +177,7 @@ This file documents repetitive tasks and operational workflows that follow estab
 5. Test service accessibility
 
 **Important notes:**
+
 - Use consistent domain patterns (k8s.home.geoffdavis.com for internal)
 - Ensure TLS certificates are properly configured
 - Monitor external-dns logs for any issues
@@ -154,11 +185,14 @@ This file documents repetitive tasks and operational workflows that follow estab
 ## Secret Management
 
 ### Add New Secret from 1Password
+
 **Last performed:** When adding new services requiring credentials
 **Files to modify:**
+
 - `infrastructure/<service>/external-secret.yaml` - ExternalSecret resource
 
 **Steps:**
+
 1. Add secret to appropriate 1Password vault
 2. Create ExternalSecret resource referencing the 1Password item
 3. Include in service kustomization.yaml
@@ -166,53 +200,64 @@ This file documents repetitive tasks and operational workflows that follow estab
 5. Verify secret creation: `kubectl get secrets -n <namespace>`
 
 **Important notes:**
+
 - Use consistent naming patterns for 1Password items
 - Test secret access before deploying dependent services
 - Monitor external-secrets-operator logs for sync issues
 
 ### Rotate 1Password Connect Credentials
+
 **Last performed:** As needed for security
 **Files to modify:** None (handled by bootstrap script)
 
 **Steps:**
+
 1. Create new 1Password Connect server: `task onepassword:create-connect-server`
 2. Restart 1Password Connect deployment
 3. Validate secret synchronization: `task bootstrap:validate-1password-secrets`
 4. Monitor external secrets for any sync failures
 
 **Important notes:**
+
 - Coordinate with team to minimize service disruption
 - Verify all external secrets sync properly after rotation
 - Keep backup of old credentials until rotation is confirmed
 
 ### Maintain External Authentik-Proxy Authentication System
+
 **Last performed:** July 2025 (successful migration to external outpost)
 **Files to modify:**
+
 - `infrastructure/authentik-proxy/secret.yaml` - External outpost token management
 - `infrastructure/authentik-proxy/deployment.yaml` - External outpost configuration
 - `infrastructure/authentik-proxy/redis.yaml` - Redis session storage configuration
 
 **Steps:**
+
 1. **Regular Health Checks**:
+
    - Verify all services accessible: Test key services like Longhorn, Grafana, Dashboard
    - Check external outpost status in Authentik admin interface (outpost ID: `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`)
    - Monitor authentication response times and Redis connectivity
 
 2. **External Outpost Health Monitoring**:
+
    - Check external outpost API token expiration dates in 1Password
    - Verify outpost connectivity status in Authentik admin interface
    - Monitor authentik-proxy pod logs for connection issues
    - Check Redis instance health and session storage functionality
 
 3. **Proactive Token Rotation**:
+
    - Schedule external outpost token regeneration before expiration (monthly recommended)
    - Update token in 1Password and force ExternalSecret sync
    - Restart authentik-proxy deployment after token rotation
    - Test all services after token rotation
 
 4. **Service Integration Validation**:
+
    - Ensure new services use nginx-internal ingress class
-   - Verify NO individual service ingresses for *.k8s.home.geoffdavis.com domains
+   - Verify NO individual service ingresses for \*.k8s.home.geoffdavis.com domains
    - Test SSO functionality for newly deployed services through external outpost
    - Validate proxy provider configurations in Authentik admin interface
 
@@ -223,32 +268,39 @@ This file documents repetitive tasks and operational workflows that follow estab
    - Scale Redis if needed for performance
 
 **Important notes:**
+
 - **External outpost architecture** requires dedicated deployment and Redis instance
 - Monitor for authentication failures and address promptly
 - Keep documentation updated with any configuration changes
 - Test authentication system after any Authentik or authentik-proxy upgrades
-- **CRITICAL**: Only external outpost ingress should handle *.k8s.home.geoffdavis.com domains
+- **CRITICAL**: Only external outpost ingress should handle \*.k8s.home.geoffdavis.com domains
 
 ### Deploy External Authentik-Proxy System
+
 **Last performed:** July 2025 (successful deployment and migration)
 **Files to modify:**
+
 - `infrastructure/authentik-proxy/` - Complete external outpost deployment
 - `clusters/home-ops/infrastructure/identity.yaml` - Flux Kustomization
 
 **Steps:**
+
 1. **Prerequisites Validation**:
+
    - Verify Authentik server is operational and accessible
    - Confirm 1Password Connect is working for secret management
    - Check BGP load balancer and ingress controller functionality
    - Validate network connectivity between namespaces
 
 2. **External Outpost Token Setup**:
+
    - Create external outpost in Authentik admin interface
    - Generate API token for external outpost (not admin user token)
    - Store token in 1Password with proper naming convention
    - Configure ExternalSecret to sync token from 1Password
 
 3. **Deploy External Outpost Infrastructure**:
+
    - Deploy namespace: `kubectl apply -f infrastructure/authentik-proxy/namespace.yaml`
    - Deploy Redis instance: `kubectl apply -f infrastructure/authentik-proxy/redis.yaml`
    - Deploy RBAC and ConfigMap: `kubectl apply -f infrastructure/authentik-proxy/rbac.yaml infrastructure/authentik-proxy/configmap.yaml`
@@ -256,12 +308,14 @@ This file documents repetitive tasks and operational workflows that follow estab
    - Deploy authentik-proxy: `kubectl apply -f infrastructure/authentik-proxy/deployment.yaml`
 
 4. **Network and Ingress Configuration**:
+
    - Deploy service: `kubectl apply -f infrastructure/authentik-proxy/service.yaml`
    - Deploy ingress with BGP load balancer: `kubectl apply -f infrastructure/authentik-proxy/ingress.yaml`
    - Verify ingress gets external IP from BGP pool
-   - Test DNS resolution for *.k8s.home.geoffdavis.com domains
+   - Test DNS resolution for \*.k8s.home.geoffdavis.com domains
 
 5. **Outpost Registration and Validation**:
+
    - Verify external outpost appears in Authentik admin interface
    - Check outpost connectivity status (should show connected)
    - Monitor authentik-proxy pod logs for successful registration
@@ -274,13 +328,15 @@ This file documents repetitive tasks and operational workflows that follow estab
    - Test authentication flow for each service
 
 **Important notes:**
+
 - **External outpost architecture** provides better reliability and maintainability than embedded outpost
 - Use correct external outpost API token, not admin user token
 - Redis instance is required for session storage and caching
 - Network connectivity between authentik-proxy and service namespaces is critical
-- Only external outpost ingress should handle *.k8s.home.geoffdavis.com domains
+- Only external outpost ingress should handle \*.k8s.home.geoffdavis.com domains
 
 **Success Criteria:**
+
 - External outpost shows connected in Authentik admin interface
 - All authentik-proxy pods are running and healthy
 - Redis instance is operational and accessible
@@ -289,8 +345,10 @@ This file documents repetitive tasks and operational workflows that follow estab
 - No conflicting ingress configurations exist
 
 ### Deploy External Authentik-Proxy URL Redirect Fixes
+
 **Last performed:** July 2025 (successful deployment and configuration)
 **Files to modify:**
+
 - `infrastructure/authentik-proxy/secret.yaml` - Environment variable fixes for internal service URLs
 - `infrastructure/authentik-proxy/configmap.yaml` - External URL configuration for user redirects
 - `infrastructure/authentik-proxy/proxy-config-job-simple.yaml` - Configuration job with known outpost ID
@@ -299,7 +357,9 @@ This file documents repetitive tasks and operational workflows that follow estab
 This task documents the deployment of comprehensive fixes for internal cluster DNS redirect issues in the external authentik-proxy configuration. The fixes implement a hybrid URL architecture where outpost connections use internal service URLs while user redirects use external URLs.
 
 **Steps:**
+
 1. **Root Cause Analysis and Fix Identification**:
+
    - Identify three sources of internal cluster DNS redirect issues:
      - Environment variables using external URLs for outpost connections
      - ConfigMap hardcoded URLs causing internal DNS resolution conflicts
@@ -307,21 +367,25 @@ This task documents the deployment of comprehensive fixes for internal cluster D
    - Develop hybrid URL architecture solution
 
 2. **Environment Variable Configuration Fix**:
+
    - Update `AUTHENTIK_HOST` in `secret.yaml` from `https://authentik.k8s.home.geoffdavis.com` to `http://authentik-server.authentik.svc.cluster.local:80`
    - Ensure outpost can connect to Authentik server using internal cluster DNS
    - Maintain external URL references for user-facing redirects in other configurations
 
 3. **ConfigMap External URL Configuration**:
+
    - Update all hardcoded URLs in `configmap.yaml` to use external domains (`https://authentik.k8s.home.geoffdavis.com`)
    - Ensure user browser redirects go to external URLs instead of internal cluster DNS
    - Configure service routing for all 6 services (longhorn, grafana, prometheus, alertmanager, dashboard, hubble)
 
 4. **Configuration Job Updates**:
+
    - Apply `proxy-config-job-simple.yaml` with known outpost ID `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
    - Remove problematic `fix-oauth2-redirect-urls` job that was interfering
    - Ensure configuration job updates outpost settings in Authentik database
 
 5. **GitOps Deployment Process**:
+
    - Commit all configuration fixes to Git repository
    - Monitor Flux deployment and reconciliation of changes
    - Verify pods restart and pick up new environment variables and ConfigMap
@@ -334,12 +398,14 @@ This task documents the deployment of comprehensive fixes for internal cluster D
    - Monitor pod logs for successful connections and proper configuration
 
 **Hybrid URL Architecture Implementation:**
+
 - **Internal Connections**: Use `http://authentik-server.authentik.svc.cluster.local:80` for outpost-to-Authentik communication
 - **External Redirects**: Use `https://authentik.k8s.home.geoffdavis.com` for user browser redirects
 - **DNS Resolution**: Resolves cluster DNS conflicts by separating internal and external URL usage
 - **Service Integration**: Maintains proper authentication flow while fixing connectivity issues
 
 **Important notes:**
+
 - **Root cause**: External outposts running inside cluster cannot resolve external DNS names through cluster DNS
 - **Solution**: Hybrid approach separating outpost connections from user redirects
 - **GitOps integration**: All fixes deployed via standard Git commit and Flux reconciliation process
@@ -347,6 +413,7 @@ This task documents the deployment of comprehensive fixes for internal cluster D
 - **Token management**: May require 1Password token updates to match correct external outpost
 
 **Success Criteria:**
+
 - ✅ All three configuration fixes deployed and active
 - ✅ Both authentik-proxy pods running with successful Authentik server connections
 - ✅ Websocket connections established between outpost and Authentik server
@@ -355,12 +422,14 @@ This task documents the deployment of comprehensive fixes for internal cluster D
 - ✅ Hybrid URL architecture implemented and functional
 
 **Post-Deployment Tasks:**
+
 - Verify 1Password token matches correct external outpost ID
 - Test authentication flow with external URL redirects
 - Validate end-to-end SSO functionality for all 6 services
 - Monitor system performance with new hybrid URL configuration
 
 **Troubleshooting:**
+
 - **Pod connection failures**: Check internal service URL configuration in environment variables
 - **User redirect issues**: Verify external URLs in ConfigMap are correct and accessible
 - **Token mismatches**: Update 1Password entry with correct external outpost token
@@ -369,8 +438,10 @@ This task documents the deployment of comprehensive fixes for internal cluster D
 This task provides a comprehensive reference for deploying external authentik-proxy URL redirect fixes and implementing hybrid URL architecture for reliable authentication system operation.
 
 ### Fix Dashboard Service Configuration for External Authentik-Proxy
+
 **Last performed:** July 2025 (successful completion - final service fix)
 **Files to modify:**
+
 - `infrastructure/authentik-proxy/fix-dashboard-service-job.yaml` - GitOps job to update Authentik database
 - Authentik database - Direct database update via Python job
 
@@ -378,36 +449,43 @@ This task provides a comprehensive reference for deploying external authentik-pr
 This task documents the final fix for the dashboard service configuration issue that completed the external Authentik outpost system. The dashboard proxy provider was configured to use a non-existent Kong service (Kong was disabled in the Dashboard HelmRelease), preventing proper authentication flow.
 
 **Root Cause:**
+
 - **Service Configuration Mismatch**: Dashboard proxy provider in Authentik was configured to forward requests to Kong service
 - **Kong Service Disabled**: Kong was disabled in the Dashboard HelmRelease but proxy provider still referenced Kong service URL
 - **Authentication Failure**: Requests to dashboard.k8s.home.geoffdavis.com failed because proxy provider couldn't reach the configured backend service
 
 **Steps:**
+
 1. **Root Cause Analysis**:
+
    - Identified dashboard service as the final non-working service (5/6 working)
    - Investigated Dashboard HelmRelease configuration and found Kong disabled
    - Discovered proxy provider still configured for Kong service URL
    - Confirmed authentication system working for other 5 services
 
 2. **GitOps Database Update Solution**:
+
    - Created Python job to directly update Authentik database
    - Updated proxy provider configuration to use correct service URL
    - Used GitOps approach with Kubernetes Job for database modification
    - Avoided manual database intervention by using automated job
 
 3. **Database Update Job Creation**:
+
    - Created `fix-dashboard-service-job.yaml` with Python script
    - Job connects to Authentik PostgreSQL database
    - Updates proxy provider external_host field to correct service URL
    - Includes proper RBAC and database connection configuration
 
 4. **Job Deployment and Execution**:
+
    - Deploy job via GitOps: `kubectl apply -f infrastructure/authentik-proxy/fix-dashboard-service-job.yaml`
    - Monitor job execution: `kubectl logs -n authentik-proxy job/fix-dashboard-service`
    - Verify database update completed successfully
    - Confirm job completion status
 
 5. **Service Validation**:
+
    - Test dashboard service access: `curl -I https://dashboard.k8s.home.geoffdavis.com`
    - Verify proper redirect to Authentik authentication
    - Confirm successful authentication and dashboard access
@@ -420,6 +498,7 @@ This task documents the final fix for the dashboard service configuration issue 
    - Document system as production-ready and complete
 
 **GitOps Database Update Approach:**
+
 - **Kubernetes Job**: Used GitOps-managed Kubernetes Job for database updates
 - **Python Script**: Embedded Python script in job for database connection and updates
 - **RBAC Integration**: Proper service account and permissions for database access
@@ -427,6 +506,7 @@ This task documents the final fix for the dashboard service configuration issue 
 - **Audit Trail**: Job logs provide complete audit trail of database changes
 
 **Important notes:**
+
 - **Final Service Fix**: This was the last service needed to complete the external authentik-proxy system
 - **GitOps Approach**: Used Kubernetes Job instead of manual database intervention
 - **Root Cause**: Service configuration mismatch, not authentication system problem
@@ -434,6 +514,7 @@ This task documents the final fix for the dashboard service configuration issue 
 - **Production Ready**: External authentik-proxy system now fully production-ready
 
 **Success Criteria:**
+
 - ✅ Dashboard service accessible via https://dashboard.k8s.home.geoffdavis.com
 - ✅ Proper authentication redirect to Authentik login
 - ✅ Successful authentication and dashboard access
@@ -442,12 +523,14 @@ This task documents the final fix for the dashboard service configuration issue 
 - ✅ GitOps database update job completed successfully
 
 **Post-Fix Status:**
+
 - **System Status**: External authentik-proxy system COMPLETE and PRODUCTION-READY
 - **Service Count**: 6/6 services working correctly with authentication
 - **Authentication Architecture**: External outpost architecture fully operational
 - **Documentation**: Comprehensive operational procedures and troubleshooting guides complete
 
 **Troubleshooting:**
+
 - **Service configuration mismatches**: Check HelmRelease configuration vs proxy provider settings
 - **Database connection issues**: Verify PostgreSQL connectivity and credentials
 - **Job execution failures**: Check RBAC permissions and database access
@@ -456,8 +539,10 @@ This task documents the final fix for the dashboard service configuration issue 
 This task represents the final completion of the comprehensive external Authentik outpost system that began in July 2025, with all authentication and service connectivity issues now resolved.
 
 ### Configure Kubernetes Dashboard Bearer Token Elimination
+
 **Last performed:** July 2025 (successful completion - COMPLETED)
 **Files to modify:**
+
 - `apps/dashboard/kong-config-override-job.yaml` - Remove problematic configuration job (DELETE FILE)
 - `apps/dashboard/dashboard-service-account.yaml` - Enhance RBAC permissions for administrative access
 - Browser cache - Clear cache to ensure configuration changes take effect
@@ -466,36 +551,43 @@ This task represents the final completion of the comprehensive external Authenti
 This task documents the successful elimination of manual bearer token requirements for Kubernetes Dashboard access through comprehensive authentication integration with the existing external Authentik outpost system. The project resolved conflicting Kong configuration jobs and enhanced RBAC permissions to provide seamless SSO access with full administrative capabilities.
 
 **Root Cause:**
+
 - **Kong Configuration Conflicts**: Multiple Kong configuration jobs were overriding each other, preventing proper Dashboard authentication integration
 - **RBAC Permission Limitations**: Dashboard service account lacked sufficient permissions for full administrative access
 - **Authentication Integration Gap**: Dashboard was not properly integrated with the external Authentik outpost authentication system
 
 **Steps:**
+
 1. **Root Cause Analysis**:
+
    - Identified conflicting Kong configuration jobs in Dashboard deployment
    - Discovered `kong-config-override-job.yaml` was overriding proper authentication configuration
    - Confirmed external Authentik outpost system was operational for other 5 services
    - Analyzed Dashboard service account RBAC permissions
 
 2. **Kong Configuration Conflict Resolution**:
+
    - Located problematic `kong-config-override-job.yaml` file in Dashboard configuration
    - Identified that this job was overriding proper Kong service configuration
    - Removed the conflicting configuration job to allow proper authentication flow
    - Verified that Dashboard HelmRelease had Kong disabled as intended
 
 3. **RBAC Permissions Enhancement**:
+
    - Updated Dashboard service account with proper cluster-admin permissions
    - Enhanced ClusterRoleBinding to provide full administrative access
    - Ensured service account has sufficient permissions for Dashboard functionality
    - Validated RBAC configuration matches administrative requirements
 
 4. **Authentication System Integration**:
+
    - Verified Dashboard proxy provider configuration in Authentik admin interface
    - Confirmed external outpost was handling Dashboard authentication requests
    - Tested authentication flow integration with existing external Authentik outpost
    - Validated seamless SSO integration with other cluster services
 
 5. **Configuration Deployment and Testing**:
+
    - Committed all configuration changes to Git repository
    - Deployed changes via GitOps using Flux reconciliation
    - Cleared browser cache to ensure configuration changes take effect (CRITICAL STEP)
@@ -508,18 +600,21 @@ This task documents the successful elimination of manual bearer token requiremen
    - Validated integration with existing external outpost architecture
 
 **Kong Configuration Cleanup Process:**
+
 - **File Identification**: Located `kong-config-override-job.yaml` causing configuration conflicts
 - **Conflict Analysis**: Determined job was overriding proper Kong service configuration
 - **Safe Removal**: Deleted problematic configuration job while preserving other Dashboard components
 - **Validation**: Confirmed Dashboard HelmRelease configuration remained intact with Kong disabled
 
 **RBAC Enhancement Details:**
+
 - **Service Account**: Updated Dashboard service account with enhanced permissions
 - **ClusterRoleBinding**: Configured proper cluster-admin access for administrative functionality
 - **Permission Validation**: Tested administrative access and Dashboard feature availability
 - **Security Review**: Ensured permissions are appropriate for Dashboard administrative use
 
 **Important notes:**
+
 - **Browser Cache Clearing**: CRITICAL step for ensuring configuration changes take effect
 - **Kong Configuration**: Dashboard HelmRelease has Kong disabled, conflicting jobs must be removed
 - **External Outpost Integration**: Dashboard authentication fully integrated with existing external outpost system
@@ -527,6 +622,7 @@ This task documents the successful elimination of manual bearer token requiremen
 - **Administrative Access**: Dashboard now provides full administrative capabilities without manual token entry
 
 **Success Criteria:**
+
 - ✅ Dashboard accessible via https://dashboard.k8s.home.geoffdavis.com without manual bearer token
 - ✅ Seamless SSO authentication through Authentik external outpost
 - ✅ Full administrative access and Dashboard functionality available
@@ -535,6 +631,7 @@ This task documents the successful elimination of manual bearer token requiremen
 - ✅ All changes committed to Git and deployed via GitOps
 
 **Post-Completion Status:**
+
 - **Authentication System**: Dashboard authentication fully integrated with external Authentik outpost
 - **User Experience**: Seamless SSO access without manual token requirements
 - **Administrative Access**: Full cluster administrative capabilities available through Dashboard
@@ -542,6 +639,7 @@ This task documents the successful elimination of manual bearer token requiremen
 - **System Integration**: Dashboard now part of comprehensive authentication system with other 5 services
 
 **Troubleshooting:**
+
 - **Authentication failures**: Clear browser cache and verify external outpost connectivity
 - **Permission issues**: Check Dashboard service account RBAC configuration
 - **Configuration conflicts**: Ensure no conflicting Kong configuration jobs exist
@@ -552,11 +650,14 @@ This task represents the successful completion of the Kubernetes Dashboard beare
 ## Monitoring and Maintenance
 
 ### Update Monitoring Dashboards
+
 **Last performed:** When adding new services or metrics
 **Files to modify:**
+
 - `infrastructure/monitoring/` - Dashboard ConfigMaps
 
 **Steps:**
+
 1. Export dashboard JSON from Grafana UI
 2. Create or update ConfigMap with dashboard JSON
 3. Add grafana_dashboard label for auto-discovery
@@ -564,15 +665,18 @@ This task represents the successful completion of the Kubernetes Dashboard beare
 5. Verify dashboard appears in Grafana
 
 **Important notes:**
+
 - Use consistent dashboard naming and organization
 - Include proper data source configurations
 - Test dashboard functionality after deployment
 
 ### Cluster Health Check
+
 **Last performed:** Daily operational routine
 **Files to modify:** None
 
 **Steps:**
+
 1. Check overall status: `task cluster:status`
 2. Check GitOps health: `flux get kustomizations`
 3. Check for failed pods: `kubectl get pods -A | grep -v Running | grep -v Completed`
@@ -581,39 +685,48 @@ This task represents the successful completion of the Kubernetes Dashboard beare
 6. Review recent events: `kubectl get events --sort-by='.lastTimestamp' | tail -20`
 
 **Important notes:**
+
 - Document any issues found for trending analysis
 - Address failed pods and resource constraints promptly
 - Monitor storage capacity and plan for expansion
 
 ### Troubleshoot Authentik Authentication Issues
+
 **Last performed:** January 2025 (successful resolution)
 **Files to modify:**
+
 - `infrastructure/authentik/admin-api-token-setup-job.yaml` - Token regeneration job
 - `infrastructure/authentik-outpost-config/outpost-config-job.yaml` - Outpost configuration
 - Various service ingress files - Ingress configuration cleanup
 
 **Steps:**
+
 1. **Diagnose Authentication Failures**:
+
    - Check service accessibility: `curl -I https://<service>.k8s.home.geoffdavis.com`
    - Verify ingress configuration: `kubectl get ingress -A`
    - Check Authentik outpost logs: `kubectl logs -n authentik -l app.kubernetes.io/name=authentik`
 
 2. **Check for Conflicting Ingress Configurations**:
+
    - Identify individual service ingresses: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
    - Verify embedded outpost ingress exists: `kubectl get ingress -n authentik`
    - Check for duplicate domain handling between individual services and embedded outpost
 
 3. **Remove Conflicting Individual Service Ingresses**:
+
    - Delete individual service ingresses that conflict with embedded outpost
-   - Ensure only embedded outpost handles *.k8s.home.geoffdavis.com domains
+   - Ensure only embedded outpost handles \*.k8s.home.geoffdavis.com domains
    - Verify service endpoints are accessible: `kubectl get endpoints -A`
 
 4. **Configure Embedded Outpost**:
+
    - Delete outpost config job: `kubectl delete job -n authentik outpost-config`
    - Apply outpost config: `kubectl apply -f infrastructure/authentik-outpost-config/outpost-config-job.yaml`
    - Verify outpost registration in Authentik admin interface
 
 5. **Create Proxy Providers**:
+
    - Access Authentik admin interface
    - Create proxy providers for each service (dashboard, longhorn, hubble, grafana, prometheus, alertmanager)
    - Configure forward auth with proper internal service URLs
@@ -626,48 +739,58 @@ This task represents the successful completion of the Kubernetes Dashboard beare
    - Check all monitored services (Longhorn, Grafana, etc.)
 
 **Important notes:**
+
 - **Root cause**: Conflicting ingress configurations between individual service ingresses and embedded outpost
-- Embedded outpost architecture requires NO individual service ingresses for *.k8s.home.geoffdavis.com
+- Embedded outpost architecture requires NO individual service ingresses for \*.k8s.home.geoffdavis.com
 - All services must be handled by embedded outpost ingress only
 - Network connectivity must be verified between authentik namespace and service namespaces
 - Manual proxy provider configuration may be required when automation fails
 
 **Common Issues and Solutions:**
+
 - **404/500 errors**: Usually indicates conflicting ingress configurations - remove individual service ingresses
-- **Authentication loops**: Check that only embedded outpost handles *.k8s.home.geoffdavis.com domains
+- **Authentication loops**: Check that only embedded outpost handles \*.k8s.home.geoffdavis.com domains
 - **Service unreachable**: Verify service endpoints and network connectivity between namespaces
 - **Configuration conflicts**: Ensure embedded outpost has exclusive domain handling
 
 ### Resolve Authentik Authentication via Ingress Configuration Cleanup
+
 **Last performed:** January 2025 (successful resolution)
 **Files to modify:**
+
 - Individual service ingress files - Remove conflicting configurations
 - `infrastructure/authentik-outpost-config/` - Embedded outpost configuration
 - Various service configurations - Service endpoint validation
 
 **Steps:**
+
 1. **Identify Conflicting Ingress Configurations**:
-   - List all ingresses handling *.k8s.home.geoffdavis.com: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
+
+   - List all ingresses handling \*.k8s.home.geoffdavis.com: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
    - Identify individual service ingresses that conflict with embedded outpost
    - Check embedded outpost ingress configuration: `kubectl get ingress -n authentik`
 
 2. **Remove Individual Service Ingresses**:
-   - Delete individual service ingress resources that handle *.k8s.home.geoffdavis.com domains
+
+   - Delete individual service ingress resources that handle \*.k8s.home.geoffdavis.com domains
    - Ensure only embedded outpost ingress handles these domains
    - Verify service endpoints remain accessible: `kubectl get endpoints -A`
 
 3. **Configure Embedded Outpost**:
+
    - Apply embedded outpost configuration job
    - Verify outpost registration in Authentik admin interface
    - Check outpost connectivity and health status
 
 4. **Create Proxy Providers**:
+
    - Access Authentik admin interface
    - Create proxy providers for all services (dashboard, longhorn, hubble, grafana, prometheus, alertmanager)
    - Configure forward auth with proper internal service URLs and ports
    - Verify network connectivity between authentik namespace and service namespaces
 
 5. **Validate Service Configuration**:
+
    - Fix service names and port configurations (e.g., Grafana service name)
    - Ensure services are discoverable from authentik namespace
    - Test network connectivity: `kubectl exec -n authentik <pod> -- curl <service>.<namespace>:<port>`
@@ -679,13 +802,15 @@ This task represents the successful completion of the Kubernetes Dashboard beare
    - Validate all 6 services are working (dashboard, longhorn, hubble, grafana, prometheus, alertmanager)
 
 **Important notes:**
+
 - **Root cause confirmed**: Conflicting ingress configurations between individual services and embedded outpost
-- Embedded outpost architecture requires exclusive domain handling for *.k8s.home.geoffdavis.com
+- Embedded outpost architecture requires exclusive domain handling for \*.k8s.home.geoffdavis.com
 - Network connectivity between authentik namespace and service namespaces is critical
 - Service configuration fixes may be required (service names, ports)
 - Manual proxy provider configuration is the reliable fallback when automation fails
 
 **Resolution Summary:**
+
 - Conflicting ingress configurations prevented proper request routing to embedded outpost
 - Embedded outpost with forward auth runs within authentik-server pods
 - All 6 proxy providers successfully created and operational
@@ -693,67 +818,80 @@ This task represents the successful completion of the Kubernetes Dashboard beare
 - All services now properly authenticated and accessible via SSO
 
 ### Monitor Authentication System Health
+
 **Last performed:** Ongoing maintenance requirement
 **Files to modify:** None (monitoring task)
 
 **Steps:**
+
 1. **Daily Authentication Health Checks**:
+
    - Test key service access: `curl -I https://longhorn.k8s.home.geoffdavis.com`
    - Verify all 6 services accessible: Dashboard, Longhorn, Hubble, Grafana, Prometheus, AlertManager
    - Check for authentication response times and any 404/500 errors
 
 2. **Weekly Ingress Configuration Validation**:
-   - List all ingresses handling *.k8s.home.geoffdavis.com: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
+
+   - List all ingresses handling \*.k8s.home.geoffdavis.com: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
    - Verify only embedded outpost ingress handles these domains
    - Check for any new individual service ingresses that might conflict
 
 3. **Monthly Outpost Health Assessment**:
+
    - Access Authentik admin interface and check outpost status
    - Verify all proxy providers are operational
    - Review authentication logs for any recurring errors
    - Check API token expiration dates and plan rotation if needed
 
 4. **Proactive Configuration Monitoring**:
+
    - Monitor for new service deployments that might create conflicting ingresses
    - Validate network connectivity between authentik namespace and service namespaces
    - Check for any changes to service names or ports that might break proxy providers
 
 5. **Alert on Authentication Failures**:
-   - Set up monitoring alerts for 404/500 responses from *.k8s.home.geoffdavis.com services
+   - Set up monitoring alerts for 404/500 responses from \*.k8s.home.geoffdavis.com services
    - Monitor Authentik outpost connectivity status
    - Alert on authentication response time degradation
 
 **Important notes:**
+
 - Early detection of ingress configuration conflicts prevents service outages
 - Regular validation ensures embedded outpost maintains exclusive domain handling
 - Proactive monitoring reduces manual troubleshooting and service disruption
 - Authentication system health directly impacts all cluster services
 
 **Monitoring Checklist:**
+
 - [ ] All 6 services respond with proper authentication redirects
-- [ ] Only embedded outpost ingress handles *.k8s.home.geoffdavis.com domains
+- [ ] Only embedded outpost ingress handles \*.k8s.home.geoffdavis.com domains
 - [ ] No conflicting individual service ingresses exist
 - [ ] Network connectivity between authentik and service namespaces is clear
 - [ ] Authentik outpost status shows healthy in admin interface
 - [ ] All proxy providers are operational and properly configured
 
 ### Prevent Authentication Configuration Conflicts
+
 **Last performed:** Ongoing operational requirement
 **Files to modify:** Various service configurations as needed
 
 **Steps:**
+
 1. **Service Deployment Guidelines**:
-   - When adding new services to *.k8s.home.geoffdavis.com domain:
+
+   - When adding new services to \*.k8s.home.geoffdavis.com domain:
    - Do NOT create individual service ingresses for authenticated domains
    - Ensure services use proper internal service names and ports
    - Verify network connectivity from authentik namespace
 
 2. **Configuration Validation Process**:
+
    - Before deploying new services, check existing ingress configurations
    - Validate that embedded outpost will have exclusive domain handling
    - Test service endpoints are accessible from authentik namespace
 
 3. **Automated Configuration Checks**:
+
    - Implement pre-deployment validation scripts
    - Check for conflicting ingress configurations before Git commits
    - Validate service discovery and network connectivity
@@ -764,21 +902,24 @@ This task represents the successful completion of the Kubernetes Dashboard beare
    - Train operators on proper authentication integration patterns
 
 **Important notes:**
+
 - Prevention is more effective than troubleshooting after conflicts occur
 - Embedded outpost architecture requires exclusive domain handling
 - Service integration must follow established patterns to avoid conflicts
 - Proper validation prevents authentication system disruption
 
 ### Resolve Persistent Service Connectivity Issues After Authentication Configuration
+
 **Last performed:** January 2025 (ongoing issue)
 **Files to modify:** Various infrastructure and network configuration files as needed
 
 **Context:**
-This task addresses persistent connectivity issues where services at *.k8s.home.geoffdavis.com remain inaccessible despite comprehensive authentication system restoration work. This represents a different class of issue than ingress configuration conflicts and may require network-level troubleshooting beyond Kubernetes configuration.
+This task addresses persistent connectivity issues where services at \*.k8s.home.geoffdavis.com remain inaccessible despite comprehensive authentication system restoration work. This represents a different class of issue than ingress configuration conflicts and may require network-level troubleshooting beyond Kubernetes configuration.
 
 **Steps:**
 
 1. **Systematic Connectivity Diagnosis**:
+
    - Test DNS resolution from client machines: `dig longhorn.k8s.home.geoffdavis.com`
    - Test DNS resolution from cluster: `kubectl run -it --rm debug --image=busybox --restart=Never -- nslookup longhorn.k8s.home.geoffdavis.com`
    - Verify load balancer IP accessibility: `ping 172.29.51.200` and `telnet 172.29.51.200 443`
@@ -786,6 +927,7 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
    - Check ingress controller health: `kubectl get pods -n ingress-nginx-internal` and `kubectl logs -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-nginx`
 
 2. **Infrastructure Layer Validation**:
+
    - Verify BGP advertisement for load balancer IPs: `task bgp:verify-peering`
    - Check BGP route advertisement: `kubectl exec -n kube-system -l k8s-app=cilium -- cilium bgp routes`
    - Validate Cilium CNI health: `cilium status` and `cilium connectivity test`
@@ -794,12 +936,14 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
    - Test ingress controller service endpoints: `kubectl get endpoints -n ingress-nginx-internal`
 
 3. **Authentication System Integration Testing**:
+
    - Test Authentik service accessibility from cluster: `kubectl exec -it -n authentik <authentik-pod> -- curl -I http://authentik-server:9000`
    - Verify embedded outpost connectivity: Check outpost status in Authentik admin interface
    - Test forward-auth endpoint: `kubectl exec -it -n authentik <authentik-pod> -- curl -I http://authentik-server:9000/outpost.goauthentik.io/auth/nginx`
    - Validate service-to-service communication: `kubectl exec -it -n authentik <authentik-pod> -- curl -I http://longhorn-frontend.longhorn-system:80`
 
 4. **Client-Side Troubleshooting**:
+
    - Test DNS resolution from multiple client machines: `dig longhorn.k8s.home.geoffdavis.com @<dns-server>`
    - Check network routing to cluster IPs: `traceroute 172.29.51.200`
    - Verify certificate trust chain: Check browser certificate validation and system certificate store
@@ -807,6 +951,7 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
    - Check firewall rules: Verify no blocking of ports 80/443 to cluster IP range
 
 5. **Network Infrastructure Validation**:
+
    - Verify UDM Pro BGP peering status: Check BGP neighbor status and route advertisement
    - Test load balancer IP reachability from router: `ping 172.29.51.200` from UDM Pro
    - Check VLAN configuration: Verify VLAN 51 routing and inter-VLAN communication
@@ -814,6 +959,7 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
    - Test network segmentation: Verify no network policies blocking traffic
 
 6. **Kubernetes Service Discovery Validation**:
+
    - Check service endpoints: `kubectl get endpoints -A | grep -E "(longhorn|grafana|prometheus|alertmanager|dashboard)"`
    - Verify service port configurations: `kubectl get svc -A | grep -E "(longhorn|grafana|prometheus|alertmanager|dashboard)"`
    - Test internal service connectivity: `kubectl run -it --rm debug --image=busybox --restart=Never -- wget -O- http://longhorn-frontend.longhorn-system:80`
@@ -826,6 +972,7 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
    - Validate ingress controller logs for request processing: `kubectl logs -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-nginx --tail=100`
 
 **Important notes:**
+
 - This represents a different class of issue than ingress configuration conflicts previously resolved
 - May require network-level troubleshooting beyond Kubernetes configuration
 - Could involve DNS, BGP, load balancer, certificate, or fundamental network connectivity issues
@@ -833,6 +980,7 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
 - Focus on validating each layer: DNS → Network → Load Balancer → Ingress → Authentication → Service
 
 **Common Root Causes:**
+
 - **DNS Issues**: Records not created, wrong IP addresses, DNS server not responding
 - **BGP Problems**: Routes not advertised, peering down, incorrect ASN configuration
 - **Load Balancer Issues**: IP pool exhaustion, service not getting external IP
@@ -841,6 +989,7 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
 - **Service Discovery**: Endpoints not ready, service port mismatches, pod not running
 
 **Escalation Path:**
+
 1. If DNS resolution fails → Focus on external-dns and DNS server configuration
 2. If network connectivity fails → Focus on BGP, routing, and firewall configuration
 3. If TLS fails → Focus on cert-manager and certificate validation
@@ -848,6 +997,7 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
 5. If authentication fails → Return to authentication system troubleshooting tasks
 
 **Success Criteria:**
+
 - DNS resolution works from client machines
 - Network connectivity established to load balancer IP
 - TLS certificates validate properly
@@ -858,8 +1008,10 @@ This task addresses persistent connectivity issues where services at *.k8s.home.
 This task documentation helps maintain consistency and reduces the learning curve for common operational procedures.
 
 ### Migrate Load Balancer from L2 Announcements to BGP-Only Architecture
+
 **Last performed:** January 2025 (COMPLETED - BGP LoadBalancer migration successful)
 **Files to modify:**
+
 - `Taskfile.yml` - Bootstrap Cilium configuration updated to include LB-IPAM and XDP disabled
 - `infrastructure/cilium/loadbalancer-pool-bgp.yaml` - BGP IP pool definitions deployed
 - `infrastructure/cilium-bgp/bgp-policy-legacy.yaml` - Working BGP peering configuration using legacy schema
@@ -870,6 +1022,7 @@ This task documentation helps maintain consistency and reduces the learning curv
 This migration successfully resolved L2 announcement conflicts by moving to a BGP-only load balancer architecture. **Migration Complete**: BGP peering established, route advertisement working, and all services accessible via BGP-advertised IPs. **Root Cause Resolution**: Schema compatibility issues resolved by switching to legacy CiliumBGPPeeringPolicy.
 
 **Final Status:**
+
 - ✅ BGP peering established and stable between cluster (ASN 64512) and UDM Pro (ASN 64513)
 - ✅ Cilium v1.17.6 deployed with XDP disabled for Mac mini compatibility
 - ✅ LoadBalancer IPAM working (services getting IPs from BGP pools: 172.29.52.x range)
@@ -879,22 +1032,27 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
 - ✅ All services accessible via BGP-advertised IPs (Longhorn: 172.29.52.100, Ingress: 172.29.52.200)
 
 **Steps Completed:**
+
 1. **✅ Cilium v1.17.6 Deployment**:
+
    - Upgraded from v1.16.1 with XDP disabled: `--set loadBalancer.acceleration=disabled`
    - LoadBalancer IPAM enabled: `--set loadBalancer.l2.enabled=false --set enable-lb-ipam=true`
    - Bootstrap configuration updated in `Taskfile.yml` for future deployments
 
 2. **✅ BGP IP Pools Configured**:
+
    - Deployed BGP IP pools via GitOps: `infrastructure/cilium/loadbalancer-pool-bgp.yaml`
    - Pools: `bgp-default` (172.29.52.100-199), `bgp-ingress` (172.29.52.200-220), `bgp-reserved` (172.29.52.221-250)
    - Removed conflicting legacy pools to prevent IPAM conflicts
 
 3. **✅ Service Annotations Updated**:
+
    - Ingress services annotated with `io.cilium/lb-ipam-pool=ingress`
    - Other services annotated with `io.cilium/lb-ipam-pool=default`
    - Pool selectors properly matched between pools and service annotations
 
 4. **✅ BGP Peering Established**:
+
    - UDM Pro BGP configuration deployed (ASN 64513)
    - Cluster BGP configuration deployed (ASN 64512)
    - BGP peering status: **ESTABLISHED** and stable
@@ -906,18 +1064,22 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
    - Network separation implemented (VLAN 51 for management, VLAN 52 for load balancer IPs)
 
 **Root Cause Resolution - Schema Compatibility Issues:**
+
 - **Problem**: CiliumBGPClusterConfig/CiliumBGPAdvertisement incompatible with Cilium v1.17.6
 - **Solution**: Switched to legacy CiliumBGPPeeringPolicy schema for full compatibility
 - **Result**: BGP routes successfully advertised and services accessible from network
 - **Configuration**: [`infrastructure/cilium-bgp/bgp-policy-legacy.yaml`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml)
 
 **Migration Completion Steps:**
+
 1. **✅ Schema Compatibility Resolution**:
+
    - Identified newer BGP CRDs incompatible with Cilium v1.17.6
    - Switched to legacy CiliumBGPPeeringPolicy schema
    - Removed problematic CiliumBGPClusterConfig/CiliumBGPAdvertisement resources
 
 2. **✅ BGP Route Advertisement Working**:
+
    - Legacy schema enables proper route advertisement
    - BGP routes visible in UDM Pro routing table
    - Services accessible via BGP-advertised IPs
@@ -929,6 +1091,7 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
    - Full network connectivity confirmed
 
 **Important notes:**
+
 - **Migration Complete**: BGP LoadBalancer migration successfully completed
 - **Architecture Change**: Successfully moved from L2 announcements to BGP-only load balancer architecture
 - **Cilium Compatibility**: XDP disabled configuration resolves Mac mini compatibility issues
@@ -937,12 +1100,14 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
 - **Schema Solution**: Legacy CiliumBGPPeeringPolicy provides full Cilium v1.17.6 compatibility
 
 **Operational Procedures:**
+
 - **BGP Status**: Use `task bgp-loadbalancer:status` for comprehensive BGP health check
 - **Service Management**: Use `task bgp-loadbalancer:update-service-pools` to assign services to specific IP pools
 - **Troubleshooting**: Use `task bgp-loadbalancer:troubleshoot` for systematic issue diagnosis
 - **Monitoring**: Use `task bgp-loadbalancer:verify-bgp-peering` to check BGP peering health
 
 **Success Criteria - ALL ACHIEVED:**
+
 - ✅ BGP peering established between cluster nodes (ASN 64512) and UDM Pro (ASN 64513)
 - ✅ All LoadBalancer services get external IPs from BGP pools (172.29.52.x range)
 - ✅ Network separation implemented with proper VLAN segmentation
@@ -951,6 +1116,7 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
 - ✅ Bootstrap configuration updated for future cluster deployments
 
 **Documentation Created:**
+
 - **Operational Guide**: [`docs/BGP_LOADBALANCER_OPERATIONAL_GUIDE.md`](../docs/BGP_LOADBALANCER_OPERATIONAL_GUIDE.md)
 - **Troubleshooting Guide**: [`docs/BGP_LOADBALANCER_TROUBLESHOOTING.md`](../docs/BGP_LOADBALANCER_TROUBLESHOOTING.md)
 - **Task Commands**: [`taskfiles/bgp-loadbalancer.yml`](../taskfiles/bgp-loadbalancer.yml)
@@ -958,13 +1124,15 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
 The BGP LoadBalancer system is now **production-ready** and the migration from L2 announcements is **complete**.
 
 ### Fix BGP Pool Advertisement Issues for Multiple IP Pools
+
 **Last performed:** January 2025 (COMPLETED - BGP pool advertisement fixed)
 **Files to modify:**
+
 - `infrastructure/cilium-bgp/bgp-policy-legacy.yaml` - BGP peering policy with multiple virtual routers
 - `infrastructure/ingress-nginx-internal/helmrelease.yaml` - Service pool annotations
 
 **Context:**
-This task resolves BGP route advertisement failures where only services from the `bgp-default` pool were being advertised via BGP, while services from other pools (like `bgp-ingress`) were not advertised, causing 500 errors for *.k8s.home.geoffdavis.com services.
+This task resolves BGP route advertisement failures where only services from the `bgp-default` pool were being advertised via BGP, while services from other pools (like `bgp-ingress`) were not advertised, causing 500 errors for \*.k8s.home.geoffdavis.com services.
 
 **Root Cause:**
 The legacy CiliumBGPPeeringPolicy with a single virtual router using `serviceSelector: {}` (empty selector) was not properly advertising services from all IP pools. Only services from the `bgp-default` pool were being advertised.
@@ -973,12 +1141,15 @@ The legacy CiliumBGPPeeringPolicy with a single virtual router using `serviceSel
 Create dedicated virtual routers for each IP pool with explicit service selectors matching the pool labels.
 
 **Steps:**
+
 1. **Diagnose BGP Advertisement Issue**:
+
    - Check BGP routes: `kubectl exec -n kube-system <cilium-pod> -- cilium bgp routes`
    - Verify service pool assignments: `kubectl get svc -A --field-selector spec.type=LoadBalancer -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metadata.name,EXTERNAL-IP:.status.loadBalancer.ingress[0].ip,POOL:.metadata.annotations.io\.cilium/lb-ipam-pool"`
    - Identify missing routes for specific pools
 
 2. **Update BGP Policy Configuration**:
+
    - Replace single virtual router with multiple virtual routers
    - Create dedicated virtual router for each IP pool:
      - `bgp-default` pool: `serviceSelector.matchLabels.io.cilium/lb-ipam-pool: "bgp-default"`
@@ -988,11 +1159,13 @@ Create dedicated virtual routers for each IP pool with explicit service selector
    - Each virtual router has same BGP neighbor configuration
 
 3. **Verify Service Pool Annotations**:
+
    - Ensure services have correct `io.cilium/lb-ipam-pool` annotations
    - Match service annotations with IP pool names exactly
    - Update service configurations if pool names don't match
 
 4. **Test BGP Route Advertisement**:
+
    - Apply BGP policy changes via GitOps
    - Monitor BGP routes: `kubectl exec -n kube-system <cilium-pod> -- cilium bgp routes`
    - Verify all LoadBalancer service IPs are advertised
@@ -1004,6 +1177,7 @@ Create dedicated virtual routers for each IP pool with explicit service selector
    - Verify network routing from client machines
 
 **BGP Policy Configuration Example:**
+
 ```yaml
 spec:
   virtualRouters:
@@ -1032,6 +1206,7 @@ spec:
 ```
 
 **Important notes:**
+
 - **Root cause**: Single virtual router with empty serviceSelector not advertising all IP pools
 - **Solution**: Multiple virtual routers with explicit pool-specific service selectors
 - **Cilium v1.17.6 compatibility**: Legacy CiliumBGPPeeringPolicy schema required
@@ -1039,13 +1214,15 @@ spec:
 - **Pool architecture**: Maintains separation between bgp-default, bgp-ingress, and bgp-reserved pools
 
 **Success Criteria:**
+
 - ✅ All LoadBalancer service IPs advertised via BGP regardless of pool assignment
 - ✅ BGP routes include services from bgp-default, bgp-ingress, and bgp-reserved pools
 - ✅ Services respond with HTTP codes instead of connection timeouts
-- ✅ Network connectivity restored for *.k8s.home.geoffdavis.com services
+- ✅ Network connectivity restored for \*.k8s.home.geoffdavis.com services
 - ✅ BGP peering remains stable with multiple virtual routers
 
 **Troubleshooting:**
+
 - **Missing routes**: Check service pool annotations match IP pool names exactly
 - **BGP peering issues**: Verify all virtual routers have identical neighbor configuration
 - **Service connectivity**: Ensure DNS records point to correct advertised IPs

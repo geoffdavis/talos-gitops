@@ -7,6 +7,7 @@ These guidelines **MUST** be followed for any cluster operations, especially whe
 ## 🔒 MANDATORY SAFETY PROTOCOLS
 
 ### Rule #1: NEVER Reset Entire Cluster Without Explicit Permission
+
 ```bash
 # ❌ FORBIDDEN - Never use without explicit user approval
 talosctl reset --nodes <any-nodes>
@@ -21,6 +22,7 @@ fi
 ```
 
 ### Rule #2: ALWAYS Specify Partition Limitations
+
 ```bash
 # ❌ FORBIDDEN - Generic reset without partition specification
 talosctl reset --nodes <node-ip>
@@ -33,21 +35,27 @@ talosctl reset \
 ```
 
 ### Rule #3: ALWAYS Ask Before Destructive Operations
+
 Any operation that could cause data loss or downtime MUST:
+
 - Display clear warnings about the operation's impact
 - Require explicit user confirmation
 - Provide safe alternatives
 - Document the command before execution
 
 ### Rule #4: PREFER Configuration Fixes Over Resets
+
 Before considering any reset operation, try these safer alternatives:
+
 1. Service restarts: `talosctl service <service> restart`
 2. Configuration reapplication: `task talos:apply-config-only`
 3. Node reboots: `task talos:reboot`
 4. Component-specific fixes: `task talos:fix-cilium`
 
 ### Rule #5: Document All Commands Before Execution
+
 Every potentially destructive command must be:
+
 - Logged with timestamp and reasoning
 - Reviewed for safety compliance
 - Executed with appropriate safeguards
@@ -56,6 +64,7 @@ Every potentially destructive command must be:
 ## 🚫 FORBIDDEN OPERATIONS
 
 ### Never Execute These Commands
+
 ```bash
 # ❌ Complete system reset (wipes OS)
 talosctl reset --nodes <any-nodes>
@@ -76,6 +85,7 @@ etcdctl del "" --from-key
 ## ✅ APPROVED SAFE OPERATIONS
 
 ### Safe Reset Operations
+
 ```bash
 # ✅ Safe user data reset with confirmation
 task cluster:safe-reset NODE=<node-ip>
@@ -88,6 +98,7 @@ task cluster:recover
 ```
 
 ### Safe Troubleshooting Operations
+
 ```bash
 # ✅ Service management
 talosctl service <service> restart --nodes <node-ip>
@@ -108,6 +119,7 @@ talosctl logs <service> --nodes <node-ip>
 Before executing ANY potentially destructive operation:
 
 ### Mandatory Checks
+
 - [ ] **Verify operation necessity**: Can this be solved with safer methods?
 - [ ] **Check partition specification**: Are we only targeting safe partitions?
 - [ ] **Confirm user approval**: Has the user explicitly approved this operation?
@@ -117,6 +129,7 @@ Before executing ANY potentially destructive operation:
 - [ ] **USB installer ready**: Is the USB installer available for emergency recovery?
 
 ### Documentation Requirements
+
 - [ ] **Log the operation**: Record what, why, when, and who
 - [ ] **Document reasoning**: Why is this operation necessary?
 - [ ] **Record safeguards**: What safety measures are in place?
@@ -125,6 +138,7 @@ Before executing ANY potentially destructive operation:
 ## 🛠️ SAFE OPERATION TEMPLATES
 
 ### Template: Safe Node Reset
+
 ```bash
 #!/bin/bash
 # Safe node reset template with all required safeguards
@@ -164,6 +178,7 @@ echo "Safe reset completed. Monitor node recovery..."
 ```
 
 ### Template: Safe Service Restart
+
 ```bash
 #!/bin/bash
 # Safe service restart template
@@ -188,13 +203,16 @@ talosctl service "$SERVICE" status --nodes "$NODE_IP"
 ### If You Accidentally Execute a Dangerous Command
 
 #### Immediate Actions
+
 1. **Stop the operation** if still in progress:
+
    ```bash
    # Try to interrupt if possible
    Ctrl+C
    ```
 
 2. **Assess the damage**:
+
    ```bash
    # Check node status
    kubectl get nodes
@@ -210,6 +228,7 @@ talosctl service "$SERVICE" status --nodes "$NODE_IP"
    ```
 
 #### Recovery Steps
+
 1. **If OS is intact**: Use cluster recovery procedures
 2. **If OS is wiped**: Follow USB reinstallation process
 3. **Document the incident**: Record what happened and how to prevent it
@@ -217,18 +236,21 @@ talosctl service "$SERVICE" status --nodes "$NODE_IP"
 ## 📋 OPERATION APPROVAL MATRIX
 
 ### Operations Requiring NO Approval (Always Safe)
+
 - Reading system information (`talosctl get`, `kubectl get`)
 - Checking service status (`talosctl service status`)
 - Viewing logs (`talosctl logs`)
 - Network diagnostics (`task network:check-*`)
 
 ### Operations Requiring USER CONFIRMATION
+
 - Service restarts (`talosctl service restart`)
 - Node reboots (`task talos:reboot`)
 - Configuration reapplication (`task talos:apply-config`)
 - Safe resets (`task cluster:safe-reset`)
 
 ### Operations REQUIRING EXPLICIT APPROVAL
+
 - Any `talosctl reset` command
 - Cluster-wide operations affecting multiple nodes
 - Operations that could cause downtime
@@ -237,6 +259,7 @@ talosctl service "$SERVICE" status --nodes "$NODE_IP"
 ## 🎯 COMPLIANCE VERIFICATION
 
 ### Before Any Operation
+
 ```bash
 # Verify compliance with safety guidelines
 echo "Safety Checklist:"
@@ -248,6 +271,7 @@ echo "5. Is the impact clearly understood and documented?"
 ```
 
 ### After Any Operation
+
 ```bash
 # Verify successful completion
 echo "Post-operation verification:"

@@ -14,16 +14,16 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    
+
     # Security headers will be handled by Authentik itself or external security policies
-    
+
     # SSL configuration
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    
+
     # Certificate management
     cert-manager.io/cluster-issuer: "letsencrypt-production"
-    
+
     # External DNS
     external-dns.alpha.kubernetes.io/hostname: "authentik.k8s.home.geoffdavis.com"
 spec:

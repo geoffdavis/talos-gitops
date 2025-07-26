@@ -1,0 +1,229 @@
+# Pre-commit configuration for Talos GitOps repository
+# Philosophy: Balanced approach - security enforced, formatting as warnings
+
+repos:
+  # ============================================================================
+  # SECURITY HOOKS (ENFORCED - CRITICAL)
+  # ============================================================================
+  
+  # Secret detection - CRITICAL after security incident
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: 🔒 Detect secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: |
+          (?x)^(
+            \.git/.*|
+            .*\.lock|
+            .*\.log|
+            SECURITY_INCIDENT_REPORT\.md
+          )$
+
+  # Git leaks detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+        name: 🔒 Git leaks scan
+
+  # ============================================================================
+  # YAML VALIDATION (ENFORCED)
+  # ============================================================================
+  
+  # YAML syntax validation - ENFORCED
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.32.0
+    hooks:
+      - id: yamllint
+        name: 📋 YAML syntax check
+        args: ['-c', '.yamllint.yaml']
+        types: [yaml]
+
+  # YAML formatting - WARNING ONLY
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.3
+    hooks:
+      - id: prettier
+        name: 💅 YAML formatting (warning)
+        types: [yaml]
+        args: ['--list-different']
+        verbose: true
+        # Allow failure but show warnings
+        stages: [manual]
+
+  # ============================================================================
+  # KUBERNETES VALIDATION (ENFORCED)
+  # ============================================================================
+  
+  # Kubernetes manifest validation (using local kubectl)
+  - repo: local
+    hooks:
+      - id: kubectl-validate
+        name: ☸️  Kubernetes manifest validation
+        entry: bash -c 'for file in "$@"; do kubectl apply --dry-run=client -f "$file" > /dev/null; done' --
+        language: system
+        files: |
+          (?x)^(
+            infrastructure/.*\.yaml$|
+            apps/.*\.yaml$|
+            clusters/.*\.yaml$
+          )
+        pass_filenames: true
+
+  # Kustomize validation
+  - repo: local
+    hooks:
+      - id: kustomize-validate
+        name: ☸️  Kustomize validation
+        entry: bash -c 'find . -name "kustomization.yaml" -execdir kustomize build . > /dev/null \;'
+        language: system
+        files: kustomization\.yaml$
+        pass_filenames: false
+
+  # ============================================================================
+  # PYTHON VALIDATION
+  # ============================================================================
+  
+  # Python syntax check - ENFORCED
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-ast
+        name: 🐍 Python syntax check
+
+  # Python import sorting - WARNING
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: 🐍 Python import sorting (warning)
+        args: ['--check-only', '--diff']
+        stages: [manual]
+
+  # Python code formatting - WARNING
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        name: 🐍 Python formatting (warning)
+        args: ['--check', '--diff']
+        stages: [manual]
+
+  # Python linting - WARNING
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        name: 🐍 Python linting (warning)
+        args: ['--max-line-length=88', '--extend-ignore=E203,W503']
+        stages: [manual]
+
+  # Python tests - ENFORCED for critical scripts
+  - repo: local
+    hooks:
+      - id: pytest-critical
+        name: 🧪 Python tests (critical scripts)
+        entry: bash -c 'cd scripts/token-management && python -m pytest test_authentik_token_manager.py -v'
+        language: system
+        files: scripts/token-management/.*\.py$
+        pass_filenames: false
+
+  # ============================================================================
+  # SHELL SCRIPT VALIDATION (ENFORCED)
+  # ============================================================================
+  
+  # Shell script linting - ENFORCED for security
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.5
+    hooks:
+      - id: shellcheck
+        name: 🐚 Shell script validation
+        args: ['-e', 'SC1091,SC2034']  # Ignore source and unused vars
+
+  # ============================================================================
+  # MARKDOWN VALIDATION
+  # ============================================================================
+  
+  # Markdown linting - Basic checks ENFORCED
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        name: 📝 Markdown basic checks
+        args: ['--config', '.markdownlint.yaml']
+
+  # Markdown formatting - WARNING
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.3
+    hooks:
+      - id: prettier
+        name: 📝 Markdown formatting (warning)
+        types: [markdown]
+        args: ['--list-different']
+        stages: [manual]
+
+  # ============================================================================
+  # GENERAL FILE CHECKS (ENFORCED)
+  # ============================================================================
+  
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      # File size check - ENFORCED for security
+      - id: check-added-large-files
+        name: 📏 Large file check
+        args: ['--maxkb=1024']
+      
+      # Encoding check - ENFORCED
+      - id: check-byte-order-marker
+        name: 🔤 Byte order marker check
+      
+      # Line ending consistency - ENFORCED
+      - id: mixed-line-ending
+        name: 📄 Line ending check
+        args: ['--fix=lf']
+      
+      # Trailing whitespace - WARNING
+      - id: trailing-whitespace
+        name: 🧹 Trailing whitespace (warning)
+        stages: [manual]
+      
+      # End of file newline - WARNING  
+      - id: end-of-file-fixer
+        name: 📄 End of file newline (warning)
+        stages: [manual]
+
+  # ============================================================================
+  # COMMIT MESSAGE VALIDATION (WARNING)
+  # ============================================================================
+  
+  # Conventional commits - WARNING
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v2.4.0
+    hooks:
+      - id: conventional-pre-commit
+        name: 💬 Commit message format (warning)
+        stages: [commit-msg, manual]
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
+# Default stages for hooks
+default_stages: [pre-commit]
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    \.git/.*|
+    \.pre-commit-cache/.*|
+    \.task/.*|
+    \.bootstrap-state/.*|
+    clusterconfig/.*|
+    talos/generated/.*|
+    .*\.backup.*|
+    .*\.tmp|
+    .*\.log
+  )$

@@ -1,10 +1,10 @@
-version: '3'
+version: "3"
 
 # Bootstrap Phase Orchestration
 # Uses native Taskfile dependencies, preconditions, and status checks
 
 vars:
-  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  BOOTSTRAP_STATE_DIR: ".bootstrap-state"
   CLUSTER_NAME: '{{.CLUSTER_NAME | default "home-ops"}}'
   NODE_1_IP: '{{.NODE_1_IP | default "172.29.51.11"}}'
   NODE_2_IP: '{{.NODE_2_IP | default "172.29.51.12"}}'
@@ -48,10 +48,10 @@ tasks:
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete
     preconditions:
-      - sh: 'command -v mise'
-        msg: 'mise is required for tool management. Install from https://mise.jdx.dev'
-      - sh: '[ -f .mise.toml ]'
-        msg: '.mise.toml configuration file must exist'
+      - sh: "command -v mise"
+        msg: "mise is required for tool management. Install from https://mise.jdx.dev"
+      - sh: "[ -f .mise.toml ]"
+        msg: ".mise.toml configuration file must exist"
     cmds:
       - task: validation:environment
       - touch {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete
@@ -66,10 +66,10 @@ tasks:
       - test -f talos/generated/talosconfig
       - kubectl get nodes --no-headers | grep -q "{{.CLUSTER_NAME}}"
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete'
-        msg: 'Phase 1 must be completed first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/phase-1-complete"
+        msg: "Phase 1 must be completed first"
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set'
+        msg: "OP_ACCOUNT environment variable must be set"
     cmds:
       - task: talos:bootstrap-cluster
       - touch {{.BOOTSTRAP_STATE_DIR}}/phase-2-complete
@@ -84,10 +84,10 @@ tasks:
       - kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"
       - kubectl get pods -n kube-system -l k8s-app=cilium | grep -q "Running"
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-2-complete'
-        msg: 'Phase 2 must be completed first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/phase-2-complete"
+        msg: "Phase 2 must be completed first"
       - sh: 'kubectl get nodes --no-headers | wc -l | grep -q "3"'
-        msg: 'All 3 nodes must be present in cluster'
+        msg: "All 3 nodes must be present in cluster"
     cmds:
       - task: networking:deploy-cilium
       - task: networking:wait-ready
@@ -105,10 +105,10 @@ tasks:
       - kubectl get pods -n onepassword-connect | grep -q "Running"
       - kubectl get pods -n longhorn-system | grep -q "Running"
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-3-complete'
-        msg: 'Phase 3 must be completed first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/phase-3-complete"
+        msg: "Phase 3 must be completed first"
       - sh: 'kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"'
-        msg: 'All nodes must be Ready with CNI'
+        msg: "All nodes must be Ready with CNI"
     cmds:
       - task: services:deploy-core
       - task: services:validate
@@ -124,10 +124,10 @@ tasks:
       - kubectl get pods -n flux-system | grep -q "Running"
       - flux get kustomizations | grep -q "flux-system"
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-4-complete'
-        msg: 'Phase 4 must be completed first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/phase-4-complete"
+        msg: "Phase 4 must be completed first"
       - sh: 'kubectl get pods -n onepassword-connect | grep -q "Running"'
-        msg: '1Password Connect must be running for GitOps secrets'
+        msg: "1Password Connect must be running for GitOps secrets"
     cmds:
       - task: gitops:bootstrap-flux
       - task: gitops:validate
@@ -142,10 +142,10 @@ tasks:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/phase-6-complete
       - kubectl get pods --all-namespaces | grep -v "kube-system\|flux-system\|external-secrets-system\|onepassword-connect\|longhorn-system" | grep -q "Running"
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/phase-5-complete'
-        msg: 'Phase 5 must be completed first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/phase-5-complete"
+        msg: "Phase 5 must be completed first"
       - sh: 'flux get kustomizations | grep -q "Ready"'
-        msg: 'Flux must be ready and syncing'
+        msg: "Flux must be ready and syncing"
     cmds:
       - task: applications:deploy
       - task: applications:validate

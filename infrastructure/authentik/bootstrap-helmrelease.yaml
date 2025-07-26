@@ -29,7 +29,7 @@ spec:
     global:
       deploymentAnnotations:
         reloader.stakater.com/auto: "true"
-    
+
     authentik:
       log_level: info
       error_reporting:
@@ -43,17 +43,17 @@ spec:
         host: "authentik-redis-master.authentik.svc.cluster.local"
         port: 6379
         db: 0
-      
+
     server:
       name: server
       replicas: 2
-      
+
       autoscaling:
         enabled: true
         minReplicas: 2
         maxReplicas: 5
         targetCPUUtilizationPercentage: 50
-        
+
       resources:
         server:
           requests:
@@ -62,13 +62,13 @@ spec:
           limits:
             cpu: 500m
             memory: 1Gi
-            
+
       metrics:
         serviceMonitor:
           enabled: true
           interval: 30s
           scrapeTimeout: 3s
-          
+
       ingress:
         enabled: true
         ingressClassName: nginx-internal
@@ -82,14 +82,14 @@ spec:
           - secretName: authentik-tls
             hosts:
               - auth.home-ops.dev
-              
+
       envFrom:
         - secretRef:
             name: authentik-config
         - secretRef:
             name: authentik-database-credentials
         # No admin token reference during bootstrap phase
-      
+
       env:
         # Core configuration
         - name: AUTHENTIK_DISABLE_UPDATE_CHECK
@@ -98,7 +98,7 @@ spec:
           value: "false"
         - name: AUTHENTIK_LOG_LEVEL
           value: "info"
-        
+
         # Bootstrap configuration - use static bootstrap token
         - name: AUTHENTIK_BOOTSTRAP__TOKEN
           value: "bootstrap-token-for-initial-setup-only"
@@ -106,17 +106,17 @@ spec:
           value: "bootstrap-admin-password-temp"
         - name: AUTHENTIK_BOOTSTRAP__EMAIL
           value: "admin@home-ops.dev"
-          
+
     worker:
       name: worker
       replicas: 2
-      
+
       autoscaling:
         enabled: true
         minReplicas: 2
         maxReplicas: 5
         targetCPUUtilizationPercentage: 80
-        
+
       resources:
         requests:
           cpu: 100m
@@ -124,14 +124,14 @@ spec:
         limits:
           cpu: 500m
           memory: 1Gi
-          
+
       envFrom:
         - secretRef:
             name: authentik-config
         - secretRef:
             name: authentik-database-credentials
         # No admin token reference during bootstrap phase
-      
+
       env:
         # Core configuration
         - name: AUTHENTIK_DISABLE_UPDATE_CHECK
@@ -140,11 +140,11 @@ spec:
           value: "false"
         - name: AUTHENTIK_LOG_LEVEL
           value: "info"
-          
+
         # Bootstrap configuration
         - name: AUTHENTIK_BOOTSTRAP__TOKEN
           value: "bootstrap-token-for-initial-setup-only"
-          
+
     redis:
       enabled: true
       auth:
@@ -161,10 +161,10 @@ spec:
           limits:
             cpu: 200m
             memory: 256Mi
-            
+
     postgresql:
       enabled: false
-      
+
     prometheus:
       rules:
         enabled: true

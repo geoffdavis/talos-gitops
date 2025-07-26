@@ -1,6 +1,6 @@
-version: '3'
+version: "3"
 
-dotenv: ['.env']
+dotenv: [".env"]
 
 vars:
   CLUSTER_NAME: home-ops
@@ -23,7 +23,7 @@ tasks:
       - ./scripts/bootstrap-secrets.sh
     preconditions:
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
+        msg: "OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)"
 
   bootstrap:k8s-secrets:
     desc: Bootstrap Kubernetes secrets from 1Password (for existing cluster)
@@ -31,9 +31,9 @@ tasks:
       - ./scripts/bootstrap-k8s-secrets.sh
     preconditions:
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
-      - sh: 'mise exec -- kubectl get namespaces &> /dev/null'
-        msg: 'Kubernetes cluster must be accessible'
+        msg: "OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)"
+      - sh: "mise exec -- kubectl get namespaces &> /dev/null"
+        msg: "Kubernetes cluster must be accessible"
 
   bootstrap:1password-secrets:
     desc: Bootstrap 1Password Connect secrets for fresh cluster (requires OP_ACCOUNT environment variable)
@@ -41,7 +41,7 @@ tasks:
       - ./scripts/bootstrap-1password-secrets.sh
     preconditions:
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
+        msg: "OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)"
 
   bootstrap:validate-1password-secrets:
     desc: Validate 1Password Connect secrets were created correctly
@@ -68,10 +68,10 @@ tasks:
     cmds:
       - ./scripts/generate-talos-schematic.sh
     preconditions:
-      - sh: 'command -v curl'
-        msg: 'curl is required for Image Factory API'
-      - sh: 'command -v jq'
-        msg: 'jq is required for JSON processing'
+      - sh: "command -v curl"
+        msg: "curl is required for Image Factory API"
+      - sh: "command -v jq"
+        msg: "jq is required for JSON processing"
 
   talos:update-installer-images:
     desc: Update machine configurations to use custom installer images
@@ -79,14 +79,14 @@ tasks:
     cmds:
       - ./scripts/update-installer-images.sh
     preconditions:
-      - sh: '[ -f talos/generated/schematic-id.txt ]'
-        msg: 'Schematic ID file not found. Run task talos:generate-schematic first.'
+      - sh: "[ -f talos/generated/schematic-id.txt ]"
+        msg: "Schematic ID file not found. Run task talos:generate-schematic first."
 
   talos:restore-secrets:
     desc: Restore Talos secrets from the correct 1Password entry (talos - home-ops)
     preconditions:
       - sh: '[ -n "${OP_ACCOUNT:-}" ]'
-        msg: 'OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)'
+        msg: "OP_ACCOUNT environment variable must be set (e.g., export OP_ACCOUNT=YourAccountName)"
     cmds:
       - echo "Restoring Talos secrets from 1Password 'talos - {{.CLUSTER_NAME}}' entry..."
       - |
@@ -153,8 +153,8 @@ tasks:
     env:
       TALOSCONFIG: talos/generated/talosconfig
     preconditions:
-      - sh: '[ -f talos/manifests/lldpd-extension-config.yaml ]'
-        msg: 'LLDPD ExtensionServiceConfig manifest not found at talos/manifests/lldpd-extension-config.yaml'
+      - sh: "[ -f talos/manifests/lldpd-extension-config.yaml ]"
+        msg: "LLDPD ExtensionServiceConfig manifest not found at talos/manifests/lldpd-extension-config.yaml"
     cmds:
       - 'echo "WARNING: DEPRECATED - LLDPD configuration is now integrated into the main Talos configuration"'
       - 'echo "WARNING: Use task talos:apply-config instead, which includes LLDPD configuration"'
@@ -278,8 +278,8 @@ tasks:
   flux:bootstrap:
     desc: Bootstrap Flux GitOps with 1Password integration
     preconditions:
-      - sh: 'command -v op'
-        msg: '1Password CLI (op) is required to retrieve GitHub token'
+      - sh: "command -v op"
+        msg: "1Password CLI (op) is required to retrieve GitHub token"
     cmds:
       - echo "Bootstrapping Flux GitOps..."
       - |
@@ -418,10 +418,10 @@ tasks:
     cmds:
       - ./scripts/verify-core-idempotency.sh
     preconditions:
-      - sh: 'mise exec -- kubectl get namespaces &> /dev/null'
-        msg: 'Kubernetes cluster must be accessible'
-      - sh: '[ -x scripts/verify-core-idempotency.sh ]'
-        msg: 'Idempotency verification script must be executable'
+      - sh: "mise exec -- kubectl get namespaces &> /dev/null"
+        msg: "Kubernetes cluster must be accessible"
+      - sh: "[ -x scripts/verify-core-idempotency.sh ]"
+        msg: "Idempotency verification script must be executable"
 
   # BGP Configuration (Multiple Methods)
   bgp:configure-unifi:
@@ -578,32 +578,32 @@ tasks:
     cmds:
       - ./scripts/validate-usb-ssd-storage.sh
     preconditions:
-      - sh: '[ -x scripts/validate-usb-ssd-storage.sh ]'
-        msg: 'USB SSD validation script must be executable'
+      - sh: "[ -x scripts/validate-usb-ssd-storage.sh ]"
+        msg: "USB SSD validation script must be executable"
 
   storage:deploy-usb-ssd:
     desc: Deploy USB SSD storage configuration
     cmds:
       - ./scripts/deploy-usb-ssd-storage.sh
     preconditions:
-      - sh: '[ -x scripts/deploy-usb-ssd-storage.sh ]'
-        msg: 'USB SSD deployment script must be executable'
+      - sh: "[ -x scripts/deploy-usb-ssd-storage.sh ]"
+        msg: "USB SSD deployment script must be executable"
 
   storage:validate-complete-usb-ssd:
     desc: Run comprehensive USB SSD validation
     cmds:
       - ./scripts/validate-complete-usb-ssd-setup.sh
     preconditions:
-      - sh: '[ -x scripts/validate-complete-usb-ssd-setup.sh ]'
-        msg: 'Complete USB SSD validation script must be executable'
+      - sh: "[ -x scripts/validate-complete-usb-ssd-setup.sh ]"
+        msg: "Complete USB SSD validation script must be executable"
 
   storage:validate-longhorn-usb-ssd:
     desc: Validate Longhorn USB SSD integration
     cmds:
       - ./scripts/validate-longhorn-usb-ssd.sh
     preconditions:
-      - sh: '[ -x scripts/validate-longhorn-usb-ssd.sh ]'
-        msg: 'Longhorn USB SSD validation script must be executable'
+      - sh: "[ -x scripts/validate-longhorn-usb-ssd.sh ]"
+        msg: "Longhorn USB SSD validation script must be executable"
 
   # Testing tasks
   test:all:
@@ -647,8 +647,8 @@ tasks:
       - ./scripts/validate-complete-usb-ssd-setup.sh --quick
       - mise exec -- task storage:check-usb-ssd
     preconditions:
-      - sh: '[ -x scripts/validate-complete-usb-ssd-setup.sh ]'
-        msg: 'USB SSD validation script must be executable'
+      - sh: "[ -x scripts/validate-complete-usb-ssd-setup.sh ]"
+        msg: "USB SSD validation script must be executable"
 
   test:ipv6:
     desc: Test IPv6 configuration and connectivity
@@ -726,8 +726,8 @@ tasks:
       - echo "Running Renovate dry-run to check for available updates..."
       - RENOVATE_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") npx renovate --dry-run geoffdavis/talos-gitops
     preconditions:
-      - sh: 'command -v op'
-        msg: '1Password CLI (op) is required to retrieve GitHub token'
+      - sh: "command -v op"
+        msg: "1Password CLI (op) is required to retrieve GitHub token"
 
   renovate:run:
     desc: Run Renovate locally (creates actual PRs)
@@ -738,8 +738,8 @@ tasks:
       - sleep 5
       - RENOVATE_TOKEN=$(op read "op://Private/GitHub Personal Access Token/token") npx renovate geoffdavis/talos-gitops
     preconditions:
-      - sh: 'command -v op'
-        msg: '1Password CLI (op) is required to retrieve GitHub token'
+      - sh: "command -v op"
+        msg: "1Password CLI (op) is required to retrieve GitHub token"
 
   renovate:validate:
     desc: Validate Renovate configuration
@@ -757,29 +757,29 @@ tasks:
   onepassword:create-connect-server:
     desc: Create new 1Password Connect server with proper credentials and store in 1Password
     preconditions:
-      - sh: 'command -v op'
-        msg: '1Password CLI (op) is required'
+      - sh: "command -v op"
+        msg: "1Password CLI (op) is required"
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set'
+        msg: "OP_ACCOUNT environment variable must be set"
     cmds:
       - echo "Creating new 1Password Connect server with credentials..."
       - |
         # Create Connect server with proper vault access
         echo "Creating Connect server for home-ops cluster..."
         op connect server create "home-ops-cluster" --vaults "Automation,Services" > /dev/null
-        
+
         # Verify credentials file was created
         if [ ! -f "1password-credentials.json" ]; then
           echo "❌ Credentials file not created"
           exit 1
         fi
-        
+
         # Validate JSON format
         if ! jq . 1password-credentials.json > /dev/null; then
           echo "❌ Invalid credentials JSON format"
           exit 1
         fi
-        
+
         echo "✓ Valid credentials file created ($(wc -c < 1password-credentials.json) bytes)"
       - |
         # Store credentials as document in 1Password
@@ -795,14 +795,14 @@ tasks:
           --server "home-ops-cluster" \
           --vault "Automation" \
           --expires-in 8760h)
-        
+
         if [ ${#CONNECT_TOKEN} -lt 100 ]; then
           echo "❌ Connect token appears invalid (length: ${#CONNECT_TOKEN})"
           exit 1
         fi
-        
+
         echo "✓ Connect token created (length: ${#CONNECT_TOKEN})"
-        
+
         # Store token in 1Password
         echo "Storing Connect token in 1Password..."
         op item create \
@@ -821,17 +821,17 @@ tasks:
           --from-file=1password-credentials.json \
           --namespace=onepassword-connect \
           --dry-run=client -o yaml | mise exec -- kubectl apply -f -
-        
+
         CONNECT_TOKEN=$(op connect token create "home-ops-token" \
           --server "home-ops-cluster" \
           --vault "Automation" \
           --expires-in 8760h)
-        
+
         mise exec -- kubectl create secret generic onepassword-connect-token \
           --from-literal=token="$CONNECT_TOKEN" \
           --namespace=onepassword-connect \
           --dry-run=client -o yaml | mise exec -- kubectl apply -f -
-        
+
         echo "✓ Kubernetes secrets updated"
       - |
         # Restart 1Password Connect deployment
@@ -886,9 +886,9 @@ tasks:
           RESET_NODES="{{.NODES}}"
           echo "Performing SAFE reset on specified nodes: {{.NODES}} (EPHEMERAL and STATE partitions only)..."
         fi
-        
+
         echo "Target nodes: $RESET_NODES"
-        
+
         # Store original cluster state for validation
         echo "Capturing current cluster state for validation..."
         ORIGINAL_CLUSTER_ID=""
@@ -898,11 +898,11 @@ tasks:
         else
           echo "No accessible cluster detected - proceeding with reset"
         fi
-        
+
         # Perform the reset with proper error handling
         echo "Attempting reset with partition specifications..."
         RESET_SUCCESS=false
-        
+
         # Try simultaneous reset first (with --wait=false for authenticated mode)
         echo "Attempting simultaneous reset..."
         if mise exec -- talosctl reset --nodes $RESET_NODES --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL --graceful=false --wait=false; then
@@ -944,7 +944,7 @@ tasks:
             RESET_SUCCESS=true
           fi
         fi
-        
+
         if [ "$RESET_SUCCESS" = "false" ]; then
           echo "❌ Failed to send reset commands to any nodes"
           echo "This may indicate:"
@@ -962,20 +962,20 @@ tasks:
         echo ""
         echo "🔄 Waiting for nodes to reboot and validate reset completion..."
         echo "This may take 2-3 minutes..."
-        
+
         # Wait for nodes to go down first
         echo "Waiting for nodes to go offline..."
         sleep 30
-        
+
         # Wait for nodes to come back up
         echo "Waiting for nodes to come back online..."
         max_wait=300  # 5 minutes
         wait_interval=15
         elapsed=0
         nodes_online=0
-        
+
         NODES_LIST="{{.NODE_1_IP}} {{.NODE_2_IP}} {{.NODE_3_IP}}"
-        
+
         while [ $elapsed -lt $max_wait ]; do
           nodes_online=0
           
@@ -995,7 +995,7 @@ tasks:
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))
         done
-        
+
         if [ $nodes_online -lt 3 ]; then
           echo "⚠ Only $nodes_online/3 nodes came back online after ${max_wait}s"
           echo "This may be normal - nodes might need more time to fully boot"
@@ -1004,15 +1004,15 @@ tasks:
         # Validate that reset was successful
         echo ""
         echo "🔍 Validating reset completion..."
-        
+
         # Wait a bit more for Talos to fully initialize
         echo "Waiting for Talos to initialize..."
         sleep 45
-        
+
         # Check if nodes are in maintenance mode (expected after reset)
         NODES_IN_MAINTENANCE=0
         NODES_LIST="{{.NODE_1_IP}} {{.NODE_2_IP}} {{.NODE_3_IP}}"
-        
+
         for node_ip in $NODES_LIST; do
           echo "Checking node $node_ip..."
           
@@ -1031,7 +1031,7 @@ tasks:
             echo "  ⚠ Node $node_ip not accessible yet"
           fi
         done
-        
+
         echo ""
         if [ $NODES_IN_MAINTENANCE -eq 3 ]; then
           echo "✅ RESET VALIDATION SUCCESSFUL"
@@ -1143,3 +1143,4 @@ includes:
   gitops: ./taskfiles/gitops.yml
   applications: ./taskfiles/applications.yml
   bgp-loadbalancer: ./taskfiles/bgp-loadbalancer.yml
+  pre-commit: ./taskfiles/pre-commit.yml

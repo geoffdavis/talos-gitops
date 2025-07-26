@@ -7,7 +7,7 @@ machine:
         dhcp: true
         dhcpOptions:
           ipv4: true
-          ipv6: false  # Disable DHCPv6 to prevent operator failures
+          ipv6: false # Disable DHCPv6 to prevent operator failures
         vip:
           ip: 172.29.51.10
         # Enable IPv6 Router Advertisement for SLAAC
@@ -23,15 +23,15 @@ cluster:
   network:
     dnsDomain: k8s.home.geoffdavis.com
     podSubnets:
-      - 10.244.0.0/16                          # IPv4 pods
-      - fd47:25e1:2f96:51:2000::/64            # IPv6 pods
+      - 10.244.0.0/16 # IPv4 pods
+      - fd47:25e1:2f96:51:2000::/64 # IPv6 pods
     serviceSubnets:
-      - 10.96.0.0/12                           # IPv4 services
-      - fd47:25e1:2f96:51:1000::/108           # IPv6 services
+      - 10.96.0.0/12 # IPv4 services
+      - fd47:25e1:2f96:51:1000::/108 # IPv6 services
     cni:
-      name: none  # We'll install Cilium manually
+      name: none # We'll install Cilium manually
   proxy:
-    disabled: true  # Cilium will handle kube-proxy functionality
+    disabled: true # Cilium will handle kube-proxy functionality
   discovery:
     enabled: true
     registries:

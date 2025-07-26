@@ -3,16 +3,19 @@
 ## Current Situation (2025-07-13 22:15 UTC)
 
 ### Affected Nodes
+
 - **mini01** (172.29.51.11): NotReady - Completely unresponsive to talosctl commands
 - **mini03** (172.29.51.13): NotReady - Completely unresponsive to talosctl commands
 - **mini02** (172.29.51.12): Ready - Working normally
 
 ### Issue Confirmation
+
 - Nodes show "NotReady" status in kubectl
 - talosctl commands timeout with "connection error: dial tcp timeout"
 - Cilium pods showing Terminating/Pending states due to networking issues
 
 ### Root Cause
+
 "Dead loop on virtual device" kernel issue that has made the affected nodes completely unresponsive at the kernel level. This requires physical power cycling to clear the corrupted virtual device state.
 
 ## Required Recovery Actions
@@ -22,6 +25,7 @@
 Since the nodes are completely unresponsive to software commands, **physical power cycling is required**:
 
 1. **mini01 (172.29.51.11)**:
+
    - Physically power off the device (unplug power or press power button)
    - Wait 10 seconds
    - Power back on
@@ -54,6 +58,7 @@ mise exec -- talosctl dmesg --nodes 172.29.51.11,172.29.51.13 | grep -i "dead lo
 ## Configuration Fixes Applied
 
 The following configuration fixes have already been committed to git:
+
 - Cilium removed from Flux management
 - Proper Talos CNI configuration applied
 - Network configuration updated

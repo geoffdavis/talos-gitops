@@ -8,11 +8,11 @@ This document outlines the comprehensive backup strategy implemented for the hom
 
 ### Data Classification Tiers
 
-| Tier | Description | RPO | RTO | Backup Frequency | Retention |
-|------|-------------|-----|-----|------------------|-----------|
-| **Critical** | Prometheus, Grafana, Databases | 24h | 1h | Daily snapshots + Weekly S3 | 7 days local, 4 weeks S3 |
-| **Important** | Kubernetes secrets, GitOps repo | 24h | 4h | Weekly snapshots + Monthly S3 | 4 weeks local, 3 months S3 |
-| **Replaceable** | Logs, container images | N/A | 8h | No automated backups | Rebuild from source |
+| Tier            | Description                     | RPO | RTO | Backup Frequency              | Retention                  |
+| --------------- | ------------------------------- | --- | --- | ----------------------------- | -------------------------- |
+| **Critical**    | Prometheus, Grafana, Databases  | 24h | 1h  | Daily snapshots + Weekly S3   | 7 days local, 4 weeks S3   |
+| **Important**   | Kubernetes secrets, GitOps repo | 24h | 4h  | Weekly snapshots + Monthly S3 | 4 weeks local, 3 months S3 |
+| **Replaceable** | Logs, container images          | N/A | 8h  | No automated backups          | Rebuild from source        |
 
 ### Backup Infrastructure
 
@@ -24,18 +24,18 @@ graph TB
         PV3[Database PVCs<br/>Variable]
         VS1[VolumeSnapshots<br/>Daily/Weekly]
     end
-    
+
     subgraph "Local Storage"
         SSD1[USB SSD Node 1]
         SSD2[USB SSD Node 2]
         SSD3[USB SSD Node 3]
     end
-    
+
     subgraph "Remote Backup"
         S3[S3: longhorn-backups-home-ops]
         GLACIER[Glacier Deep Archive]
     end
-    
+
     PV1 --> VS1
     PV2 --> VS1
     PV3 --> VS1
@@ -102,6 +102,7 @@ Automated backup jobs configured for different data tiers:
 ### Daily Operations
 
 1. **Automated Backups** (No manual intervention required)
+
    - 1:00 AM: Database snapshots created
    - 2:00 AM: Monitoring snapshots created
    - Backup verification runs at 8:00 AM
@@ -114,6 +115,7 @@ Automated backup jobs configured for different data tiers:
 ### Weekly Operations
 
 1. **Sunday Backup Schedule**
+
    - 3:00 AM: Monitoring S3 backups
    - 4:00 AM: Database S3 backups
    - 5:00 AM: Application snapshots
@@ -128,6 +130,7 @@ Automated backup jobs configured for different data tiers:
 ### Monthly Operations
 
 1. **Backup Strategy Review**
+
    - Analyze backup success rates
    - Review storage usage trends
    - Update retention policies if needed
@@ -142,12 +145,14 @@ Automated backup jobs configured for different data tiers:
 ### Current Applications
 
 #### Prometheus (50Gi)
+
 - **Backup Group**: `monitoring`
 - **Tier**: Critical
 - **Schedule**: Daily snapshots, weekly S3 backups
 - **Retention**: 7 days local, 4 weeks S3
 
 #### Grafana (10Gi)
+
 - **Backup Group**: `monitoring`
 - **Tier**: Critical
 - **Schedule**: Daily snapshots, weekly S3 backups
@@ -156,6 +161,7 @@ Automated backup jobs configured for different data tiers:
 ### Future Database Applications
 
 #### PostgreSQL
+
 - **Backup Group**: `database`
 - **Tier**: Critical
 - **Schedule**: Daily consistent snapshots, weekly S3 backups
@@ -163,6 +169,7 @@ Automated backup jobs configured for different data tiers:
 - **Retention**: 7 days local, 8 weeks S3
 
 #### MariaDB/MySQL
+
 - **Backup Group**: `database`
 - **Tier**: Critical
 - **Schedule**: Daily consistent snapshots, weekly S3 backups
@@ -192,6 +199,7 @@ The backup system exposes the following metrics:
 ### Scenario 1: Single Volume Corruption
 
 **Recovery Steps**:
+
 1. Identify the affected PVC
 2. Find the latest healthy snapshot
 3. Create new PVC from snapshot
@@ -203,6 +211,7 @@ The backup system exposes the following metrics:
 ### Scenario 2: Complete Node Failure
 
 **Recovery Steps**:
+
 1. Replace failed node
 2. Longhorn automatically rebuilds replicas
 3. Verify all volumes are healthy
@@ -213,6 +222,7 @@ The backup system exposes the following metrics:
 ### Scenario 3: Complete Cluster Loss
 
 **Recovery Steps**:
+
 1. Rebuild Talos cluster from GitOps repository
 2. Restore Longhorn from S3 backups
 3. Restore critical volumes from latest S3 backups
@@ -224,6 +234,7 @@ The backup system exposes the following metrics:
 ### Scenario 4: S3 Backup Corruption
 
 **Recovery Steps**:
+
 1. Use local snapshots for recent data
 2. Restore from older S3 backup if available
 3. Accept data loss to last known good backup
@@ -264,11 +275,13 @@ The backup system exposes the following metrics:
 ### Quarterly Reviews
 
 1. **Backup Strategy Assessment**
+
    - Review RPO/RTO requirements
    - Analyze backup success rates
    - Update procedures based on lessons learned
 
 2. **Technology Updates**
+
    - Update Longhorn version
    - Review new backup features
    - Test compatibility with cluster updates

@@ -7,6 +7,7 @@ This document provides instructions for configuring BGP peering between the Talo
 The Talos cluster uses Cilium CNI with BGP for LoadBalancer service IP advertisement. The cluster supports dual-stack IPv4/IPv6 with BGP peering to the UniFi UDM Pro router.
 
 **Network Configuration:**
+
 - **Cluster ASN**: 64512
 - **UDM Pro ASN**: 64513
 - **IPv4 LoadBalancer Pool**: 172.29.51.100-172.29.51.127
@@ -42,6 +43,7 @@ Modern UniFi UDM Pro releases support direct BGP configuration file uploads thro
 #### Step 1: Access the Configuration File
 
 The BGP configuration file is located at:
+
 ```
 talos-gitops/scripts/unifi-bgp-config.conf
 ```
@@ -49,13 +51,16 @@ talos-gitops/scripts/unifi-bgp-config.conf
 #### Step 2: Upload Configuration
 
 1. **Open UniFi Network UI**
+
    - Navigate to your UniFi Network interface
    - Typically `https://unifi.ui.com` or local controller IP
 
 2. **Navigate to BGP Settings**
+
    - Go to **Network** > **Settings** > **Routing** > **BGP**
 
 3. **Upload Configuration**
+
    - Click **Upload Configuration** or **Import Configuration**
    - Select the file: `scripts/unifi-bgp-config.conf`
    - Click **Upload** or **Import**
@@ -68,6 +73,7 @@ talos-gitops/scripts/unifi-bgp-config.conf
 #### Step 3: Verify Configuration
 
 Use the Task command to verify:
+
 ```bash
 task bgp:verify-peering
 ```
@@ -83,6 +89,7 @@ task bgp:configure-unifi
 ```
 
 This will:
+
 - Copy the configuration script to the UDM Pro
 - Execute the script via SSH
 - Configure BGP using FRRouting (FRR)
@@ -100,15 +107,18 @@ task bgp:verify-peering
 The simplified configuration includes:
 
 1. **Router Configuration**
+
    - BGP ASN: 64513 (UDM Pro)
    - Router ID: 172.29.51.1
 
 2. **IPv4 BGP Neighbors**
+
    - 172.29.51.11 (talos-node-1) - ASN 64512
    - 172.29.51.12 (talos-node-2) - ASN 64512
    - 172.29.51.13 (talos-node-3) - ASN 64512
 
 3. **IPv6 BGP Neighbors**
+
    - fd47:25e1:2f96:51::11 (talos-node-1) - ASN 64512
    - fd47:25e1:2f96:51::12 (talos-node-2) - ASN 64512
    - fd47:25e1:2f96:51::13 (talos-node-3) - ASN 64512
@@ -132,11 +142,13 @@ The Talos cluster BGP configuration is managed by Cilium:
 ### Verify BGP Status
 
 1. **Check BGP Peering Status**
+
    ```bash
    task bgp:verify-peering
    ```
 
 2. **Check Cluster BGP Status**
+
    ```bash
    task cluster:status
    ```
@@ -154,6 +166,7 @@ The Talos cluster BGP configuration is managed by Cilium:
 **Symptoms**: BGP peers show as "Idle" or "Active"
 
 **Solutions**:
+
 1. Verify network connectivity between nodes and UDM Pro
 2. Check firewall rules on UDM Pro
 3. Ensure BGP port 179 is open
@@ -164,6 +177,7 @@ The Talos cluster BGP configuration is managed by Cilium:
 **Symptoms**: LoadBalancer services get IPs but are not reachable
 
 **Solutions**:
+
 1. Check Cilium LoadBalancer pool configuration
 2. Verify BGP policy allows the IP range
 3. Check route maps and prefix lists
@@ -174,6 +188,7 @@ The Talos cluster BGP configuration is managed by Cilium:
 **Symptoms**: UniFi UI rejects configuration file
 
 **Solutions**:
+
 1. Verify UniFi UDM Pro firmware version supports BGP config upload
 2. Check configuration file syntax
 3. Try SSH script method instead

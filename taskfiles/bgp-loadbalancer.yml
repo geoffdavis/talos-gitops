@@ -1,7 +1,7 @@
 # BGP Load Balancer Tasks
 # Tasks for managing BGP-only load balancer architecture
 
-version: '3'
+version: "3"
 
 vars:
   NEW_LB_NETWORK: "172.29.52.0/24"
@@ -16,10 +16,10 @@ tasks:
       - echo "Starting BGP-only load balancer migration..."
       - ./scripts/migrate-to-bgp-only-loadbalancer.sh
     preconditions:
-      - sh: '[ -x scripts/migrate-to-bgp-only-loadbalancer.sh ]'
-        msg: 'Migration script must be executable'
-      - sh: 'kubectl get nodes &> /dev/null'
-        msg: 'Kubernetes cluster must be accessible'
+      - sh: "[ -x scripts/migrate-to-bgp-only-loadbalancer.sh ]"
+        msg: "Migration script must be executable"
+      - sh: "kubectl get nodes &> /dev/null"
+        msg: "Kubernetes cluster must be accessible"
 
   rollback:
     desc: Rollback BGP-only migration to L2 announcements
@@ -27,8 +27,8 @@ tasks:
       - echo "Rolling back BGP-only load balancer migration..."
       - ./scripts/migrate-to-bgp-only-loadbalancer.sh --rollback
     preconditions:
-      - sh: '[ -x scripts/migrate-to-bgp-only-loadbalancer.sh ]'
-        msg: 'Migration script must be executable'
+      - sh: "[ -x scripts/migrate-to-bgp-only-loadbalancer.sh ]"
+        msg: "Migration script must be executable"
 
   validate:
     desc: Validate BGP-only load balancer configuration
@@ -36,8 +36,8 @@ tasks:
       - echo "Validating BGP-only load balancer configuration..."
       - ./scripts/validate-bgp-loadbalancer.sh
     preconditions:
-      - sh: '[ -x scripts/validate-bgp-loadbalancer.sh ]'
-        msg: 'Validation script must be executable'
+      - sh: "[ -x scripts/validate-bgp-loadbalancer.sh ]"
+        msg: "Validation script must be executable"
 
   status:
     desc: Show BGP load balancer status
@@ -69,7 +69,7 @@ tasks:
         services=$(mise exec -- kubectl get svc --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer" and .status.loadBalancer.ingress[0].ip != null) | .status.loadBalancer.ingress[0].ip')
         bgp_ips=0
         other_ips=0
-        
+
         for ip in $services; do
           if [[ "$ip" =~ ^172\.29\.52\. ]]; then
             bgp_ips=$((bgp_ips + 1))
@@ -77,7 +77,7 @@ tasks:
             other_ips=$((other_ips + 1))
           fi
         done
-        
+
         echo "IPs in BGP range (172.29.52.x): $bgp_ips"
         echo "IPs outside BGP range: $other_ips"
         echo "Total LoadBalancer IPs: $((bgp_ips + other_ips))"
@@ -97,7 +97,7 @@ tasks:
       - echo "Testing LoadBalancer service connectivity..."
       - |
         services=$(mise exec -- kubectl get svc --all-namespaces -o json | jq -r '.items[] | select(.spec.type=="LoadBalancer" and .status.loadBalancer.ingress[0].ip != null) | "\(.metadata.namespace)/\(.metadata.name)/\(.status.loadBalancer.ingress[0].ip)/\(.spec.ports[0].port)"')
-        
+
         for service_info in $services; do
           namespace=$(echo "$service_info" | cut -d'/' -f1)
           name=$(echo "$service_info" | cut -d'/' -f2)
@@ -230,7 +230,7 @@ tasks:
       - echo "Generating BGP load balancer status report..."
       - |
         report_file="bgp-loadbalancer-report-$(date +%Y%m%d-%H%M%S).txt"
-        
+
         {
           echo "BGP Load Balancer Status Report"
           echo "Generated: $(date)"
@@ -266,5 +266,5 @@ tasks:
           echo
           
         } > "$report_file"
-        
+
         echo "Report saved to: $report_file"

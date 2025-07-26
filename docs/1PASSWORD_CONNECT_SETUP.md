@@ -35,38 +35,46 @@ This guide provides instructions for setting up 1Password Connect for secure sec
 ### Step 3: Store in 1Password
 
 Create a **"1password connect"** entry in your **Automation vault** with:
+
 - **credentials** field: Upload/paste your `1password-credentials.json` file content
 - **token** field: Paste your Connect token
 
 ## Vault Structure
 
 ### Automation Vault
+
 Infrastructure and cluster secrets:
+
 - `1password connect` - Connect credentials and token
 - `BGP Authentication - home-ops` - BGP authentication password
 - `Longhorn UI Credentials - home-ops` - Longhorn UI authentication
 - `Talos Secrets - home-ops` - Talos cluster secrets
 
 ### Services Vault
+
 External service credentials:
+
 - `Cloudflare API Token` - DNS management token
 - `Cloudflared homeops kubernetes tunnel` - Tunnel credentials
 
 ## Bootstrap Process
 
 The streamlined bootstrap process automatically:
+
 1. Retrieves credentials from your "1password connect" entry
 2. Validates the credentials format (ensures version 2)
 3. Creates the necessary Kubernetes secrets
 4. Validates the created secrets
 
 ### Complete Cluster Bootstrap
+
 ```bash
 # Bootstrap entire cluster (includes 1Password Connect setup)
 task bootstrap:cluster
 ```
 
 ### Manual 1Password Connect Bootstrap
+
 ```bash
 # Bootstrap just 1Password Connect secrets
 task bootstrap:1password-secrets
@@ -96,18 +104,22 @@ curl -H "Authorization: Bearer $(kubectl get secret -n onepassword-connect onepa
 ### Common Issues
 
 #### "credentials file is not version 2"
+
 - **Cause**: Using old version 1 credentials
 - **Solution**: Generate new version 2 credentials from 1Password web interface
 
 #### "failed to FindCredentialsUniqueKey"
+
 - **Cause**: Corrupted or incomplete credentials file
 - **Solution**: Re-download credentials file from 1Password web interface
 
 #### "connection timeout" or "connection refused"
+
 - **Cause**: 1Password Connect service not running or misconfigured
 - **Solution**: Check deployment status and restart if needed
 
 #### ExternalSecret shows "SecretSyncError"
+
 - **Cause**: Item name mismatch or missing vault access
 - **Solution**: Verify item names match exactly and vault permissions are correct
 
@@ -138,16 +150,19 @@ kubectl describe externalsecret -n NAMESPACE SECRET_NAME
 ## Next Steps After Setup
 
 1. **Deploy 1Password Connect**:
+
    ```bash
    kubectl apply -k infrastructure/onepassword-connect/
    ```
 
 2. **Wait for deployment**:
+
    ```bash
    kubectl rollout status deployment -n onepassword-connect onepassword-connect
    ```
 
 3. **Deploy External Secrets Operator**:
+
    ```bash
    kubectl apply -k infrastructure/external-secrets/
    ```

@@ -120,10 +120,12 @@ The cluster uses multiple 1Password entries:
 ### 1Password Vaults Configuration
 
 The cluster accesses two vaults:
+
 - **Automation** (vault ID: 1)
 - **Services** (vault ID: 2) - Note: This is "Services", not "Shared"
 
 Ensure your ClusterSecretStore configuration matches:
+
 ```yaml
 vaults:
   Automation: 1
@@ -173,24 +175,27 @@ If Cilium pods are in CrashLoopBackOff or Unknown status:
 If External Secrets shows ClusterSecretStore as ValidationFailed:
 
 1. **Check 1Password Connect pods**:
+
    ```bash
    kubectl get pods -n onepassword-connect
    kubectl logs -n onepassword-connect <pod-name> connect-api
    ```
 
 2. **Common errors**:
+
    - "credentials file is not version 2" - Old or invalid credentials
    - "failed to FindCredentialsUniqueKey" - Mismatch between JWT token and credentials
    - "illegal base64 data" - Invalid dummy credentials file
 
 3. **Recreate 1Password Connect server and token** (must be done together):
+
    ```bash
    # Delete old server if exists
    op connect server delete "Kubernetes home-ops"
-   
+
    # Create new server with correct vaults (Automation and Services)
    op connect server create "Kubernetes home-ops" --vaults="Automation,Services"
-   
+
    # Create matching JWT token
    op connect token create "kubernetes-external-secrets" \
      --server "Kubernetes home-ops" \
@@ -199,19 +204,20 @@ If External Secrets shows ClusterSecretStore as ValidationFailed:
    ```
 
 4. **Update Kubernetes secrets**:
+
    ```bash
    # Update credentials
    kubectl create secret generic onepassword-connect-credentials \
      --from-file=1password-credentials.json=1password-credentials.json \
      --namespace=onepassword-connect \
      --dry-run=client -o yaml | kubectl apply -f -
-   
+
    # Update JWT token (use the token from step 3)
    kubectl create secret generic onepassword-connect-token \
      --from-literal=token="<JWT-TOKEN>" \
      --namespace=onepassword-connect \
      --dry-run=client -o yaml | kubectl apply -f -
-   
+
    # Restart deployment
    kubectl rollout restart deployment -n onepassword-connect onepassword-connect
    ```
@@ -236,15 +242,17 @@ If the API server is in CrashLoopBackOff or continuously exiting:
    ```
 
 2. **Common issues**:
+
    - **OIDC configuration errors**: Ensure the OIDC issuer URL is accessible
    - **PodSecurity admission errors**: Check for duplicate namespaces in exemptions (talhelper bug)
    - **Certificate errors**: Verify all certificates are valid
 
 3. **Fix and restart**:
+
    - Fix configuration issues in `talconfig.yaml`
    - If fixing generated files manually, use `task talos:apply-config-only`
    - Restart kubelet to force static pod recreation:
-  
+
      ```bash
      talosctl service kubelet restart --nodes <node-ip>
      ```

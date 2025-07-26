@@ -62,25 +62,25 @@ spec:
             port: 8080
           initialDelaySeconds: 10
           timeoutSeconds: 5
-    
+
     # Domain configuration - only manage internal domains
     domainFilters:
       - k8s.home.geoffdavis.com
-      
+
     # Zone ID filters (optional)
     zoneIdFilters: []
-    
+
     # Policy configuration
     policy: sync
-    
+
     # Registry configuration
     registry: txt
     txtOwnerId: "home-ops-internal"
     txtPrefix: "external-dns-internal-"
-    
+
     # Deployment configuration
     replicas: 1
-    
+
     # Resource limits
     resources:
       limits:
@@ -89,11 +89,11 @@ spec:
       requests:
         cpu: 10m
         memory: 25Mi
-        
+
     # Node selector and tolerations
     nodeSelector:
       kubernetes.io/os: linux
-      
+
     tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
@@ -101,66 +101,66 @@ spec:
       - key: node-role.kubernetes.io/master
         operator: Exists
         effect: NoSchedule
-        
+
     # Security context
     securityContext:
       runAsNonRoot: true
       runAsUser: 65534
       runAsGroup: 65534
       fsGroup: 65534
-      
+
     # Pod security context
     podSecurityContext:
       runAsNonRoot: true
       runAsUser: 65534
       runAsGroup: 65534
       fsGroup: 65534
-      
+
     # Service configuration
     service:
       enabled: true
       type: ClusterIP
-      
+
     # ServiceAccount configuration
     serviceAccount:
       create: true
       name: external-dns-internal
-      
+
     # RBAC configuration
     rbac:
       create: true
-      
+
     # Metrics configuration
     metrics:
       enabled: true
       port: 7979
-      
+
     # Logging configuration
     logLevel: info
     logFormat: text
-    
+
     # Interval configuration
     interval: 1m
-    
+
     # Source configuration
     sources:
       - service
       - ingress
       - crd
-      
+
     # Annotation filters - process all ingresses (domain filtering handles scope)
     # annotationFilter: ""  # Process all ingresses matching domainFilters
-    
+
     # Extra arguments
     extraArgs:
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      
+
     # Environment variables to fix IPv6 localhost resolution
     env:
       - name: GODEBUG
         value: "netdns=go+2"
-      
+
     # Probes configuration
     livenessProbe:
       enabled: true
@@ -169,7 +169,7 @@ spec:
       timeoutSeconds: 5
       failureThreshold: 2
       successThreshold: 1
-      
+
     readinessProbe:
       enabled: true
       initialDelaySeconds: 5
@@ -177,37 +177,37 @@ spec:
       timeoutSeconds: 5
       failureThreshold: 6
       successThreshold: 1
-      
+
     # Pod disruption budget
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
-      
+
     # Priority class
     priorityClassName: ""
-    
+
     # Pod annotations
     podAnnotations:
       prometheus.io/scrape: "true"
       prometheus.io/port: "7979"
       prometheus.io/path: "/metrics"
-      
+
     # Deployment annotations
     deploymentAnnotations:
       reloader.stakater.com/auto: "true"
-      
+
     # Pod labels
     podLabels:
       app.kubernetes.io/component: dns-controller-internal
-      
+
     # Configure dry-run mode (set to false for production)
     dryRun: false
-    
+
     # Configure trigger loop on events
     triggerLoopOnEvent: false
-    
+
     # Configure batch change size
     batchChangeSize: 1000
-    
+
     # Configure batch change interval
     batchChangeInterval: 1s

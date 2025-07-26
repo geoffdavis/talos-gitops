@@ -52,6 +52,7 @@ Added SSD-specific snapshot class:
 The Longhorn configuration works seamlessly with the Talos Samsung Portable SSD T5 setup:
 
 ### Talos Side (Automatic)
+
 - Samsung Portable SSD T5 drives are detected via model-specific matching
 - T5 drives are mounted at `/var/lib/longhorn-ssd`
 - Disks are automatically tagged with "ssd" label
@@ -60,6 +61,7 @@ The Longhorn configuration works seamlessly with the Talos Samsung Portable SSD 
 - Model verification ensures only T5 drives are used
 
 ### Longhorn Side (This Configuration)
+
 - Disabled automatic disk creation to prevent conflicts
 - Storage classes use `diskSelector: "ssd"` to target Samsung T5 drives
 - Optimized settings for T5 performance and longevity
@@ -67,17 +69,20 @@ The Longhorn configuration works seamlessly with the Talos Samsung Portable SSD 
 ## Storage Classes Available
 
 ### 1. `longhorn-ssd` (Samsung Portable SSD T5 Storage)
+
 - **Use case**: High-performance applications requiring fast I/O
 - **Replicas**: 3 (across all nodes)
 - **Data locality**: Strict local for performance
 - **Reclaim policy**: Retain (data preserved on PVC deletion)
 
 ### 2. `longhorn` (Default - System Storage)
+
 - **Use case**: General-purpose storage
 - **Managed by**: Longhorn automatically
 - **Storage**: Uses system disk (`/var/lib/longhorn`)
 
 ### 3. `longhorn-single-replica`
+
 - **Use case**: Non-critical data, testing
 - **Replicas**: 1 (no redundancy)
 - **Reclaim policy**: Delete
@@ -95,7 +100,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: longhorn-ssd  # Uses Samsung T5 drives
+  storageClassName: longhorn-ssd # Uses Samsung T5 drives
   resources:
     requests:
       storage: 10Gi
@@ -188,6 +193,7 @@ kubectl top nodes
 ### Samsung T5 Not Recognized
 
 1. **Check Talos Samsung T5 mounting**:
+
    ```bash
    talosctl df | grep longhorn-ssd
    # Check T5-specific device detection
@@ -195,11 +201,13 @@ kubectl top nodes
    ```
 
 2. **Verify T5 model detection**:
+
    ```bash
    talosctl cat /sys/block/*/device/model | grep "Portable SSD T5"
    ```
 
 3. **Verify disk tagging**:
+
    ```bash
    talosctl ls /var/lib/longhorn/disks/
    talosctl cat /var/lib/longhorn/disks/*/tags
@@ -214,6 +222,7 @@ kubectl top nodes
 ### Storage Class Issues
 
 1. **Verify storage class parameters**:
+
    ```bash
    kubectl get storageclass longhorn-ssd -o yaml
    ```
@@ -227,11 +236,13 @@ kubectl top nodes
 ### Performance Issues
 
 1. **Check I/O scheduler**:
+
    ```bash
    talosctl cat /sys/block/*/queue/scheduler
    ```
 
 2. **Monitor T5 disk performance**:
+
    ```bash
    talosctl iostat
    talosctl dmesg | grep "Portable SSD T5"

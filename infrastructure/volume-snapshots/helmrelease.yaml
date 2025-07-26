@@ -39,11 +39,11 @@ spec:
         requests:
           cpu: 10m
           memory: 32Mi
-      
+
       # Node selector and tolerations for control plane scheduling
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -51,7 +51,7 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
       # Security context
       securityContext:
         runAsNonRoot: true
@@ -61,7 +61,7 @@ spec:
         allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
-        
+
       # Pod security context
       podSecurityContext:
         runAsNonRoot: true
@@ -70,18 +70,18 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-        
+
       # Enable metrics
       metrics:
         enabled: true
-        
+
       # Log level
       logLevel: 2
-      
+
       # Leader election
       leaderElection:
         enabled: true
-        
+
     # Webhook configuration
     webhook:
       # Resource limits and requests
@@ -92,11 +92,11 @@ spec:
         requests:
           cpu: 10m
           memory: 32Mi
-      
+
       # Node selector and tolerations
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -104,7 +104,7 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-          
+
       # Security context
       securityContext:
         runAsNonRoot: true
@@ -114,27 +114,27 @@ spec:
         allowPrivilegeEscalation: false
         seccompProfile:
           type: RuntimeDefault
-        
+
     # RBAC configuration
     rbac:
       create: true
-      
+
     # Service account configuration
     serviceAccount:
       create: true
-      
+
     # Install CRDs
     installCRDs: true
-    
+
     # Pod disruption budget
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
-      
+
     # Image configuration
     image:
       pullPolicy: IfNotPresent
-      
+
     # Configure for homelab use
     global:
       leaderElection:

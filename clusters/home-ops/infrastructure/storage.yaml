@@ -33,7 +33,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  timeout: 20m0s  # Extended timeout for Longhorn deployment
+  timeout: 20m0s # Extended timeout for Longhorn deployment
   path: ./infrastructure/longhorn
   prune: true
   sourceRef:

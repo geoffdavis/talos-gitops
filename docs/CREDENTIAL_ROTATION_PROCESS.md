@@ -43,6 +43,7 @@ task onepassword:prepare-credential-rotation
 ```
 
 This will:
+
 - ✅ Clean up any local credential files
 - ✅ Clear existing Talos generated secrets
 - ✅ Verify 1Password entries that need rotation
@@ -57,6 +58,7 @@ task onepassword:bootstrap-fresh-credentials
 ```
 
 This will:
+
 - ✅ Revoke old 1Password Connect servers
 - ✅ Delete old credential entries from 1Password
 - ✅ Create new 1Password Connect server
@@ -135,21 +137,25 @@ Automation Vault:
 ### Entry Details
 
 **1Password Connect Credentials - home-ops**
+
 - Type: Document
 - Contains: Fresh `1password-credentials.json` file
 - Version: 2 (required for Connect API)
 
 **1Password Connect Token - home-ops**
+
 - Type: API Credential
 - Field: `token` (password field)
 - Contains: Fresh JWT Connect token
 
 **Home-ops cloudflare-tunnel.json**
+
 - Type: Document
 - Field: `json` (password field)
 - Contains: Fresh Cloudflare tunnel credentials JSON
 
 **Talos Secrets - home-ops**
+
 - Type: Secure Note
 - Field: `talsecret` (password field)
 - Contains: Complete Talos secret YAML
@@ -159,6 +165,7 @@ Automation Vault:
 ### Common Issues
 
 **1. "Connect server creation failed"**
+
 ```bash
 # Check 1Password CLI authentication
 op account list
@@ -169,6 +176,7 @@ echo $OP_ACCOUNT
 ```
 
 **2. "Nodes not in maintenance mode"**
+
 ```bash
 # Check node status
 talosctl version --insecure --nodes 172.29.51.11
@@ -178,6 +186,7 @@ task cluster:safe-reset CONFIRM=SAFE-RESET
 ```
 
 **3. "Talos config generation failed"**
+
 ```bash
 # Clean up and retry
 rm -rf talos/generated/*
@@ -186,6 +195,7 @@ task talos:generate-config
 ```
 
 **4. "1Password Connect deployment fails"**
+
 ```bash
 # Check secrets exist
 kubectl get secrets -n onepassword-connect
@@ -202,11 +212,13 @@ kubectl rollout restart deployment onepassword-connect -n onepassword-connect
 **If credential rotation fails midway:**
 
 1. **Reset to clean state**:
+
    ```bash
    task cluster:safe-reset CONFIRM=SAFE-RESET
    ```
 
 2. **Clean up partial entries**:
+
    ```bash
    # Manually clean up any partial 1Password entries
    op item list --vault=Automation | grep -E "(Connect|Talos)"
@@ -221,6 +233,7 @@ kubectl rollout restart deployment onepassword-connect -n onepassword-connect
 **If cluster becomes inaccessible:**
 
 1. **Emergency recovery**:
+
    ```bash
    task cluster:emergency-recovery
    ```

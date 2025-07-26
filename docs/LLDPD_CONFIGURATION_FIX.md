@@ -1,12 +1,15 @@
 # LLDPD Configuration Fix - RESOLVED ✅
 
 ## Issue Resolved
+
 Fixed critical LLDPD configuration that was causing service startup failures and node instability, leading to periodic reboots.
 
 ## Root Cause Analysis
+
 The LLDPD ExtensionServiceConfig was not being properly applied due to incorrect configuration approaches:
 
 1. **Initial attempts failed**:
+
    - Tried `machine.extensionServiceConfigs` in patches (not supported in Talos)
    - Tried `machine.files` approach (incorrect for extension services)
    - Tried `extraManifests` in talconfig.yaml (wrong context - for Kubernetes manifests)
@@ -16,10 +19,12 @@ The LLDPD ExtensionServiceConfig was not being properly applied due to incorrect
 ## Solution Applied ✅
 
 ### 1. Removed Problematic Configuration
+
 - **Removed**: `@talos/patches/lldpd.yaml` reference from talconfig.yaml
 - **Reason**: Machine config patches cannot contain ExtensionServiceConfigs
 
 ### 2. Created Proper ExtensionServiceConfig Manifest
+
 - **File**: `talos/manifests/lldpd-extension-config.yaml`
 - **Format**: Talos-native format (no Kubernetes-style metadata/spec wrappers)
 
@@ -37,6 +42,7 @@ configFiles:
 ```
 
 ### 3. Applied Using Correct Method
+
 ```bash
 # Applied to all nodes using talosctl patch
 talosctl --talosconfig ./clusterconfig/talosconfig \
@@ -47,6 +53,7 @@ talosctl --talosconfig ./clusterconfig/talosconfig \
 ## Verification Results ✅
 
 ### Extension Service Configs Loaded
+
 ```
 NODE           NAMESPACE   TYPE                     ID      VERSION
 172.29.51.11   runtime     ExtensionServiceConfig   lldpd   1
@@ -55,6 +62,7 @@ NODE           NAMESPACE   TYPE                     ID      VERSION
 ```
 
 ### LLDPD Services Running
+
 ```
 172.29.51.11   runtime     Service   ext-lldpd    1         true      false     true
 172.29.51.12   runtime     Service   ext-lldpd    1         true      false     true
@@ -66,11 +74,13 @@ NODE           NAMESPACE   TYPE                     ID      VERSION
 ## Expected Outcomes - ACHIEVED ✅
 
 ### 🎯 Stability Improvements
+
 - ✅ **No more periodic reboots** - LLDPD service starts properly
 - ✅ **Stable node operation** - Service startup failures eliminated
 - ✅ **Clean configuration** - ExtensionServiceConfigs properly loaded
 
 ### 🎯 Functionality Preserved
+
 - ✅ **Network discovery active** - LLDP functionality working
 - ✅ **Proper LLDP configuration** - Optimized for Mac mini environment
 - ✅ **Service integration** - Extension properly integrated with Talos

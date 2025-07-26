@@ -7,6 +7,7 @@ This guide provides systematic troubleshooting procedures for the BGP LoadBalanc
 ## Quick Diagnostic Commands
 
 ### Immediate Status Check
+
 ```bash
 # Overall BGP status
 task bgp-loadbalancer:status
@@ -19,6 +20,7 @@ task bgp-loadbalancer:verify-bgp-peering
 ```
 
 ### Service Connectivity Test
+
 ```bash
 # Test all LoadBalancer services
 task bgp-loadbalancer:test-connectivity
@@ -33,11 +35,13 @@ curl -s --connect-timeout 5 http://172.29.52.100  # Longhorn
 ### 1. BGP Peering Issues
 
 #### Symptoms
+
 - Services get external IPs but are not accessible from network
 - BGP peering shows as "Idle" or "Connect" state
 - Routes not appearing in UDM Pro routing table
 
 #### Diagnosis
+
 ```bash
 # Check BGP peering policy
 kubectl get ciliumbgppeeringpolicy -o yaml
@@ -52,6 +56,7 @@ ssh unifi-admin@udm-pro "vtysh -c 'show bgp summary'"
 #### Solutions
 
 ##### A. Network Connectivity Issues
+
 ```bash
 # Test connectivity to UDM Pro from cluster nodes
 kubectl exec -n kube-system -l k8s-app=cilium -- ping -c 3 172.29.51.1
@@ -61,6 +66,7 @@ kubectl exec -n kube-system -l k8s-app=cilium -- ping -c 3 172.29.51.1
 ```
 
 ##### B. BGP Configuration Mismatch
+
 ```bash
 # Verify ASN configuration
 kubectl get ciliumbgppeeringpolicy -o yaml | grep -E "localASN|peerASN"
@@ -71,9 +77,11 @@ ssh unifi-admin@udm-pro "vtysh -c 'show running-config' | grep -A 20 'router bgp
 ```
 
 ##### C. Schema Compatibility Issues
+
 **Root Cause**: Using newer CiliumBGPClusterConfig/CiliumBGPAdvertisement with Cilium v1.17.6
 
 **Solution**: Use legacy [`CiliumBGPPeeringPolicy`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml)
+
 ```bash
 # Verify using legacy schema
 kubectl get ciliumbgppeeringpolicy
@@ -88,11 +96,13 @@ kubectl delete ciliumbgpadvertisement --all
 ### 2. LoadBalancer IP Assignment Issues
 
 #### Symptoms
+
 - LoadBalancer services stuck in "Pending" state
 - Services not getting external IPs
 - Wrong IP pool assignment
 
 #### Diagnosis
+
 ```bash
 # Check LoadBalancer IP pools
 kubectl get ciliumloadbalancerippool -o wide
@@ -107,6 +117,7 @@ kubectl logs -n kube-system -l k8s-app=cilium-operator --tail=50 | grep -i ipam
 #### Solutions
 
 ##### A. IPAM Not Enabled
+
 ```bash
 # Verify Cilium IPAM is enabled
 helm get values cilium -n kube-system | grep -i ipam
@@ -117,6 +128,7 @@ helm upgrade cilium cilium/cilium -n kube-system --reuse-values --set enable-lb-
 ```
 
 ##### B. Pool Configuration Issues
+
 ```bash
 # Check pool blocks and selectors
 kubectl get ciliumloadbalancerippool -o yaml | grep -A 10 -B 5 "blocks\|serviceSelector"
@@ -126,6 +138,7 @@ task bgp-loadbalancer:check-pools
 ```
 
 ##### C. Service Pool Assignment
+
 ```bash
 # Assign service to correct pool
 task bgp-loadbalancer:update-service-pools \
@@ -137,11 +150,13 @@ task bgp-loadbalancer:update-service-pools \
 ### 3. Route Advertisement Issues
 
 #### Symptoms
+
 - BGP peering established but routes not advertised
 - Services get IPs but not accessible from network
 - UDM Pro routing table missing LoadBalancer routes
 
 #### Diagnosis
+
 ```bash
 # Check BGP advertisements
 kubectl get ciliumbgppeeringpolicy -o yaml | grep -A 10 "serviceSelector"
@@ -156,6 +171,7 @@ ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv4 unicast' | grep 172.29.52"
 #### Solutions
 
 ##### A. Service Selector Issues
+
 The legacy [`CiliumBGPPeeringPolicy`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml) uses `serviceSelector: {}` to advertise all LoadBalancer services.
 
 ```bash
@@ -165,6 +181,7 @@ kubectl get ciliumbgppeeringpolicy bgp-peering-policy -o yaml | grep -A 5 servic
 ```
 
 ##### B. UDM Pro Route Acceptance
+
 ```bash
 # Check UDM Pro route acceptance policy
 ssh unifi-admin@udm-pro "vtysh -c 'show running-config' | grep -A 10 'route-map'"
@@ -177,11 +194,13 @@ ssh unifi-admin@udm-pro "vtysh -c 'show running-config' | grep -A 5 'prefix-list
 ### 4. Service Accessibility Issues
 
 #### Symptoms
+
 - Services have external IPs and routes are advertised
 - Services still not accessible from client machines
 - Connection timeouts or refused connections
 
 #### Diagnosis
+
 ```bash
 # Test network path
 ping 172.29.52.200  # Should reach ingress IP
@@ -197,6 +216,7 @@ kubectl get pods -n ingress-nginx-internal -o wide
 #### Solutions
 
 ##### A. Service Endpoint Issues
+
 ```bash
 # Check if service has healthy endpoints
 kubectl describe svc your-service -n your-namespace
@@ -206,6 +226,7 @@ kubectl get pods -n your-namespace -o wide
 ```
 
 ##### B. Network Policy Blocking
+
 ```bash
 # Check for network policies
 kubectl get networkpolicies --all-namespaces
@@ -215,6 +236,7 @@ kubectl delete networkpolicy problematic-policy -n namespace
 ```
 
 ##### C. Firewall or Security Groups
+
 ```bash
 # Check if UDM Pro is forwarding traffic correctly
 ssh unifi-admin@udm-pro "iptables -L -n | grep 172.29.52"
@@ -226,9 +248,11 @@ ssh unifi-admin@udm-pro "curl -s --connect-timeout 5 http://172.29.52.200"
 ### 5. Cilium v1.17.6 Specific Issues
 
 #### Mac Mini Compatibility
+
 **Issue**: XDP acceleration causes issues on Mac mini hardware
 
 **Solution**: Ensure XDP is disabled
+
 ```bash
 # Check current Cilium configuration
 helm get values cilium -n kube-system | grep acceleration
@@ -239,9 +263,11 @@ helm upgrade cilium cilium/cilium -n kube-system --reuse-values --set loadBalanc
 ```
 
 #### Schema Compatibility
+
 **Issue**: Newer BGP CRDs not compatible with Cilium v1.17.6
 
 **Solution**: Use legacy schema only
+
 ```bash
 # Remove newer BGP resources if present
 kubectl delete ciliumbgpclusterconfig --all
@@ -255,6 +281,7 @@ kubectl apply -f infrastructure/cilium-bgp/bgp-policy-legacy.yaml
 ## Systematic Troubleshooting Workflow
 
 ### Step 1: Basic Health Check
+
 ```bash
 # Check cluster health
 kubectl get nodes -o wide
@@ -266,6 +293,7 @@ kubectl get ciliumloadbalancerippool
 ```
 
 ### Step 2: BGP Peering Verification
+
 ```bash
 # Check peering status
 task bgp-loadbalancer:verify-bgp-peering
@@ -275,6 +303,7 @@ kubectl logs -n kube-system -l k8s-app=cilium --tail=100 | grep -i "bgp\|peer\|n
 ```
 
 ### Step 3: Service IP Assignment
+
 ```bash
 # Check service IPs
 kubectl get svc --all-namespaces | grep LoadBalancer
@@ -284,6 +313,7 @@ kubectl logs -n kube-system -l k8s-app=cilium-operator --tail=50 | grep -i ipam
 ```
 
 ### Step 4: Route Advertisement
+
 ```bash
 # Check routes on UDM Pro
 ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv4 unicast' | grep 172.29.52"
@@ -293,6 +323,7 @@ kubectl get ciliumbgppeeringpolicy -o yaml | grep -A 5 serviceSelector
 ```
 
 ### Step 5: End-to-End Connectivity
+
 ```bash
 # Test from client machine
 curl -v http://172.29.52.200
@@ -305,6 +336,7 @@ kubectl get endpoints --all-namespaces | grep your-service
 ## Recovery Procedures
 
 ### Complete BGP Reset
+
 ```bash
 # 1. Remove all BGP resources
 kubectl delete ciliumbgppeeringpolicy --all
@@ -322,6 +354,7 @@ task bgp-loadbalancer:status
 ```
 
 ### Cilium BGP Restart
+
 ```bash
 # Restart Cilium pods to reset BGP state
 kubectl delete pods -n kube-system -l k8s-app=cilium
@@ -334,6 +367,7 @@ task bgp-loadbalancer:verify-bgp-peering
 ```
 
 ### UDM Pro BGP Reset
+
 ```bash
 # Reset BGP on UDM Pro (requires SSH access)
 ssh unifi-admin@udm-pro "vtysh -c 'clear bgp *'"
@@ -345,6 +379,7 @@ ssh unifi-admin@udm-pro "vtysh -c 'show bgp summary'"
 ## Monitoring and Prevention
 
 ### Health Check Script
+
 ```bash
 #!/bin/bash
 # BGP LoadBalancer Health Monitor
@@ -383,6 +418,7 @@ echo "Health check completed"
 ```
 
 ### Automated Monitoring
+
 - **Prometheus Metrics**: Monitor BGP peering status and route advertisement
 - **Service Monitors**: Track LoadBalancer service accessibility
 - **Alerting**: Set up alerts for BGP peering failures and service unavailability
@@ -390,6 +426,7 @@ echo "Health check completed"
 ## Configuration Validation
 
 ### Pre-deployment Checks
+
 ```bash
 # Validate BGP configuration syntax
 kubectl apply --dry-run=client -f infrastructure/cilium-bgp/bgp-policy-legacy.yaml
@@ -402,6 +439,7 @@ kubectl get ciliumbgpclusterconfig 2>/dev/null && echo "WARNING: Remove newer BG
 ```
 
 ### Post-deployment Validation
+
 ```bash
 # Comprehensive validation
 task bgp-loadbalancer:status
@@ -415,11 +453,13 @@ task bgp-loadbalancer:generate-report
 ## Emergency Contacts and Escalation
 
 ### Critical Issues
+
 - **BGP Peering Complete Failure**: Check UDM Pro configuration and network connectivity
 - **All Services Inaccessible**: Verify Cilium health and consider CNI restart
 - **Schema Compatibility Problems**: Ensure using legacy [`CiliumBGPPeeringPolicy`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml)
 
 ### Support Resources
+
 - **Configuration Files**: [`infrastructure/cilium-bgp/`](../infrastructure/cilium-bgp/) and [`infrastructure/cilium/`](../infrastructure/cilium/)
 - **Operational Guide**: [`docs/BGP_LOADBALANCER_OPERATIONAL_GUIDE.md`](BGP_LOADBALANCER_OPERATIONAL_GUIDE.md)
 - **Task Commands**: [`taskfiles/bgp-loadbalancer.yml`](../taskfiles/bgp-loadbalancer.yml)

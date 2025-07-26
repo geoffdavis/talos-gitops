@@ -1,9 +1,11 @@
 # Mini01 Ubuntu Live USB Recovery Guide
 
 ## Overview
+
 This guide provides step-by-step instructions for using Ubuntu Live USB to completely wipe mini01's disk and eliminate the persistent disk encryption corruption.
 
 ## Prerequisites
+
 - USB drive (8GB or larger)
 - Ubuntu Desktop 22.04 LTS ISO
 - Physical access to mini01
@@ -11,12 +13,14 @@ This guide provides step-by-step instructions for using Ubuntu Live USB to compl
 ## Step 1: Create Ubuntu Live USB
 
 ### Download Ubuntu ISO
+
 ```bash
 # Download Ubuntu 22.04 LTS Desktop
 curl -LO https://releases.ubuntu.com/22.04/ubuntu-22.04.3-desktop-amd64.iso
 ```
 
 ### Create Bootable USB (macOS)
+
 ```bash
 # Find USB device
 diskutil list
@@ -42,9 +46,11 @@ diskutil eject /dev/diskX
 ## Step 3: Complete Disk Wipe
 
 ### Open Terminal
+
 Press `Ctrl+Alt+T` to open terminal
 
 ### Identify Internal Disk
+
 ```bash
 # List all storage devices
 lsblk
@@ -57,6 +63,7 @@ sudo fdisk -l
 ```
 
 ### Complete Disk Wipe
+
 ```bash
 # Set disk variable (REPLACE WITH YOUR ACTUAL DISK!)
 DISK="/dev/nvme0n1"  # or /dev/sda - verify this first!
@@ -90,6 +97,7 @@ sudo blkid $DISK  # Should show no output (no filesystems)
 ```
 
 ### Verification Commands
+
 ```bash
 # Verify no encryption signatures remain
 sudo cryptsetup isLuks $DISK && echo "LUKS found - wipe failed!" || echo "No LUKS - wipe successful!"
@@ -125,6 +133,7 @@ talosctl version --nodes 172.29.51.11 --endpoints 172.29.51.11 --insecure
 ## Safety Warnings
 
 ⚠️ **CRITICAL SAFETY CHECKS:**
+
 - **VERIFY DISK DEVICE** before running any wipe commands
 - **DOUBLE-CHECK** you're wiping the internal disk, not USB drive
 - **BACKUP ANY IMPORTANT DATA** (though this is intentional wipe for security)
@@ -133,6 +142,7 @@ talosctl version --nodes 172.29.51.11 --endpoints 172.29.51.11 --insecure
 ## Expected Results
 
 After successful completion:
+
 - ✅ All disk encryption corruption eliminated
 - ✅ Clean GPT partition table
 - ✅ No filesystem signatures
@@ -142,16 +152,19 @@ After successful completion:
 ## Troubleshooting
 
 ### If disk wipe fails:
+
 - Try different wipe tools: `dd`, `shred`, `scrub`
 - Use multiple passes: `shred -vfz -n 3`
 - Check for hardware write protection
 
 ### If Talos won't install:
+
 - Verify UEFI boot mode
 - Check network connectivity
 - Ensure Talos installer image is valid
 
 ### If still getting encryption errors:
+
 - Repeat the secure wipe process
 - Try zeroing more of the disk
 - Consider hardware-level secure erase
@@ -159,6 +172,7 @@ After successful completion:
 ## Next Steps
 
 Once mini01 is clean and in maintenance mode:
+
 1. Continue with cluster recovery script
 2. Apply fresh Talos configuration to all nodes
 3. Bootstrap cluster with fresh credentials

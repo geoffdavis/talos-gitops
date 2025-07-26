@@ -36,13 +36,13 @@ spec:
         enabled: true
         default: false
         controllerValue: "k8s.io/ingress-nginx-public"
-      
+
       # Use different election ID to avoid conflicts
       electionID: "ingress-controller-leader-public"
-      
+
       # Public controller specific configuration
       ingressClass: nginx-public
-      
+
       # Service configuration - ClusterIP only (no LoadBalancer)
       # This avoids IP conflicts and allows external-dns to create CNAME records
       service:
@@ -57,7 +57,7 @@ spec:
         targetPorts:
           http: http
           https: https
-      
+
       # Metrics configuration
       metrics:
         enabled: true
@@ -66,7 +66,7 @@ spec:
           annotations:
             prometheus.io/scrape: "true"
             prometheus.io/port: "10254"
-      
+
       # Resource configuration
       resources:
         limits:
@@ -75,11 +75,11 @@ spec:
         requests:
           cpu: 100m
           memory: 128Mi
-      
+
       # Node selector and tolerations
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -87,33 +87,33 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-      
+
       # Security context
       podSecurityContext:
         runAsNonRoot: true
         runAsUser: 101
         runAsGroup: 82
         fsGroup: 82
-      
+
       # Additional configuration optimized for tunnel traffic
       config:
         # Performance tuning
         worker-processes: "2"
         worker-connections: "1024"
-        
+
         # Security headers for public access
         force-ssl-redirect: "true"
         ssl-redirect: "true"
-        
+
         # Additional security for public ingress
         hide-headers: "Server,X-Powered-By"
         server-tokens: "false"
-        
+
         # Proxy settings for tunnel traffic
         proxy-real-ip-cidr: "0.0.0.0/0"
         use-forwarded-headers: "true"
         compute-full-forwarded-for: "true"
-        
+
         # Logging
         log-format-escape-json: "true"
         log-format-upstream: >
@@ -124,7 +124,7 @@ spec:
           "path": "$uri", "request_query": "$args", "request_length": $request_length,
           "duration": $request_time,"method": "$request_method", "http_referrer": "$http_referer",
           "http_user_agent": "$http_user_agent", "tunnel": "cloudflare"}
-      
+
       # Admission webhooks
       admissionWebhooks:
         enabled: true
@@ -135,7 +135,7 @@ spec:
             image: ingress-nginx/kube-webhook-certgen
             tag: v20231011-8b53cabe0
             digest: sha256:a7943503b45d552785aa3b5e457f169a5661fb94d82b8a3373bcd9ebaf9aac80
-        
+
     # Default backend configuration
     defaultBackend:
       enabled: true
@@ -150,17 +150,17 @@ spec:
         requests:
           cpu: 10m
           memory: 20Mi
-      
+
     # Service account
     serviceAccount:
       create: true
       name: ingress-nginx-public
-      
+
     # RBAC
     rbac:
       create: true
       scope: false
-      
+
     # Pod disruption budget
     podDisruptionBudget:
       enabled: true

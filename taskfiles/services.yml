@@ -1,10 +1,10 @@
-version: '3'
+version: "3"
 
 # Core Services Tasks
 # Handles deployment and validation of core services required for GitOps
 
 vars:
-  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  BOOTSTRAP_STATE_DIR: ".bootstrap-state"
 
 env:
   TALOSCONFIG: talos/generated/talosconfig
@@ -24,24 +24,24 @@ tasks:
   deploy-external-secrets:
     desc: Deploy External Secrets Operator
     status:
-      -  kubectl get pods -n external-secrets-system | grep -q "Running"
-      -  kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1
+      - kubectl get pods -n external-secrets-system | grep -q "Running"
+      - kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1
     preconditions:
       - sh: ' kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"'
-        msg: 'All nodes must be Ready with CNI'
-      - sh: ' helm version >/dev/null 2>&1'
-        msg: 'Helm must be available'
+        msg: "All nodes must be Ready with CNI"
+      - sh: " helm version >/dev/null 2>&1"
+        msg: "Helm must be available"
     cmds:
       - echo "Adding External Secrets Helm repository..."
-      -  helm repo add external-secrets https://charts.external-secrets.io || true
-      -  helm repo update
+      - helm repo add external-secrets https://charts.external-secrets.io || true
+      - helm repo update
       - echo "Deploying External Secrets Operator..."
-      -  helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait --version 0.18.2
+      - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --create-namespace --wait --version 0.18.2
       - echo "Waiting for External Secrets CRDs to be ready..."
-      -  kubectl wait --for condition=established --timeout=120s crd/clustersecretstores.external-secrets.io
-      -  kubectl wait --for condition=established --timeout=120s crd/secretstores.external-secrets.io
+      - kubectl wait --for condition=established --timeout=120s crd/clustersecretstores.external-secrets.io
+      - kubectl wait --for condition=established --timeout=120s crd/secretstores.external-secrets.io
       - echo "Waiting for External Secrets webhook to be fully ready..."
-      -  kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
       - sleep 15
       - echo "External Secrets Operator deployed successfully"
 
@@ -50,25 +50,25 @@ tasks:
     desc: Deploy 1Password Connect with proper credentials
     deps: [deploy-external-secrets]
     status:
-      -  kubectl get pods -n onepassword-connect | grep -q "Running"
-      -  kubectl get secret onepassword-connect-credentials -n onepassword-connect >/dev/null 2>&1
+      - kubectl get pods -n onepassword-connect | grep -q "Running"
+      - kubectl get secret onepassword-connect-credentials -n onepassword-connect >/dev/null 2>&1
     preconditions:
       - sh: ' kubectl get pods -n external-secrets-system | grep -q "Running"'
-        msg: 'External Secrets Operator must be running'
+        msg: "External Secrets Operator must be running"
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set'
-      - sh: ' op account list >/dev/null 2>&1'
-        msg: '1Password CLI must be authenticated'
+        msg: "OP_ACCOUNT environment variable must be set"
+      - sh: " op account list >/dev/null 2>&1"
+        msg: "1Password CLI must be authenticated"
     cmds:
       - echo "Deploying 1Password Connect basic resources..."
-      -  kubectl apply -f infrastructure/onepassword-connect/namespace.yaml
+      - kubectl apply -f infrastructure/onepassword-connect/namespace.yaml
       - echo "Bootstrapping 1Password Connect credentials..."
       - task: bootstrap-onepassword-credentials
       - echo "Deploying 1Password Connect..."
-      -  kubectl apply -f infrastructure/onepassword-connect/deployment.yaml
-      -  kubectl apply -f infrastructure/onepassword-connect/service.yaml
+      - kubectl apply -f infrastructure/onepassword-connect/deployment.yaml
+      - kubectl apply -f infrastructure/onepassword-connect/service.yaml
       - echo "Waiting for 1Password Connect to be ready..."
-      -  kubectl rollout status deployment onepassword-connect -n onepassword-connect --timeout=120s
+      - kubectl rollout status deployment onepassword-connect -n onepassword-connect --timeout=120s
       - echo "Deploying 1Password Connect secret stores..."
       - task: deploy-onepassword-secret-stores
       - echo "1Password Connect deployed successfully"
@@ -77,14 +77,14 @@ tasks:
   bootstrap-onepassword-credentials:
     desc: Bootstrap 1Password Connect credentials and token
     status:
-      -  kubectl get secret onepassword-connect-credentials -n onepassword-connect >/dev/null 2>&1
-      -  kubectl get secret onepassword-connect-token -n onepassword-connect >/dev/null 2>&1
+      - kubectl get secret onepassword-connect-credentials -n onepassword-connect >/dev/null 2>&1
+      - kubectl get secret onepassword-connect-token -n onepassword-connect >/dev/null 2>&1
     cmds:
       - echo "Bootstrapping 1Password Connect credentials..."
       - |
         # Try to get credentials from multiple sources as per bootstrap-config.yaml
         temp_dir=$(mktemp -d)
-        
+
         # Try separate entries first (recommended approach)
         if  op document get "1Password Connect Credentials - home-ops" --vault="Automation" --out-file="$temp_dir/1password-credentials.json" 2>/dev/null; then
           echo "✓ Retrieved credentials from separate document entry"
@@ -99,7 +99,7 @@ tasks:
             rm -rf "$temp_dir"
             exit 1
           fi
-        
+
         # Fallback to legacy entry
         elif  op item get "1password connect" --vault="Automation" >/dev/null 2>&1; then
           echo "⚠ Using legacy 1Password Connect entry"
@@ -134,14 +134,14 @@ tasks:
             rm -rf "$temp_dir"
             exit 1
           fi
-        
+
         else
           echo "✗ No 1Password Connect credentials found"
           echo "Please run: task onepassword:create-connect-server"
           rm -rf "$temp_dir"
           exit 1
         fi
-        
+
         # Validate credentials format
         if jq -e '.version' "$temp_dir/1password-credentials.json" >/dev/null 2>&1; then
           version=$(jq -r '.version' "$temp_dir/1password-credentials.json")
@@ -153,19 +153,19 @@ tasks:
         else
           echo "⚠ Credentials file missing version field or invalid JSON"
         fi
-        
+
         # Create Kubernetes secrets
         echo "Creating Kubernetes secrets..."
          kubectl create secret generic onepassword-connect-credentials \
           --from-file="$temp_dir/1password-credentials.json" \
           --namespace=onepassword-connect \
           --dry-run=client -o yaml |  kubectl apply -f -
-        
+
          kubectl create secret generic onepassword-connect-token \
           --from-file=token="$temp_dir/connect-token.txt" \
           --namespace=onepassword-connect \
           --dry-run=client -o yaml |  kubectl apply -f -
-        
+
         # Clean up
         rm -rf "$temp_dir"
         echo "✓ 1Password Connect credentials bootstrapped successfully"
@@ -174,15 +174,15 @@ tasks:
   deploy-onepassword-secret-stores:
     desc: Deploy 1Password Connect secret stores
     status:
-      -  kubectl get clustersecretstore onepassword-connect >/dev/null 2>&1
+      - kubectl get clustersecretstore onepassword-connect >/dev/null 2>&1
     preconditions:
       - sh: ' kubectl get pods -n onepassword-connect | grep -q "Running"'
-        msg: '1Password Connect must be running'
-      - sh: ' kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1'
-        msg: 'External Secrets CRDs must be available'
+        msg: "1Password Connect must be running"
+      - sh: " kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1"
+        msg: "External Secrets CRDs must be available"
     cmds:
       - echo "Waiting for External Secrets webhook to be ready..."
-      -  kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
       - echo "Deploying 1Password Connect secret stores..."
       - |
         # Apply secret stores with proper webhook validation
@@ -201,11 +201,11 @@ tasks:
     desc: Fix External Secrets webhook validation issues
     cmds:
       - echo "Checking External Secrets webhook status..."
-      -  kubectl get validatingwebhookconfiguration | grep -E "(secretstore|external)" || echo "No webhook configurations found"
+      - kubectl get validatingwebhookconfiguration | grep -E "(secretstore|external)" || echo "No webhook configurations found"
       - echo "Reinstalling External Secrets to restore webhook configuration..."
-      -  helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
+      - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets-system --reuse-values
       - echo "Waiting for webhook to be ready..."
-      -  kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
+      - kubectl wait --for=condition=ready pods -l app.kubernetes.io/name=external-secrets-webhook -n external-secrets-system --timeout=120s
       - echo "✓ External Secrets webhook restored"
 
   # Deploy Longhorn storage
@@ -213,17 +213,17 @@ tasks:
     desc: Deploy Longhorn distributed storage
     deps: [deploy-external-secrets]
     status:
-      -  kubectl get pods -n longhorn-system | grep -q "Running"
-      -  kubectl get storageclass longhorn >/dev/null 2>&1
+      - kubectl get pods -n longhorn-system | grep -q "Running"
+      - kubectl get storageclass longhorn >/dev/null 2>&1
     preconditions:
       - sh: ' kubectl get nodes --no-headers | grep -c "Ready" | grep -q "3"'
-        msg: 'All nodes must be Ready'
-      - sh: ' helm version >/dev/null 2>&1'
-        msg: 'Helm must be available'
-      - sh: ' kubectl get crd helmreleases.helm.toolkit.fluxcd.io >/dev/null 2>&1'
-        msg: 'Flux CRDs must be installed for HelmRelease support'
-      - sh: ' kubectl get helmrepository longhorn -n flux-system >/dev/null 2>&1'
-        msg: 'Longhorn Helm repository must be available'
+        msg: "All nodes must be Ready"
+      - sh: " helm version >/dev/null 2>&1"
+        msg: "Helm must be available"
+      - sh: " kubectl get crd helmreleases.helm.toolkit.fluxcd.io >/dev/null 2>&1"
+        msg: "Flux CRDs must be installed for HelmRelease support"
+      - sh: " kubectl get helmrepository longhorn -n flux-system >/dev/null 2>&1"
+        msg: "Longhorn Helm repository must be available"
     cmds:
       - echo "Ensuring Flux CRDs are installed for HelmRelease support..."
       - |
@@ -237,20 +237,20 @@ tasks:
           echo "Flux CRDs already installed"
         fi
       - echo "Deploying Helm repository sources..."
-      -  kubectl apply -f infrastructure/sources/helm-repositories.yaml
+      - kubectl apply -f infrastructure/sources/helm-repositories.yaml
       - echo "Deploying Longhorn namespace..."
-      -  kubectl apply -f infrastructure/longhorn/namespace.yaml
+      - kubectl apply -f infrastructure/longhorn/namespace.yaml
       - echo "Deploying Longhorn via HelmRelease (v1.9.0)..."
-      -  kubectl apply -f infrastructure/longhorn/helmrelease.yaml
+      - kubectl apply -f infrastructure/longhorn/helmrelease.yaml
       - echo "Waiting for Longhorn HelmRelease to be ready..."
       - sleep 60
-      -  kubectl wait --for=condition=ready pods -l app=longhorn-manager -n longhorn-system --timeout=300s
+      - kubectl wait --for=condition=ready pods -l app=longhorn-manager -n longhorn-system --timeout=300s
       - echo "Deploying Longhorn storage classes..."
-      -  kubectl apply -f infrastructure/longhorn/storage-class.yaml
+      - kubectl apply -f infrastructure/longhorn/storage-class.yaml
       - echo "Deploying Longhorn ingress..."
-      -  kubectl apply -f infrastructure/longhorn/ingress.yaml
+      - kubectl apply -f infrastructure/longhorn/ingress.yaml
       - echo "Deploying volume snapshot classes..."
-      -  kubectl apply -f infrastructure/longhorn/volume-snapshot-class.yaml
+      - kubectl apply -f infrastructure/longhorn/volume-snapshot-class.yaml
       - echo "Longhorn storage upgraded successfully to v1.9.0 with all resources"
 
   # Comprehensive services validation
@@ -270,13 +270,13 @@ tasks:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/external-secrets-validated
     preconditions:
       - sh: ' kubectl get pods -n external-secrets-system | grep -q "Running"'
-        msg: 'External Secrets pods must be running'
-      - sh: ' kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1'
-        msg: 'External Secrets CRDs must be available'
+        msg: "External Secrets pods must be running"
+      - sh: " kubectl get crd clustersecretstores.external-secrets.io >/dev/null 2>&1"
+        msg: "External Secrets CRDs must be available"
     cmds:
       - echo "Validating External Secrets Operator..."
-      -  kubectl get pods -n external-secrets-system
-      -  kubectl get crd | grep external-secrets
+      - kubectl get pods -n external-secrets-system
+      - kubectl get crd | grep external-secrets
       - touch {{.BOOTSTRAP_STATE_DIR}}/external-secrets-validated
       - echo "✓ External Secrets Operator is operational"
 
@@ -287,13 +287,13 @@ tasks:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/onepassword-connect-validated
     preconditions:
       - sh: ' kubectl get pods -n onepassword-connect | grep -q "Running"'
-        msg: '1Password Connect must be running'
-      - sh: ' kubectl get clustersecretstore onepassword-connect >/dev/null 2>&1'
-        msg: '1Password Connect secret store must exist'
+        msg: "1Password Connect must be running"
+      - sh: " kubectl get clustersecretstore onepassword-connect >/dev/null 2>&1"
+        msg: "1Password Connect secret store must exist"
     cmds:
       - echo "Validating 1Password Connect integration..."
-      -  kubectl get pods -n onepassword-connect -o wide
-      -  kubectl get clustersecretstore onepassword-connect
+      - kubectl get pods -n onepassword-connect -o wide
+      - kubectl get clustersecretstore onepassword-connect
       - echo "Testing 1Password Connect connectivity..."
       - |
         # Test secret store connectivity
@@ -313,14 +313,14 @@ tasks:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/longhorn-validated
     preconditions:
       - sh: ' kubectl get pods -n longhorn-system | grep -q "Running"'
-        msg: 'Longhorn pods must be running'
-      - sh: ' kubectl get storageclass longhorn >/dev/null 2>&1'
-        msg: 'Longhorn storage class must exist'
+        msg: "Longhorn pods must be running"
+      - sh: " kubectl get storageclass longhorn >/dev/null 2>&1"
+        msg: "Longhorn storage class must exist"
     cmds:
       - echo "Validating Longhorn storage..."
-      -  kubectl get pods -n longhorn-system
-      -  kubectl get storageclass longhorn
-      -  kubectl get nodes -o custom-columns=NAME:.metadata.name,LONGHORN-READY:.status.conditions[?(@.type==\"LonghornReady\")].status || echo "Longhorn node status not available"
+      - kubectl get pods -n longhorn-system
+      - kubectl get storageclass longhorn
+      - kubectl get nodes -o custom-columns=NAME:.metadata.name,LONGHORN-READY:.status.conditions[?(@.type==\"LonghornReady\")].status || echo "Longhorn node status not available"
       - touch {{.BOOTSTRAP_STATE_DIR}}/longhorn-validated
       - echo "✓ Longhorn storage is operational"
 
@@ -330,29 +330,29 @@ tasks:
     cmds:
       - echo "=== Core Services Status ==="
       - echo "External Secrets System:"
-      -  kubectl get pods -n external-secrets-system || echo "External Secrets not deployed"
+      - kubectl get pods -n external-secrets-system || echo "External Secrets not deployed"
       - echo ""
       - echo "1Password Connect:"
-      -  kubectl get pods -n onepassword-connect || echo "1Password Connect not deployed"
+      - kubectl get pods -n onepassword-connect || echo "1Password Connect not deployed"
       - echo ""
       - echo "Longhorn System:"
-      -  kubectl get pods -n longhorn-system || echo "Longhorn not deployed"
+      - kubectl get pods -n longhorn-system || echo "Longhorn not deployed"
       - echo ""
       - echo "Secret Stores:"
-      -  kubectl get clustersecretstores || echo "No cluster secret stores found"
+      - kubectl get clustersecretstores || echo "No cluster secret stores found"
 
   # Troubleshooting tasks
   logs:
     desc: Show logs for core services
     cmds:
       - echo "=== External Secrets Logs ==="
-      -  kubectl logs -n external-secrets-system -l app.kubernetes.io/name=external-secrets --tail=20 || echo "No External Secrets logs"
+      - kubectl logs -n external-secrets-system -l app.kubernetes.io/name=external-secrets --tail=20 || echo "No External Secrets logs"
       - echo ""
       - echo "=== 1Password Connect Logs ==="
-      -  kubectl logs -n onepassword-connect -l app=onepassword-connect --tail=20 || echo "No 1Password Connect logs"
+      - kubectl logs -n onepassword-connect -l app=onepassword-connect --tail=20 || echo "No 1Password Connect logs"
       - echo ""
       - echo "=== Longhorn Manager Logs ==="
-      -  kubectl logs -n longhorn-system -l app=longhorn-manager --tail=20 || echo "No Longhorn logs"
+      - kubectl logs -n longhorn-system -l app=longhorn-manager --tail=20 || echo "No Longhorn logs"
 
   # Reset services state
   reset-state:

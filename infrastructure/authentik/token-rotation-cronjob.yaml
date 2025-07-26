@@ -25,7 +25,7 @@ spec:
         app.kubernetes.io/component: token-management
     spec:
       backoffLimit: 3
-      activeDeadlineSeconds: 1800  # 30 minutes
+      activeDeadlineSeconds: 1800 # 30 minutes
       template:
         metadata:
           labels:
@@ -109,42 +109,42 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
-                  
+
                   echo "=== Authentik Token Rotation Job ==="
                   echo "Starting token rotation check at $(date -u)"
-                  
+
                   # Install dependencies to writable volume
                   pip install --target /home/nobody/.local/lib/python3.12/site-packages requests pyyaml
                   export PYTHONPATH="/home/nobody/.local/lib/python3.12/site-packages:${PYTHONPATH:-}"
-                  
+
                   # Set Python path
                   export PYTHONPATH="/app:$PYTHONPATH"
-                  
+
                   # Check if rotation is enabled
                   if [[ "${ROTATION_ENABLED:-true}" != "true" ]]; then
                     echo "Token rotation is disabled, skipping..."
                     exit 0
                   fi
-                  
+
                   # Run token rotation check
                   echo "Checking token expiry status..."
                   python /app/authentik_token_manager.py list --json > /tmp/token_status.json
-                  
+
                   # Parse token status and determine if rotation is needed
                   python -c "
                   import json
                   import sys
                   from datetime import datetime
-                  
+
                   overlap_days = int('${OVERLAP_DAYS:-30}')
                   warning_days = int('${WARNING_DAYS:-60}')
-                  
+
                   with open('/tmp/token_status.json', 'r') as f:
                       tokens = json.load(f)
-                  
+
                   rotation_needed = False
                   warning_needed = False
-                  
+
                   for token in tokens:
                       if token.get('days_remaining'):
                           days = token['days_remaining']
@@ -154,7 +154,7 @@ spec:
                           elif days <= warning_days:
                               print(f'Token {token[\"key\"]} expires in {days} days - warning')
                               warning_needed = True
-                  
+
                   if rotation_needed:
                       print('ROTATION_NEEDED=true')
                       sys.exit(10)  # Special exit code for rotation needed
@@ -165,7 +165,7 @@ spec:
                       print('No action needed')
                       sys.exit(0)
                   " || rotation_status=$?
-                  
+
                   case $rotation_status in
                     10)
                       echo "Token rotation is needed, starting rotation process..."
@@ -203,7 +203,7 @@ spec:
                       exit 1
                       ;;
                   esac
-                  
+
                   echo "Token rotation job completed at $(date -u)"
               resources:
                 requests:
@@ -298,7 +298,7 @@ data:
     import argparse
     import subprocess
     from datetime import datetime, timedelta
-    
+
     def run_command(cmd, capture_output=True):
         """Run a shell command and return the result"""
         try:
@@ -308,7 +308,7 @@ data:
             print(f"Command failed: {cmd}")
             print(f"Error: {e.stderr}")
             raise
-    
+
     def get_current_token():
         """Get the current token from the enhanced token setup job logs"""
         try:
@@ -339,7 +339,7 @@ data:
         except Exception as e:
             print(f"Error getting current token: {e}")
             return None
-    
+
     def update_onepassword(token):
         """Update 1Password with the new token using 1Password Connect API"""
         try:
@@ -384,7 +384,7 @@ data:
         except Exception as e:
             print(f"Error updating 1Password: {e}")
             return False
-    
+
     def list_tokens():
         """List current token status"""
         token = get_current_token()
@@ -396,7 +396,7 @@ data:
                 "status": "active"
             }]
         return []
-    
+
     def rotate_tokens(overlap_days=30):
         """Rotate tokens by updating 1Password with current token"""
         print("Starting token rotation...")
@@ -416,7 +416,7 @@ data:
         else:
             print("Failed to update 1Password")
             return False
-    
+
     def main():
         parser = argparse.ArgumentParser(description='Authentik Token Manager')
         parser.add_argument('command', choices=['list', 'rotate'], help='Command to execute')
@@ -436,6 +436,6 @@ data:
         elif args.command == 'rotate':
             success = rotate_tokens(args.overlap_days)
             sys.exit(0 if success else 1)
-    
+
     if __name__ == '__main__':
         main()

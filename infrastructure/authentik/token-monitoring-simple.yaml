@@ -24,7 +24,7 @@ spec:
             summary: "Authentik token rotation job failed"
             description: "Token rotation job {{ $labels.job_name }} has failed"
             runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
-        
+
         - alert: AuthentikTokenRotationJobNotRun
           expr: |
             time() - kube_job_status_completion_time{job_name=~"authentik-token-rotation.*"} > 86400 * 2
@@ -37,7 +37,7 @@ spec:
             summary: "Authentik token rotation job hasn't run recently"
             description: "Token rotation job hasn't completed successfully in over 2 days"
             runbook_url: "https://github.com/your-org/runbooks/authentik-token-rotation"
-        
+
         - alert: AuthentikTokenSecretMissing
           expr: |
             absent(kube_secret_info{secret="authentik-radius-token", namespace="authentik"})
@@ -49,7 +49,7 @@ spec:
           annotations:
             summary: "Authentik token secret is missing"
             description: "The authentik-radius-token secret is missing from the authentik namespace"
-        
+
         - alert: AuthentikExternalSecretNotSynced
           expr: |
             external_secrets_sync_calls_error{name="authentik-admin-token-enhanced", namespace="authentik"} > 0
@@ -61,7 +61,7 @@ spec:
           annotations:
             summary: "Authentik external secret sync errors"
             description: "External secret authentik-admin-token-enhanced has sync errors"
-        
+
         - alert: AuthentikTokenConfigSecretMissing
           expr: |
             absent(kube_secret_info{secret="authentik-token-rotation-config", namespace="authentik"})
@@ -86,11 +86,11 @@ data:
   check-token-health.sh: |
     #!/bin/bash
     set -euo pipefail
-    
+
     # Simple token health check script
     echo "=== Authentik Token Health Check ==="
     echo "Timestamp: $(date -u)"
-    
+
     # Check if token secret exists
     if kubectl get secret authentik-radius-token -n authentik >/dev/null 2>&1; then
       echo "✓ Token secret exists"

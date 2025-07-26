@@ -7,33 +7,35 @@ This document provides a high-level summary of the Bootstrap vs GitOps architect
 ## Quick Reference
 
 ### Bootstrap Phase (Direct Deployment)
+
 **Tools**: [`Taskfile.yml`](../Taskfile.yml), shell scripts, `talosctl`, `kubectl`
 **When**: Cluster initialization and foundational components
 **Management**: Direct commands, version-controlled scripts
 
-| Component | Purpose | Why Bootstrap |
-|-----------|---------|---------------|
-| Talos OS Configuration | Node operating system setup | Must exist before Kubernetes |
-| Kubernetes Cluster | Control plane initialization | No API exists yet |
-| LLDPD Configuration | Node stability fix | System-level configuration |
-| Cilium CNI Core | Pod networking | Required for any pods to start |
-| 1Password Connect | Secret management foundation | Required for GitOps authentication |
-| External Secrets Operator | Secret synchronization | Required for GitOps secrets |
-| Flux GitOps System | GitOps operator | Must exist to manage GitOps phase |
+| Component                 | Purpose                      | Why Bootstrap                      |
+| ------------------------- | ---------------------------- | ---------------------------------- |
+| Talos OS Configuration    | Node operating system setup  | Must exist before Kubernetes       |
+| Kubernetes Cluster        | Control plane initialization | No API exists yet                  |
+| LLDPD Configuration       | Node stability fix           | System-level configuration         |
+| Cilium CNI Core           | Pod networking               | Required for any pods to start     |
+| 1Password Connect         | Secret management foundation | Required for GitOps authentication |
+| External Secrets Operator | Secret synchronization       | Required for GitOps secrets        |
+| Flux GitOps System        | GitOps operator              | Must exist to manage GitOps phase  |
 
 ### GitOps Phase (Git-Managed)
+
 **Tools**: Flux, Git, Kustomize, Helm
 **When**: Operational components and applications
 **Management**: Git commits, pull requests, automated deployment
 
-| Component | Purpose | Why GitOps |
-|-----------|---------|------------|
-| Infrastructure Services | cert-manager, ingress, monitoring | Operational configuration |
-| Cilium BGP Configuration | Load balancer IP advertisement | Benefits from change tracking |
-| Application Deployments | User applications and services | Standard deployment pattern |
-| Storage Configuration | Longhorn settings, storage classes | Operational management |
-| Certificate Issuers | TLS certificate management | Configuration changes over time |
-| Monitoring Dashboards | Grafana, Prometheus configuration | Collaborative development |
+| Component                | Purpose                            | Why GitOps                      |
+| ------------------------ | ---------------------------------- | ------------------------------- |
+| Infrastructure Services  | cert-manager, ingress, monitoring  | Operational configuration       |
+| Cilium BGP Configuration | Load balancer IP advertisement     | Benefits from change tracking   |
+| Application Deployments  | User applications and services     | Standard deployment pattern     |
+| Storage Configuration    | Longhorn settings, storage classes | Operational management          |
+| Certificate Issuers      | TLS certificate management         | Configuration changes over time |
+| Monitoring Dashboards    | Grafana, Prometheus configuration  | Collaborative development       |
 
 ## Decision Matrix
 
@@ -48,7 +50,7 @@ graph TD
     D -->|No| F{Does it affect node OS?}
     F -->|Yes| C
     F -->|No| E
-    
+
     C --> G[Use task commands]
     E --> H[Update Git repository]
 ```
@@ -56,12 +58,14 @@ graph TD
 ### Quick Decision Rules
 
 **Use Bootstrap when**:
+
 - ✅ Component required for cluster startup
 - ✅ Node-level or OS configuration
 - ✅ System dependencies for GitOps
 - ✅ Direct hardware/network access needed
 
 **Use GitOps when**:
+
 - ✅ Kubernetes-native resources
 - ✅ Application deployments
 - ✅ Configuration that changes over time
@@ -70,18 +74,21 @@ graph TD
 ## Architectural Benefits
 
 ### Bootstrap Phase Benefits
+
 - **Reliability**: Foundational components are stable and tested
 - **Simplicity**: Direct deployment without complex dependencies
 - **Control**: Full system access for low-level configuration
 - **Speed**: Fast deployment without GitOps overhead
 
 ### GitOps Phase Benefits
+
 - **Collaboration**: Version control enables team development
 - **Auditability**: All changes tracked in Git history
 - **Rollback**: Easy reversion to previous configurations
 - **Automation**: Continuous deployment and reconciliation
 
 ### Hybrid Approach Benefits
+
 - **Best of Both**: Combines reliability with flexibility
 - **Clear Boundaries**: Well-defined responsibilities
 - **Scalability**: Template can be adapted for different environments
@@ -90,6 +97,7 @@ graph TD
 ## Common Workflows
 
 ### Adding New Application
+
 ```bash
 # GitOps Phase
 mkdir apps/my-app
@@ -101,6 +109,7 @@ git push
 ```
 
 ### Changing Node Configuration
+
 ```bash
 # Bootstrap Phase
 vim talconfig.yaml
@@ -109,6 +118,7 @@ task talos:apply-config
 ```
 
 ### Updating Infrastructure Service
+
 ```bash
 # GitOps Phase
 vim infrastructure/service/helmrelease.yaml
@@ -122,14 +132,17 @@ git push
 Cilium demonstrates how complex components can span both phases:
 
 **Bootstrap**: Core CNI functionality
+
 - Required for pod networking
 - Deployed via [`task apps:deploy-cilium`](../Taskfile.yml#L410)
 
 **GitOps**: Operational features
+
 - BGP configuration for load balancing
 - Managed via [`infrastructure/cilium/`](../infrastructure/cilium/)
 
 **Why This Works**:
+
 - Clear separation of concerns
 - Respects dependency requirements
 - Operational features benefit from Git tracking
@@ -146,11 +159,13 @@ Cilium demonstrates how complex components can span both phases:
 ### Component Placement Guidelines
 
 **Move to Bootstrap if**:
+
 - Component becomes foundational
 - Required for GitOps to function
 - Needs system-level access
 
 **Move to GitOps if**:
+
 - No longer required for bootstrap
 - Benefits from version control
 - Can be deployed after cluster is operational
@@ -158,21 +173,27 @@ Cilium demonstrates how complex components can span both phases:
 ## Troubleshooting Quick Guide
 
 ### Bootstrap Issues
+
 **Symptoms**: Cluster won't start, nodes unreachable
-**Check**: 
+**Check**:
+
 - Talos logs: `talosctl logs --nodes <ip>`
 - Network connectivity
 - Bootstrap task output
 
 ### GitOps Issues
+
 **Symptoms**: Applications not deploying, Flux errors
 **Check**:
+
 - Flux status: `flux get kustomizations`
 - Git repository access
 - Resource dependencies
 
 ### Hybrid Component Issues
+
 **Example - Cilium**:
+
 - CNI problems → Check bootstrap deployment
 - BGP problems → Check GitOps configuration
 - Both required for full functionality
@@ -180,6 +201,7 @@ Cilium demonstrates how complex components can span both phases:
 ## Key Commands
 
 ### Bootstrap Operations
+
 ```bash
 # Full cluster bootstrap
 task bootstrap:cluster
@@ -196,6 +218,7 @@ task apps:verify-core-idempotency
 ```
 
 ### GitOps Operations
+
 ```bash
 # Force reconciliation
 flux reconcile source git flux-system
@@ -212,18 +235,21 @@ flux get all
 ## Safety Considerations
 
 ### Bootstrap Phase Safety
+
 - Always backup before system changes
 - Test in development environment
 - Understand dependency chain
 - Use safe reset procedures: [`task cluster:safe-reset`](../Taskfile.yml#L874)
 
 ### GitOps Phase Safety
+
 - Use feature branches for changes
 - Monitor Flux during deployments
 - Verify health checks pass
 - Keep rollback procedures ready
 
 ### Critical Safety Rules
+
 - ❌ **Never** use `talosctl reset` without partition specifications
 - ✅ **Always** use [`task cluster:verify-safety`](../Taskfile.yml#L958) before operations
 - ✅ **Always** test changes in development first
@@ -243,18 +269,21 @@ This architectural separation is documented across several guides:
 ## Success Metrics
 
 ### Operational Excellence
+
 - ✅ Clear understanding of component placement rationale
 - ✅ Consistent deployment procedures across environments
 - ✅ Reliable cluster bootstrap and recovery procedures
 - ✅ Efficient application deployment and updates
 
 ### Template Effectiveness
+
 - ✅ Easy adaptation for new environments
 - ✅ Clear guidance for component placement decisions
 - ✅ Comprehensive troubleshooting procedures
 - ✅ Knowledge transfer to new team members
 
 ### Architectural Integrity
+
 - ✅ Maintained separation between Bootstrap and GitOps phases
 - ✅ Respected dependency chains and requirements
 - ✅ Optimized each phase for its specific purpose

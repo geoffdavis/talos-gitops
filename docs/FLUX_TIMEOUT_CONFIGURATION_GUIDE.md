@@ -23,14 +23,17 @@ GitRepository (60s) → HelmRepository (5m) → HelmRelease (5-20m) → Kustomiz
 ### Timeout Categories
 
 #### Critical Infrastructure (20 minutes)
+
 **Components**: Longhorn, Cilium
-**Rationale**: 
+**Rationale**:
+
 - Complex initialization sequences
 - Storage provisioning dependencies
 - Network configuration complexity
 - High impact of failure
 
 **Configuration**:
+
 ```yaml
 spec:
   timeout: 20m
@@ -50,14 +53,17 @@ spec:
 ```
 
 #### Standard Infrastructure (15 minutes)
+
 **Components**: cert-manager, ingress-nginx
 **Rationale**:
+
 - Moderate complexity
 - CRD installation requirements
 - Service dependencies
 - Standard recovery expectations
 
 **Configuration**:
+
 ```yaml
 spec:
   timeout: 15m
@@ -77,14 +83,17 @@ spec:
 ```
 
 #### Simple Applications (10 minutes)
+
 **Components**: external-dns, monitoring tools
 **Rationale**:
+
 - Simple deployment patterns
 - Minimal dependencies
 - Quick startup expectations
 - Fast failure detection preferred
 
 **Configuration**:
+
 ```yaml
 spec:
   timeout: 10m
@@ -115,6 +124,7 @@ spec:
 ### Layer-Based Timeouts
 
 #### Sources Layer (5 minutes)
+
 **Components**: Helm repositories, basic configurations
 **Rationale**: Simple resource definitions with minimal complexity
 
@@ -126,6 +136,7 @@ spec:
 ```
 
 #### Core Infrastructure (10 minutes)
+
 **Components**: External secrets, 1Password, cert-manager
 **Rationale**: Foundation services with moderate complexity
 
@@ -137,6 +148,7 @@ spec:
 ```
 
 #### Storage Infrastructure (20 minutes)
+
 **Components**: Longhorn storage system
 **Rationale**: Complex storage initialization and USB SSD configuration
 
@@ -148,6 +160,7 @@ spec:
 ```
 
 #### Networking Infrastructure (15 minutes)
+
 **Components**: Ingress, DNS, tunnels, BGP
 **Rationale**: Network service dependencies and configuration complexity
 
@@ -159,6 +172,7 @@ spec:
 ```
 
 #### Applications (5-10 minutes)
+
 **Components**: Dashboard, monitoring applications
 **Rationale**: Simple applications with minimal dependencies
 
@@ -178,6 +192,7 @@ spec:
 ## Source Timeout Configuration
 
 ### GitRepository (60 seconds)
+
 **Rationale**: Git operations should be fast; longer timeouts indicate network issues
 
 ```yaml
@@ -187,6 +202,7 @@ spec:
 ```
 
 ### HelmRepository (5 minutes)
+
 **Rationale**: Helm index downloads can be large; allows for network variability
 
 ```yaml
@@ -268,16 +284,19 @@ rate(gotk_reconcile_condition{type="Ready",status="True"}[5m])
 ### Timeout Exceeded
 
 1. **Check Resource Availability**
+
    - CPU/Memory constraints
    - Storage availability
    - Network connectivity
 
 2. **Analyze Component Logs**
+
    - Application startup issues
    - Dependency failures
    - Configuration errors
 
 3. **Evaluate Timeout Appropriateness**
+
    - Compare with similar components
    - Consider environment factors
    - Review historical performance
@@ -290,11 +309,13 @@ rate(gotk_reconcile_condition{type="Ready",status="True"}[5m])
 ### Frequent Timeouts
 
 1. **Resource Optimization**
+
    - Increase cluster resources
    - Optimize application configuration
    - Improve storage performance
 
 2. **Dependency Analysis**
+
    - Review startup ordering
    - Check health check configuration
    - Validate network policies
@@ -323,16 +344,19 @@ rate(gotk_reconcile_condition{type="Ready",status="True"}[5m])
 ### Environment Considerations
 
 #### Development
+
 - Shorter timeouts for faster feedback
 - More aggressive retry policies
 - Detailed logging enabled
 
 #### Staging
+
 - Production-like timeouts
 - Comprehensive testing scenarios
 - Performance validation
 
 #### Production
+
 - Conservative timeout values
 - Robust retry mechanisms
 - Comprehensive monitoring
@@ -349,7 +373,7 @@ metadata:
   namespace: <namespace>
 spec:
   interval: 30m
-  timeout: <15m|10m|5m>  # Based on complexity
+  timeout: <15m|10m|5m> # Based on complexity
   install:
     timeout: <15m|10m|5m>
     remediation:
@@ -384,7 +408,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  timeout: <20m|15m|10m|5m>0s  # Based on complexity
+  timeout: <20m|15m|10m|5m>0s # Based on complexity
   path: <path>
   prune: true
   sourceRef:
@@ -394,7 +418,7 @@ spec:
   wait: true
   dependsOn:
     - name: <dependency>
-  healthChecks:  # For critical components
+  healthChecks: # For critical components
     - apiVersion: apps/v1
       kind: Deployment
       name: <deployment-name>
@@ -403,11 +427,11 @@ spec:
 
 ## Change Log
 
-| Date | Component | Change | Rationale |
-|------|-----------|--------|-----------|
-| 2025-01-17 | All HelmReleases | Added comprehensive timeout configs | Prevent reconciliation hangs |
-| 2025-01-17 | All Kustomizations | Added retry and wait policies | Improve reliability |
-| 2025-01-17 | All Sources | Added timeout configurations | Handle network issues |
+| Date       | Component          | Change                              | Rationale                    |
+| ---------- | ------------------ | ----------------------------------- | ---------------------------- |
+| 2025-01-17 | All HelmReleases   | Added comprehensive timeout configs | Prevent reconciliation hangs |
+| 2025-01-17 | All Kustomizations | Added retry and wait policies       | Improve reliability          |
+| 2025-01-17 | All Sources        | Added timeout configurations        | Handle network issues        |
 
 ## Related Documentation
 

@@ -57,30 +57,30 @@ spec:
               set -e
               echo "=== 1Password Duplicate Token Cleanup ==="
               echo "Cleaning up duplicate 'Authentik Outpost Token - home-ops' items..."
-              
+
               python3 -c "
               import json
               import urllib.request
               import urllib.parse
               import os
               import sys
-              
+
               # Get environment variables
               connect_host = os.environ.get('OP_CONNECT_HOST')
               connect_token = os.environ.get('OP_CONNECT_TOKEN')
-              
+
               if not connect_host or not connect_token:
                   print('✗ Missing 1Password Connect configuration')
                   sys.exit(1)
-              
+
               # Prepare headers
               headers = {
                   'Authorization': f'Bearer {connect_token}',
                   'Content-Type': 'application/json'
               }
-              
+
               print('✓ Connecting to 1Password Connect API...')
-              
+
               # Get all vaults to find the Automation vault ID
               try:
                   req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
@@ -101,7 +101,7 @@ spec:
               except Exception as e:
                   print(f'✗ Failed to get vaults: {e}')
                   sys.exit(1)
-              
+
               # Search for all items with the target name
               try:
                   # URL encode the filter parameter properly
@@ -142,10 +142,10 @@ spec:
                   print(f'✗ Failed to search for items: {e}')
                   sys.exit(1)
               "
-              
+
               echo "=== Refreshing External Secret ==="
               echo "Forcing external secret to refresh after cleanup..."
-              
+
               # Force refresh of external secret
               TIMESTAMP=$(date +%s)
               echo "✓ Cleanup completed, external secret should sync properly now"

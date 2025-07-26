@@ -73,7 +73,7 @@ spec:
             - |
               set -e
               echo "Configuring Hubble UI proxy provider and application..."
-              
+
               # Function to retry API calls
               retry_api_call() {
                 local url="$1"
@@ -118,10 +118,10 @@ spec:
                 cat /tmp/api_response
                 return 1
               }
-              
+
               # Get admin token
               ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
-              
+
               # Test authentication first with retry
               echo "Testing authentication..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
@@ -131,23 +131,23 @@ spec:
                 exit 1
               fi
               echo "Authentication successful"
-              
+
               # Use the same authorization flow as other providers
               AUTH_FLOW_UUID="be0ee023-11fe-4a43-b453-bc67957cafbf"
               echo "Using authorization flow: $AUTH_FLOW_UUID"
-              
+
               # Check if Hubble proxy provider already exists
               echo "Checking for existing Hubble proxy provider..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/providers/proxy/"; then
                 echo "Failed to check existing proxy providers"
                 exit 1
               fi
-              
+
               PROVIDER_RESPONSE=$(cat /tmp/api_response)
               echo "Provider response: $PROVIDER_RESPONSE"
-              
+
               PROVIDER_EXISTS=$(echo "$PROVIDER_RESPONSE" | grep -o '"name":"hubble-proxy"' || echo "")
-              
+
               if [ -z "$PROVIDER_EXISTS" ]; then
                 echo "Creating Hubble proxy provider..."
                 PROVIDER_DATA="{
@@ -176,19 +176,19 @@ spec:
                 PROVIDER_PK=$(echo "$PROVIDER_RESPONSE" | grep -A10 '"name":"hubble-proxy"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                 echo "Found existing provider with PK: $PROVIDER_PK"
               fi
-              
+
               # Check if Hubble Application already exists
               echo "Checking for existing Hubble application..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/applications/"; then
                 echo "Failed to check existing applications"
                 exit 1
               fi
-              
+
               APP_RESPONSE=$(cat /tmp/api_response)
               echo "Application response: $APP_RESPONSE"
-              
+
               APP_EXISTS=$(echo "$APP_RESPONSE" | grep -o '"name":"Hubble UI"' || echo "")
-              
+
               if [ -z "$APP_EXISTS" ]; then
                 echo "Creating Hubble application..."
                 APP_DATA="{
@@ -212,17 +212,17 @@ spec:
               else
                 echo "Hubble application already exists"
               fi
-              
+
               # Update the existing proxy outpost to include this provider
               echo "Updating proxy outpost to include Hubble provider..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/outposts/instances/"; then
                 echo "Failed to check existing outposts"
                 exit 1
               fi
-              
+
               OUTPOST_RESPONSE=$(cat /tmp/api_response)
               OUTPOST_PK=$(echo "$OUTPOST_RESPONSE" | grep -A10 '"name":"proxy-outpost"' | grep -o '"pk":[0-9]*' | cut -d':' -f2)
-              
+
               if [ -n "$OUTPOST_PK" ]; then
                 echo "Found proxy outpost with PK: $OUTPOST_PK"
                 # Get current providers list
@@ -251,5 +251,5 @@ spec:
                 echo "Proxy outpost not found - it should be created by the longhorn config job first"
                 exit 1
               fi
-              
+
               echo "Hubble proxy configuration completed!"

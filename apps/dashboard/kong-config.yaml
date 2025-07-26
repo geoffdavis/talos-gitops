@@ -7,7 +7,7 @@ data:
   kong.yml: |
     _format_version: "3.0"
     _transform: true
-    
+
     services:
     - name: dashboard-api
       url: http://kubernetes-dashboard-api.kubernetes-dashboard.svc.cluster.local:8000
@@ -50,7 +50,7 @@ data:
           - Authorization
           credentials: true
           max_age: 3600
-    
+
     - name: dashboard-web
       url: http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000
       plugins:
@@ -86,7 +86,7 @@ data:
           - X-Authentik-Groups
           credentials: true
           max_age: 3600
-    
+
     - name: dashboard-auth
       url: http://kubernetes-dashboard-auth.kubernetes-dashboard.svc.cluster.local:8000
       plugins:
@@ -95,7 +95,7 @@ data:
           add:
             headers:
             - "Authorization:Bearer PLACEHOLDER_TOKEN"
-    
+
     routes:
     - name: dashboard-api-route
       service: dashboard-api

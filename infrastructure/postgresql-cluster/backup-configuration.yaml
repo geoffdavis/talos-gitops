@@ -11,23 +11,23 @@ metadata:
 spec:
   # Schedule backups daily at 3 AM
   schedule: "0 3 * * *"
-  
+
   # Backup retention policy
   backupOwnerReference: self
-  
+
   # Target cluster
   cluster:
     name: postgresql-cluster
-    
+
   # Backup method and configuration
   method: barmanObjectStore
-  
+
   # Immediate checkpoint for consistent backup
   immediate: true
-  
+
   # Suspend backup if needed
   suspend: false
-  
+
   # Additional metadata for backup tracking
   metadata:
     labels:
@@ -55,13 +55,13 @@ spec:
   # Target cluster
   cluster:
     name: postgresql-cluster
-    
+
   # Backup method
   method: barmanObjectStore
-  
+
   # Immediate checkpoint for consistent backup
   immediate: true
-  
+
   # Additional metadata
   metadata:
     labels:

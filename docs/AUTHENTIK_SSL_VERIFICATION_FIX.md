@@ -11,20 +11,24 @@ Authentik uses its own self-signed CA and cannot verify the Kubernetes API serve
 ## Manual Fix via Web Interface
 
 ### Step 1: Access Authentik Admin Interface
+
 1. Navigate to: `https://authentik.k8s.home.geoffdavis.com/if/admin/`
 2. Login with admin credentials
 
 ### Step 2: Navigate to Outpost Integrations
+
 1. Go to: **System** → **Outposts** → **Integrations**
 2. Or directly: `https://authentik.k8s.home.geoffdavis.com/if/admin/#/outpost/integrations`
 
 ### Step 3: Edit Kubernetes Service Connection
+
 1. Find the "Local Kubernetes Cluster" integration
 2. Click the **Edit** button (pencil icon)
 3. **Uncheck** the "Verify Kubernetes API SSL Certificate" option
 4. Click **Update** to save changes
 
 ### Step 4: Verify Fix
+
 1. The integration status should change from "Unhealthy" to "Healthy"
 2. Wait 30-60 seconds for the outpost to receive new configuration
 3. Test authentication by accessing: `https://dashboard.k8s.home.geoffdavis.com/`
@@ -51,11 +55,13 @@ kubectl apply -f infrastructure/authentik-outpost-config/fix-kubernetes-ssl-veri
 If the fix doesn't work immediately:
 
 1. **Restart Outpost Pod**:
+
    ```bash
    kubectl delete pod -n authentik -l goauthentik.io/outpost-name=proxy-outpost
    ```
 
 2. **Check Outpost Logs**:
+
    ```bash
    kubectl logs -n authentik -l goauthentik.io/outpost-name=proxy-outpost --tail=20
    ```
@@ -78,6 +84,7 @@ If the fix doesn't work immediately:
 ## Protected Services
 
 Once fixed, these services will be protected by authentik authentication:
+
 - Kubernetes Dashboard: `https://dashboard.k8s.home.geoffdavis.com/`
 - Hubble UI: `https://hubble.k8s.home.geoffdavis.com/`
 - Grafana: `https://grafana.k8s.home.geoffdavis.com/`

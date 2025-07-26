@@ -10,36 +10,37 @@ This guide covers timeout configurations implemented across the GitOps infrastru
 
 ### HelmRelease Timeouts
 
-| Component | Timeout | Install | Upgrade | Rollback | Rationale |
-|-----------|---------|---------|---------|----------|-----------|
-| Longhorn | 20m | 20m | 20m | 15m | Complex storage infrastructure |
-| Cilium | 20m | 20m | 20m | 10m | Critical networking infrastructure |
-| cert-manager | 15m | 15m | 15m | 10m | Standard application with CRDs |
-| ingress-nginx | 15m | 15m | 15m | 10m | Standard application with dependencies |
-| external-dns | 10m | 10m | 10m | 5m | Simple application |
+| Component     | Timeout | Install | Upgrade | Rollback | Rationale                              |
+| ------------- | ------- | ------- | ------- | -------- | -------------------------------------- |
+| Longhorn      | 20m     | 20m     | 20m     | 15m      | Complex storage infrastructure         |
+| Cilium        | 20m     | 20m     | 20m     | 10m      | Critical networking infrastructure     |
+| cert-manager  | 15m     | 15m     | 15m     | 10m      | Standard application with CRDs         |
+| ingress-nginx | 15m     | 15m     | 15m     | 10m      | Standard application with dependencies |
+| external-dns  | 10m     | 10m     | 10m     | 5m       | Simple application                     |
 
 ### Kustomization Timeouts
 
-| Layer | Timeout | Retry Interval | Rationale |
-|-------|---------|----------------|-----------|
-| Sources | 5m | 2m | Simple resource definitions |
-| Core Infrastructure | 10m | 2m | External secrets, 1Password |
-| Storage Infrastructure | 20m | 3m | Longhorn complexity |
-| Networking Infrastructure | 15m | 2m | Ingress, DNS, tunnels |
-| Applications | 5-10m | 1-2m | Simple applications |
+| Layer                     | Timeout | Retry Interval | Rationale                   |
+| ------------------------- | ------- | -------------- | --------------------------- |
+| Sources                   | 5m      | 2m             | Simple resource definitions |
+| Core Infrastructure       | 10m     | 2m             | External secrets, 1Password |
+| Storage Infrastructure    | 20m     | 3m             | Longhorn complexity         |
+| Networking Infrastructure | 15m     | 2m             | Ingress, DNS, tunnels       |
+| Applications              | 5-10m   | 1-2m           | Simple applications         |
 
 ### Source Timeouts
 
-| Source Type | Timeout | Rationale |
-|-------------|---------|-----------|
-| GitRepository | 60s | Git clone/fetch operations |
-| HelmRepository | 5m | Helm index download |
+| Source Type    | Timeout | Rationale                  |
+| -------------- | ------- | -------------------------- |
+| GitRepository  | 60s     | Git clone/fetch operations |
+| HelmRepository | 5m      | Helm index download        |
 
 ## Common Timeout Scenarios
 
 ### 1. HelmRelease Installation Timeout
 
 **Symptoms:**
+
 - HelmRelease stuck in "Installing" state
 - Timeout exceeded error in Flux logs
 - Pods not starting or in pending state
@@ -67,6 +68,7 @@ kubectl describe nodes
 ```
 
 **Common Causes:**
+
 - Insufficient cluster resources (CPU/Memory)
 - Image pull failures
 - Storage provisioning issues
@@ -74,6 +76,7 @@ kubectl describe nodes
 - Dependency services not ready
 
 **Resolution:**
+
 1. Verify cluster resources are sufficient
 2. Check image availability and pull secrets
 3. Ensure storage classes are configured
@@ -83,6 +86,7 @@ kubectl describe nodes
 ### 2. Kustomization Reconciliation Timeout
 
 **Symptoms:**
+
 - Kustomization stuck in "Reconciling" state
 - Health checks failing
 - Dependent resources not deploying
@@ -105,12 +109,14 @@ kubectl describe <resource-type> <resource-name> -n <namespace>
 ```
 
 **Common Causes:**
+
 - Health check targets not ready
 - Resource creation failures
 - RBAC permission issues
 - Network policies blocking access
 
 **Resolution:**
+
 1. Verify health check targets are correct
 2. Check resource creation logs and events
 3. Validate RBAC permissions
@@ -119,6 +125,7 @@ kubectl describe <resource-type> <resource-name> -n <namespace>
 ### 3. GitRepository Sync Timeout
 
 **Symptoms:**
+
 - GitRepository shows "Timeout" condition
 - Source controller unable to fetch repository
 - Stale artifact references
@@ -140,12 +147,14 @@ kubectl run git-test --rm -it --image=alpine/git -- git ls-remote <repository-ur
 ```
 
 **Common Causes:**
+
 - Network connectivity issues
 - Git repository authentication failures
 - Large repository size
 - Git server performance issues
 
 **Resolution:**
+
 1. Verify network connectivity to Git server
 2. Check authentication credentials
 3. Consider repository optimization
@@ -154,6 +163,7 @@ kubectl run git-test --rm -it --image=alpine/git -- git ls-remote <repository-ur
 ### 4. HelmRepository Refresh Timeout
 
 **Symptoms:**
+
 - HelmRepository shows "Timeout" condition
 - Unable to download Helm index
 - Chart versions not updating
@@ -172,12 +182,14 @@ kubectl run helm-test --rm -it --image=alpine/helm -- helm repo add test <reposi
 ```
 
 **Common Causes:**
+
 - Network connectivity to Helm repository
 - Repository server performance issues
 - Large index files
 - Authentication issues
 
 **Resolution:**
+
 1. Verify network connectivity
 2. Check repository server status
 3. Consider repository mirroring
@@ -318,16 +330,19 @@ To adjust timeouts, modify the appropriate configuration files:
 ## Escalation Procedures
 
 ### Level 1: Automatic Recovery
+
 - Flux retry mechanisms
 - Health check failures
 - Automatic rollbacks
 
 ### Level 2: Manual Intervention
+
 - Force reconciliation
 - Resource suspension/resumption
 - Configuration adjustments
 
 ### Level 3: Emergency Response
+
 - Cluster node intervention
 - Manual application deployment
 - Infrastructure recovery procedures

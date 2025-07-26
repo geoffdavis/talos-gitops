@@ -18,8 +18,8 @@ spec:
   groups:
     - database
     - postgresql
-  retain: 12  # Keep 12 snapshots (3 days worth at 6-hour intervals)
-  concurrency: 1  # Sequential processing for database consistency
+  retain: 12 # Keep 12 snapshots (3 days worth at 6-hour intervals)
+  concurrency: 1 # Sequential processing for database consistency
   labels:
     backup-tier: "critical"
     backup-type: "snapshot"
@@ -43,8 +43,8 @@ spec:
   groups:
     - database
     - postgresql
-  retain: 14  # Keep 14 daily backups (2 weeks)
-  concurrency: 1  # Sequential processing for database consistency
+  retain: 14 # Keep 14 daily backups (2 weeks)
+  concurrency: 1 # Sequential processing for database consistency
   labels:
     backup-tier: "critical"
     backup-type: "s3-backup"
@@ -68,8 +68,8 @@ spec:
   groups:
     - database
     - postgresql
-  retain: 12  # Keep 12 weekly backups (3 months)
-  concurrency: 1  # Sequential processing for database consistency
+  retain: 12 # Keep 12 weekly backups (3 months)
+  concurrency: 1 # Sequential processing for database consistency
   labels:
     backup-tier: "critical"
     backup-type: "s3-backup"
@@ -94,8 +94,8 @@ spec:
   groups:
     - database
     - postgresql
-  retain: 6  # Keep 6 monthly backups (6 months)
-  concurrency: 1  # Sequential processing for database consistency
+  retain: 6 # Keep 6 monthly backups (6 months)
+  concurrency: 1 # Sequential processing for database consistency
   labels:
     backup-tier: "critical"
     backup-type: "s3-backup"

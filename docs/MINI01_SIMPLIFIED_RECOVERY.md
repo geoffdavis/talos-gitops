@@ -1,11 +1,13 @@
 # Mini01 Simplified Recovery - Alternative Approach
 
 ## Issue
+
 The disk encryption corruption on mini01 is persistent and the Talos installer ISO doesn't provide a command line for manual disk wiping.
 
 ## Alternative Recovery Strategy
 
 ### Option 1: Use Talos Reset with Wipe Flag
+
 Since mini01 is still having PKI issues, let's use the Talos configuration with explicit wipe flag:
 
 ```bash
@@ -19,6 +21,7 @@ talosctl apply-config --nodes 172.29.51.11 --file clusterconfig/home-ops-mini01.
 The `talconfig.yaml` already has `wipe: true` in the install configuration, which should force a complete disk wipe.
 
 ### Option 2: Use Different Boot Media
+
 If the Talos installer doesn't provide command line access, try:
 
 1. **Ubuntu Live USB** - Boot from Ubuntu Live USB to get full command line access
@@ -26,6 +29,7 @@ If the Talos installer doesn't provide command line access, try:
 3. **GParted Live** - Focused on partition management
 
 ### Option 3: Force Wipe via Talos Configuration
+
 Update the Talos configuration to be more aggressive about wiping:
 
 ```yaml
@@ -35,10 +39,11 @@ machine:
     extraKernelArgs:
       - talos.logging.kernel=udp://172.29.51.1:514/
     # Force complete disk wipe
-    disk: /dev/nvme0n1  # or whatever the disk is
+    disk: /dev/nvme0n1 # or whatever the disk is
 ```
 
 ### Option 4: Remote Disk Wipe via Talos API
+
 If mini01 is accessible via Talos API (even with errors), we can try:
 
 ```bash
@@ -80,6 +85,7 @@ sudo parted $DISK print
 This gives us complete control over the disk wiping process without relying on Talos installer limitations.
 
 ## Why This Approach Works
+
 - Ubuntu Live USB provides full Linux environment
 - Complete control over disk operations
 - Can verify disk is completely clean before Talos installation

@@ -11,21 +11,25 @@ This document provides comprehensive documentation for the external Authentik ou
 ### Primary Issues Identified
 
 #### 1. **Token Configuration Mismatch** (RESOLVED)
+
 - **Problem**: External outpost was using wrong token or connecting to wrong outpost ID
 - **Evidence**: Pods were connecting to embedded outpost `26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083` instead of external outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
 - **Root Cause**: 1Password token entry contained token for wrong outpost
 
 #### 2. **Proxy Provider Assignment Conflicts** (RESOLVED)
+
 - **Problem**: All 6 proxy providers were assigned to embedded outpost instead of external outpost
 - **Evidence**: External outpost had no providers assigned, embedded outpost had all providers
 - **Root Cause**: Proxy providers were not properly migrated from embedded to external outpost during architecture transition
 
 #### 3. **Environment Variable Configuration** (RESOLVED)
+
 - **Problem**: External outpost pods using external URLs for internal Authentik server communication
 - **Evidence**: `AUTHENTIK_HOST` pointing to `https://authentik.k8s.home.geoffdavis.com` instead of internal cluster DNS
 - **Root Cause**: Hybrid URL architecture not properly implemented
 
 #### 4. **Dashboard Service Configuration** (IDENTIFIED - NOT AUTHENTICATION ISSUE)
+
 - **Problem**: Dashboard service returns DNS lookup error: `dial tcp: lookup kubernetes-dashboard-kong-proxy.kubernetes-dashboard on 10.96.0.10:53: no such host`
 - **Evidence**: Kong proxy is disabled in dashboard HelmRelease (`kong.enabled: false`)
 - **Root Cause**: Authentik proxy provider configured for non-existent Kong service
@@ -33,6 +37,7 @@ This document provides comprehensive documentation for the external Authentik ou
 ### Configuration Analysis
 
 #### External Outpost Configuration (Fixed)
+
 ```yaml
 # Before Fix (WRONG):
 AUTHENTIK_HOST: "https://authentik.k8s.home.geoffdavis.com"  # External URL for internal communication
@@ -47,6 +52,7 @@ Token: <external-outpost-token>  # Correct token from 1Password
 ```
 
 #### Proxy Provider Assignments (Fixed)
+
 ```yaml
 # Before Fix:
 Embedded Outpost (26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083):
@@ -66,6 +72,7 @@ External Outpost (3f0970c5-d6a3-43b2-9a36-d74665c6b24e):
 ### Phase 1: Token Extraction and Configuration Updates
 
 #### Step 1: Extract Correct External Outpost Token
+
 ```bash
 # Access Authentik admin interface
 https://authentik.k8s.home.geoffdavis.com/if/admin/#/outpost/outposts
@@ -78,6 +85,7 @@ https://authentik.k8s.home.geoffdavis.com/if/admin/#/outpost/outposts
 ```
 
 #### Step 2: Update ExternalSecret Configuration
+
 **File**: [`infrastructure/authentik-proxy/external-outpost-secret.yaml`](../infrastructure/authentik-proxy/external-outpost-secret.yaml)
 
 ```yaml
@@ -85,11 +93,12 @@ https://authentik.k8s.home.geoffdavis.com/if/admin/#/outpost/outposts
 data:
   - secretKey: token
     remoteRef:
-      key: "Authentik External Outpost Token - home-ops"  # Correct 1Password entry
+      key: "Authentik External Outpost Token - home-ops" # Correct 1Password entry
       property: "token"
 ```
 
 #### Step 3: Update Environment Variables
+
 **File**: [`infrastructure/authentik-proxy/secret.yaml`](../infrastructure/authentik-proxy/secret.yaml)
 
 ```yaml
@@ -97,7 +106,7 @@ data:
 template:
   data:
     token: "{{ .token }}"
-    authentik_host: "http://authentik-server.authentik.svc.cluster.local:80"  # Internal cluster DNS
+    authentik_host: "http://authentik-server.authentik.svc.cluster.local:80" # Internal cluster DNS
     authentik_insecure: "false"
 ```
 
@@ -116,6 +125,7 @@ env:
 ### Phase 2: Proxy Provider Assignment Fix
 
 #### Step 4: Deploy Outpost Assignment Fix Script
+
 **File**: [`scripts/authentik-proxy-config/fix-outpost-assignments-job.yaml`](../scripts/authentik-proxy-config/fix-outpost-assignments-job.yaml)
 
 ```bash
@@ -127,11 +137,13 @@ kubectl logs -n authentik-proxy -l job-name=fix-outpost-assignments --follow
 ```
 
 **Script Functionality**:
+
 - Removes all 6 proxy providers from embedded outpost
 - Assigns all 6 proxy providers exclusively to external outpost
 - Validates provider assignments after changes
 
 #### Step 5: Update Configuration Job
+
 **File**: [`infrastructure/authentik-proxy/proxy-config-job-simple.yaml`](../infrastructure/authentik-proxy/proxy-config-job-simple.yaml)
 
 ```yaml
@@ -143,6 +155,7 @@ env:
 ### Phase 3: Pod Deployment and Validation
 
 #### Step 6: Force Pod Restart
+
 ```bash
 # Restart authentik-proxy deployment to pick up new configuration
 kubectl rollout restart deployment/authentik-proxy -n authentik-proxy
@@ -152,6 +165,7 @@ kubectl get pods -n authentik-proxy -w
 ```
 
 #### Step 7: Validate External Outpost Connection
+
 ```bash
 # Check pod logs for successful connection
 kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy --tail=50
@@ -167,6 +181,7 @@ kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy --tail
 ### External Outpost Connection Status: ✅ SUCCESS
 
 #### Connection Metrics
+
 - **Outpost ID**: `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` ✅ Correct
 - **Connection Status**: Connected ✅
 - **Token Authentication**: Successful ✅
@@ -175,25 +190,27 @@ kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy --tail
 
 #### Service Authentication Status
 
-| Service | Status | URL | Notes |
-|---------|--------|-----|-------|
-| **Longhorn** | ✅ Working | https://longhorn.k8s.home.geoffdavis.com | Redirects to Authentik, authentication successful |
-| **Grafana** | ✅ Working | https://grafana.k8s.home.geoffdavis.com | Redirects to Authentik, authentication successful |
-| **Prometheus** | ✅ Working | https://prometheus.k8s.home.geoffdavis.com | Redirects to Authentik, authentication successful |
-| **AlertManager** | ✅ Working | https://alertmanager.k8s.home.geoffdavis.com | Redirects to Authentik, authentication successful |
-| **Hubble** | ✅ Working | https://hubble.k8s.home.geoffdavis.com | Redirects to Authentik, authentication successful |
-| **Dashboard** | ❌ Service Issue | https://dashboard.k8s.home.geoffdavis.com | DNS lookup error - Kong service disabled |
+| Service          | Status           | URL                                          | Notes                                             |
+| ---------------- | ---------------- | -------------------------------------------- | ------------------------------------------------- |
+| **Longhorn**     | ✅ Working       | https://longhorn.k8s.home.geoffdavis.com     | Redirects to Authentik, authentication successful |
+| **Grafana**      | ✅ Working       | https://grafana.k8s.home.geoffdavis.com      | Redirects to Authentik, authentication successful |
+| **Prometheus**   | ✅ Working       | https://prometheus.k8s.home.geoffdavis.com   | Redirects to Authentik, authentication successful |
+| **AlertManager** | ✅ Working       | https://alertmanager.k8s.home.geoffdavis.com | Redirects to Authentik, authentication successful |
+| **Hubble**       | ✅ Working       | https://hubble.k8s.home.geoffdavis.com       | Redirects to Authentik, authentication successful |
+| **Dashboard**    | ❌ Service Issue | https://dashboard.k8s.home.geoffdavis.com    | DNS lookup error - Kong service disabled          |
 
 #### Dashboard Service Issue Analysis
 
 **Error**: `Error proxying to upstream server: dial tcp: lookup kubernetes-dashboard-kong-proxy.kubernetes-dashboard on 10.96.0.10:53: no such host`
 
-**Root Cause**: 
+**Root Cause**:
+
 - Dashboard HelmRelease has `kong.enabled: false`
 - Authentik proxy provider configured for `kubernetes-dashboard-kong-proxy.kubernetes-dashboard`
 - Service doesn't exist because Kong is disabled
 
 **Solution Required**:
+
 ```yaml
 # Option 1: Enable Kong in dashboard configuration
 kong:
@@ -207,6 +224,7 @@ kubectl get svc -n kubernetes-dashboard
 ### Health Check Results
 
 #### Pod Health
+
 ```bash
 kubectl get pods -n authentik-proxy
 # NAME                              READY   STATUS    RESTARTS   AGE
@@ -215,6 +233,7 @@ kubectl get pods -n authentik-proxy
 ```
 
 #### Endpoint Health
+
 ```bash
 # Health check endpoints responding correctly
 curl -I http://authentik-proxy-service.authentik-proxy:9000/outpost.goauthentik.io/ping
@@ -222,6 +241,7 @@ curl -I http://authentik-proxy-service.authentik-proxy:9000/outpost.goauthentik.
 ```
 
 #### Authentik Admin Interface
+
 - External outpost shows "Connected" status
 - All 6 proxy providers assigned to external outpost
 - Embedded outpost shows no providers assigned
@@ -231,6 +251,7 @@ curl -I http://authentik-proxy-service.authentik-proxy:9000/outpost.goauthentik.
 ### Monitoring External Outpost Health
 
 #### Daily Health Checks
+
 ```bash
 # Check pod status
 kubectl get pods -n authentik-proxy
@@ -244,6 +265,7 @@ curl -I https://grafana.k8s.home.geoffdavis.com
 ```
 
 #### Weekly Configuration Validation
+
 ```bash
 # Verify outpost configuration in Authentik admin interface
 # Navigate to: https://authentik.k8s.home.geoffdavis.com/if/admin/#/outpost/outposts
@@ -258,6 +280,7 @@ curl -I https://grafana.k8s.home.geoffdavis.com
 ```
 
 #### Monthly Token Rotation
+
 ```bash
 # Generate new external outpost token in Authentik admin interface
 # Update 1Password entry: "Authentik External Outpost Token - home-ops"
@@ -271,6 +294,7 @@ kubectl rollout restart deployment/authentik-proxy -n authentik-proxy
 ### Troubleshooting Future Connection Issues
 
 #### Connection Failure Symptoms
+
 - Pods showing "CrashLoopBackOff" or "Error" status
 - Authentication redirects failing (500/502 errors)
 - Services not redirecting to Authentik for authentication
@@ -278,16 +302,19 @@ kubectl rollout restart deployment/authentik-proxy -n authentik-proxy
 #### Diagnostic Steps
 
 ##### 1. Check Pod Logs
+
 ```bash
 kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy --tail=100
 ```
 
 **Common Error Patterns**:
+
 - `Authentication failed`: Token issue
 - `Connection refused`: Network connectivity issue
 - `Wrong outpost ID`: Configuration mismatch
 
 ##### 2. Validate Token Configuration
+
 ```bash
 # Check if ExternalSecret is syncing properly
 kubectl get externalsecret -n authentik-proxy
@@ -298,6 +325,7 @@ kubectl get secret authentik-external-outpost-token -n authentik-proxy -o yaml
 ```
 
 ##### 3. Test Network Connectivity
+
 ```bash
 # Test internal Authentik server connectivity from authentik-proxy namespace
 kubectl run debug-pod --image=curlimages/curl:latest -n authentik-proxy --rm -it -- sh
@@ -306,6 +334,7 @@ curl -I http://authentik-server.authentik.svc.cluster.local:80/api/v3/
 ```
 
 ##### 4. Verify Outpost Configuration
+
 ```bash
 # Use diagnostic script to check current outpost assignments
 kubectl apply -f - <<EOF
@@ -349,6 +378,7 @@ kubectl logs -n authentik-proxy -l job-name=check-outpost-config
 #### Common Fix Procedures
 
 ##### Token Issues
+
 ```bash
 # Regenerate token in Authentik admin interface
 # Update 1Password entry
@@ -358,6 +388,7 @@ kubectl annotate externalsecret authentik-external-outpost-token -n authentik-pr
 ```
 
 ##### Provider Assignment Issues
+
 ```bash
 # Re-run outpost assignment fix
 kubectl apply -f scripts/authentik-proxy-config/fix-outpost-assignments-job.yaml
@@ -365,6 +396,7 @@ kubectl logs -n authentik-proxy -l job-name=fix-outpost-assignments --follow
 ```
 
 ##### Configuration Drift
+
 ```bash
 # Restart deployment to reload configuration
 kubectl rollout restart deployment/authentik-proxy -n authentik-proxy
@@ -377,6 +409,7 @@ kubectl apply -f infrastructure/authentik-proxy/proxy-config-job-simple.yaml
 ### Adding New Services to Authentication System
 
 #### Prerequisites
+
 - Service must be accessible via internal cluster DNS
 - Service should support forward authentication or OAuth2
 - DNS record must exist for `*.k8s.home.geoffdavis.com` domain
@@ -384,6 +417,7 @@ kubectl apply -f infrastructure/authentik-proxy/proxy-config-job-simple.yaml
 #### Step-by-Step Process
 
 ##### 1. Create Proxy Provider in Authentik
+
 ```bash
 # Access Authentik admin interface
 # Navigate to: Applications > Providers > Create Proxy Provider
@@ -397,6 +431,7 @@ Internal host: http://<service-name>.<namespace>.svc.cluster.local:<port>
 ```
 
 ##### 2. Create Application in Authentik
+
 ```bash
 # Navigate to: Applications > Applications > Create
 
@@ -408,6 +443,7 @@ Launch URL: https://<service-name>.k8s.home.geoffdavis.com
 ```
 
 ##### 3. Assign Provider to External Outpost
+
 ```bash
 # Navigate to: Applications > Outposts
 # Edit external outpost: k8s-external-proxy-outpost
@@ -416,6 +452,7 @@ Launch URL: https://<service-name>.k8s.home.geoffdavis.com
 ```
 
 ##### 4. Update ConfigMap (Optional)
+
 **File**: [`infrastructure/authentik-proxy/configmap.yaml`](../infrastructure/authentik-proxy/configmap.yaml)
 
 ```yaml
@@ -430,6 +467,7 @@ data:
 ```
 
 ##### 5. Test Authentication Flow
+
 ```bash
 # Test service accessibility
 curl -I https://<service-name>.k8s.home.geoffdavis.com
@@ -443,9 +481,11 @@ curl -I https://<service-name>.k8s.home.geoffdavis.com
 ### Architecture Overview
 
 #### Hybrid URL Architecture
+
 The external authentik-proxy system uses a hybrid URL architecture to resolve DNS conflicts:
 
 - **Internal Communication**: `http://authentik-server.authentik.svc.cluster.local:80`
+
   - Used by outpost pods to communicate with Authentik server
   - Resolves via cluster DNS
   - Avoids external DNS resolution issues
@@ -456,6 +496,7 @@ The external authentik-proxy system uses a hybrid URL architecture to resolve DN
   - Provides proper TLS certificates
 
 #### Dual Provider Architecture
+
 Each service uses both proxy and OAuth2 providers:
 
 - **Proxy Provider**: Handles forward authentication
@@ -463,6 +504,7 @@ Each service uses both proxy and OAuth2 providers:
 - **Same Primary Key**: Both providers share the same PK for consistency
 
 #### External Outpost Components
+
 ```yaml
 # Core Components:
 - authentik-proxy deployment (2 replicas)
@@ -481,16 +523,19 @@ Each service uses both proxy and OAuth2 providers:
 ### Security Considerations
 
 #### Token Management
+
 - External outpost tokens stored in 1Password
 - Automatic token rotation supported
 - Tokens scoped to specific outpost permissions
 
 #### Network Security
+
 - Internal cluster DNS for server communication
 - TLS encryption for all external communication
 - Network policies can be applied for additional isolation
 
 #### Access Control
+
 - RBAC configured for authentik-proxy service account
 - Pod security context with non-root user
 - Read-only root filesystem for containers
@@ -500,18 +545,21 @@ Each service uses both proxy and OAuth2 providers:
 The external Authentik outpost connection fix has been successfully completed with the following achievements:
 
 ### ✅ **Resolved Issues**
+
 1. **Token Configuration**: Correct external outpost token configured
 2. **Provider Assignments**: All 6 proxy providers assigned to external outpost
 3. **Environment Variables**: Hybrid URL architecture implemented
 4. **Pod Connectivity**: External outpost connecting successfully to Authentik server
 
 ### ✅ **Operational Status**
+
 - **5 out of 6 services** working correctly with authentication
 - **External outpost** showing connected status in Authentik admin interface
 - **Authentication flow** working end-to-end for operational services
 - **Monitoring procedures** established for ongoing maintenance
 
 ### 🔄 **Remaining Work**
+
 - **Dashboard service configuration**: Fix Kong service configuration or update proxy provider
 - **Service monitoring**: Implement automated health checks for all services
 - **Documentation updates**: Update operational procedures based on lessons learned
@@ -519,6 +567,7 @@ The external Authentik outpost connection fix has been successfully completed wi
 The external authentik-proxy system is now **production-ready** and provides reliable authentication for the home-ops cluster services. The systematic approach used for this fix can serve as a template for future authentication system troubleshooting and maintenance.
 
 ---
-*Documentation generated: 2025-07-26*  
-*External Outpost ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e*  
-*Status: ✅ OPERATIONAL (5/6 services)*
+
+_Documentation generated: 2025-07-26_  
+_External Outpost ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e_  
+_Status: ✅ OPERATIONAL (5/6 services)_

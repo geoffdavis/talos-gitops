@@ -86,20 +86,20 @@ spec:
             - |
               set -e
               echo "Creating Authentik admin user..."
-              
+
               # Use the ak management command to create admin user
               ak shell -c "
               from authentik.core.models import User
               import os
-              
+
               username = os.environ.get('AUTHENTIK_ADMIN_USERNAME', 'admin')
               password = os.environ.get('AUTHENTIK_ADMIN_PASSWORD')
               email = os.environ.get('AUTHENTIK_ADMIN_EMAIL', 'admin@k8s.home.geoffdavis.com')
-              
+
               if not password:
                   print('ERROR: AUTHENTIK_ADMIN_PASSWORD not set')
                   exit(1)
-              
+
               user, created = User.objects.get_or_create(
                   username=username,
                   defaults={
@@ -109,26 +109,26 @@ spec:
                       'is_active': True
                   }
               )
-              
+
               if not created:
                   # Update existing user
                   user.name = 'Administrator'
                   user.email = email
                   user.is_superuser = True
                   user.is_active = True
-              
+
               user.set_password(password)
               user.save()
-              
+
               if created:
                   print(f'Created admin user: {username}')
               else:
                   print(f'Updated existing admin user: {username}')
-              
+
               print(f'Username: {username}')
               print(f'Email: {email}')
               print('Password: [REDACTED]')
               print('URL: https://authentik.k8s.home.geoffdavis.com')
               "
-              
+
               echo "Admin user setup completed!"

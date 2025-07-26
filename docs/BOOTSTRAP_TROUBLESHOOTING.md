@@ -7,6 +7,7 @@ This guide provides comprehensive troubleshooting for the phased bootstrap proce
 ## Quick Diagnosis
 
 ### Check Bootstrap Status
+
 ```bash
 # Show current status and any failures
 task bootstrap:status
@@ -19,6 +20,7 @@ task bootstrap:resume
 ```
 
 ### Common Recovery Commands
+
 ```bash
 # Reset and start over
 task bootstrap:reset
@@ -33,11 +35,14 @@ task validate:phase-3  # Networking
 ## Phase 1: Environment Validation Failures
 
 ### Issue: Mise Not Installed
+
 **Symptoms**:
+
 - `mise: command not found`
 - Phase 1 fails immediately
 
 **Solution**:
+
 ```bash
 # Install mise
 curl https://mise.run | sh
@@ -51,11 +56,14 @@ mise --version
 ```
 
 ### Issue: Tools Not Available
+
 **Symptoms**:
+
 - `tool not found` errors
 - Version mismatch warnings
 
 **Solution**:
+
 ```bash
 # Install all tools
 mise install
@@ -69,11 +77,14 @@ mise install kubectl
 ```
 
 ### Issue: 1Password Authentication Failed
+
 **Symptoms**:
+
 - `op account list` fails
 - Cannot access 1Password items
 
 **Solution**:
+
 ```bash
 # Sign in to 1Password
 op signin
@@ -86,10 +97,13 @@ op item get "1password connect" --vault="Automation"
 ```
 
 ### Issue: Environment Variables Missing
+
 **Symptoms**:
+
 - `OP_ACCOUNT environment variable is not set`
 
 **Solution**:
+
 ```bash
 # Set environment variable
 export OP_ACCOUNT=your-account-name
@@ -102,11 +116,14 @@ echo $OP_ACCOUNT
 ```
 
 ### Issue: Network Connectivity Problems
+
 **Symptoms**:
+
 - Cannot reach nodes
 - Internet connectivity failed
 
 **Solution**:
+
 ```bash
 # Check node connectivity
 ping 172.29.51.11
@@ -123,11 +140,14 @@ nslookup github.com
 ## Phase 2: Talos Cluster Initialization Failures
 
 ### Issue: Secret Bootstrap Failed
+
 **Symptoms**:
+
 - Cannot retrieve secrets from 1Password
 - Missing required 1Password items
 
 **Solution**:
+
 ```bash
 # Check 1Password items exist
 op item get "1password connect" --vault="Automation"
@@ -141,11 +161,14 @@ ls -la talos/talsecret.yaml
 ```
 
 ### Issue: Talos Configuration Generation Failed
+
 **Symptoms**:
+
 - `talhelper` command fails
 - Configuration files not created
 
 **Solution**:
+
 ```bash
 # Check talhelper is available
 mise exec -- talhelper --version
@@ -158,11 +181,14 @@ ls -la clusterconfig/
 ```
 
 ### Issue: Node Configuration Application Failed
+
 **Symptoms**:
+
 - Cannot connect to nodes
 - Certificate errors
 
 **Solution**:
+
 ```bash
 # Check node accessibility
 talosctl --talosconfig clusterconfig/talosconfig version --nodes 172.29.51.11
@@ -175,11 +201,14 @@ talosctl --talosconfig clusterconfig/talosconfig health --nodes 172.29.51.11
 ```
 
 ### Issue: etcd Bootstrap Failed
+
 **Symptoms**:
+
 - Bootstrap command fails
 - etcd pods not starting
 
 **Solution**:
+
 ```bash
 # Check node readiness
 talosctl --talosconfig clusterconfig/talosconfig get members --nodes 172.29.51.11
@@ -192,11 +221,14 @@ kubectl get pods -n kube-system -l component=etcd
 ```
 
 ### Issue: Cluster API Not Accessible
+
 **Symptoms**:
+
 - `kubectl` commands fail
 - Cannot retrieve kubeconfig
 
 **Solution**:
+
 ```bash
 # Retrieve kubeconfig
 talosctl --talosconfig clusterconfig/talosconfig kubeconfig --nodes 172.29.51.11 --force
@@ -211,11 +243,14 @@ kubectl cluster-info
 ## Phase 3: CNI Deployment Failures
 
 ### Issue: Cilium Deployment Failed
+
 **Symptoms**:
+
 - Cilium pods not starting
 - Helm deployment errors
 
 **Solution**:
+
 ```bash
 # Check Cilium deployment
 kubectl get pods -n kube-system -l k8s-app=cilium
@@ -228,11 +263,14 @@ kubectl logs -n kube-system -l k8s-app=cilium
 ```
 
 ### Issue: Nodes Not Becoming Ready
+
 **Symptoms**:
+
 - Nodes stuck in "NotReady" state
 - Pod networking not working
 
 **Solution**:
+
 ```bash
 # Check node conditions
 kubectl describe nodes
@@ -245,11 +283,14 @@ kubectl rollout restart daemonset/cilium -n kube-system
 ```
 
 ### Issue: Pod Networking Tests Failed
+
 **Symptoms**:
+
 - Test pods cannot start
 - DNS resolution fails
 
 **Solution**:
+
 ```bash
 # Check CoreDNS
 kubectl get pods -n kube-system -l k8s-app=kube-dns
@@ -264,11 +305,14 @@ kubectl get endpoints kubernetes
 ## Phase 4: Core Services Failures
 
 ### Issue: External Secrets Operator Failed
+
 **Symptoms**:
+
 - External Secrets pods not running
 - CRDs not installed
 
 **Solution**:
+
 ```bash
 # Check External Secrets installation
 kubectl get pods -n external-secrets-system
@@ -281,11 +325,14 @@ kubectl get crd | grep external-secrets
 ```
 
 ### Issue: 1Password Connect Failed
+
 **Symptoms**:
+
 - 1Password Connect pods not starting
 - Secret retrieval fails
 
 **Solution**:
+
 ```bash
 # Check 1Password Connect pods
 kubectl get pods -n onepassword-connect
@@ -298,11 +345,14 @@ task bootstrap:1password-secrets
 ```
 
 ### Issue: Longhorn Storage Failed
+
 **Symptoms**:
+
 - Longhorn pods not starting
 - Storage not available
 
 **Solution**:
+
 ```bash
 # Check Longhorn installation
 kubectl get pods -n longhorn-system
@@ -317,11 +367,14 @@ task apps:deploy-longhorn
 ## Phase 5: GitOps Deployment Failures
 
 ### Issue: Flux Bootstrap Failed
+
 **Symptoms**:
+
 - Cannot connect to GitHub
 - Repository access denied
 
 **Solution**:
+
 ```bash
 # Check GitHub token
 op read "op://Private/GitHub Personal Access Token/token"
@@ -334,11 +387,14 @@ task flux:bootstrap
 ```
 
 ### Issue: GitOps Sync Failed
+
 **Symptoms**:
+
 - Flux not reconciling
 - Infrastructure not deploying
 
 **Solution**:
+
 ```bash
 # Check Flux status
 flux get kustomizations
@@ -354,11 +410,14 @@ kubectl logs -n flux-system -l app=source-controller
 ## Phase 6: Application Deployment Failures
 
 ### Issue: Applications Not Deploying
+
 **Symptoms**:
+
 - Application pods not starting
 - Kustomization failures
 
 **Solution**:
+
 ```bash
 # Check application status
 flux get kustomizations | grep apps
@@ -373,6 +432,7 @@ flux reconcile kustomization apps-<app-name>
 ## General Recovery Procedures
 
 ### Complete Reset and Restart
+
 ```bash
 # Reset bootstrap state
 task bootstrap:reset
@@ -382,6 +442,7 @@ task bootstrap:phased
 ```
 
 ### Partial Recovery
+
 ```bash
 # Resume from specific phase
 task bootstrap:resume-from PHASE=3
@@ -392,6 +453,7 @@ task bootstrap:resume-from PHASE=3
 ```
 
 ### Emergency Cluster Access
+
 ```bash
 # Recover kubeconfig
 task talos:recover-kubeconfig
@@ -406,6 +468,7 @@ task cluster:emergency-recovery
 ## Diagnostic Commands
 
 ### Environment Diagnostics
+
 ```bash
 # Comprehensive mise validation
 ./scripts/validate-mise-environment.sh
@@ -419,6 +482,7 @@ mise exec -- talosctl version
 ```
 
 ### Cluster Diagnostics
+
 ```bash
 # Node status
 kubectl get nodes -o wide
@@ -434,6 +498,7 @@ talosctl health --nodes 172.29.51.11,172.29.51.12,172.29.51.13
 ```
 
 ### Network Diagnostics
+
 ```bash
 # Cilium status
 kubectl get pods -n kube-system -l k8s-app=cilium
@@ -448,6 +513,7 @@ kubectl get svc --all-namespaces | grep LoadBalancer
 ## Log Analysis
 
 ### Bootstrap Logs
+
 ```bash
 # View orchestrator log
 cat logs/bootstrap/orchestrator.log
@@ -460,6 +526,7 @@ cat logs/bootstrap/validate-phase-3.log
 ```
 
 ### Kubernetes Logs
+
 ```bash
 # Control plane logs
 kubectl logs -n kube-system -l tier=control-plane
@@ -474,6 +541,7 @@ kubectl logs -n flux-system -l app=source-controller
 ## Prevention Strategies
 
 ### Pre-Bootstrap Checks
+
 ```bash
 # Validate environment before starting
 ./scripts/validate-mise-environment.sh
@@ -486,6 +554,7 @@ op item get "1password connect" --vault="Automation"
 ```
 
 ### Regular Validation
+
 ```bash
 # Run all phase validations
 task validate:all-phases
@@ -500,18 +569,21 @@ flux get kustomizations
 ## Getting Help
 
 ### Documentation References
+
 - [Phased Bootstrap Guide](./PHASED_BOOTSTRAP_GUIDE.md)
 - [Bootstrap vs GitOps Phases](./BOOTSTRAP_VS_GITOPS_PHASES.md)
 - [Cluster Reset Safety](./CLUSTER_RESET_SAFETY.md)
 - [Operational Workflows](./OPERATIONAL_WORKFLOWS.md)
 
 ### Log Files to Check
+
 - `logs/bootstrap/orchestrator.log` - Master orchestrator log
 - `logs/bootstrap/phase-N.log` - Phase execution logs
 - `logs/bootstrap/validate-phase-N.log` - Validation logs
 - `logs/bootstrap/phase-N-*-report.txt` - Detailed phase reports
 
 ### Common Support Commands
+
 ```bash
 # Generate comprehensive status report
 task bootstrap:status > bootstrap-status.txt

@@ -21,13 +21,13 @@ spec:
       attributes:
         communities:
           standard:
-            - "64512:100"  # Load balancer service marker
+            - "64512:100" # Load balancer service marker
     # Announce Pod CIDR for internal routing
     - advertisementType: "PodCIDR"
       attributes:
         communities:
           standard:
-            - "64512:200"  # Pod network marker
+            - "64512:200" # Pod network marker
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPClusterConfig

@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/component: bootstrap
     app.kubernetes.io/part-of: identity-provider
 spec:
-  ttlSecondsAfterFinished: 86400  # Keep for 24 hours for debugging
+  ttlSecondsAfterFinished: 86400 # Keep for 24 hours for debugging
   template:
     metadata:
       labels:
@@ -72,17 +72,17 @@ spec:
             - |
               set -e
               echo "=== Authentik Bootstrap Process Started ==="
-              
+
               # Generate secure admin credentials
               ADMIN_USERNAME="admin"
               ADMIN_EMAIL="admin@home-ops.dev"
               ADMIN_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
-              
+
               echo "Generated admin credentials:"
               echo "Username: $ADMIN_USERNAME"
               echo "Email: $ADMIN_EMAIL"
               echo "Password: [REDACTED]"
-              
+
               # Create admin user using authentik's management command
               echo "=== Creating admin user ==="
               python -m authentik.core.management.commands.create_admin_group
@@ -90,15 +90,15 @@ spec:
                 --username "$ADMIN_USERNAME" \
                 --email "$ADMIN_EMAIL" \
                 --password "$ADMIN_PASSWORD"
-              
+
               echo "Admin user created successfully"
-              
+
               # Wait a moment for user to be fully created
               sleep 5
-              
+
               # Create admin API token using authentik's API
               echo "=== Creating admin API token ==="
-              
+
               # First, get admin user ID
               ADMIN_USER_ID=$(python -c "
               import os
@@ -109,9 +109,9 @@ spec:
               user = User.objects.get(username='$ADMIN_USERNAME')
               print(user.pk)
               ")
-              
+
               echo "Admin user ID: $ADMIN_USER_ID"
-              
+
               # Create API token
               API_TOKEN=$(python -c "
               import os
@@ -132,9 +132,9 @@ spec:
               )
               print(token.key)
               ")
-              
+
               echo "API token created: ${API_TOKEN:0:20}..."
-              
+
               # Test the API token
               echo "=== Testing API token ==="
               if curl -s -H "Authorization: Bearer $API_TOKEN" "$AUTHENTIK_HOST/api/v3/core/users/me/" | grep -q "username"; then
@@ -143,10 +143,10 @@ spec:
                 echo "ERROR: API token is not working"
                 exit 1
               fi
-              
+
               # Store credentials in 1Password
               echo "=== Storing credentials in 1Password ==="
-              
+
               # Store admin user credentials
               curl -X POST -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
                 -H "Content-Type: application/json" \
@@ -183,9 +183,9 @@ spec:
                     }
                   ]
                 }"
-              
+
               echo "Admin user credentials stored in 1Password"
-              
+
               # Store API token
               curl -X POST -H "Authorization: Bearer $OP_CONNECT_TOKEN" \
                 -H "Content-Type: application/json" \
@@ -217,13 +217,13 @@ spec:
                     }
                   ]
                 }"
-              
+
               echo "API token stored in 1Password"
-              
+
               echo "=== Bootstrap Process Complete ==="
               echo "Authentik is now ready for GitOps management"
               echo "Admin credentials and API token have been stored in 1Password"
-              
+
           envFrom:
             - secretRef:
                 name: authentik-config

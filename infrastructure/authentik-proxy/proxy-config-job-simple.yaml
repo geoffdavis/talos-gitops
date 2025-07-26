@@ -46,11 +46,11 @@ spec:
             - |
               set -e
               echo "=== Updating ConfigMap with Known Outpost ID ==="
-              
+
               # Use the known external outpost ID
               OUTPOST_ID="3f0970c5-d6a3-43b2-9a36-d74665c6b24e"
               echo "Using outpost ID: $OUTPOST_ID"
-              
+
               # Update ConfigMap with outpost ID
               cat <<EOF | kubectl apply -f -
               apiVersion: v1
@@ -64,7 +64,7 @@ spec:
               data:
                 outpost_id: "$OUTPOST_ID"
               EOF
-              
+
               echo "✓ ConfigMap updated with outpost ID: $OUTPOST_ID"
               echo "=== Simple Configuration Job Complete ==="
               echo "✓ External URL fixes have been applied via:"

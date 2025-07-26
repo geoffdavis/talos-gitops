@@ -41,7 +41,7 @@ spec:
       backingImage:
         enable: true
         cleanupWaitInterval: 60
-      
+
     # Default settings optimized for USB SSDs
     defaultSettings:
       backupTarget: "s3://longhorn-backups-home-ops@us-west-2/"
@@ -87,11 +87,11 @@ spec:
       fastReplicaRebuildEnabled: true
       replicaFileSyncHttpClientTimeout: 30
       logLevel: "Info"
-      
+
     # Ingress configuration - disabled in favor of separate ingress resource
     ingress:
       enabled: false
-        
+
     # Service configuration
     service:
       ui:
@@ -100,7 +100,7 @@ spec:
         annotations:
           io.cilium/lb-ipam-pool: "default"
         nodePort: null
-        
+
     # Enable CSI snapshots
     csi:
       kubeletRootDir: "/var/lib/kubelet"
@@ -108,7 +108,7 @@ spec:
       provisionerReplicaCount: 3
       resizerReplicaCount: 3
       snapshotterReplicaCount: 3
-      
+
     # Node selector and tolerations for control plane scheduling
     longhornManager:
       tolerations:
@@ -120,7 +120,7 @@ spec:
           effect: "NoSchedule"
       nodeSelector:
         kubernetes.io/os: linux
-        
+
     longhornDriver:
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
@@ -131,7 +131,7 @@ spec:
           effect: "NoSchedule"
       nodeSelector:
         kubernetes.io/os: linux
-        
+
     longhornUI:
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
@@ -142,7 +142,7 @@ spec:
           effect: "NoSchedule"
       nodeSelector:
         kubernetes.io/os: linux
-        
+
     # Resource limits
     resources:
       limits:
@@ -151,11 +151,11 @@ spec:
       requests:
         cpu: 100m
         memory: 256Mi
-        
+
     # Monitoring
     serviceMonitor:
       enabled: true
-      
+
     # Backup configuration
     # Note: Configure backup target via External Secrets from 1Password
     preUpgradeChecker:

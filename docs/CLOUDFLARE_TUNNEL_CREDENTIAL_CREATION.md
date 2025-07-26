@@ -7,6 +7,7 @@ The [`scripts/create-cloudflare-tunnel-credentials.sh`](../scripts/create-cloudf
 ## Purpose
 
 This script was created to address scenarios where:
+
 - Only Cloudflare tunnel credentials are missing
 - You want to avoid regenerating all credentials
 - The tunnel deployment is failing due to missing credentials
@@ -19,19 +20,21 @@ This script was created to address scenarios where:
 ✅ **Existing Check**: Validates if credentials already exist  
 ✅ **Prerequisite Validation**: Ensures all required tools are available  
 ✅ **Error Handling**: Comprehensive error checking and rollback  
-✅ **No Side Effects**: Does not modify other credentials or configurations  
+✅ **No Side Effects**: Does not modify other credentials or configurations
 
 ## Prerequisites
 
 Before running the script, ensure you have:
 
 1. **1Password CLI** installed and authenticated:
+
    ```bash
    op signin
    export OP_ACCOUNT=your-account-name
    ```
 
 2. **mise tool manager** with cloudflared installed:
+
    ```bash
    mise install cloudflared
    ```
@@ -51,25 +54,30 @@ Before running the script, ensure you have:
 ### What the Script Does
 
 1. **Prerequisites Check**:
+
    - Verifies 1Password CLI is installed and authenticated
    - Checks mise and cloudflared availability
    - Validates access to the Automation vault
 
 2. **Existing Credential Check**:
+
    - Checks if tunnel already exists in Cloudflare
    - Verifies if credentials exist in 1Password
    - Prompts for confirmation if recreating existing resources
 
 3. **Cleanup (if needed)**:
+
    - Removes old tunnel credentials from 1Password
    - Deletes old tunnel from Cloudflare
 
 4. **Tunnel Creation**:
+
    - Creates new Cloudflare tunnel: `home-ops-tunnel`
    - Generates fresh tunnel credentials
    - Validates credential file format and size
 
 5. **Credential Storage**:
+
    - Stores credentials in 1Password as: `Home-ops cloudflare-tunnel.json`
    - Validates successful storage and retrieval
 
@@ -171,6 +179,7 @@ kubectl logs -n cloudflare-tunnel -l app=cloudflare-tunnel
 
 **Error**: `1Password CLI (op) is not installed`
 **Solution**: Install 1Password CLI and authenticate:
+
 ```bash
 # Install 1Password CLI (macOS)
 brew install 1password-cli
@@ -184,6 +193,7 @@ export OP_ACCOUNT=your-account-name
 
 **Error**: `cloudflared CLI not available via mise`
 **Solution**: Install cloudflared via mise:
+
 ```bash
 mise install cloudflared
 ```
@@ -192,6 +202,7 @@ mise install cloudflared
 
 **Error**: `Failed to create new Cloudflare tunnel`
 **Solution**: Check Cloudflare API credentials:
+
 ```bash
 # Verify cloudflared authentication
 mise exec -- cloudflared tunnel list
@@ -212,19 +223,21 @@ mise exec -- cloudflared tunnel list
 #### If Script Fails Mid-Execution
 
 1. **Check what was created**:
+
    ```bash
    # Check tunnel in Cloudflare
    mise exec -- cloudflared tunnel list
-   
+
    # Check credentials in 1Password
    op item get "Home-ops cloudflare-tunnel.json" --vault="Automation"
    ```
 
 2. **Clean up partial state**:
+
    ```bash
    # Delete tunnel if created but credentials failed
    mise exec -- cloudflared tunnel delete home-ops-tunnel --force
-   
+
    # Remove credentials if stored but tunnel failed
    op item delete "Home-ops cloudflare-tunnel.json" --vault="Automation"
    ```
@@ -251,7 +264,7 @@ spec:
   data:
     - secretKey: credentials.json
       remoteRef:
-        key: "Home-ops cloudflare-tunnel.json"  # Created by script
+        key: "Home-ops cloudflare-tunnel.json" # Created by script
         property: "json"
 ```
 

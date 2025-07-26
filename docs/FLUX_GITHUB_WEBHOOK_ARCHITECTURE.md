@@ -7,19 +7,21 @@ This document outlines the comprehensive architectural plan for implementing a G
 ## Current Infrastructure Analysis
 
 ### Existing Components
+
 - **Flux System**: Deployed in `flux-system` namespace with notification controller ready
 - **Cloudflare Tunnel**: Deployed with basic catch-all 404 rule, ready for ingress configuration
-- **Domain Structure**: 
+- **Domain Structure**:
   - External: `geoffdavis.com` (managed by external-dns)
   - Internal: `k8s.home.geoffdavis.com` (internal-only services)
 - **Certificate Management**: cert-manager with Let's Encrypt (DNS01 and HTTP01 solvers)
-- **Ingress Controllers**: 
+- **Ingress Controllers**:
   - `nginx` (internal services)
   - `nginx-public` (ready for public services via tunnel)
 - **Security**: 1Password Connect for secret management
 - **Monitoring**: Prometheus with existing Flux monitoring rules
 
 ### Key Findings
+
 - Webhook receiver service exists but is not configured for external access
 - No current public ingress rules in Cloudflare tunnel
 - All existing services use internal-only access patterns
@@ -110,6 +112,7 @@ This document outlines the comprehensive architectural plan for implementing a G
 **Proposed Domain**: `flux-webhook.geoffdavis.com`
 
 **DNS Configuration**:
+
 - External DNS will automatically create CNAME record pointing to Cloudflare tunnel
 - Let's Encrypt certificate via DNS01 challenge using existing Cloudflare API token
 - No internal DNS required (public-only endpoint)
@@ -117,6 +120,7 @@ This document outlines the comprehensive architectural plan for implementing a G
 ### 2. Cloudflare Tunnel Configuration
 
 **Updated ConfigMap** (`infrastructure/cloudflare-tunnel/configmap.yaml`):
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -129,7 +133,7 @@ data:
     credentials-file: /etc/cloudflared/creds/credentials.json
     metrics: 0.0.0.0:2000
     no-autoupdate: true
-    
+
     ingress:
       # Flux webhook endpoint
       - hostname: flux-webhook.geoffdavis.com
@@ -146,6 +150,7 @@ data:
 ```
 
 **Security Features**:
+
 - TLS verification enabled
 - Custom HTTP host header preservation
 - Connection timeouts configured
@@ -154,6 +159,7 @@ data:
 ### 3. Ingress Configuration
 
 **Public Ingress Resource** (`infrastructure/flux-webhook/ingress.yaml`):
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -163,28 +169,28 @@ metadata:
   annotations:
     # Use public ingress class for tunnel access
     kubernetes.io/ingress.class: nginx-public
-    
+
     # Certificate management
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    
+
     # External DNS configuration
     external-dns.alpha.kubernetes.io/hostname: "flux-webhook.geoffdavis.com"
-    
+
     # Security configurations
     nginx.ingress.kubernetes.io/rate-limit: "10"
     nginx.ingress.kubernetes.io/rate-limit-window: "1m"
     nginx.ingress.kubernetes.io/limit-connections: "5"
-    
+
     # SSL and security headers
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
-    
+
     # Webhook-specific configurations
     nginx.ingress.kubernetes.io/proxy-body-size: "1m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
-    
+
     # Security headers
     nginx.ingress.kubernetes.io/configuration-snippet: |
       more_set_headers "X-Content-Type-Options: nosniff";
@@ -213,6 +219,7 @@ spec:
 ### 4. Flux Receiver Configuration
 
 **Receiver Resource** (`infrastructure/flux-webhook/receiver.yaml`):
+
 ```yaml
 apiVersion: notification.toolkit.fluxcd.io/v1
 kind: Receiver
@@ -240,6 +247,7 @@ spec:
 ```
 
 **Alert Configuration** (`infrastructure/flux-webhook/alert.yaml`):
+
 ```yaml
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Alert
@@ -262,6 +270,7 @@ spec:
 #### Webhook Secret Management
 
 **External Secret** (`infrastructure/flux-webhook/external-secret.yaml`):
+
 ```yaml
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -306,6 +315,7 @@ spec:
 #### Metrics Collection
 
 **ServiceMonitor Extension** (`infrastructure/monitoring/flux-webhook-monitoring.yaml`):
+
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -332,6 +342,7 @@ spec:
 #### Alert Rules
 
 **PrometheusRule Extension** (`infrastructure/monitoring/flux-webhook-alerts.yaml`):
+
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -357,7 +368,7 @@ spec:
           annotations:
             summary: "Flux webhook receiver is down"
             description: "Flux webhook receiver has been down for more than 2 minutes."
-            
+
         # Webhook authentication failures
         - alert: FluxWebhookAuthFailures
           expr: increase(gotk_webhook_receiver_requests_total{status_code!~"2.."}[5m]) > 5
@@ -368,7 +379,7 @@ spec:
           annotations:
             summary: "High webhook authentication failures"
             description: "More than 5 webhook authentication failures in the last 5 minutes."
-            
+
         # Webhook processing errors
         - alert: FluxWebhookProcessingErrors
           expr: increase(gotk_webhook_receiver_errors_total[5m]) > 3
@@ -379,7 +390,7 @@ spec:
           annotations:
             summary: "Webhook processing errors detected"
             description: "More than 3 webhook processing errors in the last 5 minutes."
-            
+
         # High webhook latency
         - alert: FluxWebhookHighLatency
           expr: histogram_quantile(0.95, rate(gotk_webhook_receiver_duration_seconds_bucket[5m])) > 5
@@ -390,7 +401,7 @@ spec:
           annotations:
             summary: "High webhook processing latency"
             description: "95th percentile webhook processing latency is above 5 seconds."
-            
+
         # Ingress availability
         - alert: FluxWebhookIngressDown
           expr: nginx_ingress_controller_requests{ingress="flux-webhook"} == 0
@@ -413,12 +424,15 @@ spec:
 ### 7. Implementation Sequence
 
 #### Phase 1: Foundation Setup (Low Risk)
+
 1. **Create webhook namespace resources**
+
    - Namespace (if needed)
    - ServiceAccount
    - RBAC permissions
 
 2. **Configure secret management**
+
    - Create 1Password entry for webhook secret
    - Deploy ExternalSecret resource
    - Verify secret creation
@@ -428,7 +442,9 @@ spec:
    - Test certificate generation
 
 #### Phase 2: Ingress Configuration (Medium Risk)
+
 1. **Deploy public ingress resource**
+
    - Create ingress with security annotations
    - Verify certificate provisioning
    - Test internal connectivity
@@ -438,7 +454,9 @@ spec:
    - Test domain resolution
 
 #### Phase 3: Tunnel Configuration (Medium Risk)
+
 1. **Update Cloudflare tunnel config**
+
    - Add ingress rule for webhook domain
    - Deploy updated ConfigMap
    - Restart tunnel pods
@@ -449,7 +467,9 @@ spec:
    - Test rate limiting
 
 #### Phase 4: Flux Integration (High Risk)
+
 1. **Deploy Receiver resource**
+
    - Create GitHub webhook receiver
    - Configure event filtering
    - Test webhook endpoint
@@ -460,7 +480,9 @@ spec:
    - Test webhook delivery
 
 #### Phase 5: Monitoring and Validation (Low Risk)
+
 1. **Deploy monitoring resources**
+
    - ServiceMonitor for metrics collection
    - PrometheusRule for alerting
    - Verify metrics collection
@@ -475,12 +497,14 @@ spec:
 #### Threat Model
 
 **External Threats**:
+
 - **DDoS Attacks**: Mitigated by Cloudflare protection and rate limiting
 - **Webhook Spoofing**: Mitigated by GitHub webhook secret validation
 - **Certificate Attacks**: Mitigated by Let's Encrypt certificate pinning
 - **Data Exfiltration**: Mitigated by minimal exposed surface area
 
 **Internal Threats**:
+
 - **Privilege Escalation**: Mitigated by RBAC and service account isolation
 - **Lateral Movement**: Mitigated by network policies and namespace isolation
 - **Secret Exposure**: Mitigated by 1Password integration and secret rotation
@@ -500,16 +524,19 @@ spec:
 #### Rollback Procedures
 
 **Emergency Rollback** (< 5 minutes):
+
 1. **Disable webhook in GitHub**: Remove webhook URL from repository settings
 2. **Suspend Receiver**: Set `suspend: true` in Receiver resource
 3. **Remove tunnel rule**: Comment out webhook rule in tunnel ConfigMap
 
 **Partial Rollback** (< 15 minutes):
+
 1. **Revert tunnel configuration**: Restore previous ConfigMap version
 2. **Remove ingress resource**: Delete public ingress for webhook
 3. **Suspend Flux receiver**: Prevent webhook processing
 
 **Full Rollback** (< 30 minutes):
+
 1. **Remove all webhook resources**: Delete all webhook-related resources
 2. **Revert DNS changes**: Remove external DNS annotations
 3. **Clean up certificates**: Remove webhook TLS certificates
@@ -519,18 +546,21 @@ spec:
 **Common Issues**:
 
 1. **Webhook not reachable**:
+
    - Check Cloudflare tunnel logs
    - Verify ingress controller status
    - Test internal service connectivity
    - Validate DNS resolution
 
 2. **Certificate issues**:
+
    - Check cert-manager logs
    - Verify Let's Encrypt rate limits
    - Test DNS01 challenge resolution
    - Validate Cloudflare API token
 
 3. **Authentication failures**:
+
    - Verify webhook secret in 1Password
    - Check ExternalSecret status
    - Validate GitHub webhook configuration
@@ -543,6 +573,7 @@ spec:
    - Review rate limiting configuration
 
 **Diagnostic Commands**:
+
 ```bash
 # Check webhook receiver status
 kubectl get receiver -n flux-system
@@ -565,12 +596,14 @@ curl -I https://flux-webhook.geoffdavis.com/hook/github-webhook
 #### Performance Characteristics
 
 **Expected Load**:
+
 - **Webhook Frequency**: 10-50 webhooks per day (typical development activity)
 - **Peak Load**: 5-10 webhooks per hour during active development
 - **Payload Size**: 1-10KB typical GitHub webhook payload
 - **Processing Time**: < 100ms per webhook (excluding reconciliation)
 
 **Resource Requirements**:
+
 - **CPU**: Minimal additional load on notification-controller
 - **Memory**: < 10MB additional memory for webhook processing
 - **Network**: < 1MB/day additional bandwidth
@@ -579,11 +612,13 @@ curl -I https://flux-webhook.geoffdavis.com/hook/github-webhook
 #### Scalability Considerations
 
 **Horizontal Scaling**:
+
 - Notification controller supports multiple replicas
 - Ingress controller already configured for high availability
 - Cloudflare tunnel provides automatic load balancing
 
 **Vertical Scaling**:
+
 - Current resource limits sufficient for expected load
 - Can increase notification-controller resources if needed
 - Ingress controller resources already optimized
@@ -593,12 +628,14 @@ curl -I https://flux-webhook.geoffdavis.com/hook/github-webhook
 #### Security Compliance
 
 **Data Protection**:
+
 - No sensitive data stored in webhook payloads
 - All secrets managed via 1Password integration
 - Audit trail maintained for all webhook events
 - TLS encryption for data in transit
 
 **Access Control**:
+
 - RBAC-based permissions for all components
 - Service account isolation
 - Network policy enforcement (optional)
@@ -607,12 +644,14 @@ curl -I https://flux-webhook.geoffdavis.com/hook/github-webhook
 #### Operational Governance
 
 **Change Management**:
+
 - All changes tracked via GitOps workflow
 - Staged deployment process with rollback procedures
 - Monitoring and alerting for all changes
 - Documentation updates for all modifications
 
 **Incident Response**:
+
 - Defined escalation procedures
 - Automated alerting for critical issues
 - Runbook procedures for common problems

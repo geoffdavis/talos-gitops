@@ -28,46 +28,46 @@ graph TB
     subgraph "UDM Pro (ASN 64513)"
         UDM[UDM Pro Router<br/>172.29.51.1<br/>BGP Peer]
     end
-    
+
     subgraph "Management Network (VLAN 51)"
         VIP[Cluster VIP<br/>172.29.51.10]
         N1[Node 1<br/>172.29.51.11]
         N2[Node 2<br/>172.29.51.12]
         N3[Node 3<br/>172.29.51.13]
     end
-    
+
     subgraph "LoadBalancer Network (VLAN 52)"
         LB1[BGP Pool Default<br/>172.29.52.100-199]
         LB2[BGP Pool Ingress<br/>172.29.52.200-220]
         LB3[BGP Pool Reserved<br/>172.29.52.50-99]
     end
-    
+
     subgraph "Cluster (ASN 64512)"
         subgraph "Cilium BGP"
             BGP[CiliumBGPPeeringPolicy<br/>Legacy Schema]
             IPAM[LoadBalancer IPAM<br/>Enabled]
         end
-        
+
         subgraph "Services"
             SVC1[Longhorn<br/>172.29.52.100]
             SVC2[Ingress<br/>172.29.52.200]
             SVC3[Other Services<br/>172.29.52.x]
         end
     end
-    
+
     UDM -.->|BGP Peering| N1
     UDM -.->|BGP Peering| N2
     UDM -.->|BGP Peering| N3
-    
+
     N1 --> BGP
     N2 --> BGP
     N3 --> BGP
-    
+
     BGP --> IPAM
     IPAM --> LB1
     IPAM --> LB2
     IPAM --> LB3
-    
+
     LB1 --> SVC1
     LB2 --> SVC2
     LB1 --> SVC3
@@ -76,11 +76,13 @@ graph TB
 ### BGP Configuration Components
 
 #### 1. Working BGP Configuration
+
 - **File**: [`infrastructure/cilium-bgp/bgp-policy-legacy.yaml`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml)
 - **Schema**: CiliumBGPPeeringPolicy (legacy, compatible with Cilium v1.17.6)
 - **Status**: ✅ Working and stable
 
 #### 2. LoadBalancer IP Pools
+
 - **File**: [`infrastructure/cilium/loadbalancer-pool-bgp.yaml`](../infrastructure/cilium/loadbalancer-pool-bgp.yaml)
 - **Pools**:
   - `bgp-default`: 172.29.52.100-199 (100 IPs for general services)
@@ -89,6 +91,7 @@ graph TB
   - `bgp-default-ipv6`: fd47:25e1:2f96:52:100::/120 (IPv6 support)
 
 #### 3. Cilium Configuration
+
 - **File**: [`infrastructure/cilium/helmrelease-bgp-only.yaml`](../infrastructure/cilium/helmrelease-bgp-only.yaml)
 - **Version**: Cilium v1.17.6
 - **Key Settings**:
@@ -98,6 +101,7 @@ graph TB
   - `enable-lb-ipam: true`
 
 #### 4. UDM Pro Configuration
+
 - **File**: [`udm-pro-bgp-no-auth.conf`](../udm-pro-bgp-no-auth.conf)
 - **Upload Method**: Network > Settings > Routing > BGP > Upload Configuration
 - **Peering**: ASN 64513 ↔ ASN 64512
@@ -108,6 +112,7 @@ graph TB
 ### Daily Operations
 
 #### Check BGP Status
+
 ```bash
 # Overall BGP status
 task bgp-loadbalancer:status
@@ -120,6 +125,7 @@ task bgp-loadbalancer:show-service-ips
 ```
 
 #### Monitor Service Health
+
 ```bash
 # Test connectivity to BGP services
 task bgp-loadbalancer:test-connectivity
@@ -134,6 +140,7 @@ task bgp-loadbalancer:generate-report
 ### Service Management
 
 #### Assign Service to Specific IP Pool
+
 ```bash
 # Assign service to ingress pool
 task bgp-loadbalancer:update-service-pools \
@@ -149,6 +156,7 @@ task bgp-loadbalancer:update-service-pools \
 ```
 
 #### Available IP Pools
+
 - **`bgp-default`**: 172.29.52.100-199 (general services)
 - **`bgp-ingress`**: 172.29.52.200-220 (ingress controllers)
 - **`bgp-reserved`**: 172.29.52.50-99 (reserved for future use)
@@ -157,6 +165,7 @@ task bgp-loadbalancer:update-service-pools \
 ### Troubleshooting
 
 #### BGP Troubleshooting Workflow
+
 ```bash
 # Run comprehensive troubleshooting
 task bgp-loadbalancer:troubleshoot
@@ -174,24 +183,31 @@ ssh unifi-admin@udm-pro "vtysh -c 'show bgp ipv4 unicast' | grep 172.29.52"
 #### Common Issues and Solutions
 
 ##### 1. BGP Peering Down
+
 **Symptoms**: Services get IPs but are not accessible
 **Diagnosis**:
+
 ```bash
 kubectl get ciliumbgppeeringpolicy -o yaml
 kubectl logs -n kube-system -l k8s-app=cilium | grep -i "bgp\|peer"
 ```
+
 **Solution**: Check UDM Pro BGP configuration and network connectivity
 
 ##### 2. Services Not Getting IPs
+
 **Symptoms**: LoadBalancer services stuck in "Pending"
 **Diagnosis**:
+
 ```bash
 kubectl get ciliumloadbalancerippool -o yaml
 kubectl get svc --all-namespaces | grep LoadBalancer
 ```
+
 **Solution**: Verify service has correct pool annotation and IPAM is enabled
 
 ##### 3. Schema Compatibility Issues
+
 **Symptoms**: CiliumBGPClusterConfig/CiliumBGPAdvertisement not working
 **Root Cause**: Newer BGP CRDs incompatible with Cilium v1.17.6
 **Solution**: Use legacy [`CiliumBGPPeeringPolicy`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml) schema
@@ -199,18 +215,21 @@ kubectl get svc --all-namespaces | grep LoadBalancer
 ### Maintenance Procedures
 
 #### Update BGP Configuration
+
 1. **Modify Configuration**: Edit [`infrastructure/cilium-bgp/bgp-policy-legacy.yaml`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml)
 2. **Apply Changes**: `kubectl apply -f infrastructure/cilium-bgp/bgp-policy-legacy.yaml`
 3. **Verify Peering**: `task bgp-loadbalancer:verify-bgp-peering`
 4. **Test Connectivity**: `task bgp-loadbalancer:test-connectivity`
 
 #### Add New IP Pool
+
 1. **Edit Pool Configuration**: [`infrastructure/cilium/loadbalancer-pool-bgp.yaml`](../infrastructure/cilium/loadbalancer-pool-bgp.yaml)
 2. **Apply Changes**: `kubectl apply -f infrastructure/cilium/loadbalancer-pool-bgp.yaml`
 3. **Update UDM Pro**: Add new prefix to route acceptance policy
 4. **Verify Pool**: `task bgp-loadbalancer:check-pools`
 
 #### Cilium Upgrade Considerations
+
 - **Schema Compatibility**: Verify BGP CRD compatibility with new Cilium version
 - **XDP Settings**: Maintain `loadBalancer.acceleration: disabled` for Mac mini compatibility
 - **IPAM Settings**: Ensure `enable-lb-ipam: true` is preserved
@@ -219,12 +238,14 @@ kubectl get svc --all-namespaces | grep LoadBalancer
 ## Monitoring and Alerting
 
 ### Key Metrics to Monitor
+
 1. **BGP Peering Status**: All 3 nodes should have established BGP sessions
 2. **Route Advertisement**: LoadBalancer IPs should be advertised to UDM Pro
 3. **Service Accessibility**: All LoadBalancer services should be reachable
 4. **IP Pool Utilization**: Monitor available IPs in each pool
 
 ### Health Checks
+
 ```bash
 # Daily health check script
 #!/bin/bash
@@ -251,17 +272,20 @@ echo "Health check completed"
 ## Configuration Files Reference
 
 ### Core BGP Configuration
+
 - **BGP Policy**: [`infrastructure/cilium-bgp/bgp-policy-legacy.yaml`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml)
 - **IP Pools**: [`infrastructure/cilium/loadbalancer-pool-bgp.yaml`](../infrastructure/cilium/loadbalancer-pool-bgp.yaml)
 - **Cilium Config**: [`infrastructure/cilium/helmrelease-bgp-only.yaml`](../infrastructure/cilium/helmrelease-bgp-only.yaml)
 - **UDM Pro Config**: [`udm-pro-bgp-no-auth.conf`](../udm-pro-bgp-no-auth.conf)
 
 ### Operational Tasks
+
 - **BGP Tasks**: [`taskfiles/bgp-loadbalancer.yml`](../taskfiles/bgp-loadbalancer.yml)
 - **Networking Tasks**: [`taskfiles/networking.yml`](../taskfiles/networking.yml)
 - **Main Taskfile**: [`Taskfile.yml`](../Taskfile.yml) (BGP commands: `task bgp:*`)
 
 ### Bootstrap Integration
+
 - **Cilium Deployment**: [`Taskfile.yml:apps:deploy-cilium`](../Taskfile.yml) (lines 309-356)
 - **BGP Configuration**: Deployed via GitOps after cluster bootstrap
 - **UDM Pro Setup**: Manual configuration upload required
@@ -280,11 +304,13 @@ The BGP LoadBalancer migration is considered successful when:
 ## Migration History
 
 ### Root Cause Analysis
+
 **Problem**: Initial migration attempts failed due to schema compatibility issues between newer CiliumBGPClusterConfig/CiliumBGPAdvertisement CRDs and Cilium v1.17.6.
 
 **Solution**: Switched to legacy [`CiliumBGPPeeringPolicy`](../infrastructure/cilium-bgp/bgp-policy-legacy.yaml) schema which provides full compatibility with Cilium v1.17.6 and enables successful BGP route advertisement.
 
 ### Migration Timeline
+
 1. **BGP Peering Established**: Successfully configured BGP peering between cluster (ASN 64512) and UDM Pro (ASN 64513)
 2. **Cilium v1.17.6 Deployed**: Upgraded with XDP disabled for Mac mini compatibility and LoadBalancer IPAM enabled
 3. **Schema Issue Identified**: CiliumBGPClusterConfig/CiliumBGPAdvertisement incompatible with Cilium v1.17.6

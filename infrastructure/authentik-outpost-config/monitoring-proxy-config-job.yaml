@@ -73,7 +73,7 @@ spec:
             - |
               set -e
               echo "Configuring monitoring services proxy providers and applications..."
-              
+
               # Function to retry API calls
               retry_api_call() {
                 local url="$1"
@@ -118,7 +118,7 @@ spec:
                 cat /tmp/api_response
                 return 1
               }
-              
+
               # Function to create provider and application
               create_provider_and_app() {
                 local service_name="$1"
@@ -244,10 +244,10 @@ spec:
                 echo "$service_name configuration completed!"
                 return 0
               }
-              
+
               # Get admin token
               ADMIN_TOKEN="${AUTHENTIK_TOKEN}"
-              
+
               # Test authentication first with retry
               echo "Testing authentication..."
               if ! retry_api_call "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
@@ -257,30 +257,30 @@ spec:
                 exit 1
               fi
               echo "Authentication successful"
-              
+
               # Use the same authorization flow as other providers
               AUTH_FLOW_UUID="be0ee023-11fe-4a43-b453-bc67957cafbf"
               echo "Using authorization flow: $AUTH_FLOW_UUID"
-              
+
               # Configure Grafana
               create_provider_and_app "grafana" "Grafana" \
                 "https://grafana.k8s.home.geoffdavis.com" \
                 "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80" \
                 "Grafana monitoring and visualization dashboard" \
                 "Grafana Labs"
-              
+
               # Configure Prometheus
               create_provider_and_app "prometheus" "Prometheus" \
                 "https://prometheus.k8s.home.geoffdavis.com" \
                 "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" \
                 "Prometheus metrics collection and querying interface" \
                 "Prometheus"
-              
+
               # Configure AlertManager
               create_provider_and_app "alertmanager" "AlertManager" \
                 "https://alertmanager.k8s.home.geoffdavis.com" \
                 "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093" \
                 "AlertManager alert routing and management interface" \
                 "Prometheus"
-              
+
               echo "All monitoring services proxy configuration completed!"

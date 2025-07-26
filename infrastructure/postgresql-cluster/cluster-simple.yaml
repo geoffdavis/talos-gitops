@@ -9,13 +9,13 @@ metadata:
 spec:
   # High availability configuration - 3 replicas for homelab
   instances: 3
-  
+
   # PostgreSQL version and image
   imageName: ghcr.io/cloudnative-pg/postgresql:16.4
-  
+
   # Primary update strategy
   primaryUpdateStrategy: unsupervised
-  
+
   # PostgreSQL configuration
   postgresql:
     parameters:
@@ -32,21 +32,21 @@ spec:
       work_mem: "4MB"
       min_wal_size: "1GB"
       max_wal_size: "4GB"
-      
+
       # Logging configuration
       log_statement: "none"
       log_min_duration_statement: "1000"
       log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
-      
+
       # Replication settings
       max_wal_senders: "10"
       max_replication_slots: "10"
       wal_level: "replica"
-      
+
       # Archive settings for backup
       archive_mode: "on"
       archive_timeout: "5min"
-      
+
   # Bootstrap configuration
   bootstrap:
     initdb:
@@ -58,12 +58,12 @@ spec:
       encoding: "UTF8"
       localeCType: "C"
       localeCollate: "C"
-      
+
   # Storage configuration with Longhorn
   storage:
     size: 20Gi
     storageClass: longhorn-ssd
-    
+
   # Resource limits appropriate for homelab
   resources:
     requests:
@@ -72,7 +72,7 @@ spec:
     limits:
       memory: "2Gi"
       cpu: "1000m"
-      
+
   # Superuser secret and access
   superuserSecret:
     name: postgresql-superuser-credentials

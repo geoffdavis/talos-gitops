@@ -1,4 +1,5 @@
 # Week 2 Configuration Fixes Report
+
 **Fix-First Strategy Implementation**
 
 ## Executive Summary
@@ -10,19 +11,22 @@ Week 2 of the Fix-First Strategy has been successfully completed. All critical c
 ### 1. ✅ CRITICAL: Cilium BGP Configuration Incompatibility Resolved
 
 **Issue**: GitOps BGP policies required BGP control plane enabled, but it was disabled
+
 - **Root Cause**: `bgpControlPlane.enabled: false` in [`infrastructure/cilium/helmrelease.yaml`](infrastructure/cilium/helmrelease.yaml:61)
 - **Missing CRDs**: CiliumBGPAdvertisement, CiliumBGPClusterConfig, CiliumBGPPeerConfig
 
 **Resolution**:
+
 - ✅ Enabled Cilium BGP control plane: `bgpControlPlane.enabled: true`
 - ✅ Applied updated Cilium configuration via kustomization
 - ✅ Verified BGP CRDs are now available (6 BGP-related CRDs installed)
 - ✅ Validated BGP policies can be processed (dry-run successful for core BGP resources)
 
 **BGP CRDs Now Available**:
+
 ```
 ciliumbgpadvertisements.cilium.io
-ciliumbgpclusterconfigs.cilium.io  
+ciliumbgpclusterconfigs.cilium.io
 ciliumbgpnodeconfigoverrides.cilium.io
 ciliumbgpnodeconfigs.cilium.io
 ciliumbgppeerconfigs.cilium.io
@@ -32,10 +36,12 @@ ciliumbgppeeringpolicies.cilium.io
 ### 2. ✅ CRITICAL: Longhorn Management Migration Completed
 
 **Issue**: Bootstrap HelmRelease conflicted with GitOps HelmRelease (timeout failures)
+
 - **Root Cause**: Failed HelmRelease stuck in upgrade loop with finalizers
 - **Status**: HelmRelease in failed state but Longhorn pods running normally
 
 **Resolution**:
+
 - ✅ Safely removed failed HelmRelease with finalizer cleanup
 - ✅ Recreated HelmRelease with updated v2 API
 - ✅ Verified Longhorn continues operating normally (28/28 pods running)
@@ -45,13 +51,15 @@ ciliumbgppeeringpolicies.cilium.io
 ### 3. ✅ HIGH: Deprecated HelmRelease APIs Updated
 
 **Issue**: Multiple HelmReleases using deprecated `v2beta1` API
+
 - **Affected Files**: 7 HelmRelease files across infrastructure
 
 **Resolution**:
+
 - ✅ Updated all HelmReleases from `helm.toolkit.fluxcd.io/v2beta1` to `helm.toolkit.fluxcd.io/v2`
 - ✅ Files Updated:
   - [`infrastructure/cilium/helmrelease.yaml`](infrastructure/cilium/helmrelease.yaml:1)
-  - [`infrastructure/longhorn/helmrelease.yaml`](infrastructure/longhorn/helmrelease.yaml:1)  
+  - [`infrastructure/longhorn/helmrelease.yaml`](infrastructure/longhorn/helmrelease.yaml:1)
   - [`infrastructure/external-secrets/external-secrets-operator.yaml`](infrastructure/external-secrets/external-secrets-operator.yaml:1)
   - [`infrastructure/ingress-nginx/helmrelease.yaml`](infrastructure/ingress-nginx/helmrelease.yaml:1)
   - [`infrastructure/monitoring/prometheus.yaml`](infrastructure/monitoring/prometheus.yaml:1)
@@ -62,9 +70,11 @@ ciliumbgppeeringpolicies.cilium.io
 ### 4. ✅ MEDIUM: External Secrets Version Alignment
 
 **Issue**: Bootstrap used latest version, GitOps expected v0.18.2
+
 - **Root Cause**: Version mismatch could cause upgrade/downgrade conflicts
 
 **Resolution**:
+
 - ✅ Updated bootstrap script to use specific version: `--version 0.18.2`
 - ✅ Modified [`taskfiles/services.yml`](taskfiles/services.yml:39) to pin External Secrets version
 - ✅ Ensured consistency between bootstrap and GitOps deployments
@@ -72,9 +82,11 @@ ciliumbgppeeringpolicies.cilium.io
 ### 5. ✅ MEDIUM: 1Password Connect Migration Prepared
 
 **Issue**: Bootstrap uses manual secrets, GitOps expects ExternalSecrets management
+
 - **Current State**: Bootstrap secrets already in place and functional
 
 **Assessment**:
+
 - ✅ Examined current 1Password Connect deployment
 - ✅ Verified bootstrap secrets are properly configured:
   - `onepassword-connect-credentials` (1 data key, 5h39m age)
@@ -85,22 +97,26 @@ ciliumbgppeeringpolicies.cilium.io
 ## Configuration Validation Results
 
 ### ✅ Cilium BGP Control Plane
+
 - BGP control plane enabled successfully
 - 6 BGP CRDs available and functional
 - BGP policies can be processed (validated via dry-run)
 
 ### ✅ Longhorn Storage
+
 - All 28 Longhorn pods running successfully
 - HelmRelease migrated to GitOps management
 - Storage functionality preserved during migration
 - No data loss or service interruption
 
 ### ✅ API Compatibility
+
 - All HelmReleases updated to current v2 API
 - No deprecated v2beta1 APIs remaining
 - Compatible with current Flux version
 
 ### ✅ Version Consistency
+
 - External Secrets version aligned (v0.18.2)
 - Bootstrap and GitOps configurations consistent
 - No version conflict risks identified
@@ -116,6 +132,7 @@ ciliumbgppeeringpolicies.cilium.io
 ## Week 3 Readiness Assessment
 
 ### ✅ Prerequisites Met
+
 - All configuration conflicts resolved
 - API versions updated and compatible
 - BGP control plane ready for GitOps policies
@@ -124,6 +141,7 @@ ciliumbgppeeringpolicies.cilium.io
 - 1Password Connect integration prepared
 
 ### 🟡 Remaining Considerations
+
 - External Secrets webhook timeout (expected until proper External Secrets deployment)
 - GitOps Kustomizations not yet enabled (intentionally deferred to Week 3)
 - Full GitOps reconciliation testing pending
@@ -131,6 +149,7 @@ ciliumbgppeeringpolicies.cilium.io
 ## Technical Details
 
 ### Files Modified
+
 ```
 infrastructure/cilium/helmrelease.yaml - BGP enabled, API updated
 infrastructure/longhorn/helmrelease.yaml - API updated, HelmRelease recreated
@@ -143,6 +162,7 @@ taskfiles/services.yml - External Secrets version pinned
 ```
 
 ### Cluster State
+
 - **Cilium**: BGP control plane active, 6 BGP CRDs available
 - **Longhorn**: 28/28 pods running, GitOps managed
 - **External Secrets**: Bootstrap deployment ready for GitOps transition
@@ -163,6 +183,7 @@ Week 2 objectives have been fully achieved. All critical configuration conflicts
 **Status**: ✅ COMPLETE - Ready for Week 3 GitOps Enablement
 
 ---
-*Report generated: 2025-07-17T04:50:00Z*
-*Cluster: home-ops*
-*Phase: Week 2 - Configuration Fixes*
+
+_Report generated: 2025-07-17T04:50:00Z_
+_Cluster: home-ops_
+_Phase: Week 2 - Configuration Fixes_

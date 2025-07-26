@@ -9,22 +9,22 @@ resources:
   # Core namespace and RBAC
   - namespace.yaml
   - service-account.yaml
-  
+
   # Storage
   - pvc-media.yaml
-  
+
   # External secrets for configuration and database
   - external-secret-config.yaml
   - external-secret-db.yaml
   - external-secret-postgresql-superuser.yaml
   - external-secret-admin-credentials.yaml
-  
+
   # Enhanced token management for outpost authentication
   - external-secret-admin-token-enhanced.yaml
-  
+
   # Main authentik ingress (now that we have tokens)
   - ingress.yaml
-  
+
   # Operational HelmRelease (with external secrets)
   - helmrelease.yaml
 

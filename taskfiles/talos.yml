@@ -1,10 +1,10 @@
-version: '3'
+version: "3"
 
 # Talos Cluster Management Tasks
 # Handles Talos configuration, node setup, and cluster bootstrap
 
 vars:
-  BOOTSTRAP_STATE_DIR: '.bootstrap-state'
+  BOOTSTRAP_STATE_DIR: ".bootstrap-state"
   CLUSTER_NAME: '{{.CLUSTER_NAME | default "home-ops"}}'
   NODE_1_IP: '{{.NODE_1_IP | default "172.29.51.11"}}'
   NODE_2_IP: '{{.NODE_2_IP | default "172.29.51.12"}}'
@@ -36,11 +36,11 @@ tasks:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/secrets-bootstrapped
     preconditions:
       - sh: '[ -n "$OP_ACCOUNT" ]'
-        msg: 'OP_ACCOUNT environment variable must be set'
-      - sh: ' op account list >/dev/null 2>&1'
-        msg: '1Password CLI must be authenticated (run: op signin)'
-      - sh: 'test -f scripts/bootstrap-secrets.sh'
-        msg: 'bootstrap-secrets.sh script must exist'
+        msg: "OP_ACCOUNT environment variable must be set"
+      - sh: " op account list >/dev/null 2>&1"
+        msg: "1Password CLI must be authenticated (run: op signin)"
+      - sh: "test -f scripts/bootstrap-secrets.sh"
+        msg: "bootstrap-secrets.sh script must exist"
     cmds:
       - echo "Bootstrapping secrets from 1Password..."
       - bash scripts/bootstrap-secrets.sh
@@ -65,12 +65,12 @@ tasks:
       - talos/generated/{{.CLUSTER_NAME}}-mini02.yaml
       - talos/generated/{{.CLUSTER_NAME}}-mini03.yaml
     preconditions:
-      - sh: ' talhelper --version >/dev/null 2>&1'
-        msg: 'talhelper is required and managed by mise'
-      - sh: 'test -f talconfig.yaml'
-        msg: 'talconfig.yaml must exist'
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/secrets-bootstrapped'
-        msg: 'Secrets must be bootstrapped first'
+      - sh: " talhelper --version >/dev/null 2>&1"
+        msg: "talhelper is required and managed by mise"
+      - sh: "test -f talconfig.yaml"
+        msg: "talconfig.yaml must exist"
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/secrets-bootstrapped"
+        msg: "Secrets must be bootstrapped first"
     cmds:
       - echo "Generating Talos configuration..."
       - mkdir -p talos/generated
@@ -113,13 +113,13 @@ tasks:
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/configs-validated
     preconditions:
-      - sh: 'test -f talos/generated/{{.CLUSTER_NAME}}-mini01.yaml'
-        msg: 'Node configuration files must exist'
+      - sh: "test -f talos/generated/{{.CLUSTER_NAME}}-mini01.yaml"
+        msg: "Node configuration files must exist"
     cmds:
       - echo "Validating Talos configurations..."
-      -  talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini01.yaml --mode metal
-      -  talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini02.yaml --mode metal
-      -  talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini03.yaml --mode metal
+      - talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini01.yaml --mode metal
+      - talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini02.yaml --mode metal
+      - talosctl validate --config talos/generated/{{.CLUSTER_NAME}}-mini03.yaml --mode metal
       - touch {{.BOOTSTRAP_STATE_DIR}}/configs-validated
       - echo "All configurations are valid"
 
@@ -129,14 +129,14 @@ tasks:
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/configs-applied
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/configs-validated'
-        msg: 'Configurations must be validated first'
-      - sh: 'ping -c 1 {{.NODE_1_IP}} >/dev/null 2>&1'
-        msg: 'Node {{.NODE_1_IP}} must be reachable'
-      - sh: 'ping -c 1 {{.NODE_2_IP}} >/dev/null 2>&1'
-        msg: 'Node {{.NODE_2_IP}} must be reachable'
-      - sh: 'ping -c 1 {{.NODE_3_IP}} >/dev/null 2>&1'
-        msg: 'Node {{.NODE_3_IP}} must be reachable'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/configs-validated"
+        msg: "Configurations must be validated first"
+      - sh: "ping -c 1 {{.NODE_1_IP}} >/dev/null 2>&1"
+        msg: "Node {{.NODE_1_IP}} must be reachable"
+      - sh: "ping -c 1 {{.NODE_2_IP}} >/dev/null 2>&1"
+        msg: "Node {{.NODE_2_IP}} must be reachable"
+      - sh: "ping -c 1 {{.NODE_3_IP}} >/dev/null 2>&1"
+        msg: "Node {{.NODE_3_IP}} must be reachable"
     cmds:
       - echo "Applying Talos configurations to nodes..."
       - echo "Applying configuration to {{.NODE_1_IP}}..."
@@ -175,15 +175,15 @@ tasks:
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/nodes-ready
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/configs-applied'
-        msg: 'Configurations must be applied first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/configs-applied"
+        msg: "Configurations must be applied first"
     cmds:
       - echo "Waiting for nodes to be ready for bootstrap..."
       - |
         max_wait=300  # 5 minutes
         wait_interval=10
         elapsed=0
-        
+
         while [ $elapsed -lt $max_wait ]; do
           nodes_ready=0
           
@@ -202,7 +202,7 @@ tasks:
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))
         done
-        
+
         if [ $elapsed -ge $max_wait ]; then
           echo "✗ Timeout waiting for nodes to be ready"
           exit 1
@@ -215,8 +215,8 @@ tasks:
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/nodes-ready'
-        msg: 'Nodes must be ready first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/nodes-ready"
+        msg: "Nodes must be ready first"
     cmds:
       - echo "Checking if etcd cluster needs bootstrapping..."
       - |
@@ -247,17 +247,17 @@ tasks:
     desc: Wait for cluster to become ready and retrieve kubeconfig
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/cluster-ready
-      -  kubectl get nodes >/dev/null 2>&1
+      - kubectl get nodes >/dev/null 2>&1
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped'
-        msg: 'etcd must be bootstrapped first'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/etcd-bootstrapped"
+        msg: "etcd must be bootstrapped first"
     cmds:
       - echo "Waiting for cluster to become ready..."
       - |
         max_wait=300  # 5 minutes
         wait_interval=15
         elapsed=0
-        
+
         while [ $elapsed -lt $max_wait ]; do
           # Try to get kubeconfig
           if  talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force >/dev/null 2>&1; then
@@ -274,7 +274,7 @@ tasks:
           sleep $wait_interval
           elapsed=$((elapsed + wait_interval))
         done
-        
+
         if [ $elapsed -ge $max_wait ]; then
           echo "✗ Timeout waiting for cluster to be ready"
           exit 1
@@ -287,10 +287,10 @@ tasks:
     status:
       - test -f {{.BOOTSTRAP_STATE_DIR}}/health-verified
     preconditions:
-      - sh: 'test -f {{.BOOTSTRAP_STATE_DIR}}/cluster-ready'
-        msg: 'Cluster must be ready first'
-      - sh: ' kubectl get nodes >/dev/null 2>&1'
-        msg: 'Cluster must be accessible via kubectl'
+      - sh: "test -f {{.BOOTSTRAP_STATE_DIR}}/cluster-ready"
+        msg: "Cluster must be ready first"
+      - sh: " kubectl get nodes >/dev/null 2>&1"
+        msg: "Cluster must be accessible via kubectl"
     cmds:
       - echo "Verifying cluster health..."
       - |
@@ -328,22 +328,22 @@ tasks:
     cmds:
       - echo "=== Talos Cluster Status ==="
       - echo "Nodes:"
-      -  kubectl get nodes -o wide || echo "Cluster not accessible"
+      - kubectl get nodes -o wide || echo "Cluster not accessible"
       - echo ""
       - echo "Control Plane Pods:"
-      -  kubectl get pods -n kube-system -l tier=control-plane || echo "Control plane not accessible"
+      - kubectl get pods -n kube-system -l tier=control-plane || echo "Control plane not accessible"
       - echo ""
       - echo "etcd Pods:"
-      -  kubectl get pods -n kube-system -l component=etcd || echo "etcd not accessible"
+      - kubectl get pods -n kube-system -l component=etcd || echo "etcd not accessible"
 
   # Recovery tasks
   recover-kubeconfig:
     desc: Recover kubeconfig after cluster restart
     cmds:
       - echo "Recovering kubeconfig from cluster..."
-      -  talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
+      - talosctl kubeconfig --nodes {{.NODE_1_IP}} --endpoints {{.NODE_1_IP}} --force
       - echo "Testing connection..."
-      -  kubectl get nodes || echo "If connection fails, check if nodes are powered on and reachable"
+      - kubectl get nodes || echo "If connection fails, check if nodes are powered on and reachable"
 
   # Reset tasks
   reset-state:

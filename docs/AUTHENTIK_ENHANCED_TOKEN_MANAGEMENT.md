@@ -17,21 +17,25 @@ The enhanced token management system provides:
 ### Components
 
 1. **Enhanced Token Setup Job** ([`enhanced-token-setup-job.yaml`](../infrastructure/authentik-outpost-config/enhanced-token-setup-job.yaml))
+
    - Creates 1-year tokens with proper expiry management
    - Validates existing tokens and prevents unnecessary recreation
    - Provides detailed logging and status reporting
 
 2. **Token Management Scripts** ([`scripts/token-management/`](../scripts/token-management/))
+
    - Python-based token management with shared logic
    - Unit tests for reliability
    - CLI interface for manual operations
 
 3. **Enhanced External Secrets** ([`external-secret-admin-token-enhanced.yaml`](../infrastructure/authentik/external-secret-admin-token-enhanced.yaml))
+
    - Supports token rotation metadata
    - Multiple token entries for overlap periods
    - Automated sync with 1Password
 
 4. **Token Rotation CronJob** ([`token-rotation-cronjob.yaml`](../infrastructure/authentik/token-rotation-cronjob.yaml))
+
    - Daily automated token health checks
    - Automatic rotation when tokens approach expiry
    - Notification integration for status updates
@@ -71,6 +75,7 @@ The enhanced token management system provides:
 Create the following items in your 1Password vault:
 
 #### Authentik Admin Token
+
 ```
 Vault: homelab
 Item: Authentik Admin Token
@@ -84,6 +89,7 @@ Fields:
 ```
 
 #### Token Rotation Config
+
 ```
 Vault: homelab
 Item: Authentik Token Rotation Config
@@ -104,15 +110,15 @@ Fields:
 
 The token management system uses the following environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NAMESPACE` | `authentik` | Kubernetes namespace |
-| `ROTATION_ENABLED` | `true` | Enable automatic rotation |
-| `OVERLAP_DAYS` | `30` | Overlap period for rotation |
-| `WARNING_DAYS` | `60` | Warning threshold in days |
-| `VALIDATION_ENABLED` | `true` | Enable token validation |
-| `NOTIFICATION_ENABLED` | `true` | Enable notifications |
-| `NOTIFICATION_WEBHOOK` | - | Webhook URL for notifications |
+| Variable               | Default     | Description                   |
+| ---------------------- | ----------- | ----------------------------- |
+| `NAMESPACE`            | `authentik` | Kubernetes namespace          |
+| `ROTATION_ENABLED`     | `true`      | Enable automatic rotation     |
+| `OVERLAP_DAYS`         | `30`        | Overlap period for rotation   |
+| `WARNING_DAYS`         | `60`        | Warning threshold in days     |
+| `VALIDATION_ENABLED`   | `true`      | Enable token validation       |
+| `NOTIFICATION_ENABLED` | `true`      | Enable notifications          |
+| `NOTIFICATION_WEBHOOK` | -           | Webhook URL for notifications |
 
 ## Usage
 
@@ -182,13 +188,13 @@ python scripts/token-management/authentik_token_manager.py rotate --overlap-days
 
 The system provides the following alerts:
 
-| Alert | Severity | Description |
-|-------|----------|-------------|
-| `AuthentikTokenRotationJobFailed` | Critical | Token rotation job failed |
-| `AuthentikTokenRotationJobNotRun` | Warning | Rotation job hasn't run in 2+ days |
-| `AuthentikTokenSecretMissing` | Critical | Token secret is missing |
-| `AuthentikExternalSecretNotSynced` | Warning | External secret sync errors |
-| `AuthentikTokenConfigSecretMissing` | Warning | Rotation config secret missing |
+| Alert                               | Severity | Description                        |
+| ----------------------------------- | -------- | ---------------------------------- |
+| `AuthentikTokenRotationJobFailed`   | Critical | Token rotation job failed          |
+| `AuthentikTokenRotationJobNotRun`   | Warning  | Rotation job hasn't run in 2+ days |
+| `AuthentikTokenSecretMissing`       | Critical | Token secret is missing            |
+| `AuthentikExternalSecretNotSynced`  | Warning  | External secret sync errors        |
+| `AuthentikTokenConfigSecretMissing` | Warning  | Rotation config secret missing     |
 
 ### Health Checks
 
@@ -206,6 +212,7 @@ The system provides the following alerts:
 **Symptoms**: Authentication failures, 403 errors in outpost jobs
 
 **Solution**:
+
 1. Check token status: `mise run list-tokens`
 2. Force rotation if needed: `mise run rotate-tokens`
 3. Verify 1Password sync: Check External Secrets logs
@@ -215,6 +222,7 @@ The system provides the following alerts:
 **Symptoms**: Prometheus alerts, failed CronJob pods
 
 **Solution**:
+
 1. Check job logs: `kubectl logs -n authentik job/authentik-token-rotation-<timestamp>`
 2. Verify RBAC permissions
 3. Check Authentik server connectivity
@@ -225,6 +233,7 @@ The system provides the following alerts:
 **Symptoms**: Secret not updating, sync errors in logs
 
 **Solution**:
+
 1. Check External Secrets Operator logs
 2. Verify 1Password Connect connectivity
 3. Validate vault and item names
@@ -235,16 +244,17 @@ The system provides the following alerts:
 If automated systems fail, you can manually recover:
 
 1. **Create emergency token**:
+
    ```bash
    # Get Authentik pod
    AUTHENTIK_POD=$(kubectl get pods -n authentik -l app.kubernetes.io/component=server -o jsonpath='{.items[0].metadata.name}')
-   
+
    # Create token manually
    kubectl exec -n authentik $AUTHENTIK_POD -- ak shell -c "
    from authentik.core.models import User, Token
    from datetime import datetime, timedelta
    import secrets
-   
+
    user = User.objects.get(username='akadmin')
    token_key = secrets.token_hex(32)
    token = Token.objects.create(
@@ -260,6 +270,7 @@ If automated systems fail, you can manually recover:
    ```
 
 2. **Update 1Password manually**:
+
    ```bash
    op item edit "Authentik Admin Token" --vault=homelab token="<new_token>"
    ```
@@ -305,21 +316,25 @@ If automated systems fail, you can manually recover:
 ### Migration Steps
 
 1. **Deploy enhanced components**:
+
    ```bash
    flux reconcile kustomization infrastructure-authentik -n flux-system
    ```
 
 2. **Verify enhanced token creation**:
+
    ```bash
    kubectl logs -n authentik job/authentik-enhanced-token-setup
    ```
 
 3. **Update 1Password with new token**:
+
    - Copy token from job logs
    - Update 1Password item
    - Verify External Secret sync
 
 4. **Test token functionality**:
+
    ```bash
    mise run validate-token --token <new_token>
    ```
@@ -334,12 +349,14 @@ If automated systems fail, you can manually recover:
 If issues occur, you can rollback by:
 
 1. **Disable enhanced components**:
+
    ```bash
    # Comment out enhanced components in kustomization.yaml
    flux reconcile kustomization infrastructure-authentik -n flux-system
    ```
 
 2. **Restore legacy token**:
+
    ```bash
    # Use legacy admin-token-setup-job.yaml
    kubectl apply -f infrastructure/authentik-outpost-config/admin-token-setup-job.yaml

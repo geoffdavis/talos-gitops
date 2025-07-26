@@ -1,0 +1,38 @@
+# YAML Lint configuration for GitOps repository
+# Balanced approach: syntax enforced, style as warnings
+
+extends: default
+
+rules:
+  # ENFORCED RULES (syntax and security)
+  document-start: disable  # Not required for K8s manifests
+  document-end: disable    # Not required for K8s manifests
+  
+  # Line length - WARNING (common in K8s manifests)
+  line-length:
+    max: 120
+    level: warning
+  
+  # Indentation - ENFORCED for consistency
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+  
+  # Comments - WARNING
+  comments:
+    min-spaces-from-content: 1
+    level: warning
+  
+  # Truthy values - WARNING (K8s uses 'true'/'false')
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    level: warning
+
+# Ignore patterns
+ignore: |
+  .git/
+  .pre-commit-cache/
+  .task/
+  clusterconfig/
+  talos/generated/

@@ -13,12 +13,14 @@ This guide provides a systematic, phase-by-phase approach to bootstrapping the T
 ## Quick Start
 
 ### Fresh Bootstrap
+
 ```bash
 # Start complete bootstrap process
 ./scripts/bootstrap-orchestrator.sh start
 ```
 
 ### Resume from Failed Phase
+
 ```bash
 # Resume from last failed phase
 ./scripts/bootstrap-orchestrator.sh resume
@@ -28,6 +30,7 @@ This guide provides a systematic, phase-by-phase approach to bootstrapping the T
 ```
 
 ### Check Status
+
 ```bash
 # Show current bootstrap status
 ./scripts/bootstrap-orchestrator.sh status
@@ -42,24 +45,24 @@ graph TD
     C --> D[Phase 4: Core Services Validation]
     D --> E[Phase 5: GitOps Deployment]
     E --> F[Phase 6: Application Deployment]
-    
+
     A1[Mise Environment] --> A2[Tool Validation]
     A2 --> A3[1Password Access]
     A3 --> A4[Network Connectivity]
-    
+
     B1[Secret Bootstrap] --> B2[Talos Config Gen]
     B2 --> B3[Node Configuration]
     B3 --> B4[etcd Bootstrap]
-    
+
     C1[Cilium Deployment] --> C2[Pod Networking]
     C2 --> C3[Node Readiness]
-    
+
     D1[External Secrets] --> D2[1Password Connect]
     D2 --> D3[Core Services]
-    
+
     E1[Flux Bootstrap] --> E2[GitOps Sync]
     E2 --> E3[Infrastructure]
-    
+
     F1[App Deployment] --> F2[Service Validation]
     F2 --> F3[End-to-End Tests]
 ```
@@ -71,6 +74,7 @@ graph TD
 **Purpose**: Validate mise environment, tools, connectivity, and prerequisites
 
 **Key Validations**:
+
 - ✅ Mise installation and configuration
 - ✅ All required tools available and correct versions
 - ✅ 1Password CLI authentication and access
@@ -82,6 +86,7 @@ graph TD
 **Validation**: [`scripts/validate-phase-1-environment.sh`](../scripts/validate-phase-1-environment.sh)
 
 **Common Issues**:
+
 - Missing tools: Run `mise install`
 - 1Password not authenticated: Run `op signin`
 - Missing OP_ACCOUNT: Set environment variable
@@ -91,6 +96,7 @@ graph TD
 **Purpose**: Generate Talos configuration, configure nodes, and bootstrap etcd
 
 **Key Steps**:
+
 - 🔐 Bootstrap secrets from 1Password
 - ⚙️ Generate Talos configuration with talhelper
 - 📡 Apply configuration to all nodes
@@ -101,6 +107,7 @@ graph TD
 **Validation**: [`scripts/validate-phase-2-cluster.sh`](../scripts/validate-phase-2-cluster.sh)
 
 **Expected State After Phase 2**:
+
 - All nodes present in cluster
 - Control plane pods running
 - etcd cluster operational
@@ -111,6 +118,7 @@ graph TD
 **Purpose**: Deploy Cilium CNI and establish pod networking
 
 **Key Steps**:
+
 - 🌐 Deploy Cilium with Talos-specific configuration
 - ⏳ Wait for Cilium pods to be ready
 - 🔗 Verify pod networking functionality
@@ -120,6 +128,7 @@ graph TD
 **Validation**: [`scripts/validate-phase-3-networking.sh`](../scripts/validate-phase-3-networking.sh)
 
 **Expected State After Phase 3**:
+
 - All nodes in "Ready" state
 - Cilium pods running on all nodes
 - Pod networking operational
@@ -130,6 +139,7 @@ graph TD
 **Purpose**: Deploy and validate core services required for GitOps
 
 **Key Steps**:
+
 - 🔒 Deploy External Secrets Operator
 - 🔑 Deploy 1Password Connect
 - 🏪 Deploy Longhorn storage
@@ -139,6 +149,7 @@ graph TD
 **Validation**: [`scripts/validate-phase-4-services.sh`](../scripts/validate-phase-4-services.sh)
 
 **Expected State After Phase 4**:
+
 - External Secrets Operator running
 - 1Password Connect accessible
 - Longhorn storage operational
@@ -149,6 +160,7 @@ graph TD
 **Purpose**: Bootstrap Flux GitOps system and sync infrastructure
 
 **Key Steps**:
+
 - 🚀 Bootstrap Flux GitOps system
 - 📦 Sync infrastructure components
 - 🔄 Verify GitOps reconciliation
@@ -158,6 +170,7 @@ graph TD
 **Validation**: [`scripts/validate-phase-5-gitops.sh`](../scripts/validate-phase-5-gitops.sh)
 
 **Expected State After Phase 5**:
+
 - Flux system operational
 - Infrastructure components deployed
 - GitOps reconciliation working
@@ -168,6 +181,7 @@ graph TD
 **Purpose**: Deploy applications and perform end-to-end validation
 
 **Key Steps**:
+
 - 📱 Deploy applications via GitOps
 - 🌐 Verify ingress and load balancing
 - 🔍 Perform end-to-end health checks
@@ -177,6 +191,7 @@ graph TD
 **Validation**: [`scripts/validate-phase-6-applications.sh`](../scripts/validate-phase-6-applications.sh)
 
 **Expected State After Phase 6**:
+
 - All applications deployed and healthy
 - Ingress and load balancing working
 - Monitoring and observability operational
@@ -185,28 +200,33 @@ graph TD
 ## Bootstrap Orchestrator Commands
 
 ### Start Fresh Bootstrap
+
 ```bash
 ./scripts/bootstrap-orchestrator.sh start
 ```
 
 ### Resume from Specific Phase
+
 ```bash
 # Resume from Phase 3 (CNI deployment)
 ./scripts/bootstrap-orchestrator.sh resume 3
 ```
 
 ### Validate Specific Phase
+
 ```bash
 # Validate Phase 2 only
 ./scripts/bootstrap-orchestrator.sh validate 2
 ```
 
 ### Show Current Status
+
 ```bash
 ./scripts/bootstrap-orchestrator.sh status
 ```
 
 ### View Logs
+
 ```bash
 # Show all available logs
 ./scripts/bootstrap-orchestrator.sh logs
@@ -216,6 +236,7 @@ graph TD
 ```
 
 ### Reset Bootstrap State
+
 ```bash
 # Start completely over
 ./scripts/bootstrap-orchestrator.sh reset
@@ -226,6 +247,7 @@ graph TD
 ### Phase 1 Failures
 
 **Mise tool not found**:
+
 ```bash
 # Install missing tools
 mise install
@@ -235,6 +257,7 @@ mise exec -- task --version
 ```
 
 **1Password authentication failed**:
+
 ```bash
 # Sign in to 1Password
 op signin
@@ -244,6 +267,7 @@ op account list
 ```
 
 **Environment variable missing**:
+
 ```bash
 # Set OP_ACCOUNT
 export OP_ACCOUNT=your-account-name
@@ -255,6 +279,7 @@ echo "OP_ACCOUNT=your-account-name" >> .env
 ### Phase 2 Failures
 
 **Node not accessible**:
+
 ```bash
 # Check node connectivity
 ping 172.29.51.11
@@ -264,6 +289,7 @@ talosctl validate --config clusterconfig/home-ops-mini01.yaml
 ```
 
 **etcd bootstrap failed**:
+
 ```bash
 # Check node status
 talosctl health --nodes 172.29.51.11
@@ -275,6 +301,7 @@ talosctl bootstrap --nodes 172.29.51.11
 ### Phase 3 Failures
 
 **Cilium pods not ready**:
+
 ```bash
 # Check Cilium status
 kubectl get pods -n kube-system -l k8s-app=cilium
@@ -284,6 +311,7 @@ kubectl logs -n kube-system -l k8s-app=cilium
 ```
 
 **Nodes not becoming Ready**:
+
 ```bash
 # Check node conditions
 kubectl describe nodes
@@ -295,6 +323,7 @@ kubectl get ds -n kube-system cilium
 ### Phase 4 Failures
 
 **External Secrets not working**:
+
 ```bash
 # Check External Secrets pods
 kubectl get pods -n external-secrets-system
@@ -306,6 +335,7 @@ kubectl get pods -n onepassword-connect
 ### Phase 5 Failures
 
 **Flux bootstrap failed**:
+
 ```bash
 # Check GitHub token
 op read "op://Private/GitHub Personal Access Token/token"
@@ -317,6 +347,7 @@ flux bootstrap github --owner=geoffdavis --repository=talos-gitops
 ### Phase 6 Failures
 
 **Applications not deploying**:
+
 ```bash
 # Check Flux status
 flux get kustomizations
@@ -375,26 +406,31 @@ task flux:bootstrap         # Used in Phase 5
 ## Benefits
 
 ### 🚫 No More Cluster Resets
+
 - Resume from any failed phase
 - Clear validation prevents cascading failures
 - Rollback capabilities for safe recovery
 
 ### 🔍 Clear Failure Points
+
 - Know exactly where and why bootstrap failed
 - Phase-specific troubleshooting guidance
 - Detailed logging and reporting
 
 ### 🛠️ Robust Environment
+
 - Comprehensive mise validation
 - Tool version consistency
 - Environment setup automation
 
 ### 📊 Progress Tracking
+
 - Real-time status updates
 - Phase completion tracking
 - Historical state management
 
 ### 🔄 Operational Confidence
+
 - Tested and validated procedures
 - Predictable outcomes
 - Clear recovery paths
@@ -410,6 +446,7 @@ After successful bootstrap:
 5. **Monitor cluster**: Use Grafana dashboards
 
 For ongoing operations, refer to:
+
 - [Bootstrap vs GitOps Phases Guide](./BOOTSTRAP_VS_GITOPS_PHASES.md)
 - [Operational Workflows](./OPERATIONAL_WORKFLOWS.md)
 - [Cluster Reset Safety](./CLUSTER_RESET_SAFETY.md)

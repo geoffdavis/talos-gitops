@@ -55,58 +55,58 @@ metadata:
   name: create-critical-snapshots
   namespace: longhorn-system
 spec:
-  schedule: "0 1 * * *"  # Daily at 1 AM
+  schedule: "0 1 * * *" # Daily at 1 AM
   jobTemplate:
     spec:
       template:
         spec:
           serviceAccountName: snapshot-creator
           containers:
-          - name: snapshot-creator
-            image: bitnami/kubectl:latest
-            command:
-            - /bin/bash
-            - -c
-            - |
-              # Create timestamped snapshots for critical workloads
-              TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-              
-              # Prometheus snapshot
-              kubectl create -f - <<EOF
-              apiVersion: snapshot.storage.k8s.io/v1
-              kind: VolumeSnapshot
-              metadata:
-                name: prometheus-auto-${TIMESTAMP}
-                namespace: monitoring
-                labels:
-                  app: prometheus
-                  backup-tier: critical
-                  backup-type: automated
-              spec:
-                source:
-                  persistentVolumeClaimName: prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0
-                volumeSnapshotClassName: longhorn-snapshot-vsc
-              EOF
-              
-              # Grafana snapshot
-              kubectl create -f - <<EOF
-              apiVersion: snapshot.storage.k8s.io/v1
-              kind: VolumeSnapshot
-              metadata:
-                name: grafana-auto-${TIMESTAMP}
-                namespace: monitoring
-                labels:
-                  app: grafana
-                  backup-tier: critical
-                  backup-type: automated
-              spec:
-                source:
-                  persistentVolumeClaimName: kube-prometheus-stack-grafana
-                volumeSnapshotClassName: longhorn-snapshot-vsc
-              EOF
-              
-              # Cleanup old automated snapshots (keep last 7)
-              kubectl get volumesnapshots -n monitoring -l backup-type=automated --sort-by=.metadata.creationTimestamp -o name | head -n -7 | xargs -r kubectl delete -n monitoring
+            - name: snapshot-creator
+              image: bitnami/kubectl:latest
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  # Create timestamped snapshots for critical workloads
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+
+                  # Prometheus snapshot
+                  kubectl create -f - <<EOF
+                  apiVersion: snapshot.storage.k8s.io/v1
+                  kind: VolumeSnapshot
+                  metadata:
+                    name: prometheus-auto-${TIMESTAMP}
+                    namespace: monitoring
+                    labels:
+                      app: prometheus
+                      backup-tier: critical
+                      backup-type: automated
+                  spec:
+                    source:
+                      persistentVolumeClaimName: prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0
+                    volumeSnapshotClassName: longhorn-snapshot-vsc
+                  EOF
+
+                  # Grafana snapshot
+                  kubectl create -f - <<EOF
+                  apiVersion: snapshot.storage.k8s.io/v1
+                  kind: VolumeSnapshot
+                  metadata:
+                    name: grafana-auto-${TIMESTAMP}
+                    namespace: monitoring
+                    labels:
+                      app: grafana
+                      backup-tier: critical
+                      backup-type: automated
+                  spec:
+                    source:
+                      persistentVolumeClaimName: kube-prometheus-stack-grafana
+                    volumeSnapshotClassName: longhorn-snapshot-vsc
+                  EOF
+
+                  # Cleanup old automated snapshots (keep last 7)
+                  kubectl get volumesnapshots -n monitoring -l backup-type=automated --sort-by=.metadata.creationTimestamp -o name | head -n -7 | xargs -r kubectl delete -n monitoring
           restartPolicy: OnFailure
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
@@ -123,12 +123,12 @@ kind: ClusterRole
 metadata:
   name: snapshot-creator
 rules:
-- apiGroups: ["snapshot.storage.k8s.io"]
-  resources: ["volumesnapshots"]
-  verbs: ["create", "delete", "get", "list"]
-- apiGroups: [""]
-  resources: ["persistentvolumeclaims"]
-  verbs: ["get", "list"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["create", "delete", "get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -139,6 +139,6 @@ roleRef:
   kind: ClusterRole
   name: snapshot-creator
 subjects:
-- kind: ServiceAccount
-  name: snapshot-creator
-  namespace: longhorn-system
+  - kind: ServiceAccount
+    name: snapshot-creator
+    namespace: longhorn-system

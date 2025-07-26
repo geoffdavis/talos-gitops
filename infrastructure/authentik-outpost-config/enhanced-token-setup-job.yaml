@@ -119,10 +119,10 @@ spec:
               import urllib.parse
               import subprocess
               from datetime import datetime, timedelta
-              
+
               print("=== Enhanced Token Setup with 1-Year Expiry ===")
               print("Starting enhanced admin user and long-lived API token setup...")
-              
+
               # First, run the Authentik shell command to create/update user and token
               ak_script = '''
               from authentik.core.models import User, Token
@@ -131,7 +131,7 @@ spec:
               import secrets
               import base64
               import json
-              
+
               # Create or get the akadmin user
               user, created = User.objects.get_or_create(
                   username='akadmin',
@@ -148,16 +148,16 @@ spec:
                   user.is_superuser = True
                   user.save()
                   print(f'✓ Updated existing user: {user.username}')
-              
+
               # Calculate 1-year expiry date
               now = timezone.now()
               expiry_date = now + timedelta(days=365)
               print(f'✓ Token expiry set to: {expiry_date.isoformat()}')
-              
+
               # Check for existing tokens and their expiry
               existing_tokens = Token.objects.filter(user=user, intent='api')
               valid_tokens = []
-              
+
               for token in existing_tokens:
                   if token.expires and token.expires > now:
                       days_remaining = (token.expires - now).days
@@ -168,7 +168,7 @@ spec:
                           print(f'⚠ Token {token.key[:8]}... expires soon, will be replaced')
                   else:
                       print(f'⚠ Found expired/invalid token: {token.key[:8]}...')
-              
+
               # Create new token if no valid long-term tokens exist
               if not any(token for token in valid_tokens if (token.expires - now).days > 300):
                   # Delete old tokens to avoid conflicts
@@ -217,9 +217,9 @@ spec:
                           token_b64 = base64.b64encode(token.key.encode()).decode()
                           print(f'✓ Token (base64): {token_b64}')
                           break
-              
+
               print('✓ Enhanced token setup completed successfully!')
-              
+
               # Store the token info for 1Password update
               with open('/tmp/token_info.json', 'w') as f:
                   if 'token_info' in locals():
@@ -240,7 +240,7 @@ spec:
                               f.write(json.dumps(existing_info, indent=2))
                               break
               '''
-              
+
               # Run the Authentik shell command
               try:
                   result = subprocess.run(['ak', 'shell', '-c', ak_script],
@@ -253,10 +253,10 @@ spec:
                   print(f"stdout: {e.stdout}")
                   print(f"stderr: {e.stderr}")
                   sys.exit(1)
-              
+
               print("\n=== Updating 1Password ===")
               print("Updating 1Password item 'Authentik Admin Token' with new token information...")
-              
+
               # Check if token info file exists
               if os.path.exists('/tmp/token_info.json'):
                   print("✓ Token information file found, using 1Password Connect API...")
@@ -376,18 +376,18 @@ spec:
                       sys.exit(1)
               else:
                   print("⚠ No new token created, 1Password update skipped")
-              
+
               print("\n=== Token Rotation Config ===")
               print("✓ Token rotation configuration is now managed via ConfigMap (not 1Password)")
               print("✓ Configuration values are stored in authentik-token-rotation-config ConfigMap")
-              
+
               print("\n=== Refreshing External Secrets ===")
               print("Forcing external secrets to refresh and pick up updated token...")
-              
+
               # Force refresh of external secrets by adding timestamp annotation
               import time
               timestamp = str(int(time.time()))
-              
+
               try:
                   subprocess.run(['kubectl', 'annotate', 'externalsecret', 'authentik-radius-token',
                                 '-n', 'authentik', f'force-sync={timestamp}', '--overwrite'],
@@ -395,7 +395,7 @@ spec:
                   print("✓ Refreshed authentik-radius-token external secret")
               except subprocess.CalledProcessError:
                   print("⚠ Could not refresh authentik-radius-token external secret")
-              
+
               try:
                   subprocess.run(['kubectl', 'annotate', 'externalsecret', 'authentik-admin-token-enhanced',
                                 '-n', 'authentik', f'force-sync={timestamp}', '--overwrite'],
@@ -403,11 +403,11 @@ spec:
                   print("✓ Refreshed authentik-admin-token-enhanced external secret")
               except subprocess.CalledProcessError:
                   print("⚠ Could not refresh authentik-admin-token-enhanced external secret")
-              
+
               print("✓ External secret refresh annotations added")
               print("Waiting 10 seconds for external secrets to sync...")
               time.sleep(10)
-              
+
               print("\n=== Token Setup Summary ===")
               print("✓ Admin user configured with superuser privileges")
               print("✓ Long-lived API token created/validated (1 year expiry)")

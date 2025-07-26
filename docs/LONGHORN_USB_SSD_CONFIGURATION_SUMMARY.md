@@ -11,11 +11,14 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 ### 1. [`infrastructure/longhorn/helmrelease.yaml`](../infrastructure/longhorn/helmrelease.yaml)
 
 **Key Changes:**
+
 - **Disabled automatic disk creation**: `createDefaultDiskLabeledNodes: false`
+
   - Prevents conflicts with manually managed USB SSD disks
   - Allows explicit control over disk configuration
 
 - **Optimized storage settings for SSDs**:
+
   - `storageOverProvisioningPercentage: 150` (reduced from 200)
   - `storageMinimalAvailablePercentage: 15` (reduced from 25)
   - Better utilization and efficiency for SSD storage
@@ -28,6 +31,7 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 ### 2. [`infrastructure/longhorn/storage-class.yaml`](../infrastructure/longhorn/storage-class.yaml)
 
 **Enhanced `longhorn-ssd` Storage Class:**
+
 - **Disk targeting**: `diskSelector: "ssd"` - Uses only USB SSDs with "ssd" tag
 - **Performance optimization**: `dataLocality: "strict-local"` - Keeps data on same node
 - **SSD-specific parameters**:
@@ -39,6 +43,7 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 ### 3. [`infrastructure/longhorn/volume-snapshot-class.yaml`](../infrastructure/longhorn/volume-snapshot-class.yaml)
 
 **Added SSD-Optimized Snapshot Class:**
+
 - **`longhorn-ssd-snapshot-vsc`**: Dedicated snapshot class for USB SSD volumes
 - **Disk targeting**: `diskSelector: "ssd"` - Ensures snapshots use SSD storage
 - **Maintains compatibility**: Existing snapshot classes remain unchanged
@@ -46,11 +51,13 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 ## New Files Created
 
 ### 1. [`docs/LONGHORN_USB_SSD_INTEGRATION.md`](LONGHORN_USB_SSD_INTEGRATION.md)
+
 - Comprehensive documentation for Longhorn USB SSD integration
 - Usage examples and best practices
 - Troubleshooting guide and performance expectations
 
 ### 2. [`scripts/validate-longhorn-usb-ssd.sh`](../scripts/validate-longhorn-usb-ssd.sh)
+
 - Automated validation script for Longhorn USB SSD configuration
 - Tests disk recognition, storage classes, and functionality
 - Provides detailed diagnostics and error reporting
@@ -92,27 +99,30 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 
 ## Storage Classes Available
 
-| Storage Class | Use Case | Replicas | Storage | Performance |
-|---------------|----------|----------|---------|-------------|
-| `longhorn-ssd` | High-performance apps | 3 | USB SSDs | High I/O, Low latency |
-| `longhorn` | General purpose | 3 | System disk | Standard |
-| `longhorn-single-replica` | Testing/Dev | 1 | System disk | Standard, No redundancy |
+| Storage Class             | Use Case              | Replicas | Storage     | Performance             |
+| ------------------------- | --------------------- | -------- | ----------- | ----------------------- |
+| `longhorn-ssd`            | High-performance apps | 3        | USB SSDs    | High I/O, Low latency   |
+| `longhorn`                | General purpose       | 3        | System disk | Standard                |
+| `longhorn-single-replica` | Testing/Dev           | 1        | System disk | Standard, No redundancy |
 
 ## Configuration Benefits
 
 ### Performance Improvements
+
 - **Higher IOPS**: USB SSDs provide significantly better random I/O performance
 - **Lower Latency**: Reduced access times for database and cache workloads
 - **Better Throughput**: Sequential read/write speeds of 400-1000+ MB/s
 - **SSD Optimizations**: Proper I/O scheduler and filesystem parameters
 
 ### Operational Benefits
+
 - **Explicit Control**: Manual disk management prevents configuration conflicts
 - **Storage Separation**: High-performance and general storage are isolated
 - **Scalability**: Easy to add more USB SSDs as needed
 - **Monitoring**: Clear separation allows better performance monitoring
 
 ### Reliability Features
+
 - **High Availability**: 3 replicas across all control plane nodes
 - **Data Protection**: Retain reclaim policy preserves data on PVC deletion
 - **Backup Support**: Integrated with Longhorn backup and snapshot features
@@ -121,11 +131,13 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 ## Deployment Process
 
 ### 1. Prerequisites
+
 - USB SSDs connected to all control plane nodes
 - Talos USB SSD configuration applied and validated
 - Longhorn already installed in the cluster
 
 ### 2. Apply Configuration
+
 ```bash
 # Apply updated Longhorn configuration
 kubectl apply -k infrastructure/longhorn/
@@ -135,6 +147,7 @@ kubectl rollout status deployment/longhorn-manager -n longhorn-system
 ```
 
 ### 3. Validate Integration
+
 ```bash
 # Run comprehensive validation
 ./scripts/validate-longhorn-usb-ssd.sh
@@ -147,6 +160,7 @@ kubectl get disks.longhorn.io -n longhorn-system
 ```
 
 ### 4. Test Functionality
+
 ```bash
 # Create test PVC using USB SSD storage
 kubectl apply -f - <<EOF
@@ -172,18 +186,21 @@ kubectl delete pvc test-ssd-storage
 ## Monitoring and Maintenance
 
 ### Health Checks
+
 - Monitor USB SSD connection status via Talos
 - Check Longhorn disk health in the UI
 - Verify replica distribution across nodes
 - Monitor storage usage and performance metrics
 
 ### Performance Monitoring
+
 - Use Longhorn UI for volume performance statistics
 - Monitor I/O metrics via Talos system tools
 - Track storage utilization and growth trends
 - Set up alerts for disk health and performance issues
 
 ### Backup Strategy
+
 - Configure Longhorn backup targets for USB SSD volumes
 - Test restore procedures regularly
 - Consider cross-region backup for critical data
@@ -192,12 +209,14 @@ kubectl delete pvc test-ssd-storage
 ## Troubleshooting
 
 ### Common Issues
+
 1. **USB SSD not recognized**: Check Talos mounting and disk tagging
 2. **Storage class not working**: Verify diskSelector configuration
 3. **Performance issues**: Check I/O scheduler and SSD optimizations
 4. **Replica placement**: Ensure all nodes have USB SSDs connected
 
 ### Diagnostic Commands
+
 ```bash
 # Check Talos USB SSD status
 talosctl df | grep longhorn-ssd

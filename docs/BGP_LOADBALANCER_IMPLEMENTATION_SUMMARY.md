@@ -7,11 +7,13 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ## Problem Resolution
 
 ### Root Cause Analysis ✅
+
 - **Issue**: L2 announcements on same network segment (172.29.51.0/24) as cluster nodes
 - **Symptoms**: Load balancer IPs not being properly announced or reachable from clients
 - **Impact**: ARP conflicts, network topology confusion, competing announcement mechanisms
 
 ### Solution Architecture ✅
+
 - **New Network**: Dedicated 172.29.52.0/24 segment for load balancer services
 - **Announcement Method**: BGP-only (eliminates L2 announcements entirely)
 - **IP Allocation**: 171 usable IPs across multiple pools
@@ -22,6 +24,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ### 1. Cilium Configuration Files
 
 #### [`infrastructure/cilium/loadbalancer-pool-bgp.yaml`](../infrastructure/cilium/loadbalancer-pool-bgp.yaml)
+
 - **Purpose**: BGP-only load balancer IP pools
 - **Pools Created**:
   - `bgp-default`: 172.29.52.100-199 (100 IPs for general services)
@@ -30,6 +33,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
   - `bgp-default-ipv6`: fd47:25e1:2f96:52:100::/120 (IPv6 services)
 
 #### [`infrastructure/cilium-bgp/bgp-policy-bgp-only.yaml`](../infrastructure/cilium-bgp/bgp-policy-bgp-only.yaml)
+
 - **Purpose**: Enhanced BGP configuration with L2 announcements removed
 - **Features**:
   - BGP community tagging (64512:100 for load balancer services)
@@ -38,6 +42,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
   - External Secrets integration for BGP authentication
 
 #### [`infrastructure/cilium/helmrelease-bgp-only.yaml`](../infrastructure/cilium/helmrelease-bgp-only.yaml)
+
 - **Purpose**: Cilium Helm configuration optimized for BGP-only operation
 - **Key Changes**:
   - `l2announcements.enabled: false` (disables L2 announcements)
@@ -48,6 +53,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ### 2. Network Infrastructure Configuration
 
 #### [`scripts/unifi-bgp-config-bgp-only.conf`](../scripts/unifi-bgp-config-bgp-only.conf)
+
 - **Purpose**: UDM Pro BGP configuration for new network architecture
 - **Features**:
   - BGP peering with all cluster nodes (ASN 64512 ↔ 64513)
@@ -59,6 +65,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ### 3. Migration and Validation Scripts
 
 #### [`scripts/migrate-to-bgp-only-loadbalancer.sh`](../scripts/migrate-to-bgp-only-loadbalancer.sh)
+
 - **Purpose**: Automated migration from L2 to BGP-only architecture
 - **Features**:
   - 8-phase migration process with validation at each step
@@ -68,6 +75,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
   - Post-migration validation and reporting
 
 #### [`scripts/validate-bgp-loadbalancer.sh`](../scripts/validate-bgp-loadbalancer.sh)
+
 - **Purpose**: Comprehensive validation of BGP-only configuration
 - **Validation Areas**:
   - BGP configuration and peering status
@@ -80,6 +88,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ### 4. Operational Tools
 
 #### [`taskfiles/bgp-loadbalancer.yml`](../taskfiles/bgp-loadbalancer.yml)
+
 - **Purpose**: Task automation for BGP load balancer operations
 - **Available Tasks**:
   - `bgp-loadbalancer:migrate` - Execute migration
@@ -93,6 +102,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ### 5. Documentation
 
 #### [`docs/BGP_ONLY_LOADBALANCER_MIGRATION.md`](BGP_ONLY_LOADBALANCER_MIGRATION.md)
+
 - **Purpose**: Comprehensive migration guide and reference
 - **Contents**:
   - Detailed migration procedures
@@ -104,17 +114,20 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ## Migration Process Overview
 
 ### Phase 1: Preparation
+
 1. **Network Setup**: Configure VLAN 52 (172.29.52.0/24) on UDM Pro
 2. **Backup Creation**: Automatic backup of current configuration
 3. **Validation**: Verify network connectivity and prerequisites
 
 ### Phase 2: Configuration Deployment
+
 1. **IP Pools**: Deploy new BGP load balancer IP pools
 2. **BGP Policy**: Update BGP advertisements and peer configuration
 3. **Cilium Update**: Disable L2 announcements, enable BGP-only mode
 4. **Cleanup**: Remove old L2 announcement policies
 
 ### Phase 3: Service Migration
+
 1. **Service Updates**: Migrate services to new IP pools
 2. **Ingress Controllers**: Update ingress controller configurations
 3. **DNS Updates**: Update DNS records for new IP addresses
@@ -123,18 +136,21 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ## Key Benefits Achieved
 
 ### 1. Network Architecture Improvements
+
 - **Clean Separation**: Load balancer traffic isolated from cluster management
 - **Scalability**: 171 usable IPs with easy expansion capability
 - **Performance**: Direct Server Return (DSR) mode for better performance
 - **Reliability**: True load balancing across multiple nodes via BGP
 
 ### 2. Operational Benefits
+
 - **Single Announcement Method**: BGP-only eliminates L2/BGP conflicts
 - **Enterprise-Grade**: Consistent with enterprise networking practices
 - **Monitoring**: Enhanced observability with BGP-specific metrics
 - **Automation**: Comprehensive tooling for operations and troubleshooting
 
 ### 3. Technical Improvements
+
 - **No ARP Conflicts**: Dedicated network segment eliminates ARP table issues
 - **Better Failover**: BGP provides faster convergence than L2 announcements
 - **IPv6 Ready**: Full dual-stack support with dedicated IPv6 segment
@@ -143,6 +159,7 @@ This document summarizes the complete BGP-only load balancer implementation for 
 ## Usage Instructions
 
 ### Quick Start Migration
+
 ```bash
 # Execute complete migration
 task bgp-loadbalancer:migrate
@@ -155,6 +172,7 @@ task bgp-loadbalancer:status
 ```
 
 ### UDM Pro Configuration
+
 ```bash
 # Show configuration instructions
 task bgp-loadbalancer:configure-udm-pro
@@ -164,6 +182,7 @@ task bgp-loadbalancer:verify-bgp-peering
 ```
 
 ### Troubleshooting
+
 ```bash
 # Run comprehensive diagnostics
 task bgp-loadbalancer:troubleshoot
@@ -176,6 +195,7 @@ task bgp-loadbalancer:generate-report
 ```
 
 ### Rollback (if needed)
+
 ```bash
 # Rollback to L2 announcements
 task bgp-loadbalancer:rollback
@@ -184,6 +204,7 @@ task bgp-loadbalancer:rollback
 ## Network Architecture Comparison
 
 ### Before (L2 Announcements)
+
 ```
 ┌─────────────────────────────────────┐
 │        VLAN 51 (172.29.51.0/24)    │
@@ -195,6 +216,7 @@ task bgp-loadbalancer:rollback
 ```
 
 ### After (BGP-Only)
+
 ```
 ┌─────────────────────────────────────┐
 │        VLAN 51 (172.29.51.0/24)    │
@@ -214,11 +236,13 @@ task bgp-loadbalancer:rollback
 ## Monitoring and Maintenance
 
 ### Regular Health Checks
+
 - **Weekly**: `task bgp-loadbalancer:validate`
 - **Monthly**: IP utilization review and capacity planning
 - **Quarterly**: Network architecture review and optimization
 
 ### Key Metrics to Monitor
+
 - BGP peering status and route advertisement
 - Load balancer IP pool utilization
 - Service connectivity and response times
@@ -227,11 +251,13 @@ task bgp-loadbalancer:rollback
 ## Future Expansion
 
 ### Capacity Planning
+
 - **Current**: 171 usable IPs across 4 pools
 - **Expansion**: Additional /24 networks (172.29.53.0/24, etc.)
 - **IPv6**: Virtually unlimited with /120 allocations
 
 ### Additional Features
+
 - **Traffic Engineering**: BGP communities enable advanced routing policies
 - **Multi-Cluster**: Architecture supports future cluster expansion
 - **Service Mesh**: Compatible with service mesh load balancing

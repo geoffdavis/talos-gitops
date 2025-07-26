@@ -5,6 +5,7 @@ This document explains how to verify that the [`apps:deploy-core`](../Taskfile.y
 ## Overview
 
 The [`apps:deploy-core`](../Taskfile.yml:402) task deploys foundational components during the Bootstrap phase:
+
 - [Cilium CNI](../infrastructure/cilium/helmrelease.yaml:1)
 - [External Secrets Operator](../infrastructure/external-secrets/external-secrets-operator.yaml:1)
 - [1Password Connect](../infrastructure/onepassword-connect/deployment.yaml:1)
@@ -25,11 +26,13 @@ The [`scripts/verify-core-idempotency.sh`](../scripts/verify-core-idempotency.sh
 ## Running the Verification
 
 ### Using Task (Recommended)
+
 ```bash
 task apps:verify-core-idempotency
 ```
 
 ### Direct Script Execution
+
 ```bash
 ./scripts/verify-core-idempotency.sh
 ```
@@ -43,17 +46,20 @@ task apps:verify-core-idempotency
 ## Test Results
 
 ### Success Indicators
+
 - ✅ All [`apps:deploy-core`](../Taskfile.yml:402) runs complete without errors
 - ✅ No resource conflicts or "already exists" errors
 - ✅ All component pods remain healthy across runs
 - ✅ Cluster resource state identical between runs
 
 ### Warning Indicators
+
 - ⚠️ Component health issues (pods not ready)
 - ⚠️ Resource state differences between runs
 - ⚠️ Warning events in cluster logs
 
 ### Failure Indicators
+
 - ❌ [`apps:deploy-core`](../Taskfile.yml:402) task fails on subsequent runs
 - ❌ Resource conflicts or duplicate resource errors
 - ❌ Component pods fail or become unhealthy
@@ -61,6 +67,7 @@ task apps:verify-core-idempotency
 ## Test Artifacts
 
 The script saves detailed logs in `/tmp/idempotency-test/`:
+
 - `run-*-output.txt` - Task execution output
 - `run-*-errors.txt` - Error logs from each run
 - `run-*-resources.txt` - Cluster resource state snapshots
@@ -71,32 +78,39 @@ The script saves detailed logs in `/tmp/idempotency-test/`:
 ### Common Issues
 
 **Helm Release Conflicts**
+
 - Symptom: "release already exists" errors
 - Solution: Ensure Helm charts use `--upgrade --install` pattern
 
 **CRD Timing Issues**
+
 - Symptom: "no matches for kind" errors
 - Solution: Add proper wait conditions for CRD establishment
 
 **Resource Ownership Conflicts**
+
 - Symptom: "field is immutable" errors
 - Solution: Use strategic merge patches or recreate resources
 
 ### Component-Specific Issues
 
 **Cilium CNI**
+
 - Check for DaemonSet rollout conflicts
 - Verify node-specific tolerations
 
 **External Secrets**
+
 - Ensure webhook validation is working
 - Check CRD establishment timing
 
 **1Password Connect**
+
 - Verify secret store configurations
 - Check credential synchronization
 
 **Longhorn Storage**
+
 - Monitor storage class conflicts
 - Check node storage preparation
 

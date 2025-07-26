@@ -7,11 +7,11 @@ metadata:
   name: monitoring-daily-snapshot
   namespace: longhorn-system
 spec:
-  cron: "0 2 * * *"  # Daily at 2 AM
+  cron: "0 2 * * *" # Daily at 2 AM
   task: "snapshot"
   groups:
     - monitoring
-  retain: 7  # Keep 7 daily snapshots
+  retain: 7 # Keep 7 daily snapshots
   concurrency: 2
   labels:
     backup-tier: "critical"
@@ -23,11 +23,11 @@ metadata:
   name: monitoring-weekly-backup
   namespace: longhorn-system
 spec:
-  cron: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+  cron: "0 3 * * 0" # Weekly on Sunday at 3 AM
   task: "backup"
   groups:
     - monitoring
-  retain: 4  # Keep 4 weekly backups (1 month)
+  retain: 4 # Keep 4 weekly backups (1 month)
   concurrency: 1
   labels:
     backup-tier: "critical"
@@ -39,12 +39,12 @@ metadata:
   name: database-daily-snapshot
   namespace: longhorn-system
 spec:
-  cron: "0 1 * * *"  # Daily at 1 AM (before monitoring)
+  cron: "0 1 * * *" # Daily at 1 AM (before monitoring)
   task: "snapshot"
   groups:
     - database
-  retain: 7  # Keep 7 daily snapshots
-  concurrency: 1  # Databases need sequential processing
+  retain: 7 # Keep 7 daily snapshots
+  concurrency: 1 # Databases need sequential processing
   labels:
     backup-tier: "critical"
     backup-type: "snapshot"
@@ -55,11 +55,11 @@ metadata:
   name: database-weekly-backup
   namespace: longhorn-system
 spec:
-  cron: "0 4 * * 0"  # Weekly on Sunday at 4 AM
+  cron: "0 4 * * 0" # Weekly on Sunday at 4 AM
   task: "backup"
   groups:
     - database
-  retain: 8  # Keep 8 weekly backups (2 months for databases)
+  retain: 8 # Keep 8 weekly backups (2 months for databases)
   concurrency: 1
   labels:
     backup-tier: "critical"
@@ -71,11 +71,11 @@ metadata:
   name: application-weekly-snapshot
   namespace: longhorn-system
 spec:
-  cron: "0 5 * * 0"  # Weekly on Sunday at 5 AM
+  cron: "0 5 * * 0" # Weekly on Sunday at 5 AM
   task: "snapshot"
   groups:
     - application
-  retain: 4  # Keep 4 weekly snapshots
+  retain: 4 # Keep 4 weekly snapshots
   concurrency: 2
   labels:
     backup-tier: "important"
@@ -87,11 +87,11 @@ metadata:
   name: application-monthly-backup
   namespace: longhorn-system
 spec:
-  cron: "0 6 1 * *"  # Monthly on 1st at 6 AM
+  cron: "0 6 1 * *" # Monthly on 1st at 6 AM
   task: "backup"
   groups:
     - application
-  retain: 3  # Keep 3 monthly backups
+  retain: 3 # Keep 3 monthly backups
   concurrency: 1
   labels:
     backup-tier: "important"
@@ -103,13 +103,13 @@ metadata:
   name: cleanup-old-snapshots
   namespace: longhorn-system
 spec:
-  cron: "0 7 * * 0"  # Weekly cleanup on Sunday at 7 AM
+  cron: "0 7 * * 0" # Weekly cleanup on Sunday at 7 AM
   task: "snapshot-cleanup"
   groups:
     - monitoring
     - database
     - application
-  retain: 0  # This job cleans up, doesn't retain
+  retain: 0 # This job cleans up, doesn't retain
   concurrency: 1
   labels:
     backup-tier: "maintenance"

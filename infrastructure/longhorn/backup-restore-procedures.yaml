@@ -10,27 +10,27 @@ data:
   restore-from-snapshot.sh: |
     #!/bin/bash
     set -euo pipefail
-    
+
     # Restore from VolumeSnapshot script
     # Usage: ./restore-from-snapshot.sh <snapshot-name> <namespace> <new-pvc-name>
-    
+
     SNAPSHOT_NAME=${1:-""}
     NAMESPACE=${2:-"monitoring"}
     NEW_PVC_NAME=${3:-"restored-pvc"}
-    
+
     if [ -z "$SNAPSHOT_NAME" ]; then
         echo "Usage: $0 <snapshot-name> <namespace> <new-pvc-name>"
         echo "Available snapshots:"
         kubectl get volumesnapshots -n "$NAMESPACE"
         exit 1
     fi
-    
+
     echo "Restoring from snapshot: $SNAPSHOT_NAME in namespace: $NAMESPACE"
-    
+
     # Get snapshot details
     SNAPSHOT_SIZE=$(kubectl get volumesnapshot "$SNAPSHOT_NAME" -n "$NAMESPACE" -o jsonpath='{.status.restoreSize}')
     STORAGE_CLASS=$(kubectl get volumesnapshot "$SNAPSHOT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.volumeSnapshotClassName}')
-    
+
     # Create PVC from snapshot
     cat <<EOF | kubectl apply -f -
     apiVersion: v1
@@ -53,33 +53,33 @@ data:
         kind: VolumeSnapshot
         apiGroup: snapshot.storage.k8s.io
     EOF
-    
+
     echo "PVC ${NEW_PVC_NAME} created from snapshot ${SNAPSHOT_NAME}"
     echo "Monitor restoration progress with: kubectl get pvc ${NEW_PVC_NAME} -n ${NAMESPACE} -w"
 
   restore-from-backup.sh: |
     #!/bin/bash
     set -euo pipefail
-    
+
     # Restore from Longhorn S3 backup script
     # Usage: ./restore-from-backup.sh <backup-name> <namespace> <new-volume-name>
-    
+
     BACKUP_NAME=${1:-""}
     NAMESPACE=${2:-"monitoring"}
     NEW_VOLUME_NAME=${3:-"restored-volume"}
-    
+
     if [ -z "$BACKUP_NAME" ]; then
         echo "Usage: $0 <backup-name> <namespace> <new-volume-name>"
         echo "Available backups:"
         kubectl get backups -n longhorn-system
         exit 1
     fi
-    
+
     echo "Restoring from backup: $BACKUP_NAME to volume: $NEW_VOLUME_NAME"
-    
+
     # Get backup details
     BACKUP_SIZE=$(kubectl get backup "$BACKUP_NAME" -n longhorn-system -o jsonpath='{.status.size}')
-    
+
     # Create volume from backup
     cat <<EOF | kubectl apply -f -
     apiVersion: longhorn.io/v1beta2
@@ -96,29 +96,29 @@ data:
       fromBackup: ${BACKUP_NAME}
       frontend: blockdev
     EOF
-    
+
     echo "Volume ${NEW_VOLUME_NAME} created from backup ${BACKUP_NAME}"
     echo "Monitor restoration progress with: kubectl get volume ${NEW_VOLUME_NAME} -n longhorn-system -w"
 
   test-restore.sh: |
     #!/bin/bash
     set -euo pipefail
-    
+
     # Automated restore testing script
     # Tests backup and restore procedures without affecting production
-    
+
     NAMESPACE=${NAMESPACE:-"longhorn-system"}
     TEST_NAMESPACE="backup-test"
-    
+
     echo "Starting backup restore test at $(date)"
-    
+
     # Create test namespace
     kubectl create namespace "$TEST_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-    
+
     # Find latest snapshots for testing
     LATEST_PROMETHEUS_SNAPSHOT=$(kubectl get volumesnapshots -n monitoring -l app=prometheus --sort-by=.metadata.creationTimestamp -o name | tail -1 | cut -d'/' -f2)
     LATEST_GRAFANA_SNAPSHOT=$(kubectl get volumesnapshots -n monitoring -l app=grafana --sort-by=.metadata.creationTimestamp -o name | tail -1 | cut -d'/' -f2)
-    
+
     if [ -n "$LATEST_PROMETHEUS_SNAPSHOT" ]; then
         echo "Testing Prometheus snapshot restore: $LATEST_PROMETHEUS_SNAPSHOT"
         
@@ -154,7 +154,7 @@ data:
     else
         echo "⚠ No Prometheus snapshots found for testing"
     fi
-    
+
     if [ -n "$LATEST_GRAFANA_SNAPSHOT" ]; then
         echo "Testing Grafana snapshot restore: $LATEST_GRAFANA_SNAPSHOT"
         
@@ -190,7 +190,7 @@ data:
     else
         echo "⚠ No Grafana snapshots found for testing"
     fi
-    
+
     echo "Backup restore test completed at $(date)"
 ---
 # CronJob for automated restore testing
@@ -200,34 +200,34 @@ metadata:
   name: backup-restore-test
   namespace: longhorn-system
 spec:
-  schedule: "0 10 * * 0"  # Weekly on Sunday at 10 AM
+  schedule: "0 10 * * 0" # Weekly on Sunday at 10 AM
   jobTemplate:
     spec:
       template:
         spec:
           serviceAccountName: backup-tester
           containers:
-          - name: backup-tester
-            image: bitnami/kubectl:latest
-            command: ["/bin/bash", "/scripts/test-restore.sh"]
-            env:
-            - name: NAMESPACE
-              value: "longhorn-system"
-            volumeMounts:
-            - name: restore-scripts
-              mountPath: /scripts
-            resources:
-              requests:
-                memory: "64Mi"
-                cpu: "50m"
-              limits:
-                memory: "128Mi"
-                cpu: "100m"
+            - name: backup-tester
+              image: bitnami/kubectl:latest
+              command: ["/bin/bash", "/scripts/test-restore.sh"]
+              env:
+                - name: NAMESPACE
+                  value: "longhorn-system"
+              volumeMounts:
+                - name: restore-scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "50m"
+                limits:
+                  memory: "128Mi"
+                  cpu: "100m"
           volumes:
-          - name: restore-scripts
-            configMap:
-              name: restore-procedures
-              defaultMode: 0755
+            - name: restore-scripts
+              configMap:
+                name: restore-procedures
+                defaultMode: 0755
           restartPolicy: OnFailure
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -244,15 +244,15 @@ kind: ClusterRole
 metadata:
   name: backup-tester
 rules:
-- apiGroups: [""]
-  resources: ["namespaces", "persistentvolumeclaims"]
-  verbs: ["create", "delete", "get", "list", "patch"]
-- apiGroups: ["snapshot.storage.k8s.io"]
-  resources: ["volumesnapshots"]
-  verbs: ["get", "list"]
-- apiGroups: ["longhorn.io"]
-  resources: ["volumes", "backups"]
-  verbs: ["create", "delete", "get", "list"]
+  - apiGroups: [""]
+    resources: ["namespaces", "persistentvolumeclaims"]
+    verbs: ["create", "delete", "get", "list", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["longhorn.io"]
+    resources: ["volumes", "backups"]
+    verbs: ["create", "delete", "get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -263,6 +263,6 @@ roleRef:
   kind: ClusterRole
   name: backup-tester
 subjects:
-- kind: ServiceAccount
-  name: backup-tester
-  namespace: longhorn-system
+  - kind: ServiceAccount
+    name: backup-tester
+    namespace: longhorn-system

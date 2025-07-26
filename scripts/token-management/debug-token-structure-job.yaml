@@ -52,9 +52,9 @@ spec:
             - -c
             - |
               set -euo pipefail
-              
+
               echo "=== Authentik Token Structure Debug ==="
-              
+
               cat > /tmp/debug-tokens.py << 'EOF'
               #!/usr/bin/env python3
               import os
@@ -63,15 +63,15 @@ spec:
               import urllib.request
               import urllib.parse
               import urllib.error
-              
+
               authentik_host = os.environ.get('AUTHENTIK_HOST')
               admin_token = os.environ.get('AUTHENTIK_ADMIN_TOKEN')
-              
+
               headers = {
                   'Authorization': f'Bearer {admin_token}',
                   'Content-Type': 'application/json'
               }
-              
+
               def make_request(url):
                   try:
                       request = urllib.request.Request(url, headers=headers)
@@ -80,11 +80,11 @@ spec:
                   except Exception as e:
                       print(f"Error: {e}")
                       return None
-              
+
               print("=== All Tokens ===")
               tokens_url = f'{authentik_host}/api/v3/core/tokens/'
               tokens_data = make_request(tokens_url)
-              
+
               if tokens_data:
                   for i, token in enumerate(tokens_data.get('results', []), 1):
                       print(f"\nToken {i}:")
@@ -108,11 +108,11 @@ spec:
                       
                       # Print all fields for debugging
                       print(f"  All fields: {list(token.keys())}")
-              
+
               print("\n=== All Outposts ===")
               outposts_url = f'{authentik_host}/api/v3/outposts/instances/'
               outposts_data = make_request(outposts_url)
-              
+
               if outposts_data:
                   for i, outpost in enumerate(outposts_data.get('results', []), 1):
                       print(f"\nOutpost {i}:")
@@ -127,11 +127,11 @@ spec:
                       
                       # Print all fields for debugging
                       print(f"  All fields: {list(outpost.keys())}")
-              
+
               print("\n=== Outpost Service Connections ===")
               service_connections_url = f'{authentik_host}/api/v3/outposts/service_connections/'
               sc_data = make_request(service_connections_url)
-              
+
               if sc_data:
                   for i, sc in enumerate(sc_data.get('results', []), 1):
                       print(f"\nService Connection {i}:")
@@ -139,9 +139,9 @@ spec:
                       print(f"  Name: {sc.get('name', 'N/A')}")
                       print(f"  Component: {sc.get('component', 'N/A')}")
                       print(f"  All fields: {list(sc.keys())}")
-              
+
               EOF
-              
+
               python3 /tmp/debug-tokens.py
           volumeMounts:
             - name: tmp

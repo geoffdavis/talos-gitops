@@ -89,24 +89,24 @@ spec:
               echo "=== Installing Python Dependencies ==="
               pip install --no-cache-dir --target /tmp/python-packages urllib3
               export PYTHONPATH="/tmp/python-packages:$PYTHONPATH"
-              
+
               echo "=== Creating Outpost Internal URL Fix Script ==="
               cat > /tmp/fix_outpost.py << 'EOF'
               #!/usr/bin/env python3
               """
               Fix External Outpost Internal URL Configuration
-              
+
               The real issue is that the external outpost has the wrong internal URL.
               It should use internal cluster DNS, not external domain.
               """
-              
+
               import os
               import json
               import urllib.request
               import urllib.parse
               import urllib.error
-              
-              
+
+
               def make_api_request(url, headers, method='GET', data=None):
                   """Make an API request to Authentik."""
                   try:
@@ -132,8 +132,8 @@ spec:
                       except (json.JSONDecodeError, UnicodeDecodeError):
                           error_data = {'error': 'Failed to parse error response'}
                       return status_code, error_data
-              
-              
+
+
               def main():
                   # Configuration from environment
                   authentik_host = os.environ.get('AUTHENTIK_HOST')
@@ -232,14 +232,14 @@ spec:
                       print(f"✗ Failed to update outpost configuration: {status_code}")
                       print(f"Response: {response}")
                       return 1
-              
-              
+
+
               if __name__ == "__main__":
                   exit(main())
               EOF
-              
+
               echo "=== Running Outpost Internal URL Fix Script ==="
               python3 /tmp/fix_outpost.py
-              
+
               echo "=== Fix Complete ==="
       volumes: []

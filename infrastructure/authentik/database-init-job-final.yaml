@@ -73,7 +73,7 @@ spec:
               set -e
               echo "Initializing database: ${TARGET_DATABASE} for application: authentik"
               echo "Connecting to PostgreSQL cluster..."
-              
+
               # Function to execute SQL with retry
               execute_sql() {
                 local sql="$1"
@@ -95,10 +95,10 @@ spec:
                 echo "Failed after $max_attempts attempts"
                 return 1
               }
-              
+
               # Check if database exists
               DB_EXISTS=$(psql -tAc "SELECT 1 FROM pg_database WHERE datname='${TARGET_DATABASE}';" || echo "0")
-              
+
               if [ "$DB_EXISTS" != "1" ]; then
                 echo "Creating ${TARGET_DATABASE} database..."
                 execute_sql "CREATE DATABASE ${TARGET_DATABASE} OWNER ${APP_DB_USER};"
@@ -106,10 +106,10 @@ spec:
               else
                 echo "Database ${TARGET_DATABASE} already exists"
               fi
-              
+
               # Check if user exists
               USER_EXISTS=$(psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${APP_DB_USER}';" || echo "0")
-              
+
               if [ "$USER_EXISTS" != "1" ]; then
                 echo "Creating ${APP_DB_USER} user..."
                 execute_sql "CREATE USER ${APP_DB_USER} WITH PASSWORD '${APP_DB_PASSWORD}';"
@@ -119,12 +119,12 @@ spec:
                 echo "Updating password..."
                 execute_sql "ALTER USER ${APP_DB_USER} WITH PASSWORD '${APP_DB_PASSWORD}';"
               fi
-              
+
               # Grant permissions
               echo "Granting permissions..."
               execute_sql "GRANT ALL PRIVILEGES ON DATABASE ${TARGET_DATABASE} TO ${APP_DB_USER};"
               execute_sql "GRANT ${APP_DB_USER} TO postgres;"
-              
+
               # Connect to the target database and grant schema permissions
               echo "Granting schema permissions..."
               PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON SCHEMA public TO ${APP_DB_USER};" || true
@@ -134,7 +134,7 @@ spec:
               PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${APP_DB_USER};" || true
               PGDATABASE=${TARGET_DATABASE} psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${APP_DB_USER};" || true
               PGDATABASE=${TARGET_DATABASE} psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${APP_DB_USER};" || true
-              
+
               echo "Database initialization completed successfully for authentik"
           volumeMounts:
             - name: tmp

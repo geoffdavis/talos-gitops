@@ -8,11 +8,11 @@
 
 ### Current Node States (Confirmed)
 
-| Node | Network | Talos API | State | Issue | Recovery Priority |
-|------|---------|-----------|-------|-------|------------------|
+| Node                      | Network       | Talos API        | State                       | Issue                    | Recovery Priority                       |
+| ------------------------- | ------------- | ---------------- | --------------------------- | ------------------------ | --------------------------------------- |
 | **mini01** (172.29.51.11) | ✅ Responsive | ✅ Authenticated | ❌ **Read-only filesystem** | Cannot write kubelet PKI | **HIGH - Manual intervention required** |
-| **mini02** (172.29.51.12) | ✅ Responsive | ✅ Insecure only | ✅ **Maintenance mode** | Wipe successful | **READY - Apply new config** |
-| **mini03** (172.29.51.13) | ✅ Responsive | ✅ Insecure only | ✅ **Maintenance mode** | Wipe successful | **READY - Apply new config** |
+| **mini02** (172.29.51.12) | ✅ Responsive | ✅ Insecure only | ✅ **Maintenance mode**     | Wipe successful          | **READY - Apply new config**            |
+| **mini03** (172.29.51.13) | ✅ Responsive | ✅ Insecure only | ✅ **Maintenance mode**     | Wipe successful          | **READY - Apply new config**            |
 
 ### Key Findings
 
@@ -24,10 +24,12 @@
 ### Root Cause Analysis
 
 **Most Likely Sources:**
+
 1. **Disk encryption state corruption** on mini01 - LUKS2 encryption may be in inconsistent state
 2. **Filesystem mount issues** - STATE/EPHEMERAL partitions may be mounted read-only
 
 **Evidence:**
+
 - Error: `"error writing kubelet PKI: open /etc/kubernetes/bootstrap-kubeconfig: read-only file system"`
 - mini02/mini03 successfully processed wipe and entered maintenance mode
 - mini01 shows normal Talos services but cannot write to encrypted partitions
@@ -37,6 +39,7 @@
 ### Phase 1: Fix mini01 Read-Only Filesystem Issue
 
 #### Option 1A: Force Partition Wipe on mini01 (RECOMMENDED)
+
 ```bash
 # Apply wipe configuration directly to mini01
 export TALOSCONFIG=clusterconfig/talosconfig
@@ -47,6 +50,7 @@ watch "talosctl version --nodes 172.29.51.11 --endpoints 172.29.51.11 --insecure
 ```
 
 #### Option 1B: Manual Disk Reset (If Option 1A fails)
+
 ```bash
 # Reset disk encryption state
 talosctl reset --nodes 172.29.51.11 --endpoints 172.29.51.11 --graceful=false --reboot
@@ -57,6 +61,7 @@ talosctl version --nodes 172.29.51.11 --endpoints 172.29.51.11 --insecure
 ```
 
 #### Option 1C: Physical Power Cycle (Last resort)
+
 ```bash
 # If software reset fails, physically power cycle mini01
 # Then apply configuration in maintenance mode
@@ -87,7 +92,7 @@ export TALOSCONFIG=clusterconfig/talosconfig
 
 # Apply fresh configuration to all nodes
 talosctl apply-config --nodes 172.29.51.11 --endpoints 172.29.51.11 --file clusterconfig/home-ops-mini01.yaml --insecure
-talosctl apply-config --nodes 172.29.51.12 --endpoints 172.29.51.12 --file clusterconfig/home-ops-mini02.yaml --insecure  
+talosctl apply-config --nodes 172.29.51.12 --endpoints 172.29.51.12 --file clusterconfig/home-ops-mini02.yaml --insecure
 talosctl apply-config --nodes 172.29.51.13 --endpoints 172.29.51.13 --file clusterconfig/home-ops-mini03.yaml --insecure
 
 # Wait for nodes to reboot and initialize
@@ -132,12 +137,14 @@ kubectl get pods -n onepassword-connect
 ### If Standard Recovery Fails
 
 #### Option A: Manual Talos Installer Boot
+
 1. Create Talos installer USB/network boot
 2. Boot each node from installer
 3. Apply configuration during installation
 4. Ensures complete disk wipe and fresh installation
 
 #### Option B: Direct Partition Manipulation
+
 ```bash
 # If accessible via rescue mode
 # WARNING: Only if other methods fail
@@ -145,6 +152,7 @@ talosctl reset --nodes <node> --endpoints <node> --graceful=false --wipe-mode=al
 ```
 
 #### Option C: Complete Reinstallation
+
 1. Download latest Talos installer image
 2. Create bootable media
 3. Physically boot each node from installer
@@ -153,6 +161,7 @@ talosctl reset --nodes <node> --endpoints <node> --graceful=false --wipe-mode=al
 ## VALIDATION STEPS
 
 ### After Each Phase
+
 ```bash
 # Verify node states
 talosctl version --nodes 172.29.51.11,172.29.51.12,172.29.51.13 --endpoints 172.29.51.11
@@ -169,6 +178,7 @@ kubectl get pods --all-namespaces
 ```
 
 ### Security Validation
+
 ```bash
 # Verify new cluster secrets are in use
 kubectl get secrets -n kube-system | grep -E "(bootstrap|kubelet)"
@@ -183,25 +193,27 @@ kubectl get clustersecretstore -o yaml
 ## FALLBACK PROCEDURES
 
 ### If mini01 Cannot Be Recovered
+
 1. **Remove mini01 from cluster configuration**
 2. **Proceed with 2-node cluster** (mini02 + mini03)
 3. **Add mini01 back later** after manual disk replacement/repair
 
 ### If Multiple Nodes Fail
+
 1. **Complete hardware reset** of all nodes
 2. **Fresh Talos installation** from scratch
 3. **Restore from GitOps** once cluster is operational
 
 ## TIMELINE ESTIMATES
 
-| Phase | Estimated Time | Dependencies |
-|-------|---------------|--------------|
-| Phase 1: Fix mini01 | 15-30 minutes | Physical access if needed |
-| Phase 2: Generate secrets | 5 minutes | None |
-| Phase 3: Apply configs | 10-15 minutes | All nodes in maintenance |
-| Phase 4: Bootstrap cluster | 10-15 minutes | Successful config apply |
-| Phase 5: Restore apps | 20-30 minutes | Cluster operational |
-| **Total Recovery** | **60-95 minutes** | No major complications |
+| Phase                      | Estimated Time    | Dependencies              |
+| -------------------------- | ----------------- | ------------------------- |
+| Phase 1: Fix mini01        | 15-30 minutes     | Physical access if needed |
+| Phase 2: Generate secrets  | 5 minutes         | None                      |
+| Phase 3: Apply configs     | 10-15 minutes     | All nodes in maintenance  |
+| Phase 4: Bootstrap cluster | 10-15 minutes     | Successful config apply   |
+| Phase 5: Restore apps      | 20-30 minutes     | Cluster operational       |
+| **Total Recovery**         | **60-95 minutes** | No major complications    |
 
 ## SUCCESS CRITERIA
 

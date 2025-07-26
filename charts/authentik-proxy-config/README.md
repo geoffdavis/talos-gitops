@@ -5,6 +5,7 @@ A Helm chart for automatically configuring Authentik proxy providers and applica
 ## Overview
 
 This chart configures Authentik proxy providers and applications for the following services:
+
 - Kubernetes Dashboard
 - Hubble UI (Cilium)
 - Grafana
@@ -93,10 +94,10 @@ Configure hook behavior:
 
 ```yaml
 hooks:
-  timeout: 300          # Maximum execution time in seconds
-  retries: 3           # Number of retry attempts
-  backoff: 15          # Backoff time between retries in seconds
-  image: "curlimages/curl:8.5.0"  # Container image for hooks
+  timeout: 300 # Maximum execution time in seconds
+  retries: 3 # Number of retry attempts
+  backoff: 15 # Backoff time between retries in seconds
+  image: "curlimages/curl:8.5.0" # Container image for hooks
 ```
 
 ### Proxy Provider Settings
@@ -123,18 +124,21 @@ rbac:
 ## Hook Lifecycle
 
 ### Pre-Install Hook (Weight: -5)
+
 - Validates Authentik server readiness
 - Checks admin token validity
 - Verifies required secrets exist
 - Tests API connectivity
 
 ### Post-Install Hook (Weight: 1)
+
 - Creates proxy providers for all enabled services
 - Creates applications for each service
 - Updates proxy outpost with all providers atomically
 - Implements rollback on any failure
 
 ### Post-Upgrade Hook (Weight: 1)
+
 - Updates existing configurations
 - Handles service additions/removals
 - Maintains configuration consistency
@@ -142,13 +146,16 @@ rbac:
 ## Security
 
 ### Container Security
+
 - Runs as non-root user (UID 65534)
 - Read-only root filesystem
 - Drops all capabilities
 - Uses seccomp runtime default profile
 
 ### RBAC Permissions
+
 Minimal required permissions:
+
 - `secrets`: get, list (for token access)
 - `configmaps`: get, list (for configuration)
 - `pods`: get, list (for readiness checks)
@@ -159,6 +166,7 @@ Minimal required permissions:
 ### Hook Failures
 
 Check hook logs:
+
 ```bash
 kubectl logs -n authentik job/authentik-proxy-config-post-install-config
 ```
@@ -166,6 +174,7 @@ kubectl logs -n authentik job/authentik-proxy-config-post-install-config
 ### Authentication Issues
 
 Verify token secret:
+
 ```bash
 kubectl get secret authentik-radius-token -n authentik -o yaml
 ```
@@ -173,6 +182,7 @@ kubectl get secret authentik-radius-token -n authentik -o yaml
 ### Service Configuration Issues
 
 Check ConfigMap:
+
 ```bash
 kubectl get configmap authentik-proxy-config-service-config -n authentik -o yaml
 ```
@@ -180,6 +190,7 @@ kubectl get configmap authentik-proxy-config-service-config -n authentik -o yaml
 ### Manual Cleanup
 
 If hooks fail and need cleanup:
+
 ```bash
 # Delete failed jobs
 kubectl delete job -n authentik -l app.kubernetes.io/name=authentik-proxy-config
@@ -233,18 +244,18 @@ To migrate from the existing Kubernetes Jobs:
 
 ## Values Reference
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `authentik.host` | Authentik server URL | `http://authentik-server.authentik.svc.cluster.local` |
-| `authentik.authFlowUuid` | Authorization flow UUID | `be0ee023-11fe-4a43-b453-bc67957cafbf` |
-| `services.*.enabled` | Enable/disable service configuration | `true` |
-| `services.*.externalHost` | External URL for the service | Required |
-| `services.*.internalHost` | Internal service URL | Required |
-| `hooks.timeout` | Hook execution timeout | `300` |
-| `hooks.retries` | Number of retry attempts | `3` |
-| `hooks.backoff` | Backoff time between retries | `15` |
-| `rbac.create` | Create RBAC resources | `true` |
-| `rbac.serviceAccountName` | Service account name | `authentik-proxy-config` |
+| Parameter                 | Description                          | Default                                               |
+| ------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| `authentik.host`          | Authentik server URL                 | `http://authentik-server.authentik.svc.cluster.local` |
+| `authentik.authFlowUuid`  | Authorization flow UUID              | `be0ee023-11fe-4a43-b453-bc67957cafbf`                |
+| `services.*.enabled`      | Enable/disable service configuration | `true`                                                |
+| `services.*.externalHost` | External URL for the service         | Required                                              |
+| `services.*.internalHost` | Internal service URL                 | Required                                              |
+| `hooks.timeout`           | Hook execution timeout               | `300`                                                 |
+| `hooks.retries`           | Number of retry attempts             | `3`                                                   |
+| `hooks.backoff`           | Backoff time between retries         | `15`                                                  |
+| `rbac.create`             | Create RBAC resources                | `true`                                                |
+| `rbac.serviceAccountName` | Service account name                 | `authentik-proxy-config`                              |
 
 ## Contributing
 

@@ -10,10 +10,10 @@ resources:
   # External secrets to sync credentials from 1Password
   - external-secret-admin-user.yaml
   - external-secret-admin-api-token.yaml
-  
+
   # Operational HelmRelease with admin token
   - operational-helmrelease.yaml
-  
+
   # Outpost configuration jobs (using admin API token)
   # NOTE: Disabled for external outpost architecture
   # - ../authentik-outpost-config/

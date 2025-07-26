@@ -54,33 +54,33 @@ spec:
           value: "info"
         - name: AUTHENTIK_AVATARS
           value: "gravatar,initials"
-        
+
         # Redis configuration (use built-in Redis)
         - name: AUTHENTIK_REDIS__HOST
           value: "authentik-redis-master"
         - name: AUTHENTIK_REDIS__PORT
           value: "6379"
-        
+
         # Web configuration
         - name: AUTHENTIK_WEB__WORKERS
           value: "2"
         - name: AUTHENTIK_WEB__THREADS
           value: "4"
-        
+
         # Worker configuration
         - name: AUTHENTIK_WORKER__CONCURRENCY
           value: "2"
-        
+
         # RADIUS configuration
         # NOTE: Disabled for external outpost architecture
         - name: AUTHENTIK_OUTPOSTS__DISCOVER
           value: "false"
-        
+
     # Server configuration
     server:
       name: server
       replicas: 2
-      
+
       # Resource configuration for homelab
       resources:
         requests:
@@ -89,7 +89,7 @@ spec:
         limits:
           cpu: 500m
           memory: 1Gi
-      
+
       # Security context
       securityContext:
         runAsNonRoot: true
@@ -98,14 +98,14 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      
+
       containerSecurityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: true
         capabilities:
           drop:
             - ALL
-      
+
       # Volume mounts for writable directories
       volumeMounts:
         - name: media
@@ -114,7 +114,7 @@ spec:
           mountPath: /tmp
         - name: authentik-tmp
           mountPath: /authentik/tmp
-      
+
       volumes:
         - name: media
           persistentVolumeClaim:
@@ -123,11 +123,11 @@ spec:
           emptyDir: {}
         - name: authentik-tmp
           emptyDir: {}
-      
+
       # Node selector and tolerations
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -135,12 +135,12 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-      
+
       # Pod disruption budget
       podDisruptionBudget:
         enabled: true
         minAvailable: 1
-      
+
       # Metrics
       metrics:
         enabled: true
@@ -148,11 +148,11 @@ spec:
           enabled: true
           interval: 30s
           scrapeTimeout: 3s
-      
+
       # Ingress - disabled in favor of separate ingress resource
       ingress:
         enabled: false
-      
+
       # Service configuration
       service:
         enabled: true
@@ -162,12 +162,12 @@ spec:
         protocol: TCP
         labels: {}
         annotations: {}
-    
+
     # Worker configuration
     worker:
       name: worker
       replicas: 1
-      
+
       # Resource configuration for homelab
       resources:
         requests:
@@ -176,7 +176,7 @@ spec:
         limits:
           cpu: 300m
           memory: 512Mi
-      
+
       # Security context
       securityContext:
         runAsNonRoot: true
@@ -185,14 +185,14 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      
+
       containerSecurityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: true
         capabilities:
           drop:
             - ALL
-      
+
       # Volume mounts for writable directories
       volumeMounts:
         - name: media
@@ -201,7 +201,7 @@ spec:
           mountPath: /tmp
         - name: authentik-tmp
           mountPath: /authentik/tmp
-      
+
       volumes:
         - name: media
           persistentVolumeClaim:
@@ -210,11 +210,11 @@ spec:
           emptyDir: {}
         - name: authentik-tmp
           emptyDir: {}
-      
+
       # Node selector and tolerations
       nodeSelector:
         kubernetes.io/os: linux
-      
+
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists
@@ -222,21 +222,21 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
-    
+
     # Redis configuration (built-in)
     redis:
       enabled: true
       architecture: standalone
-      
+
       auth:
         enabled: false
-      
+
       master:
         persistence:
           enabled: true
           storageClass: "longhorn-ssd"
           size: 1Gi
-        
+
         resources:
           requests:
             cpu: 50m
@@ -244,10 +244,10 @@ spec:
           limits:
             cpu: 200m
             memory: 256Mi
-        
+
         nodeSelector:
           kubernetes.io/os: linux
-        
+
         tolerations:
           - key: node-role.kubernetes.io/control-plane
             operator: Exists
@@ -255,21 +255,21 @@ spec:
           - key: node-role.kubernetes.io/master
             operator: Exists
             effect: NoSchedule
-    
+
     # PostgreSQL configuration (disabled - using external CNPG cluster)
     postgresql:
       enabled: false
-    
+
     # Service account
     serviceAccount:
       create: true
       annotations: {}
       name: "authentik"
-    
+
     # RBAC
     rbac:
       create: true
-    
+
     # Prometheus rules
     prometheusRule:
       enabled: true
@@ -283,7 +283,7 @@ spec:
           annotations:
             summary: Authentik pod is crash looping
             description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
-        
+
         - alert: AuthentikHighMemoryUsage
           expr: |
             (container_memory_working_set_bytes{namespace="authentik"} / container_spec_memory_limit_bytes{namespace="authentik"}) * 100 > 90
@@ -293,7 +293,7 @@ spec:
           annotations:
             summary: Authentik high memory usage
             description: "Authentik container memory usage is above 90%"
-        
+
         - alert: AuthentikHighCPUUsage
           expr: |
             (rate(container_cpu_usage_seconds_total{namespace="authentik"}[5m]) * 100) > 80

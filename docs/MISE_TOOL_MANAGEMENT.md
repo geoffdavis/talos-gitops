@@ -1,9 +1,11 @@
 # Mise Tool Management
 
 ## Overview
+
 This project uses [mise](https://mise.jdx.dev/) to manage development tools and their versions. Mise ensures consistent tool versions across different environments and automatically installs required tools when entering the project directory.
 
 ## Managed Tools
+
 The following tools are managed by mise (as configured in `.mise.toml`):
 
 - **task**: Task runner for executing project workflows
@@ -15,6 +17,7 @@ The following tools are managed by mise (as configured in `.mise.toml`):
 - **kustomize**: Kubernetes configuration management
 
 ## Usage
+
 When working with this project:
 
 1. **Automatic Tool Installation**: Mise will automatically install required tools when you enter the project directory
@@ -22,12 +25,15 @@ When working with this project:
 3. **Command Execution**: Use commands directly (e.g., `task bootstrap:secrets`) - mise handles the tool resolution
 
 ## Important Notes
+
 - Always use mise-managed commands rather than globally installed versions
 - Tool versions are locked to ensure reproducible builds and deployments
 - If you encounter tool-related issues, run `mise install` to ensure all tools are properly installed
 
 ## Bootstrap Process
+
 All bootstrap commands should be executed using the mise-managed tools:
+
 - `task bootstrap:secrets`
 - `task talos:generate-config`
 - `task talos:apply-config`

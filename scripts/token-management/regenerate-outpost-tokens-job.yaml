@@ -52,9 +52,9 @@ spec:
             - -c
             - |
               set -euo pipefail
-              
+
               echo "=== Authentik External Outpost Token Regeneration ==="
-              
+
               cat > /tmp/regenerate-tokens.py << 'EOF'
               #!/usr/bin/env python3
               import os
@@ -63,15 +63,15 @@ spec:
               import urllib.request
               import urllib.parse
               import urllib.error
-              
+
               authentik_host = os.environ.get('AUTHENTIK_HOST')
               admin_token = os.environ.get('AUTHENTIK_ADMIN_TOKEN')
-              
+
               headers = {
                   'Authorization': f'Bearer {admin_token}',
                   'Content-Type': 'application/json'
               }
-              
+
               def make_request(url, method='GET', data=None):
                   try:
                       req_data = None
@@ -93,7 +93,7 @@ spec:
                   except Exception as e:
                       print(f"Error: {e}")
                       return None
-              
+
               # Target outpost token identifiers
               target_tokens = {
                   "ak-outpost-3f0970c5-d6a3-43b2-9a36-d74665c6b24e-api": {
@@ -107,26 +107,26 @@ spec:
                       "onepassword_entry": "Authentik External Outpost Token - radius-outpost"
                   }
               }
-              
+
               print("=== Finding Current Tokens ===")
               tokens_url = f'{authentik_host}/api/v3/core/tokens/'
               tokens_data = make_request(tokens_url)
-              
+
               if not tokens_data:
                   print("Failed to fetch tokens")
                   sys.exit(1)
-              
+
               current_tokens = {}
               for token in tokens_data.get('results', []):
                   identifier = token.get('identifier', '')
                   if identifier in target_tokens:
                       current_tokens[identifier] = token
                       print(f"Found current token: {identifier} (PK: {token['pk']})")
-              
+
               print(f"\nFound {len(current_tokens)} target tokens to regenerate")
-              
+
               regenerated_tokens = {}
-              
+
               for token_identifier, token_info in target_tokens.items():
                   print(f"\n=== Processing {token_info['outpost_name']} ===")
                   
@@ -182,22 +182,22 @@ spec:
                       print("✗ Failed to create new token")
                       if new_token:
                           print(f"Response: {new_token}")
-              
+
               print(f"\n=== Regeneration Complete ===")
               print(f"Successfully regenerated {len(regenerated_tokens)} tokens")
-              
+
               # Save results for 1Password update
               results = {
                   'regenerated_tokens': regenerated_tokens,
                   'timestamp': '2025-07-26T12:35:00Z'
               }
-              
+
               output_file = '/tmp/regenerated-outpost-tokens.json'
               with open(output_file, 'w') as f:
                   json.dump(results, f, indent=2)
-              
+
               print(f"✓ Results saved to: {output_file}")
-              
+
               # Print 1Password update instructions
               print("\n=== 1Password Update Instructions ===")
               for token_identifier, token_data in regenerated_tokens.items():
@@ -206,19 +206,19 @@ spec:
                   print(f"  Field 'outpost_id': {token_data['outpost_id']}")
                   print(f"  Field 'outpost_name': {token_data['outpost_name']}")
                   print(f"  Field 'authentik_host': {authentik_host}")
-              
+
               print(f"\n=== Summary ===")
               print("The following tokens have been regenerated and are ready for 1Password:")
               for token_data in regenerated_tokens.values():
                   print(f"  - {token_data['outpost_name']}: {token_data['token_key'][:20]}...")
-              
+
               EOF
-              
+
               python3 /tmp/regenerate-tokens.py
-              
+
               echo "=== Token regeneration completed ==="
               echo "Check the logs above for the new token values"
-              
+
               # Keep the results available for inspection
               if [ -f /tmp/regenerated-outpost-tokens.json ]; then
                 echo "=== Regeneration Results File ==="

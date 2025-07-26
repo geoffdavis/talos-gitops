@@ -31,15 +31,15 @@ spec:
   values:
     # Operator configuration
     fullnameOverride: cnpg-operator
-    
+
     # Replica configuration for homelab
     replicaCount: 1
-    
+
     # Image configuration
     image:
       repository: ghcr.io/cloudnative-pg/cloudnative-pg
       pullPolicy: IfNotPresent
-    
+
     # Resource limits appropriate for homelab
     resources:
       limits:
@@ -48,11 +48,11 @@ spec:
       requests:
         cpu: 50m
         memory: 128Mi
-    
+
     # Node selector and tolerations
     nodeSelector:
       kubernetes.io/os: linux
-      
+
     tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
@@ -60,7 +60,7 @@ spec:
       - key: node-role.kubernetes.io/master
         operator: Exists
         effect: NoSchedule
-        
+
     # Security context
     securityContext:
       runAsNonRoot: true
@@ -72,7 +72,7 @@ spec:
       capabilities:
         drop:
           - ALL
-        
+
     # Pod security context
     podSecurityContext:
       runAsNonRoot: true
@@ -81,16 +81,16 @@ spec:
       fsGroup: 10001
       seccompProfile:
         type: RuntimeDefault
-        
+
     # Service account configuration
     serviceAccount:
       create: true
       name: cnpg-operator
-      
+
     # RBAC configuration
     rbac:
       create: true
-      
+
     # Webhook configuration
     webhook:
       enabled: true
@@ -101,7 +101,7 @@ spec:
       validating:
         create: true
         failurePolicy: Fail
-        
+
     # Monitoring configuration
     monitoring:
       enabled: true
@@ -110,38 +110,38 @@ spec:
         namespace: cnpg-system
         interval: 30s
         scrapeTimeout: 10s
-        
+
     # Metrics configuration
     metrics:
       enabled: true
       port: 8080
-      
+
     # Pod annotations for monitoring
     podAnnotations:
       prometheus.io/scrape: "true"
       prometheus.io/port: "8080"
       prometheus.io/path: "/metrics"
-      
+
     # Deployment annotations
     deploymentAnnotations:
       reloader.stakater.com/auto: "true"
-      
+
     # Pod labels
     podLabels:
       app.kubernetes.io/component: operator
-      
+
     # Logging configuration
     logLevel: info
-    
+
     # Leader election configuration
     leaderElection:
       enabled: true
-      
+
     # Pod disruption budget
     podDisruptionBudget:
       enabled: true
       minAvailable: 1
-      
+
     # Affinity configuration for homelab
     affinity:
       podAntiAffinity:
@@ -155,10 +155,10 @@ spec:
                     values:
                       - cloudnative-pg
               topologyKey: kubernetes.io/hostname
-              
+
     # Configure operator scope (cluster-wide)
     watchNamespace: ""
-    
+
     # Configure CRD management
     crds:
       create: true
