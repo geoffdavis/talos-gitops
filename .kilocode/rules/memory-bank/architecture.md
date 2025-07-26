@@ -33,22 +33,30 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 
 ### Directory Structure
 
-```
+```text
 ├── clusters/home-ops/           # GitOps cluster configuration
 │   ├── flux-system/            # Flux GitOps system
 │   └── infrastructure/         # Infrastructure Kustomizations
 ├── infrastructure/             # Infrastructure service manifests
 │   ├── authentik/              # Identity provider
 │   ├── authentik-proxy/        # External outpost for authentication
+│   ├── authentik-outpost-config/ # Outpost configuration jobs
 │   ├── cilium/                 # CNI configuration (GitOps part)
 │   ├── longhorn/               # Distributed storage
 │   ├── onepassword-connect/    # Secret management
 │   └── monitoring/             # Observability stack
 ├── apps/                       # Application deployments
+├── charts/                     # Helm charts
+│   └── authentik-proxy-config/ # Authentik proxy configuration chart
+├── scripts/                    # Bootstrap and utility scripts
+│   ├── authentik-proxy-config/ # Authentik configuration scripts
+│   └── token-management/       # Token management utilities
+├── tests/                      # Test suites
+│   ├── authentik-proxy-config/ # Authentik proxy tests
+│   └── token-management/       # Token management tests
 ├── talos/                      # Talos OS configuration
 │   ├── patches/                # Configuration patches
 │   └── manifests/              # System manifests
-├── scripts/                    # Bootstrap and utility scripts
 ├── taskfiles/                  # Modular task definitions
 └── docs/                       # Comprehensive documentation
 ```
@@ -126,7 +134,10 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Authentik**: [`infrastructure/authentik/`](../infrastructure/authentik/) - Complete SSO identity provider
 - **PostgreSQL Backend**: [`infrastructure/postgresql-cluster/`](../infrastructure/postgresql-cluster/) - Database for Authentik
 - **External Authentik-Proxy**: [`infrastructure/authentik-proxy/`](../infrastructure/authentik-proxy/) - External outpost for Kubernetes services with hybrid URL architecture
+- **Authentik Configuration Scripts**: [`scripts/authentik-proxy-config/`](../scripts/authentik-proxy-config/) - Comprehensive configuration automation and troubleshooting scripts
+- **Authentik Helm Chart**: [`charts/authentik-proxy-config/`](../charts/authentik-proxy-config/) - Helm chart for proxy provider configuration
 - **Authentication Architecture**: External outpost handles all \*.k8s.home.geoffdavis.com services with dedicated deployment, Redis session storage, and hybrid URL configuration for DNS resolution
+- **Testing Infrastructure**: [`tests/authentik-proxy-config/`](../tests/authentik-proxy-config/) - Comprehensive test suites for authentication system validation
 
 ## Key Technical Decisions
 
@@ -216,9 +227,19 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Kong Configuration Resolution**: Resolved conflicting Kong configuration jobs that were overriding proper Dashboard authentication settings
 - **RBAC Enhancement**: Updated Dashboard service account with proper cluster-admin permissions for full administrative access
 - **SSO Integration**: Dashboard authentication fully integrated with existing external Authentik outpost architecture
-- **Seamless Access**: Dashboard now provides seamless SSO access via https://dashboard.k8s.home.geoffdavis.com without manual token entry
+- **Seamless Access**: Dashboard now provides seamless SSO access via <https://dashboard.k8s.home.geoffdavis.com> without manual token entry
 - **Administrative Capabilities**: Full cluster administrative functionality available through authenticated Dashboard access
 - **Production Status**: All configuration changes committed to Git and deployed via GitOps for production use
+
+### Development Quality and Testing Architecture
+
+- **Pre-commit Framework**: **IMPLEMENTED** - Comprehensive code quality validation with balanced enforcement approach
+- **Security-First Validation**: Secret detection, shell script security, and file validation enforced to prevent security incidents
+- **Syntax Validation**: YAML, Python, Kubernetes manifest, and shell script syntax validation prevents broken deployments
+- **Code Quality Standards**: Consistent formatting and style guidelines across all file types with warning-based suggestions
+- **Testing Infrastructure**: Comprehensive test suites for critical authentication and token management components
+- **Automated Validation**: Pre-commit hooks provide fast local feedback before CI/CD pipeline execution
+- **Developer Experience**: Balanced approach prioritizes security without blocking development workflow for formatting issues
 
 ## Critical Implementation Paths
 

@@ -515,7 +515,7 @@ This task documents the final fix for the dashboard service configuration issue 
 
 **Success Criteria:**
 
-- ✅ Dashboard service accessible via https://dashboard.k8s.home.geoffdavis.com
+- ✅ Dashboard service accessible via <https://dashboard.k8s.home.geoffdavis.com>
 - ✅ Proper authentication redirect to Authentik login
 - ✅ Successful authentication and dashboard access
 - ✅ All 6 services operational (Longhorn, Grafana, Prometheus, AlertManager, Hubble, Dashboard)
@@ -591,7 +591,7 @@ This task documents the successful elimination of manual bearer token requiremen
    - Committed all configuration changes to Git repository
    - Deployed changes via GitOps using Flux reconciliation
    - Cleared browser cache to ensure configuration changes take effect (CRITICAL STEP)
-   - Tested Dashboard access via https://dashboard.k8s.home.geoffdavis.com
+   - Tested Dashboard access via <https://dashboard.k8s.home.geoffdavis.com>
 
 6. **Production Validation**:
    - Confirmed Dashboard no longer requires manual bearer token entry
@@ -623,7 +623,7 @@ This task documents the successful elimination of manual bearer token requiremen
 
 **Success Criteria:**
 
-- ✅ Dashboard accessible via https://dashboard.k8s.home.geoffdavis.com without manual bearer token
+- ✅ Dashboard accessible via <https://dashboard.k8s.home.geoffdavis.com> without manual bearer token
 - ✅ Seamless SSO authentication through Authentik external outpost
 - ✅ Full administrative access and Dashboard functionality available
 - ✅ Kong configuration conflicts resolved and removed
@@ -1229,3 +1229,169 @@ spec:
 - **Pool conflicts**: Verify no duplicate pool selectors between virtual routers
 
 This fix ensures robust BGP advertisement for all IP pools and resolves service connectivity issues caused by missing route advertisements.
+
+## Development Quality and Security
+
+### Setup Pre-commit Hooks
+
+**Last performed:** July 2025 (successful implementation)
+**Files to modify:**
+
+- `.pre-commit-config.yaml` - Main pre-commit configuration
+- `.yamllint.yaml` - YAML linting rules optimized for Kubernetes
+- `.markdownlint.yaml` - Markdown validation focusing on structure
+- `.secrets.baseline` - Secret detection baseline for false positives
+
+**Steps:**
+
+1. **One-time Setup**:
+
+   - Install pre-commit tools: `mise install` (includes pre-commit in `.mise.toml`)
+   - Setup pre-commit environment: `task pre-commit:setup`
+   - Install git hooks: `task pre-commit:install`
+
+2. **Verify Installation**:
+
+   - Test all hooks: `task pre-commit:run`
+   - Test security hooks only: `task pre-commit:security`
+   - Test formatting hooks: `task pre-commit:format`
+
+3. **Configure Baseline**:
+
+   - Update secrets baseline: `detect-secrets scan --baseline .secrets.baseline`
+   - Review and approve legitimate secrets in baseline
+   - Commit baseline updates to repository
+
+**Important notes:**
+
+- **Balanced Enforcement**: Security and syntax issues block commits, formatting issues show warnings
+- **Security Priority**: Secret detection and shell script security are enforced after security incident
+- **Developer Friendly**: Formatting warnings don't block development workflow
+- **Comprehensive Coverage**: Validates YAML, Python, Shell, Markdown, and Kubernetes manifests
+
+### Daily Pre-commit Usage
+
+**Last performed:** Ongoing development workflow
+**Files to modify:** Various files during development
+
+**Steps:**
+
+1. **Automatic Validation**:
+
+   - Make changes to files as normal
+   - Commit changes: `git commit -m "your message"`
+   - Pre-commit hooks run automatically
+   - Fix any enforced issues (security, syntax) and commit again
+   - Address formatting warnings when convenient
+
+2. **Manual Validation**:
+
+   - Run all enforced hooks: `task pre-commit:run`
+   - Check formatting issues: `task pre-commit:format`
+   - Security scan only: `task pre-commit:security`
+   - Update hook versions: `task pre-commit:update`
+
+3. **Maintenance Tasks**:
+
+   - Clean pre-commit cache: `task pre-commit:clean`
+   - Uninstall hooks: `task pre-commit:uninstall`
+   - Emergency bypass: `SKIP=hook-name git commit`
+
+**Important notes:**
+
+- **Enforced Hooks**: Secret detection, YAML syntax, Kubernetes validation, Python syntax, shell script security
+- **Warning Hooks**: Code formatting (prettier, black, isort), whitespace cleanup, commit message format
+- **Real Issue Detection**: System identifies actual problems, not just style preferences
+- **Fast Feedback**: Issues caught locally before reaching CI/CD pipeline
+
+### Maintain Pre-commit System
+
+**Last performed:** July 2025 (initial implementation)
+**Files to modify:**
+
+- `.pre-commit-config.yaml` - Hook versions and configuration
+- `.secrets.baseline` - Secret detection baseline management
+- `.yamllint.yaml` - YAML validation rules
+- `.markdownlint.yaml` - Markdown validation rules
+
+**Steps:**
+
+1. **Regular Maintenance**:
+
+   - Update hook versions: `task pre-commit:update`
+   - Review and update `.secrets.baseline` when legitimate secrets change
+   - Adjust validation rules based on false positives
+   - Monitor hook effectiveness and performance
+
+2. **Handle False Positives**:
+
+   - Update `.secrets.baseline` for legitimate secrets
+   - Adjust `.yamllint.yaml` for new Kubernetes patterns
+   - Update exclusion patterns for generated files
+   - Document any permanent exceptions
+
+3. **Configuration Tuning**:
+
+   - Review enforcement vs warning balance based on team feedback
+   - Add new hooks for additional file types as needed
+   - Optimize hook performance for large repositories
+   - Update task commands for improved workflow
+
+4. **Team Adoption**:
+
+   - Train team members on pre-commit workflow
+   - Document troubleshooting procedures
+   - Monitor adoption and address resistance
+   - Collect feedback for continuous improvement
+
+**Important notes:**
+
+- **Baseline Management**: Keep `.secrets.baseline` current with legitimate secrets
+- **Performance Monitoring**: Ensure hooks don't slow down development workflow significantly
+- **Team Communication**: Changes to enforcement levels should be communicated to team
+- **Documentation**: Keep task commands and troubleshooting guides updated
+
+### Troubleshoot Pre-commit Issues
+
+**Last performed:** As needed during development
+**Files to modify:** Various configuration files as needed
+
+**Steps:**
+
+1. **Common Issues and Solutions**:
+
+   - **Hook fails to run**: Check tool installation with `mise install`
+   - **False positive secrets**: Update `.secrets.baseline` with `detect-secrets scan --baseline .secrets.baseline`
+   - **YAML validation errors**: Check syntax with `yamllint -c .yamllint.yaml <file>`
+   - **Kubernetes validation fails**: Verify manifest syntax with `kubectl apply --dry-run=client -f <file>`
+   - **Python syntax errors**: Check with `python -m py_compile <file>`
+
+2. **Performance Issues**:
+
+   - Clean pre-commit cache: `task pre-commit:clean`
+   - Skip slow hooks temporarily: `SKIP=hook-name git commit`
+   - Update to latest hook versions: `task pre-commit:update`
+   - Review file exclusion patterns in `.pre-commit-config.yaml`
+
+3. **Emergency Procedures**:
+
+   - Bypass all hooks: `git commit --no-verify`
+   - Skip specific hook: `SKIP=hook-name git commit`
+   - Uninstall hooks temporarily: `task pre-commit:uninstall`
+   - Reinstall after fixes: `task pre-commit:install`
+
+4. **Configuration Debugging**:
+
+   - Test specific hook: `pre-commit run <hook-name> --all-files`
+   - Verbose output: `pre-commit run --verbose`
+   - Check hook configuration: `pre-commit run --show-diff-on-failure`
+   - Validate configuration: `pre-commit validate-config`
+
+**Important notes:**
+
+- **Emergency Bypasses**: Use `--no-verify` sparingly and fix issues promptly
+- **Team Communication**: Notify team of any temporary hook disabling
+- **Root Cause Analysis**: Address underlying issues rather than just bypassing hooks
+- **Documentation**: Update troubleshooting procedures based on new issues encountered
+
+This task documentation helps maintain consistency and provides clear procedures for the comprehensive pre-commit system implementation.

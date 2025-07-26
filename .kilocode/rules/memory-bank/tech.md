@@ -70,6 +70,20 @@
 - **yq v4.44.3+**: YAML processor
 - **jq v1.7.1+**: JSON processor
 - **op v2.0.0+**: 1Password CLI
+- **pre-commit**: Git hook framework for code quality
+
+### Code Quality Tools
+
+- **detect-secrets**: Secret detection and baseline management
+- **gitleaks**: Git repository secret scanning
+- **yamllint**: YAML syntax and style validation
+- **shellcheck**: Shell script analysis and security
+- **markdownlint**: Markdown structure validation
+- **prettier**: Code formatting for YAML and Markdown
+- **black**: Python code formatting
+- **isort**: Python import sorting
+- **flake8**: Python linting and style checking
+- **pytest**: Python testing framework
 
 ### Development Environment Setup
 
@@ -83,6 +97,27 @@ mise install
 # Configure environment
 cp .env.example .env
 # Edit .env to set OP_ACCOUNT
+```
+
+### Code Quality Workflow
+
+```bash
+# Pre-commit setup (one-time)
+task pre-commit:setup
+task pre-commit:install
+
+# Daily development workflow
+git add .
+git commit -m "your changes"  # Hooks run automatically
+
+# Manual validation
+task pre-commit:run           # All enforced hooks
+task pre-commit:format        # Formatting checks (warnings)
+task pre-commit:security      # Security scans only
+
+# Maintenance
+task pre-commit:update        # Update hook versions
+task pre-commit:clean         # Clean cache
 ```
 
 ## Hardware Architecture
@@ -245,4 +280,31 @@ task storage:validate-usb-ssd # USB SSD validation
 - **External**: Cloudflare-managed certificates
 - **Cluster**: Talos-generated cluster certificates
 
-This technology stack provides a robust, secure, and scalable foundation for home lab operations while demonstrating enterprise-grade Kubernetes practices and GitOps workflows.
+## Code Quality and Security
+
+### Pre-commit Framework
+
+- **Philosophy**: Balanced enforcement approach
+  - **ENFORCED**: Security issues, syntax errors, critical validation
+  - **WARNING**: Code formatting, style preferences, non-critical issues
+- **Coverage**: YAML, Python, Shell, Markdown, Kubernetes manifests
+- **Integration**: Task-based workflow with simple commands
+- **Real Issue Detection**: 600+ actual issues identified across repository
+
+### Security Validation
+
+- **Secret Detection**: detect-secrets with baseline management
+- **Git Leaks**: Additional layer of credential protection
+- **Shell Security**: shellcheck for security best practices
+- **File Validation**: Large file detection, encoding checks
+- **Access Control**: Proper RBAC and security contexts
+
+### Development Standards
+
+- **Syntax Validation**: Prevents broken YAML, Python, shell scripts
+- **Kubernetes Validation**: kubectl dry-run and kustomize validation
+- **Code Formatting**: Consistent style across all file types
+- **Testing**: Automated testing for critical scripts
+- **Documentation**: Markdown validation for readable documentation
+
+This technology stack provides a robust, secure, and scalable foundation for home lab operations while demonstrating enterprise-grade Kubernetes practices, GitOps workflows, and comprehensive code quality standards.
