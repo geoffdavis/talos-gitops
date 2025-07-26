@@ -368,6 +368,187 @@ This task documents the deployment of comprehensive fixes for internal cluster D
 
 This task provides a comprehensive reference for deploying external authentik-proxy URL redirect fixes and implementing hybrid URL architecture for reliable authentication system operation.
 
+### Fix Dashboard Service Configuration for External Authentik-Proxy
+**Last performed:** July 2025 (successful completion - final service fix)
+**Files to modify:**
+- `infrastructure/authentik-proxy/fix-dashboard-service-job.yaml` - GitOps job to update Authentik database
+- Authentik database - Direct database update via Python job
+
+**Context:**
+This task documents the final fix for the dashboard service configuration issue that completed the external Authentik outpost system. The dashboard proxy provider was configured to use a non-existent Kong service (Kong was disabled in the Dashboard HelmRelease), preventing proper authentication flow.
+
+**Root Cause:**
+- **Service Configuration Mismatch**: Dashboard proxy provider in Authentik was configured to forward requests to Kong service
+- **Kong Service Disabled**: Kong was disabled in the Dashboard HelmRelease but proxy provider still referenced Kong service URL
+- **Authentication Failure**: Requests to dashboard.k8s.home.geoffdavis.com failed because proxy provider couldn't reach the configured backend service
+
+**Steps:**
+1. **Root Cause Analysis**:
+   - Identified dashboard service as the final non-working service (5/6 working)
+   - Investigated Dashboard HelmRelease configuration and found Kong disabled
+   - Discovered proxy provider still configured for Kong service URL
+   - Confirmed authentication system working for other 5 services
+
+2. **GitOps Database Update Solution**:
+   - Created Python job to directly update Authentik database
+   - Updated proxy provider configuration to use correct service URL
+   - Used GitOps approach with Kubernetes Job for database modification
+   - Avoided manual database intervention by using automated job
+
+3. **Database Update Job Creation**:
+   - Created `fix-dashboard-service-job.yaml` with Python script
+   - Job connects to Authentik PostgreSQL database
+   - Updates proxy provider external_host field to correct service URL
+   - Includes proper RBAC and database connection configuration
+
+4. **Job Deployment and Execution**:
+   - Deploy job via GitOps: `kubectl apply -f infrastructure/authentik-proxy/fix-dashboard-service-job.yaml`
+   - Monitor job execution: `kubectl logs -n authentik-proxy job/fix-dashboard-service`
+   - Verify database update completed successfully
+   - Confirm job completion status
+
+5. **Service Validation**:
+   - Test dashboard service access: `curl -I https://dashboard.k8s.home.geoffdavis.com`
+   - Verify proper redirect to Authentik authentication
+   - Confirm successful authentication and dashboard access
+   - Validate all 6 services now working (Dashboard was the final service)
+
+6. **System Completion Verification**:
+   - Confirm external outpost shows all 6 services operational
+   - Verify authentication flow working for all services
+   - Test end-to-end SSO functionality across all services
+   - Document system as production-ready and complete
+
+**GitOps Database Update Approach:**
+- **Kubernetes Job**: Used GitOps-managed Kubernetes Job for database updates
+- **Python Script**: Embedded Python script in job for database connection and updates
+- **RBAC Integration**: Proper service account and permissions for database access
+- **Automated Execution**: No manual intervention required, fully automated via GitOps
+- **Audit Trail**: Job logs provide complete audit trail of database changes
+
+**Important notes:**
+- **Final Service Fix**: This was the last service needed to complete the external authentik-proxy system
+- **GitOps Approach**: Used Kubernetes Job instead of manual database intervention
+- **Root Cause**: Service configuration mismatch, not authentication system problem
+- **System Completion**: All 6 services now operational, external outpost system complete
+- **Production Ready**: External authentik-proxy system now fully production-ready
+
+**Success Criteria:**
+- ✅ Dashboard service accessible via https://dashboard.k8s.home.geoffdavis.com
+- ✅ Proper authentication redirect to Authentik login
+- ✅ Successful authentication and dashboard access
+- ✅ All 6 services operational (Longhorn, Grafana, Prometheus, AlertManager, Hubble, Dashboard)
+- ✅ External outpost system complete and production-ready
+- ✅ GitOps database update job completed successfully
+
+**Post-Fix Status:**
+- **System Status**: External authentik-proxy system COMPLETE and PRODUCTION-READY
+- **Service Count**: 6/6 services working correctly with authentication
+- **Authentication Architecture**: External outpost architecture fully operational
+- **Documentation**: Comprehensive operational procedures and troubleshooting guides complete
+
+**Troubleshooting:**
+- **Service configuration mismatches**: Check HelmRelease configuration vs proxy provider settings
+- **Database connection issues**: Verify PostgreSQL connectivity and credentials
+- **Job execution failures**: Check RBAC permissions and database access
+- **Authentication flow problems**: Verify proxy provider configuration matches actual service endpoints
+
+This task represents the final completion of the comprehensive external Authentik outpost system that began in July 2025, with all authentication and service connectivity issues now resolved.
+
+### Configure Kubernetes Dashboard Bearer Token Elimination
+**Last performed:** July 2025 (successful completion - COMPLETED)
+**Files to modify:**
+- `apps/dashboard/kong-config-override-job.yaml` - Remove problematic configuration job (DELETE FILE)
+- `apps/dashboard/dashboard-service-account.yaml` - Enhance RBAC permissions for administrative access
+- Browser cache - Clear cache to ensure configuration changes take effect
+
+**Context:**
+This task documents the successful elimination of manual bearer token requirements for Kubernetes Dashboard access through comprehensive authentication integration with the existing external Authentik outpost system. The project resolved conflicting Kong configuration jobs and enhanced RBAC permissions to provide seamless SSO access with full administrative capabilities.
+
+**Root Cause:**
+- **Kong Configuration Conflicts**: Multiple Kong configuration jobs were overriding each other, preventing proper Dashboard authentication integration
+- **RBAC Permission Limitations**: Dashboard service account lacked sufficient permissions for full administrative access
+- **Authentication Integration Gap**: Dashboard was not properly integrated with the external Authentik outpost authentication system
+
+**Steps:**
+1. **Root Cause Analysis**:
+   - Identified conflicting Kong configuration jobs in Dashboard deployment
+   - Discovered `kong-config-override-job.yaml` was overriding proper authentication configuration
+   - Confirmed external Authentik outpost system was operational for other 5 services
+   - Analyzed Dashboard service account RBAC permissions
+
+2. **Kong Configuration Conflict Resolution**:
+   - Located problematic `kong-config-override-job.yaml` file in Dashboard configuration
+   - Identified that this job was overriding proper Kong service configuration
+   - Removed the conflicting configuration job to allow proper authentication flow
+   - Verified that Dashboard HelmRelease had Kong disabled as intended
+
+3. **RBAC Permissions Enhancement**:
+   - Updated Dashboard service account with proper cluster-admin permissions
+   - Enhanced ClusterRoleBinding to provide full administrative access
+   - Ensured service account has sufficient permissions for Dashboard functionality
+   - Validated RBAC configuration matches administrative requirements
+
+4. **Authentication System Integration**:
+   - Verified Dashboard proxy provider configuration in Authentik admin interface
+   - Confirmed external outpost was handling Dashboard authentication requests
+   - Tested authentication flow integration with existing external Authentik outpost
+   - Validated seamless SSO integration with other cluster services
+
+5. **Configuration Deployment and Testing**:
+   - Committed all configuration changes to Git repository
+   - Deployed changes via GitOps using Flux reconciliation
+   - Cleared browser cache to ensure configuration changes take effect (CRITICAL STEP)
+   - Tested Dashboard access via https://dashboard.k8s.home.geoffdavis.com
+
+6. **Production Validation**:
+   - Confirmed Dashboard no longer requires manual bearer token entry
+   - Verified seamless SSO authentication through Authentik
+   - Tested full administrative access and Dashboard functionality
+   - Validated integration with existing external outpost architecture
+
+**Kong Configuration Cleanup Process:**
+- **File Identification**: Located `kong-config-override-job.yaml` causing configuration conflicts
+- **Conflict Analysis**: Determined job was overriding proper Kong service configuration
+- **Safe Removal**: Deleted problematic configuration job while preserving other Dashboard components
+- **Validation**: Confirmed Dashboard HelmRelease configuration remained intact with Kong disabled
+
+**RBAC Enhancement Details:**
+- **Service Account**: Updated Dashboard service account with enhanced permissions
+- **ClusterRoleBinding**: Configured proper cluster-admin access for administrative functionality
+- **Permission Validation**: Tested administrative access and Dashboard feature availability
+- **Security Review**: Ensured permissions are appropriate for Dashboard administrative use
+
+**Important notes:**
+- **Browser Cache Clearing**: CRITICAL step for ensuring configuration changes take effect
+- **Kong Configuration**: Dashboard HelmRelease has Kong disabled, conflicting jobs must be removed
+- **External Outpost Integration**: Dashboard authentication fully integrated with existing external outpost system
+- **Production Ready**: All changes committed to Git and deployed via GitOps for production use
+- **Administrative Access**: Dashboard now provides full administrative capabilities without manual token entry
+
+**Success Criteria:**
+- ✅ Dashboard accessible via https://dashboard.k8s.home.geoffdavis.com without manual bearer token
+- ✅ Seamless SSO authentication through Authentik external outpost
+- ✅ Full administrative access and Dashboard functionality available
+- ✅ Kong configuration conflicts resolved and removed
+- ✅ RBAC permissions enhanced for proper administrative access
+- ✅ All changes committed to Git and deployed via GitOps
+
+**Post-Completion Status:**
+- **Authentication System**: Dashboard authentication fully integrated with external Authentik outpost
+- **User Experience**: Seamless SSO access without manual token requirements
+- **Administrative Access**: Full cluster administrative capabilities available through Dashboard
+- **Production Deployment**: All changes committed to Git and operational in production
+- **System Integration**: Dashboard now part of comprehensive authentication system with other 5 services
+
+**Troubleshooting:**
+- **Authentication failures**: Clear browser cache and verify external outpost connectivity
+- **Permission issues**: Check Dashboard service account RBAC configuration
+- **Configuration conflicts**: Ensure no conflicting Kong configuration jobs exist
+- **SSO integration problems**: Verify Dashboard proxy provider configuration in Authentik admin interface
+
+This task represents the successful completion of the Kubernetes Dashboard bearer token elimination project, providing seamless SSO access and full administrative capabilities through integration with the existing external Authentik outpost system.
+
 ## Monitoring and Maintenance
 
 ### Update Monitoring Dashboards
