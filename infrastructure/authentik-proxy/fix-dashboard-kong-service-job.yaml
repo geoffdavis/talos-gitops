@@ -1,0 +1,168 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-dashboard-kong-service-config
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/component: kong-configuration-fix
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: fix-dashboard-kong-config
+        image: python:3.11-slim
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          seccompProfile:
+            type: RuntimeDefault
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          export HOME=/tmp
+          echo "Installing required packages..."
+          pip install --user requests urllib3
+          
+          echo "Starting dashboard Kong proxy provider configuration..."
+          
+          cat << 'EOF' > /tmp/fix_dashboard_kong.py
+          import requests
+          import json
+          import os
+          import sys
+          from urllib3.exceptions import InsecureRequestWarning
+          requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+          
+          # Configuration
+          AUTHENTIK_HOST = os.environ.get('AUTHENTIK_HOST', 'http://authentik-server.authentik.svc.cluster.local:80')
+          AUTHENTIK_TOKEN = os.environ.get('AUTHENTIK_TOKEN', '')
+          
+          if not AUTHENTIK_TOKEN:
+              print("ERROR: AUTHENTIK_TOKEN environment variable is required")
+              sys.exit(1)
+          
+          headers = {
+              'Authorization': f'Bearer {AUTHENTIK_TOKEN}',
+              'Content-Type': 'application/json'
+          }
+          
+          def get_proxy_providers():
+              """Get all proxy providers"""
+              try:
+                  response = requests.get(f'{AUTHENTIK_HOST}/api/v3/providers/proxy/', headers=headers, verify=False)
+                  response.raise_for_status()
+                  return response.json()['results']
+              except Exception as e:
+                  print(f"Error getting proxy providers: {e}")
+                  return []
+          
+          def update_dashboard_provider(provider_id, provider_data):
+              """Update dashboard proxy provider to point to Kong service"""
+              try:
+                  # Update the internal_host to point to Kong service instead of web service
+                  provider_data['internal_host'] = 'http://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:8000'
+                  
+                  # Configure for header-based authentication
+                  provider_data['mode'] = 'forward_single'
+                  provider_data['skip_path_regex'] = '^/api/.*$'
+                  provider_data['basic_auth_enabled'] = False
+                  provider_data['internal_host_ssl_validation'] = False
+                  
+                  # Set cookie domain for proper session handling
+                  provider_data['cookie_domain'] = 'k8s.home.geoffdavis.com'
+                  
+                  response = requests.put(
+                      f'{AUTHENTIK_HOST}/api/v3/providers/proxy/{provider_id}/',
+                      headers=headers,
+                      json=provider_data,
+                      verify=False
+                  )
+                  response.raise_for_status()
+                  print(f"✅ Updated dashboard proxy provider {provider_id} to use Kong service")
+                  return True
+              except Exception as e:
+                  print(f"❌ Error updating dashboard provider {provider_id}: {e}")
+                  if hasattr(e, 'response') and e.response:
+                      print(f"Response: {e.response.text}")
+                  return False
+          
+          def main():
+              print("🔍 Searching for dashboard proxy provider...")
+              
+              providers = get_proxy_providers()
+              if not providers:
+                  print("❌ No proxy providers found")
+                  return False
+              
+              dashboard_provider = None
+              for provider in providers:
+                  # Look for dashboard provider by name or external_host
+                  if ('dashboard' in provider.get('name', '').lower() or 
+                      'dashboard.k8s.home.geoffdavis.com' in provider.get('external_host', '')):
+                      dashboard_provider = provider
+                      break
+              
+              if not dashboard_provider:
+                  print("❌ Dashboard proxy provider not found")
+                  print("Available providers:")
+                  for provider in providers:
+                      print(f"  - {provider.get('name', 'N/A')}: {provider.get('external_host', 'N/A')}")
+                  return False
+              
+              print(f"📋 Found dashboard provider: {dashboard_provider['name']}")
+              print(f"   Current internal_host: {dashboard_provider.get('internal_host', 'N/A')}")
+              print(f"   External host: {dashboard_provider.get('external_host', 'N/A')}")
+              print(f"   Mode: {dashboard_provider.get('mode', 'N/A')}")
+              
+              # Check if it's already pointing to Kong
+              kong_service_url = 'http://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:8000'
+              if dashboard_provider.get('internal_host') == kong_service_url:
+                  print("✅ Dashboard provider already points to Kong service")
+                  return True
+              
+              # Update the provider to point to Kong
+              print("🔧 Updating dashboard proxy provider to use Kong service...")
+              success = update_dashboard_provider(dashboard_provider['pk'], dashboard_provider)
+              
+              if success:
+                  print("✅ Dashboard proxy provider configuration updated!")
+                  print(f"   New internal_host: {kong_service_url}")
+                  print("   Mode: forward_single (header-based authentication)")
+                  print("   Kong will now handle authentication headers from Authentik outpost")
+              
+              return success
+          
+          if __name__ == "__main__":
+              success = main()
+              sys.exit(0 if success else 1)
+          EOF
+          
+          echo "Running dashboard Kong configuration fix..."
+          python /tmp/fix_dashboard_kong.py
+          
+          echo "Dashboard Kong proxy provider fix completed!"
+        env:
+        - name: AUTHENTIK_HOST
+          value: "http://authentik-server.authentik.svc.cluster.local:80"
+        - name: AUTHENTIK_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: authentik-admin-token
+              key: token
+      serviceAccountName: authentik-proxy

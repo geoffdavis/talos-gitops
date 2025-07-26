@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-dashboard-kong-config
+  namespace: kubernetes-dashboard
+data:
+  kong.yml: |
+    _format_version: "3.0"
+    _transform: true
+    
+    services:
+    - name: dashboard-api
+      url: http://kubernetes-dashboard-api.kubernetes-dashboard.svc.cluster.local:8000
+      plugins:
+      - name: request-transformer
+        config:
+          add:
+            headers:
+            - "X-Auth-Request-User:$(headers.x-authentik-username)"
+            - "X-Auth-Request-Email:$(headers.x-authentik-email)"
+            - "X-Auth-Request-Groups:$(headers.x-authentik-groups)"
+            - "Authorization:Bearer $(headers.x-authentik-token)"
+          remove:
+            headers:
+            - "x-authentik-token"  # Remove sensitive token after using it
+      - name: cors
+        config:
+          origins:
+          - "https://dashboard.k8s.home.geoffdavis.com"
+          methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+          - PATCH
+          headers:
+          - Accept
+          - Accept-Version
+          - Content-Length
+          - Content-MD5
+          - Content-Type
+          - Date
+          - X-Auth-Request-User
+          - X-Auth-Request-Email
+          - X-Auth-Request-Groups
+          - X-Authentik-Username
+          - X-Authentik-Email
+          - X-Authentik-Groups
+          - Authorization
+          credentials: true
+          max_age: 3600
+    
+    - name: dashboard-web
+      url: http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000
+      plugins:
+      - name: request-transformer
+        config:
+          add:
+            headers:
+            - "X-Auth-Request-User:$(headers.x-authentik-username)"
+            - "X-Auth-Request-Email:$(headers.x-authentik-email)"
+            - "X-Auth-Request-Groups:$(headers.x-authentik-groups)"
+      - name: cors
+        config:
+          origins:
+          - "https://dashboard.k8s.home.geoffdavis.com"
+          methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+          headers:
+          - Accept
+          - Accept-Version
+          - Content-Length
+          - Content-MD5
+          - Content-Type
+          - Date
+          - X-Auth-Request-User
+          - X-Auth-Request-Email
+          - X-Auth-Request-Groups
+          - X-Authentik-Username
+          - X-Authentik-Email
+          - X-Authentik-Groups
+          credentials: true
+          max_age: 3600
+    
+    routes:
+    - name: dashboard-api-route
+      service: dashboard-api
+      paths:
+      - /api
+      strip_path: false
+      preserve_host: true
+      
+    - name: dashboard-web-route
+      service: dashboard-web
+      paths:
+      - /
+      strip_path: false
+      preserve_host: true
+      
+    # Global plugins
+    plugins:
+    - name: request-id
+      config:
+        header_name: X-Request-ID
+        generator: uuid
+        
+    - name: correlation-id
+      config:
+        header_name: X-Correlation-ID
+        generator: uuid
+        
+    # Security headers
+    - name: response-transformer
+      config:
+        add:
+          headers:
+          - "X-Frame-Options:SAMEORIGIN"
+          - "X-Content-Type-Options:nosniff"
+          - "X-XSS-Protection:1; mode=block"
+          - "Referrer-Policy:strict-origin-when-cross-origin"

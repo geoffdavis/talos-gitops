@@ -4,3 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - kubernetes-dashboard.yaml
+  - dashboard-service-account.yaml
+  - kong-config.yaml
+  - kong-config-override-job.yaml
+  - kong-token-injection-job.yaml
