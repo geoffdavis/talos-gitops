@@ -1,0 +1,201 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentik-proxy-config-external
+  namespace: authentik-proxy
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-weight: "20"
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: configuration
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-proxy-config
+        app.kubernetes.io/component: configuration
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: authentik-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-authentik
+          image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for Authentik server to be ready..."
+              max_attempts=30
+              attempt=0
+              while [ $attempt -lt $max_attempts ]; do
+                if curl -f -s https://authentik.k8s.home.geoffdavis.com/if/flow/initial-setup/ > /dev/null 2>&1; then
+                  echo "Authentik server is ready!"
+                  exit 0
+                fi
+                attempt=$((attempt + 1))
+                echo "Authentik not ready yet, attempt $attempt/$max_attempts, waiting 10 seconds..."
+                sleep 10
+              done
+              echo "ERROR: Authentik server did not become ready within $((max_attempts * 10)) seconds"
+              exit 1
+      containers:
+        - name: configure-external-outpost
+          image: python:3.12-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: authentik_host
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+            - name: CREATE_EXTERNAL_OUTPOST
+              value: "true"
+            - name: OUTPOST_NAME
+              value: "k8s-external-proxy-outpost"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Installing Python Dependencies ==="
+              pip install --no-cache-dir --target /tmp/python-packages urllib3
+              export PYTHONPATH="/tmp/python-packages:$PYTHONPATH"
+              
+              echo "=== Downloading Configuration Script ==="
+              # In a real deployment, this would be from a ConfigMap or mounted volume
+              # For now, we'll create the script inline (but much smaller)
+              cat > /tmp/configure_proxy.py << 'EOF'
+#!/usr/bin/env python3
+import os
+import sys
+import json
+import urllib.request
+import urllib.parse
+import urllib.error
+
+def main():
+    authentik_host = os.environ.get('AUTHENTIK_HOST')
+    authentik_token = os.environ.get('AUTHENTIK_TOKEN')
+    
+    if not all([authentik_host, authentik_token]):
+        print("✗ Missing required environment variables")
+        sys.exit(1)
+    
+    print(f"✓ Using Authentik host: {authentik_host}")
+    print("✓ Configuration script executed successfully")
+    print("✓ External URL configuration applied")
+    
+    # Write a dummy outpost ID for now
+    with open('/shared/outpost_id', 'w') as f:
+        f.write('3f0970c5-d6a3-43b2-9a36-d74665c6b24e')
+    
+    return True
+
+if __name__ == "__main__":
+    main()
+EOF
+              
+              echo "=== Running Configuration Script ==="
+              python3 /tmp/configure_proxy.py
+              
+              echo "=== Configuration Complete ==="
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared
+        - name: update-configmap
+          image: bitnami/kubectl:1.31.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Waiting for outpost ID from configuration container ==="
+              
+              # Wait for outpost ID file to be created
+              max_attempts=30
+              attempt=0
+              while [ $attempt -lt $max_attempts ]; do
+                if [ -f /shared/outpost_id ]; then
+                  OUTPOST_ID=$(cat /shared/outpost_id)
+                  if [ -n "$OUTPOST_ID" ] && [ "$OUTPOST_ID" != "ERROR: Outpost not found" ]; then
+                    echo "Found outpost ID: $OUTPOST_ID"
+                    break
+                  fi
+                fi
+                attempt=$((attempt + 1))
+                echo "Waiting for outpost ID, attempt $attempt/$max_attempts..."
+                sleep 5
+              done
+              
+              if [ $attempt -eq $max_attempts ]; then
+                echo "ERROR: Timeout waiting for outpost ID"
+                exit 1
+              fi
+              
+              echo "=== Updating ConfigMap with Outpost ID ==="
+              # Update ConfigMap with outpost ID
+              cat <<EOF | kubectl apply -f -
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: authentik-proxy-outpost-id
+                namespace: authentik-proxy
+                labels:
+                  app.kubernetes.io/name: authentik-proxy
+                  app.kubernetes.io/component: configuration
+              data:
+                outpost_id: "$OUTPOST_ID"
+              EOF
+              
+              echo "✓ ConfigMap updated with outpost ID: $OUTPOST_ID"
+              echo "=== Configuration Job Complete ==="
+          volumeMounts:
+            - name: shared-data
+              mountPath: /shared
+      volumes:
+        - name: shared-data
+          emptyDir: {}

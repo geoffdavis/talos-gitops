@@ -114,8 +114,8 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 #### 3. Identity Management
 - **Authentik**: [`infrastructure/authentik/`](../infrastructure/authentik/) - Complete SSO identity provider
 - **PostgreSQL Backend**: [`infrastructure/postgresql-cluster/`](../infrastructure/postgresql-cluster/) - Database for Authentik
-- **External Authentik-Proxy**: [`infrastructure/authentik-proxy/`](../infrastructure/authentik-proxy/) - External outpost for Kubernetes services
-- **Authentication Architecture**: External outpost handles all *.k8s.home.geoffdavis.com services with dedicated deployment and Redis session storage
+- **External Authentik-Proxy**: [`infrastructure/authentik-proxy/`](../infrastructure/authentik-proxy/) - External outpost for Kubernetes services with hybrid URL architecture
+- **Authentication Architecture**: External outpost handles all *.k8s.home.geoffdavis.com services with dedicated deployment, Redis session storage, and hybrid URL configuration for DNS resolution
 
 ## Key Technical Decisions
 
@@ -179,14 +179,18 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 ### External Outpost Architecture Details
 - **Deployment Model**: Standalone external outpost deployment separate from Authentik server
 - **Components**:
-  - **authentik-proxy deployment**: External outpost pods running proxy functionality
+  - **authentik-proxy deployment**: External outpost pods running proxy functionality with hybrid URL architecture
   - **Redis instance**: Dedicated Redis for session storage and caching
   - **Ingress controller**: BGP load balancer integration for *.k8s.home.geoffdavis.com domains
   - **Secret management**: ExternalSecret integration with 1Password for API tokens
 - **Outpost Registration**: External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered with Authentik server
-- **Configuration Management**: Python-based configuration scripts for proxy provider setup
+- **Configuration Management**: Hybrid URL architecture with internal service URLs for outpost connections and external URLs for user redirects
+- **URL Architecture**:
+  - **Internal Connections**: `http://authentik-server.authentik.svc.cluster.local:80` for outpost-to-Authentik communication
+  - **External Redirects**: `https://authentik.k8s.home.geoffdavis.com` for user browser redirects
+  - **DNS Resolution**: Resolves cluster DNS conflicts by separating internal and external URL usage
 - **Scalability**: Independent scaling of authentication proxy separate from identity provider
-- **Reliability**: Improved fault isolation between authentication proxy and identity provider
+- **Reliability**: Improved fault isolation between authentication proxy and identity provider with robust DNS resolution
 
 ## Critical Implementation Paths
 

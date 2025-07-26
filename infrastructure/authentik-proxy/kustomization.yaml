@@ -13,6 +13,7 @@ resources:
   # Configuration and secrets
   - configmap.yaml
   - secret.yaml
+  - external-outpost-secret.yaml
   - outpost-id-configmap.yaml
   
   # Redis for session storage
@@ -25,9 +26,6 @@ resources:
   
   # Configuration job (simplified)
   - proxy-config-job-simple.yaml
-  
-  # OAuth2 redirect URL fix job
-  - fix-oauth2-redirect-urls-job.yaml
 
 commonLabels:
   app.kubernetes.io/name: authentik-proxy

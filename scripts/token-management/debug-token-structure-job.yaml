@@ -1,0 +1,163 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: debug-token-structure
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: debug-token-structure
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: token-management
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: debug-token-structure
+        app.kubernetes.io/part-of: identity-provider
+        app.kubernetes.io/component: token-management
+    spec:
+      restartPolicy: Never
+      serviceAccountName: authentik-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: debug-tokens
+          image: python:3.11-slim
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.authentik.svc.cluster.local:80"
+            - name: AUTHENTIK_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              
+              echo "=== Authentik Token Structure Debug ==="
+              
+              cat > /tmp/debug-tokens.py << 'EOF'
+              #!/usr/bin/env python3
+              import os
+              import sys
+              import json
+              import urllib.request
+              import urllib.parse
+              import urllib.error
+              
+              authentik_host = os.environ.get('AUTHENTIK_HOST')
+              admin_token = os.environ.get('AUTHENTIK_ADMIN_TOKEN')
+              
+              headers = {
+                  'Authorization': f'Bearer {admin_token}',
+                  'Content-Type': 'application/json'
+              }
+              
+              def make_request(url):
+                  try:
+                      request = urllib.request.Request(url, headers=headers)
+                      with urllib.request.urlopen(request) as response:
+                          return json.loads(response.read().decode('utf-8'))
+                  except Exception as e:
+                      print(f"Error: {e}")
+                      return None
+              
+              print("=== All Tokens ===")
+              tokens_url = f'{authentik_host}/api/v3/core/tokens/'
+              tokens_data = make_request(tokens_url)
+              
+              if tokens_data:
+                  for i, token in enumerate(tokens_data.get('results', []), 1):
+                      print(f"\nToken {i}:")
+                      print(f"  PK: {token.get('pk', 'N/A')}")
+                      print(f"  Identifier: {token.get('identifier', 'N/A')}")
+                      print(f"  Description: {token.get('description', 'N/A')}")
+                      print(f"  User: {token.get('user', 'N/A')}")
+                      print(f"  Intent: {token.get('intent', 'N/A')}")
+                      print(f"  Expiring: {token.get('expiring', 'N/A')}")
+                      print(f"  Expires: {token.get('expires', 'N/A')}")
+                      
+                      # Check if key field exists
+                      if 'key' in token:
+                          key = token['key']
+                          if key:
+                              print(f"  Key: {key[:20]}... (truncated)")
+                          else:
+                              print(f"  Key: EMPTY")
+                      else:
+                          print(f"  Key: FIELD NOT PRESENT")
+                      
+                      # Print all fields for debugging
+                      print(f"  All fields: {list(token.keys())}")
+              
+              print("\n=== All Outposts ===")
+              outposts_url = f'{authentik_host}/api/v3/outposts/instances/'
+              outposts_data = make_request(outposts_url)
+              
+              if outposts_data:
+                  for i, outpost in enumerate(outposts_data.get('results', []), 1):
+                      print(f"\nOutpost {i}:")
+                      print(f"  PK: {outpost.get('pk', 'N/A')}")
+                      print(f"  Name: {outpost.get('name', 'N/A')}")
+                      print(f"  Type: {outpost.get('type', 'N/A')}")
+                      print(f"  Providers: {outpost.get('providers', [])}")
+                      
+                      # Check if there's a token_identifier field
+                      if 'token_identifier' in outpost:
+                          print(f"  Token Identifier: {outpost['token_identifier']}")
+                      
+                      # Print all fields for debugging
+                      print(f"  All fields: {list(outpost.keys())}")
+              
+              print("\n=== Outpost Service Connections ===")
+              service_connections_url = f'{authentik_host}/api/v3/outposts/service_connections/'
+              sc_data = make_request(service_connections_url)
+              
+              if sc_data:
+                  for i, sc in enumerate(sc_data.get('results', []), 1):
+                      print(f"\nService Connection {i}:")
+                      print(f"  PK: {sc.get('pk', 'N/A')}")
+                      print(f"  Name: {sc.get('name', 'N/A')}")
+                      print(f"  Component: {sc.get('component', 'N/A')}")
+                      print(f"  All fields: {list(sc.keys())}")
+              
+              EOF
+              
+              python3 /tmp/debug-tokens.py
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+  backoffLimit: 3
+  activeDeadlineSeconds: 300

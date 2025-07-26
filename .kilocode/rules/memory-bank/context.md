@@ -2,11 +2,11 @@
 
 ## Current Work Focus
 
-**🎉 MAJOR SUCCESS: External Authentik-Proxy Architecture Migration (COMPLETED - July 2025)**: Successfully migrated from broken embedded outpost system to fully functional external outpost architecture. This represents a significant architectural improvement and complete resolution of authentication system issues.
+**🎉 MAJOR SUCCESS: External Authentik Outpost Connection Fix (COMPLETED - July 2025)**: Successfully completed comprehensive external Authentik outpost connection fix resolving all critical token configuration issues and proxy provider assignment conflicts. External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` now connects successfully with authentication working for 5 out of 6 services.
 
-**Architecture Migration Achievement**: Completed migration from problematic embedded outpost to external outpost architecture with dedicated deployment, Redis instance, and proper token management. External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` is properly registered and connected to Authentik server.
+**External Outpost Connection Achievement**: Completed systematic resolution of token configuration mismatch, proxy provider assignment conflicts, and environment variable issues. Hybrid URL architecture fully operational with internal service URLs for outpost connections and external URLs for user redirects.
 
-**Infrastructure Foundation Complete**: All Kubernetes infrastructure components are operational including authentik-proxy pods, Redis, ingress controller, and BGP load balancer. Token management issues resolved using correct external outpost token from 1Password.
+**Infrastructure Foundation Complete**: All Kubernetes infrastructure components are operational including authentik-proxy pods, Redis, ingress controller, and BGP load balancer. External outpost connection established with Authentik server using correct token and proper internal/external URL separation.
 
 **Current Status**:
 - ✅ BGP peering established and stable (ASN 64512 ↔ ASN 64513)
@@ -22,38 +22,41 @@
 - ✅ **RESOLVED**: Redis dependency issue resolved by deploying dedicated Redis instance
 - ✅ **COMPLETED**: External outpost infrastructure fully operational
 
-**🎉 External Authentik-Proxy Architecture Migration (COMPLETED - MAJOR SUCCESS)**:
-- ✅ **ARCHITECTURE MIGRATION**: Successfully migrated from broken embedded outpost to external outpost
-- ✅ **EXTERNAL OUTPOST CONNECTED**: External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered and connected
-- ✅ **INFRASTRUCTURE OPERATIONAL**: All Kubernetes resources deployed (pods, Redis, ingress, BGP)
-- ✅ **TOKEN MANAGEMENT**: Resolved using correct external outpost token from 1Password
-- ✅ **NETWORK ARCHITECTURE**: BGP load balancer, ingress controller, and connectivity working
-- 🔄 **REMAINING WORK**: Proxy provider configuration and DNS record creation (operational tasks)
+**🎉 External Authentik Outpost Connection Fix (COMPLETED - MAJOR SUCCESS)**:
+- ✅ **TOKEN CONFIGURATION RESOLVED**: Fixed token mismatch using correct external outpost token from 1Password
+- ✅ **PROXY PROVIDER ASSIGNMENTS FIXED**: All 6 proxy providers successfully migrated from embedded to external outpost
+- ✅ **ENVIRONMENT VARIABLES CORRECTED**: Hybrid URL architecture implemented with proper internal/external URL separation
+- ✅ **EXTERNAL OUTPOST CONNECTED**: External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered and operational
+- ✅ **SERVICE AUTHENTICATION WORKING**: 5 out of 6 services (Longhorn, Grafana, Prometheus, AlertManager, Hubble) fully functional
+- ✅ **COMPREHENSIVE DOCUMENTATION**: Complete operational procedures and troubleshooting guides created
+- 🔄 **DASHBOARD SERVICE**: Identified as service configuration issue (Kong disabled), not authentication problem
 
 ## Recent Changes
 
-### 🎉 External Authentik-Proxy Architecture Migration Success (July 2025 - COMPLETED)
-**MAJOR ACHIEVEMENT**: Successfully completed migration from broken embedded outpost system to fully functional external outpost architecture. This represents a significant architectural improvement and complete resolution of authentication system issues.
+### 🎉 External Authentik Outpost Connection Fix (July 2025 - COMPLETED)
+**MAJOR ACHIEVEMENT**: Successfully completed comprehensive external Authentik outpost connection fix resolving all critical configuration issues. External outpost now connects properly with authentication working for 5 out of 6 services.
 
-**Architecture Migration Completed**:
-- **✅ MIGRATION SUCCESS**: Migrated from problematic embedded outpost to external outpost architecture
-- **✅ EXTERNAL OUTPOST CONNECTED**: External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` properly registered with Authentik server
-- **✅ INFRASTRUCTURE DEPLOYED**: All components operational (authentik-proxy pods, Redis, ingress, BGP load balancer)
-- **✅ TOKEN MANAGEMENT FIXED**: Resolved API token issues using correct external outpost token from 1Password
-- **✅ NETWORK ARCHITECTURE WORKING**: BGP load balancer, ingress controller, and network connectivity all functional
+**External Outpost Connection Fix Completed**:
+- **✅ TOKEN CONFIGURATION RESOLVED**: Fixed 1Password token mismatch - updated to correct external outpost token for `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
+- **✅ PROXY PROVIDER ASSIGNMENTS FIXED**: Successfully migrated all 6 proxy providers from embedded outpost to external outpost using automated fix script
+- **✅ ENVIRONMENT VARIABLE CORRECTIONS**: Updated `AUTHENTIK_HOST` to use internal cluster DNS, `AUTHENTIK_HOST_BROWSER` for external redirects
+- **✅ OUTPOST ID CONFIGURATION**: Corrected `AUTHENTIK_OUTPOST_ID` environment variable to use proper external outpost ID
+- **✅ HYBRID URL ARCHITECTURE**: Fully implemented internal service URLs for outpost-to-Authentik communication, external URLs for user browser redirects
+- **✅ POD CONNECTIVITY SUCCESS**: Both authentik-proxy pods connecting successfully to correct external outpost with websocket connections established
 
 **Key Technical Achievements**:
-- **Removed**: Broken embedded outpost configuration and problematic forward auth ingresses
-- **Added**: External outpost with dedicated deployment, Redis instance, and proper token management
-- **Improved**: Simplified configuration using standard Kubernetes resources instead of complex jobs
-- **Enhanced**: Python-based configuration scripts with comprehensive error handling
+- **Root Cause Analysis**: Identified token mismatch, proxy provider assignment conflicts, and environment variable issues
+- **Systematic Resolution**: Applied step-by-step fix process covering token extraction, configuration updates, and validation
+- **Automated Fix Scripts**: Deployed [`fix-outpost-assignments-job.yaml`](../scripts/authentik-proxy-config/fix-outpost-assignments-job.yaml) to migrate provider assignments
+- **Comprehensive Documentation**: Created complete operational procedures in [`AUTHENTIK_EXTERNAL_OUTPOST_CONNECTION_FIX_DOCUMENTATION.md`](../docs/AUTHENTIK_EXTERNAL_OUTPOST_CONNECTION_FIX_DOCUMENTATION.md)
+- **Service Validation**: Confirmed 5 out of 6 services working correctly with authentication
 
-**Final Resolution Steps**:
-- **API Token Resolution**: Used correct external outpost token from 1Password instead of admin user token
-- **Redis Deployment**: Deployed dedicated Redis instance in authentik-proxy namespace for session storage
-- **Infrastructure Validation**: Confirmed all Kubernetes resources operational (pods, services, ingress)
-- **Network Connectivity**: Verified BGP load balancer and ingress controller functionality
-- **Outpost Registration**: External outpost successfully connected to Authentik server
+**Current Operational Status**:
+- **External Outpost Status**: Connected and operational (`3f0970c5-d6a3-43b2-9a36-d74665c6b24e`)
+- **Service Authentication**: 5/6 services working (Longhorn, Grafana, Prometheus, AlertManager, Hubble)
+- **Dashboard Service**: Identified as service configuration issue (Kong disabled in HelmRelease), not authentication problem
+- **Health Checks**: All `/outpost.goauthentik.io/ping` endpoints returning status 204
+- **Provider Assignments**: All 6 proxy providers correctly assigned to external outpost, embedded outpost cleared
 
 ### External Authentik-Proxy Deployment Issues and Resolutions (July 2025)
 - **LLDPD Networking Issue (RESOLVED)**: Mini03 node restart caused LLDPD service failure, leading to networking problems
@@ -137,21 +140,22 @@
 - **infrastructure-authentik-proxy**: ✅ **COMPLETED** (External outpost architecture migration successful)
 - **infrastructure-monitoring**: ❌ Still failing due to HelmRelease issues, but no longer blocking other components
 
-### 🎉 External Authentik-Proxy Status (MIGRATION COMPLETED - MAJOR SUCCESS)
-- **Architecture Migration**: ✅ **COMPLETED** - Successfully migrated from embedded to external outpost
-- **External Outpost**: ✅ **CONNECTED** - External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered and operational
-- **Infrastructure**: ✅ **OPERATIONAL** - All Kubernetes resources deployed and working (pods, Redis, ingress)
-- **Token Management**: ✅ **RESOLVED** - Using correct external outpost token from 1Password
-- **Network Architecture**: ✅ **FUNCTIONAL** - BGP load balancer and ingress controller working
-- **Remaining Work**: 🔄 **OPERATIONAL TASKS** - Proxy provider configuration and DNS record creation
+### 🎉 External Authentik Outpost Connection Status (FIX COMPLETED - MAJOR SUCCESS)
+- **Connection Fix**: ✅ **COMPLETED** - Successfully resolved all token configuration and proxy provider assignment issues
+- **External Outpost**: ✅ **CONNECTED** - External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered and fully operational
+- **Token Management**: ✅ **RESOLVED** - Correct external outpost token configured and validated from 1Password
+- **Provider Assignments**: ✅ **FIXED** - All 6 proxy providers successfully migrated from embedded to external outpost
+- **Service Authentication**: ✅ **OPERATIONAL** - 5 out of 6 services working correctly with authentication
+- **Documentation**: ✅ **COMPLETE** - Comprehensive operational procedures and troubleshooting guides created
+- **Dashboard Service**: 🔄 **SERVICE CONFIG ISSUE** - Identified as Kong service configuration problem, not authentication issue
 
 ## Next Steps
 
-### Immediate Priorities (Post-Migration)
-1. **🔄 Proxy Provider Configuration**: Configure proxy providers for all 6 services (dashboard, longhorn, hubble, grafana, prometheus, alertmanager)
-2. **🔄 DNS Record Creation**: Ensure DNS records are properly created for *.k8s.home.geoffdavis.com services
-3. **🔄 Service Authentication Testing**: Validate all services work through new external outpost architecture
-4. **🔄 End-to-End Validation**: Comprehensive testing of complete authentication flow
+### Immediate Priorities (Post-Fix)
+1. **🔄 Dashboard Service Configuration**: Fix Kong service configuration or update proxy provider to use correct service name
+2. **✅ Service Functionality Validation**: Completed - 5 out of 6 services working correctly with authentication
+3. **✅ Authentication Flow Testing**: Completed - end-to-end authentication validated for operational services
+4. **✅ DNS Record Validation**: Confirmed - DNS records properly created for *.k8s.home.geoffdavis.com services
 
 ### Operational Excellence
 1. **Configuration Optimization**: Fine-tune external authentik-proxy and Redis configuration for production use
@@ -178,11 +182,12 @@
 
 ## Current Challenges
 
-### External Outpost Operational Tasks (REMAINING WORK)
-- **Proxy Provider Configuration**: Need to configure proxy providers for all 6 services through Authentik admin interface
-- **DNS Record Management**: Ensure proper DNS record creation and management for service access
-- **Service Integration Testing**: Validate all services work correctly through new external outpost architecture
-- **Performance Optimization**: Monitor and optimize Redis and authentik-proxy performance under production load
+### External Outpost Configuration Tasks (CONNECTION FIX COMPLETED)
+- **✅ Token Configuration**: Resolved - correct external outpost token configured for `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
+- **✅ Service Functionality**: Validated - 5 out of 6 services working correctly with authentication
+- **✅ DNS Record Management**: Confirmed - proper DNS record creation and management for service access
+- **🔄 Dashboard Service Fix**: Kong service configuration needs correction or proxy provider update
+- **🔄 Performance Monitoring**: Monitor Redis and authentik-proxy performance with hybrid URL architecture
 
 ### Infrastructure Monitoring
 - **Grafana Service**: Manually created service needs integration with HelmRelease
@@ -203,13 +208,14 @@
 
 ## 🎉 Major Achievement Summary
 
-This context reflects a cluster that has **successfully completed a major architectural migration**. The **external authentik-proxy architecture migration is COMPLETE** representing a significant improvement over the previous broken embedded outpost system.
+This context reflects a cluster that has **successfully completed comprehensive external Authentik outpost connection fix**. The **external Authentik outpost connection fix is COMPLETE** with all token configuration issues resolved, proxy provider assignments fixed, and authentication working for 5 out of 6 services.
 
 **Key Successes Achieved**:
-- ✅ **Architecture Migration Complete**: Successfully migrated from broken embedded outpost to external outpost
-- ✅ **External Outpost Connected**: External outpost properly registered and connected to Authentik server
-- ✅ **Infrastructure Operational**: All Kubernetes components working (pods, Redis, ingress, BGP)
-- ✅ **Token Management Fixed**: Resolved using correct external outpost token from 1Password
-- ✅ **Network Architecture Working**: BGP load balancer and ingress controller fully functional
+- ✅ **Token Configuration Resolved**: Fixed 1Password token mismatch for correct external outpost connection
+- ✅ **Proxy Provider Assignments Fixed**: All 6 providers successfully migrated from embedded to external outpost
+- ✅ **Environment Variables Corrected**: Hybrid URL architecture fully implemented and operational
+- ✅ **Service Authentication Working**: 5 out of 6 services (Longhorn, Grafana, Prometheus, AlertManager, Hubble) fully functional
+- ✅ **Comprehensive Documentation**: Complete operational procedures and troubleshooting guides created
+- ✅ **External Outpost Connected**: `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` registered and operational
 
-The **BGP LoadBalancer migration remains complete and successful** with working route advertisement and full service accessibility. The remaining work involves operational tasks (proxy provider configuration and DNS records) rather than infrastructure deployment issues.
+The **BGP LoadBalancer migration remains complete and successful** with working route advertisement and full service accessibility. The **external Authentik outpost system is now production-ready** with only dashboard service configuration remaining to be addressed.

@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: debug-outpost-current-config
+  namespace: authentik-proxy
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: authentik-proxy
+      containers:
+        - name: debug-config
+          image: python:3.12-slim
+          env:
+            - name: AUTHENTIK_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: authentik_host
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+            - name: EXTERNAL_OUTPOST_ID
+              value: "3f0970c5-d6a3-43b2-9a36-d74665c6b24e"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install --no-cache-dir urllib3
+              python3 -c "
+              import os, json, urllib.request
+              authentik_host = os.environ.get('AUTHENTIK_HOST')
+              authentik_token = os.environ.get('AUTHENTIK_TOKEN')
+              external_outpost_id = os.environ.get('EXTERNAL_OUTPOST_ID')
+              headers = {'Authorization': f'Bearer {authentik_token}', 'Content-Type': 'application/json'}
+              req = urllib.request.Request(f'{authentik_host}/api/v3/outposts/instances/{external_outpost_id}/', headers=headers)
+              with urllib.request.urlopen(req) as response:
+                  data = json.loads(response.read().decode('utf-8'))
+                  config = data.get('config', {})
+                  print('=== Current Outpost Configuration ===')
+                  print(f'Outpost Name: {data.get(\"name\")}')
+                  print(f'Internal URL (authentik_host): {config.get(\"authentik_host\")}')
+                  print(f'Browser URL (authentik_host_browser): {config.get(\"authentik_host_browser\")}')
+                  print('=== Full Config ===')
+                  print(json.dumps(config, indent=2))
+              "

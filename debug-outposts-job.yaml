@@ -1,0 +1,89 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: debug-outposts
+  namespace: authentik-proxy
+spec:
+  template:
+    spec:
+      serviceAccountName: authentik-proxy
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: debug
+          image: python:3.12-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: authentik_host
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "=== Querying Authentik API for all outposts ==="
+              python3 -c "
+              import os
+              import json
+              import urllib.request
+
+              authentik_host = os.environ.get('AUTHENTIK_HOST')
+              authentik_token = os.environ.get('AUTHENTIK_TOKEN')
+
+              headers = {
+                  'Authorization': f'Bearer {authentik_token}',
+                  'Content-Type': 'application/json'
+              }
+
+              try:
+                  url = f'{authentik_host}/api/v3/outposts/instances/'
+                  request = urllib.request.Request(url, headers=headers)
+                  
+                  with urllib.request.urlopen(request) as response:
+                      data = json.loads(response.read().decode('utf-8'))
+                      
+                      print(f'Found {len(data.get(\"results\", []))} outposts:')
+                      print()
+                      
+                      for i, outpost in enumerate(data.get('results', []), 1):
+                          print(f'Outpost {i}:')
+                          print(f'  Name: {outpost[\"name\"]}')
+                          print(f'  ID: {outpost[\"pk\"]}')
+                          print(f'  Type: {outpost.get(\"type\", \"unknown\")}')
+                          print(f'  Providers: {len(outpost.get(\"providers\", []))} assigned')
+                          print(f'  Provider IDs: {outpost.get(\"providers\", [])}')
+                          
+                          config = outpost.get('config', {})
+                          if config:
+                              print(f'  Config:')
+                              print(f'    authentik_host: {config.get(\"authentik_host\", \"not set\")}')
+                              print(f'    authentik_host_browser: {config.get(\"authentik_host_browser\", \"not set\")}')
+                          print()
+
+              except Exception as e:
+                  print(f'Error: {e}')
+                  import traceback
+                  traceback.print_exc()
+              "
+  backoffLimit: 1

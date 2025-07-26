@@ -1,0 +1,230 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-new-outpost-tokens
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: create-new-outpost-tokens
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: token-management
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: create-new-outpost-tokens
+        app.kubernetes.io/part-of: identity-provider
+        app.kubernetes.io/component: token-management
+    spec:
+      restartPolicy: Never
+      serviceAccountName: authentik-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: create-tokens
+          image: python:3.11-slim
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.authentik.svc.cluster.local:80"
+            - name: AUTHENTIK_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              
+              echo "=== Authentik New External Outpost Token Creation ==="
+              
+              cat > /tmp/create-tokens.py << 'EOF'
+              #!/usr/bin/env python3
+              import os
+              import sys
+              import json
+              import urllib.request
+              import urllib.parse
+              import urllib.error
+              
+              authentik_host = os.environ.get('AUTHENTIK_HOST')
+              admin_token = os.environ.get('AUTHENTIK_ADMIN_TOKEN')
+              
+              headers = {
+                  'Authorization': f'Bearer {admin_token}',
+                  'Content-Type': 'application/json'
+              }
+              
+              def make_request(url, method='GET', data=None):
+                  try:
+                      req_data = None
+                      if data and method in ['POST', 'PATCH', 'PUT', 'DELETE']:
+                          req_data = json.dumps(data).encode('utf-8')
+                      
+                      request = urllib.request.Request(url, data=req_data, headers=headers, method=method)
+                      with urllib.request.urlopen(request) as response:
+                          response_body = response.read().decode('utf-8')
+                          return json.loads(response_body) if response_body else {}
+                  except urllib.error.HTTPError as e:
+                      print(f"HTTP Error {e.code}: {e.reason}")
+                      try:
+                          error_body = e.read().decode('utf-8')
+                          print(f"Error details: {error_body}")
+                      except:
+                          pass
+                      return None
+                  except Exception as e:
+                      print(f"Error: {e}")
+                      return None
+              
+              # Get admin user ID for token creation
+              print("=== Getting Admin User Info ===")
+              users_url = f'{authentik_host}/api/v3/core/users/'
+              users_data = make_request(users_url)
+              
+              admin_user_id = None
+              if users_data:
+                  for user in users_data.get('results', []):
+                      if user.get('is_superuser', False):
+                          admin_user_id = user['pk']
+                          print(f"Found admin user: {user.get('username', 'unknown')} (ID: {admin_user_id})")
+                          break
+              
+              if not admin_user_id:
+                  print("No admin user found")
+                  sys.exit(1)
+              
+              # Target outposts for token creation
+              target_outposts = {
+                  "3f0970c5-d6a3-43b2-9a36-d74665c6b24e": {
+                      "outpost_name": "k8s-external-proxy-outpost",
+                      "onepassword_entry": "Authentik External Outpost Token - k8s-external-proxy-outpost",
+                      "token_identifier": "k8s-external-proxy-outpost-token-2025"
+                  },
+                  "9d94c493-d7bb-47b4-aae9-d579c69b2ea5": {
+                      "outpost_name": "radius-outpost",
+                      "onepassword_entry": "Authentik External Outpost Token - radius-outpost",
+                      "token_identifier": "radius-outpost-token-2025"
+                  }
+              }
+              
+              created_tokens = {}
+              
+              for outpost_id, outpost_info in target_outposts.items():
+                  print(f"\n=== Creating Token for {outpost_info['outpost_name']} ===")
+                  
+                  # Create a new API token for this outpost
+                  create_data = {
+                      'identifier': outpost_info['token_identifier'],
+                      'description': f'External outpost token for {outpost_info["outpost_name"]} - Created 2025-07-26',
+                      'intent': 'api',
+                      'user': admin_user_id,
+                      'expiring': False
+                  }
+                  
+                  create_url = f'{authentik_host}/api/v3/core/tokens/'
+                  new_token = make_request(create_url, method='POST', data=create_data)
+                  
+                  if new_token and 'key' in new_token:
+                      token_key = new_token['key']
+                      print(f"✓ New token created successfully")
+                      print(f"  Token PK: {new_token['pk']}")
+                      print(f"  Token Identifier: {new_token['identifier']}")
+                      print(f"  Token Key: {token_key[:20]}... (truncated)")
+                      
+                      created_tokens[outpost_id] = {
+                          'outpost_id': outpost_id,
+                          'outpost_name': outpost_info['outpost_name'],
+                          'onepassword_entry': outpost_info['onepassword_entry'],
+                          'token_pk': new_token['pk'],
+                          'token_key': token_key,
+                          'token_identifier': new_token['identifier']
+                      }
+                  else:
+                      print("✗ Failed to create new token")
+                      if new_token:
+                          print(f"Response: {new_token}")
+              
+              print(f"\n=== Token Creation Complete ===")
+              print(f"Successfully created {len(created_tokens)} tokens")
+              
+              # Save results for 1Password update
+              results = {
+                  'created_tokens': created_tokens,
+                  'timestamp': '2025-07-26T12:36:00Z'
+              }
+              
+              output_file = '/tmp/created-outpost-tokens.json'
+              with open(output_file, 'w') as f:
+                  json.dump(results, f, indent=2)
+              
+              print(f"✓ Results saved to: {output_file}")
+              
+              # Print 1Password update instructions
+              print("\n=== 1Password Update Instructions ===")
+              for outpost_id, token_data in created_tokens.items():
+                  print(f"\n1Password Entry: {token_data['onepassword_entry']}")
+                  print(f"  Field 'token': {token_data['token_key']}")
+                  print(f"  Field 'outpost_id': {token_data['outpost_id']}")
+                  print(f"  Field 'outpost_name': {token_data['outpost_name']}")
+                  print(f"  Field 'authentik_host': {authentik_host}")
+                  print(f"  Field 'token_identifier': {token_data['token_identifier']}")
+              
+              print(f"\n=== Summary ===")
+              print("The following NEW tokens have been created and are ready for 1Password:")
+              for token_data in created_tokens.values():
+                  print(f"  - {token_data['outpost_name']}: {token_data['token_key']}")
+              
+              print(f"\n=== Next Steps ===")
+              print("1. Update 1Password entries with the new token values")
+              print("2. Update ExternalSecret configuration to use the new 1Password entries")
+              print("3. Restart authentik-proxy pods to use the new tokens")
+              print("4. Verify outpost connections are working correctly")
+              
+              EOF
+              
+              python3 /tmp/create-tokens.py
+              
+              echo "=== Token creation completed ==="
+              echo "Check the logs above for the new token values"
+              
+              # Keep the results available for inspection
+              if [ -f /tmp/created-outpost-tokens.json ]; then
+                echo "=== Creation Results File ==="
+                cat /tmp/created-outpost-tokens.json
+              fi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+  backoffLimit: 3
+  activeDeadlineSeconds: 600

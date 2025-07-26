@@ -288,6 +288,86 @@ This file documents repetitive tasks and operational workflows that follow estab
 - SSO flow works correctly for all 6 services
 - No conflicting ingress configurations exist
 
+### Deploy External Authentik-Proxy URL Redirect Fixes
+**Last performed:** July 2025 (successful deployment and configuration)
+**Files to modify:**
+- `infrastructure/authentik-proxy/secret.yaml` - Environment variable fixes for internal service URLs
+- `infrastructure/authentik-proxy/configmap.yaml` - External URL configuration for user redirects
+- `infrastructure/authentik-proxy/proxy-config-job-simple.yaml` - Configuration job with known outpost ID
+
+**Context:**
+This task documents the deployment of comprehensive fixes for internal cluster DNS redirect issues in the external authentik-proxy configuration. The fixes implement a hybrid URL architecture where outpost connections use internal service URLs while user redirects use external URLs.
+
+**Steps:**
+1. **Root Cause Analysis and Fix Identification**:
+   - Identify three sources of internal cluster DNS redirect issues:
+     - Environment variables using external URLs for outpost connections
+     - ConfigMap hardcoded URLs causing internal DNS resolution conflicts
+     - Configuration job needing updates for proper outpost configuration
+   - Develop hybrid URL architecture solution
+
+2. **Environment Variable Configuration Fix**:
+   - Update `AUTHENTIK_HOST` in `secret.yaml` from `https://authentik.k8s.home.geoffdavis.com` to `http://authentik-server.authentik.svc.cluster.local:80`
+   - Ensure outpost can connect to Authentik server using internal cluster DNS
+   - Maintain external URL references for user-facing redirects in other configurations
+
+3. **ConfigMap External URL Configuration**:
+   - Update all hardcoded URLs in `configmap.yaml` to use external domains (`https://authentik.k8s.home.geoffdavis.com`)
+   - Ensure user browser redirects go to external URLs instead of internal cluster DNS
+   - Configure service routing for all 6 services (longhorn, grafana, prometheus, alertmanager, dashboard, hubble)
+
+4. **Configuration Job Updates**:
+   - Apply `proxy-config-job-simple.yaml` with known outpost ID `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
+   - Remove problematic `fix-oauth2-redirect-urls` job that was interfering
+   - Ensure configuration job updates outpost settings in Authentik database
+
+5. **GitOps Deployment Process**:
+   - Commit all configuration fixes to Git repository
+   - Monitor Flux deployment and reconciliation of changes
+   - Verify pods restart and pick up new environment variables and ConfigMap
+   - Validate configuration job execution and completion
+
+6. **Deployment Validation**:
+   - Verify both authentik-proxy pods are running (1/1 Ready)
+   - Check websocket connections established with Authentik server
+   - Validate `/outpost.goauthentik.io/ping` endpoints return status 204
+   - Monitor pod logs for successful connections and proper configuration
+
+**Hybrid URL Architecture Implementation:**
+- **Internal Connections**: Use `http://authentik-server.authentik.svc.cluster.local:80` for outpost-to-Authentik communication
+- **External Redirects**: Use `https://authentik.k8s.home.geoffdavis.com` for user browser redirects
+- **DNS Resolution**: Resolves cluster DNS conflicts by separating internal and external URL usage
+- **Service Integration**: Maintains proper authentication flow while fixing connectivity issues
+
+**Important notes:**
+- **Root cause**: External outposts running inside cluster cannot resolve external DNS names through cluster DNS
+- **Solution**: Hybrid approach separating outpost connections from user redirects
+- **GitOps integration**: All fixes deployed via standard Git commit and Flux reconciliation process
+- **Pod health**: Successful deployment results in running pods with established websocket connections
+- **Token management**: May require 1Password token updates to match correct external outpost
+
+**Success Criteria:**
+- ✅ All three configuration fixes deployed and active
+- ✅ Both authentik-proxy pods running with successful Authentik server connections
+- ✅ Websocket connections established between outpost and Authentik server
+- ✅ Health check endpoints responding correctly (status 204)
+- ✅ GitOps deployment completed via Flux reconciliation
+- ✅ Hybrid URL architecture implemented and functional
+
+**Post-Deployment Tasks:**
+- Verify 1Password token matches correct external outpost ID
+- Test authentication flow with external URL redirects
+- Validate end-to-end SSO functionality for all 6 services
+- Monitor system performance with new hybrid URL configuration
+
+**Troubleshooting:**
+- **Pod connection failures**: Check internal service URL configuration in environment variables
+- **User redirect issues**: Verify external URLs in ConfigMap are correct and accessible
+- **Token mismatches**: Update 1Password entry with correct external outpost token
+- **DNS resolution problems**: Ensure hybrid architecture properly separates internal/external URL usage
+
+This task provides a comprehensive reference for deploying external authentik-proxy URL redirect fixes and implementing hybrid URL architecture for reliable authentication system operation.
+
 ## Monitoring and Maintenance
 
 ### Update Monitoring Dashboards

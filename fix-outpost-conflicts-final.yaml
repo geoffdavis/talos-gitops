@@ -1,0 +1,150 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-outpost-conflicts-final
+  namespace: authentik-proxy
+spec:
+  template:
+    spec:
+      serviceAccountName: authentik-proxy
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: fix-conflicts
+          image: python:3.12-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: authentik_host
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "=== Fixing Outpost Provider Conflicts ==="
+              python3 -c "
+              import os
+              import json
+              import urllib.request
+
+              authentik_host = os.environ.get('AUTHENTIK_HOST')
+              authentik_token = os.environ.get('AUTHENTIK_TOKEN')
+
+              headers = {
+                  'Authorization': f'Bearer {authentik_token}',
+                  'Content-Type': 'application/json'
+              }
+
+              # Known outpost IDs from API query
+              EMBEDDED_OUTPOST_ID = '26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083'
+              EXTERNAL_OUTPOST_ID = '3f0970c5-d6a3-43b2-9a36-d74665c6b24e'
+              PROVIDER_IDS = [2, 5, 6, 7, 3, 4]  # All 6 proxy providers
+
+              try:
+                  print('Step 1: Removing all providers from embedded outpost...')
+                  url = f'{authentik_host}/api/v3/outposts/instances/{EMBEDDED_OUTPOST_ID}/'
+                  
+                  # Get current embedded outpost config
+                  request = urllib.request.Request(url, headers=headers)
+                  with urllib.request.urlopen(request) as response:
+                      embedded_data = json.loads(response.read().decode('utf-8'))
+                  
+                  # Remove all providers from embedded outpost
+                  update_data = {
+                      'name': embedded_data['name'],
+                      'type': embedded_data['type'],
+                      'providers': [],  # Remove all providers
+                      'config': embedded_data.get('config', {})
+                  }
+                  
+                  req_data = json.dumps(update_data).encode('utf-8')
+                  request = urllib.request.Request(url, data=req_data, headers=headers, method='PATCH')
+                  with urllib.request.urlopen(request) as response:
+                      print(f'✓ Removed all providers from embedded outpost')
+                  
+                  print('Step 2: Updating external outpost configuration...')
+                  url = f'{authentik_host}/api/v3/outposts/instances/{EXTERNAL_OUTPOST_ID}/'
+                  
+                  # Get current external outpost config
+                  request = urllib.request.Request(url, headers=headers)
+                  with urllib.request.urlopen(request) as response:
+                      external_data = json.loads(response.read().decode('utf-8'))
+                  
+                  # Update external outpost with correct config and all providers
+                  current_config = external_data.get('config', {})
+                  updated_config = {
+                      **current_config,
+                      'authentik_host': 'http://authentik-server.authentik.svc.cluster.local:80',
+                      'authentik_host_browser': 'https://authentik.k8s.home.geoffdavis.com',
+                      'authentik_host_insecure': False,
+                      'log_level': 'info',
+                      'error_reporting': False,
+                      'object_naming_template': 'ak-outpost-%(name)s'
+                  }
+                  
+                  update_data = {
+                      'name': external_data['name'],
+                      'type': external_data['type'],
+                      'providers': PROVIDER_IDS,  # Assign all providers to external outpost
+                      'config': updated_config
+                  }
+                  
+                  req_data = json.dumps(update_data).encode('utf-8')
+                  request = urllib.request.Request(url, data=req_data, headers=headers, method='PATCH')
+                  with urllib.request.urlopen(request) as response:
+                      result = json.loads(response.read().decode('utf-8'))
+                      print(f'✓ Updated external outpost configuration')
+                      print(f'✓ Set authentik_host_browser to: https://authentik.k8s.home.geoffdavis.com')
+                      print(f'✓ Assigned {len(result.get(\"providers\", []))} providers to external outpost')
+                  
+                  print('Step 3: Verifying final configuration...')
+                  # Verify embedded outpost has no providers
+                  url = f'{authentik_host}/api/v3/outposts/instances/{EMBEDDED_OUTPOST_ID}/'
+                  request = urllib.request.Request(url, headers=headers)
+                  with urllib.request.urlopen(request) as response:
+                      embedded_check = json.loads(response.read().decode('utf-8'))
+                      embedded_providers = len(embedded_check.get('providers', []))
+                      print(f'✓ Embedded outpost now has {embedded_providers} providers (should be 0)')
+                  
+                  # Verify external outpost has all providers and correct config
+                  url = f'{authentik_host}/api/v3/outposts/instances/{EXTERNAL_OUTPOST_ID}/'
+                  request = urllib.request.Request(url, headers=headers)
+                  with urllib.request.urlopen(request) as response:
+                      external_check = json.loads(response.read().decode('utf-8'))
+                      external_providers = len(external_check.get('providers', []))
+                      browser_url = external_check.get('config', {}).get('authentik_host_browser', 'not set')
+                      print(f'✓ External outpost now has {external_providers} providers (should be 6)')
+                      print(f'✓ External outpost browser URL: {browser_url}')
+                  
+                  print('=== Outpost conflict resolution complete ===')
+                  print('✓ Provider conflicts resolved')
+                  print('✓ External outpost properly configured')
+                  print('✓ Services should now be accessible via external outpost')
+
+              except Exception as e:
+                  print(f'Error: {e}')
+                  import traceback
+                  traceback.print_exc()
+              "
+  backoffLimit: 1

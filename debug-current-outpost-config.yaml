@@ -1,0 +1,123 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: debug-current-outpost-config
+  namespace: authentik-proxy
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: authentik-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: debug-config
+          image: python:3.12-slim
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: AUTHENTIK_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: authentik_host
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-proxy-token
+                  key: token
+            - name: CURRENT_OUTPOST_ID
+              value: "26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install --no-cache-dir urllib3
+              python3 -c "
+              import os, json, urllib.request
+              authentik_host = os.environ.get('AUTHENTIK_HOST')
+              authentik_token = os.environ.get('AUTHENTIK_TOKEN')
+              current_outpost_id = os.environ.get('CURRENT_OUTPOST_ID')
+              headers = {'Authorization': f'Bearer {authentik_token}', 'Content-Type': 'application/json'}
+              
+              print('=== Debugging Authentik Outpost Configuration ===')
+              print(f'Authentik Host: {authentik_host}')
+              print(f'Current Outpost ID: {current_outpost_id}')
+              print()
+              
+              # Get current outpost configuration
+              try:
+                  req = urllib.request.Request(f'{authentik_host}/api/v3/outposts/instances/{current_outpost_id}/', headers=headers)
+                  with urllib.request.urlopen(req) as response:
+                      data = json.loads(response.read().decode('utf-8'))
+                      config = data.get('config', {})
+                      print('=== Current Outpost Configuration ===')
+                      print(f'Outpost Name: {data.get(\"name\")}')
+                      print(f'Outpost Type: {data.get(\"type\")}')
+                      print(f'Internal URL (authentik_host): {config.get(\"authentik_host\")}')
+                      print(f'Browser URL (authentik_host_browser): {config.get(\"authentik_host_browser\")}')
+                      print(f'Providers: {data.get(\"providers\", [])}')
+                      print()
+                      print('=== Full Config ===')
+                      print(json.dumps(config, indent=2))
+                      print()
+              except Exception as e:
+                  print(f'ERROR getting current outpost: {e}')
+              
+              # List all outposts to understand the situation
+              try:
+                  req = urllib.request.Request(f'{authentik_host}/api/v3/outposts/instances/', headers=headers)
+                  with urllib.request.urlopen(req) as response:
+                      data = json.loads(response.read().decode('utf-8'))
+                      print('=== All Outposts ===')
+                      for outpost in data.get('results', []):
+                          outpost_id = outpost['pk']
+                          outpost_name = outpost['name']
+                          outpost_type = outpost.get('type', 'unknown')
+                          providers = outpost.get('providers', [])
+                          config = outpost.get('config', {})
+                          browser_url = config.get('authentik_host_browser', 'not set')
+                          internal_url = config.get('authentik_host', 'not set')
+                          print(f'  ID: {outpost_id}')
+                          print(f'  Name: {outpost_name}')
+                          print(f'  Type: {outpost_type}')
+                          print(f'  Providers: {len(providers)} ({providers})')
+                          print(f'  Internal URL: {internal_url}')
+                          print(f'  Browser URL: {browser_url}')
+                          print('  ---')
+              except Exception as e:
+                  print(f'ERROR listing outposts: {e}')
+              
+              # Check proxy providers
+              try:
+                  req = urllib.request.Request(f'{authentik_host}/api/v3/providers/proxy/', headers=headers)
+                  with urllib.request.urlopen(req) as response:
+                      data = json.loads(response.read().decode('utf-8'))
+                      print('=== Proxy Providers ===')
+                      for provider in data.get('results', []):
+                          provider_id = provider['pk']
+                          provider_name = provider['name']
+                          external_host = provider.get('external_host', 'not set')
+                          internal_host = provider.get('internal_host', 'not set')
+                          print(f'  ID: {provider_id}')
+                          print(f'  Name: {provider_name}')
+                          print(f'  External Host: {external_host}')
+                          print(f'  Internal Host: {internal_host}')
+                          print('  ---')
+              except Exception as e:
+                  print(f'ERROR listing proxy providers: {e}')
+              "
