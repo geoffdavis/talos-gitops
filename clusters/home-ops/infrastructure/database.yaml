@@ -41,7 +41,8 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-cnpg-operator
-    - name: infrastructure-longhorn
+    # Temporarily commented out due to stuck HelmRelease status
+    # - name: infrastructure-longhorn
   retryInterval: 2m0s
   wait: true
   # Health checks will be added when PostgreSQL clusters are deployed
