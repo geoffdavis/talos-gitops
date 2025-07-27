@@ -28,12 +28,10 @@ spec:
         # Force pod restart when config changes
         checksum/config: '{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}'
     spec:
-      # Security context following cluster patterns
+      # Security context - Home Assistant needs root for s6-overlay init
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        runAsNonRoot: true
+        fsGroup: 1000  # Keep fsGroup for volume permissions
+        runAsNonRoot: false  # Allow root for s6-overlay init system
         seccompProfile:
           type: RuntimeDefault
 
@@ -54,10 +52,11 @@ spec:
           image: ghcr.io/home-assistant/home-assistant:2025.7
           imagePullPolicy: IfNotPresent
 
-          # Container security context
+          # Container security context - Home Assistant needs root for s6-overlay
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false # Home Assistant needs to write to config
+            runAsUser: 0  # Run as root for s6-overlay init system
             capabilities:
               drop:
                 - ALL
