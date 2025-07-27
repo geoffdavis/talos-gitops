@@ -205,12 +205,12 @@ repos:
   # ============================================================================
 
   # Conventional commits - WARNING
-  - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.2.0
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.29.1
     hooks:
-      - id: conventional-pre-commit
+      - id: commitizen
         name: 💬 Commit message format (warning)
-        stages: [commit-msg, manual]
+        stages: [commit-msg]
 
 # ============================================================================
 # CONFIGURATION
