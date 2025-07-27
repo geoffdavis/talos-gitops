@@ -209,16 +209,26 @@ repos:
     hooks:
       - id: conventional-commit-msg
         name: 💬 Commit message format (warning)
-        entry: bash
+        entry: sh
         language: system
         stages: [commit-msg]
-        pass_filenames: true
         args:
           - -c
           - |
-            if ! grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .+" "$1"; then
+            # For commit-msg hooks, the commit message file is passed as $1
+            # But pre-commit might not pass it, so we need to handle both cases
+            if [ -n "$1" ] && [ -f "$1" ]; then
+              commit_msg=$(cat "$1")
+            else
+              # Read from stdin as fallback
+              commit_msg=$(cat)
+            fi
+
+            pattern="^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .+"
+            if ! echo "$commit_msg" | grep -qE "$pattern"; then
               echo "Warning: Commit message does not follow conventional format (type: description)"
-              exit 0
+              echo "Expected format: type(scope): description"
+              echo "Examples: feat: add new feature, fix(auth): resolve login issue"
             fi
 
 # ============================================================================
