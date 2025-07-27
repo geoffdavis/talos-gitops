@@ -80,7 +80,7 @@ data:
 
     # Default ACL - authenticated users can access all topics
     # This can be restricted further based on specific requirements
-    acl_file /dev/null
+    # acl_file disabled - using password-based authentication only
 
     # =================================================================
     # Performance Tuning
@@ -126,8 +126,8 @@ data:
     # System topic publishing for monitoring
     sys_interval 10
 
-    # Client connection tracking
-    clientid_prefixes
+    # Client connection tracking - removed deprecated clientid_prefixes
+    # clientid_prefixes
 
     # =================================================================
     # Additional Security Hardening
