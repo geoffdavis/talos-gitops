@@ -38,7 +38,7 @@ spec:
         namespace: cert-manager
       logLevel: 2
 
-    # Controller configuration (v1.18.2 schema - settings at root level)
+    # Controller configuration (v1.18.2 schema)
     resources:
       limits:
         cpu: 100m
@@ -46,9 +46,6 @@ spec:
       requests:
         cpu: 10m
         memory: 32Mi
-
-    # Configure DNS policy
-    dnsPolicy: "ClusterFirst"
 
     # Enable metrics
     prometheus:
@@ -68,19 +65,11 @@ spec:
         operator: Exists
         effect: NoSchedule
 
-    # Security context
+    # Security context (v1.18.2 schema)
     securityContext:
       runAsNonRoot: true
-      runAsUser: 1000
-      runAsGroup: 1000
-      fsGroup: 1000
-
-    # Pod security context
-    podSecurityContext:
-      runAsNonRoot: true
-      runAsUser: 1000
-      runAsGroup: 1000
-      fsGroup: 1000
+      seccompProfile:
+        type: RuntimeDefault
 
     # Webhook configuration
     webhook:
