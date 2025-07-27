@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: postgresql
-          image: postgres:15-alpine
+          image: postgres:17-alpine
           env:
             - name: POSTGRES_DB
               value: "myapp"
