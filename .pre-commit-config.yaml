@@ -204,13 +204,22 @@ repos:
   # COMMIT MESSAGE VALIDATION (WARNING)
   # ============================================================================
 
-  # Conventional commits - WARNING
-  - repo: https://github.com/commitizen-tools/commitizen
-    rev: v3.29.1
+  # Conventional commits - WARNING (using local implementation)
+  - repo: local
     hooks:
-      - id: commitizen
+      - id: conventional-commit-msg
         name: 💬 Commit message format (warning)
+        entry: bash
+        language: system
         stages: [commit-msg]
+        pass_filenames: true
+        args:
+          - -c
+          - |
+            if ! grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .+" "$1"; then
+              echo "Warning: Commit message does not follow conventional format (type: description)"
+              exit 0
+            fi
 
 # ============================================================================
 # CONFIGURATION
