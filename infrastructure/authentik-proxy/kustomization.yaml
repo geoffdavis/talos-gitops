@@ -35,7 +35,7 @@ commonLabels:
 
 images:
   - name: ghcr.io/goauthentik/proxy
-    newTag: "2024.8.3"
+    newTag: "2025.6.4"
 
 generatorOptions:
   disableNameSuffixHash: true
