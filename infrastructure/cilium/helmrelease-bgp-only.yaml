@@ -28,7 +28,7 @@ spec:
   chart:
     spec:
       chart: cilium
-      version: "1.16.1"
+      version: "1.17.6"
       sourceRef:
         kind: HelmRepository
         name: cilium
@@ -95,7 +95,7 @@ spec:
     loadBalancer:
       algorithm: maglev
       mode: dsr # Direct Server Return for better performance
-      acceleration: native # Use native XDP acceleration if available
+      acceleration: disabled # XDP acceleration disabled for Mac mini compatibility
 
     # L2 announcements - DISABLED (replaced with BGP-only)
     l2announcements:
