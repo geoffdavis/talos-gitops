@@ -13,7 +13,8 @@ resources:
   - external-secret-superuser.yaml
   - external-secret-database.yaml
   - external-secret-s3-backup.yaml
-  - postgresql-backup.yaml
+  # Temporarily disabled due to schema validation issue
+  # - postgresql-backup.yaml
 
 labels:
   - pairs:
