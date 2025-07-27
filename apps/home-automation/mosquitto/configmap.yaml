@@ -47,32 +47,31 @@ data:
     # Security Configuration
     # =================================================================
 
-    # Disable anonymous access - require authentication
-    allow_anonymous false
-
     # Password file location (created by init container)
     password_file /mosquitto/config/passwd
 
     # =================================================================
     # Network Listeners
     # =================================================================
-
+    
     # Standard MQTT listener (port 1883)
-    listener 1883
+    listener 1883 0.0.0.0
     protocol mqtt
+    allow_anonymous false
+
+    # WebSocket listener for web clients (port 9001)
+    listener 9001 0.0.0.0
+    protocol websockets
+    allow_anonymous false
 
     # MQTT over TLS listener (port 8883) - disabled for now
-    # listener 8883
+    # listener 8883 0.0.0.0
     # protocol mqtt
     # cafile /mosquitto/certs/ca.crt
     # certfile /mosquitto/certs/server.crt
     # keyfile /mosquitto/certs/server.key
     # require_certificate false
     # use_identity_as_username false
-
-    # WebSocket listener for web clients (port 9001)
-    listener 9001
-    protocol websockets
 
     # =================================================================
     # Topic Access Control
