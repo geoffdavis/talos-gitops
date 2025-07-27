@@ -144,10 +144,11 @@ spec:
       # Metrics
       metrics:
         enabled: true
-        serviceMonitor:
-          enabled: true
-          interval: 30s
-          scrapeTimeout: 3s
+
+      serviceMonitor:
+        enabled: true
+        interval: 30s
+        scrapeTimeout: 3s
 
       # Ingress - disabled in favor of separate ingress resource
       ingress:
@@ -168,14 +169,14 @@ spec:
       name: worker
       replicas: 1
 
-      # Resource configuration for homelab
+      # Resource configuration for homelab (increased for v2025.6.4)
       resources:
         requests:
-          cpu: 50m
-          memory: 256Mi
-        limits:
-          cpu: 300m
+          cpu: 100m
           memory: 512Mi
+        limits:
+          cpu: 500m
+          memory: 1Gi
 
       # Security context
       securityContext:
