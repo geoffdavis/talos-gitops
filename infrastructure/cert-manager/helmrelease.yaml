@@ -32,7 +32,7 @@ spec:
     # Enable CRD installation
     installCRDs: true
 
-    # Configure for homelab use
+    # Global configuration
     global:
       leaderElection:
         namespace: cert-manager
@@ -145,22 +145,6 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
 
-    # RBAC configuration
-    rbac:
-      create: true
-
-    # Service account configuration
-    serviceAccount:
-      create: true
-
-    # Enable feature gates
-    featureGates: ""
-
-    # Configure pod disruption budget
-    podDisruptionBudget:
-      enabled: true
-      minAvailable: 1
-
     # Configure startup API check
     startupapicheck:
       enabled: true
@@ -192,3 +176,8 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
+
+    # Configure pod disruption budget
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
