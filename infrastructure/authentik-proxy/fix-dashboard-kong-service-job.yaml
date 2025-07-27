@@ -18,7 +18,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: fix-dashboard-kong-config
-          image: python:3.11-slim
+          image: python:3.13-slim
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
