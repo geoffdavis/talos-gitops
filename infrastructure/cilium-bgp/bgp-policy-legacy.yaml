@@ -16,7 +16,7 @@ spec:
       exportPodCIDR: true
       serviceSelector:
         matchLabels:
-          io.cilium/lb-ipam-pool: "bgp-default"
+          "io.cilium/lb-ipam-pool": "bgp-default"
       serviceAdvertisements:
         - LoadBalancerIP
       neighbors:
@@ -30,7 +30,7 @@ spec:
       exportPodCIDR: false
       serviceSelector:
         matchLabels:
-          io.cilium/lb-ipam-pool: "bgp-ingress"
+          "io.cilium/lb-ipam-pool": "bgp-ingress"
       serviceAdvertisements:
         - LoadBalancerIP
       neighbors:
@@ -44,7 +44,7 @@ spec:
       exportPodCIDR: false
       serviceSelector:
         matchLabels:
-          io.cilium/lb-ipam-pool: "bgp-reserved"
+          "io.cilium/lb-ipam-pool": "bgp-reserved"
       serviceAdvertisements:
         - LoadBalancerIP
       neighbors:
