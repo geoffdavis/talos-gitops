@@ -58,11 +58,11 @@ data:
     # =================================================================
 
     # Standard MQTT listener (port 1883)
-    listener 1883 0.0.0.0
+    listener 1883
     protocol mqtt
 
     # MQTT over TLS listener (port 8883) - disabled for now
-    # listener 8883 0.0.0.0
+    # listener 8883
     # protocol mqtt
     # cafile /mosquitto/certs/ca.crt
     # certfile /mosquitto/certs/server.crt
@@ -71,7 +71,7 @@ data:
     # use_identity_as_username false
 
     # WebSocket listener for web clients (port 9001)
-    listener 9001 0.0.0.0
+    listener 9001
     protocol websockets
 
     # =================================================================
