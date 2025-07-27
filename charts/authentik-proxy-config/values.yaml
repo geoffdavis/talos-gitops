@@ -65,7 +65,7 @@ hooks:
   timeout: 300
   retries: 3
   backoff: 15
-  image: "curlimages/curl:8.5.0"
+  image: "curlimages/curl:8.15.0"
 
 # RBAC configuration
 rbac:

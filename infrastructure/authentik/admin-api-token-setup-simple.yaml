@@ -21,7 +21,7 @@ spec:
       serviceAccountName: authentik
       containers:
         - name: setup-admin-token
-          image: curlimages/curl:8.5.0
+          image: curlimages/curl:8.15.0
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
