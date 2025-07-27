@@ -52,7 +52,7 @@ This document outlines the comprehensive backup strategy for the Home Assistant 
 
 Backup times are staggered to avoid resource conflicts:
 
-```yaml
+````yaml
 2:00 AM - Home Assistant config snapshots (critical)
 2:15 AM - MQTT data snapshots
 2:30 AM - General home automation snapshots
@@ -358,3 +358,4 @@ kubectl run s3-test --rm -i --tty --image=amazon/aws-cli -- \
 ```yaml
 
 This backup strategy ensures comprehensive protection for the Home Assistant stack while integrating seamlessly with the existing cluster backup infrastructure.
+````
