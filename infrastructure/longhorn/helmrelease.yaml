@@ -96,9 +96,8 @@ spec:
     service:
       ui:
         type: LoadBalancer
-        loadBalancerIP: "172.29.51.150"
         annotations:
-          io.cilium/lb-ipam-pool: "default"
+          io.cilium/lb-ipam-pool: "bgp-default"
         nodePort: null
 
     # Enable CSI snapshots
