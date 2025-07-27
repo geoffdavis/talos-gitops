@@ -37,23 +37,19 @@ spec:
       min_wal_size: "512MB"
       max_wal_size: "2GB"
 
-      # Logging configuration
-      log_destination: "stderr"
+      # Logging configuration (log_destination managed by CloudNativePG)
       log_statement: "none"
       log_min_duration_statement: "2000"
       log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
 
-      # Connection and authentication
-      ssl: "on"
-      ssl_cert_file: "/controller/certificates/server.crt"
-      ssl_key_file: "/controller/certificates/server.key"
-      ssl_ca_file: "/controller/certificates/ca.crt"
+      # Connection and authentication (SSL managed by CloudNativePG)
+      # SSL configuration is handled automatically by CloudNativePG
 
       # Replication settings
       max_wal_senders: "5"
       max_replication_slots: "5"
       wal_level: "replica"
-      hot_standby: "on"
+      # hot_standby managed by CloudNativePG
 
       # Archive settings for backup
       archive_mode: "on"
@@ -103,18 +99,18 @@ spec:
         immediateCheckpoint: true
         jobs: 1
       tags:
-        environment: "homelab"
-        cluster: "homeassistant-postgresql"
-        backup-tier: "important"
+        environment: "homelab"  # pragma: allowlist secret
+        cluster: "homeassistant-postgresql"  # pragma: allowlist secret
+        backup-tier: "important"  # pragma: allowlist secret
 
   # Certificates configuration
   certificates:
-    serverTLSSecret: "homeassistant-postgresql-server-tls"
-    serverCASecret: "homeassistant-postgresql-ca"
-    clientCASecret: "homeassistant-postgresql-ca"
-    replicationTLSSecret: "homeassistant-postgresql-replication-tls"
+    serverTLSSecret: "homeassistant-postgresql-server-tls"  # pragma: allowlist secret
+    serverCASecret: "homeassistant-postgresql-ca"  # pragma: allowlist secret
+    clientCASecret: "homeassistant-postgresql-ca"  # pragma: allowlist secret
+    replicationTLSSecret: "homeassistant-postgresql-replication-tls"  # pragma: allowlist secret
 
   # Superuser secret
-  superuserSecret:
+  superuserSecret:  # pragma: allowlist secret
     name: homeassistant-postgresql-superuser
   enableSuperuserAccess: true
