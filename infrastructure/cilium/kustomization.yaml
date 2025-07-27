@@ -1,8 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  # Cilium core CNI is deployed via Bootstrap (task apps:deploy-cilium)
-  # Only operational features are managed via GitOps
-  - loadbalancer-pool-bgp.yaml
-  # ingress-hubble.yaml removed - using authentik proxy instead of native ingress
+# Cilium core CNI is deployed via Bootstrap (task apps:deploy-cilium)
+# LoadBalancer IP pools moved to infrastructure/cilium-pools (Phase 1)
+# Only remaining operational features are managed via GitOps here
+# ingress-hubble.yaml removed - using authentik proxy instead of native ingress
+
+resources: []

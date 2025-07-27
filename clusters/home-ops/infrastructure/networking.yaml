@@ -2,6 +2,34 @@
 # Cilium is now managed by bootstrap (not Flux) to prevent "Dead loop on virtual device" issues
 # See Taskfile.yml apps:deploy-cilium task for bootstrap deployment
 ---
+# Phase 1: LoadBalancer IP Pools (Early deployment)
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-cilium-pools
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 5m0s
+  path: ./infrastructure/cilium-pools
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-sources  # Only needs basic sources
+  retryInterval: 1m0s
+  wait: true
+  healthChecks:
+    - apiVersion: cilium.io/v2alpha1
+      kind: CiliumLoadBalancerIPPool
+      name: bgp-default
+      namespace: kube-system
+    - apiVersion: cilium.io/v2alpha1
+      kind: CiliumLoadBalancerIPPool
+      name: bgp-ingress
+      namespace: kube-system
+---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -196,8 +224,8 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: infrastructure-cilium
-    - name: infrastructure-onepassword
+    - name: infrastructure-cilium-pools  # Phase 2: Requires IP pools first
+    - name: infrastructure-onepassword   # Needs secrets for BGP auth
   retryInterval: 1m0s
   wait: true
 ---
