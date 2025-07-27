@@ -54,6 +54,9 @@ data:
     # Network Listeners
     # =================================================================
     
+    # Disable default listener by setting port to 0
+    port 0
+    
     # Standard MQTT listener (port 1883)
     listener 1883 0.0.0.0
     protocol mqtt
