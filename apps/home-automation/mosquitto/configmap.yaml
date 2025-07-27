@@ -94,7 +94,7 @@ data:
     queue_qos0_messages false
 
     # Retain message settings
-    max_retained_messages -1
+    # max_retained_messages removed - not supported in current Mosquitto version
     retained_persistence true
 
     # Client settings
