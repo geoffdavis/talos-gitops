@@ -103,12 +103,8 @@ spec:
         cluster: "homeassistant-postgresql"  # pragma: allowlist secret
         backup-tier: "important"  # pragma: allowlist secret
 
-  # Certificates configuration
-  certificates:
-    serverTLSSecret: "homeassistant-postgresql-server-tls"  # pragma: allowlist secret
-    serverCASecret: "homeassistant-postgresql-ca"  # pragma: allowlist secret
-    clientCASecret: "homeassistant-postgresql-ca"  # pragma: allowlist secret
-    replicationTLSSecret: "homeassistant-postgresql-replication-tls"  # pragma: allowlist secret
+  # Certificates configuration - CloudNativePG manages TLS automatically
+  # No explicit certificate configuration needed
 
   # Superuser secret
   superuserSecret:  # pragma: allowlist secret
