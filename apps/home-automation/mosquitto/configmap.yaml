@@ -90,7 +90,7 @@ data:
     memory_limit 0
 
     # Queue settings for IoT devices
-    max_queued_messages 1000
+    # max_queued_messages already defined above
     queue_qos0_messages false
 
     # Retain message settings
@@ -138,7 +138,7 @@ data:
     auto_id_prefix auto-
 
     # Connection limits per client
-    max_connections -1
+    # max_connections already defined above
 
     # Protocol version restrictions
     # protocol_version mqttv311
