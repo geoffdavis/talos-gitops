@@ -1,0 +1,211 @@
+# Longhorn RecurringJobs for Home Automation Stack
+# Integrated with existing cluster backup infrastructure
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: home-automation-daily-snapshot
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: home-automation
+    app.kubernetes.io/component: backup
+    backup-tier: "important"
+    backup-type: "snapshot"
+    application: "home-automation"
+spec:
+  # Daily snapshots at 2:30 AM (staggered after database backups)
+  cron: "30 2 * * *"
+  task: "snapshot"
+  groups:
+    - home-automation
+  retain: 7 # Keep 7 daily snapshots
+  concurrency: 2 # Allow parallel processing for non-database volumes
+  labels:
+    backup-tier: "important"
+    backup-type: "snapshot"
+    application: "home-automation"
+    backup-group: "home-automation"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: home-automation-weekly-backup
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: home-automation
+    app.kubernetes.io/component: backup
+    backup-tier: "important"
+    backup-type: "s3-backup"
+    application: "home-automation"
+spec:
+  # Weekly S3 backups on Sunday at 4:30 AM (after database backups)
+  cron: "30 4 * * 0"
+  task: "backup"
+  groups:
+    - home-automation
+  retain: 4 # Keep 4 weekly backups (1 month)
+  concurrency: 1 # Sequential processing for S3 backups
+  labels:
+    backup-tier: "important"
+    backup-type: "s3-backup"
+    application: "home-automation"
+    backup-group: "home-automation"
+---
+# Critical tier backup for Home Assistant config (most important data)
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: home-assistant-config-critical-snapshot
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: backup
+    backup-tier: "critical"
+    backup-type: "snapshot"
+    application: "home-assistant"
+spec:
+  # Daily snapshots at 2:00 AM for critical Home Assistant config
+  cron: "0 2 * * *"
+  task: "snapshot"
+  groups:
+    - home-assistant-critical
+  retain: 7 # Keep 7 daily snapshots
+  concurrency: 1 # Sequential processing for critical data
+  labels:
+    backup-tier: "critical"
+    backup-type: "snapshot"
+    application: "home-assistant"
+    backup-group: "home-automation"
+    data-type: "config"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: home-assistant-config-critical-backup
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: home-assistant
+    app.kubernetes.io/component: backup
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+    application: "home-assistant"
+spec:
+  # Weekly S3 backups on Sunday at 3:30 AM for critical Home Assistant config
+  cron: "30 3 * * 0"
+  task: "backup"
+  groups:
+    - home-assistant-critical
+  retain: 8 # Keep 8 weekly backups (2 months for critical data)
+  concurrency: 1 # Sequential processing for critical S3 backups
+  labels:
+    backup-tier: "critical"
+    backup-type: "s3-backup"
+    application: "home-assistant"
+    backup-group: "home-automation"
+    data-type: "config"
+---
+# MQTT data backup (important tier)
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: mqtt-data-snapshot
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/component: backup
+    backup-tier: "important"
+    backup-type: "snapshot"
+    application: "mosquitto"
+spec:
+  # Daily snapshots at 2:15 AM for MQTT data
+  cron: "15 2 * * *"
+  task: "snapshot"
+  groups:
+    - mqtt-data
+  retain: 7 # Keep 7 daily snapshots
+  concurrency: 1 # Sequential processing for MQTT consistency
+  labels:
+    backup-tier: "important"
+    backup-type: "snapshot"
+    application: "mosquitto"
+    backup-group: "home-automation"
+    data-type: "mqtt-data"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: mqtt-data-weekly-backup
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: mosquitto
+    app.kubernetes.io/component: backup
+    backup-tier: "important"
+    backup-type: "s3-backup"
+    application: "mosquitto"
+spec:
+  # Weekly S3 backups on Sunday at 4:15 AM for MQTT data
+  cron: "15 4 * * 0"
+  task: "backup"
+  groups:
+    - mqtt-data
+  retain: 4 # Keep 4 weekly backups (1 month)
+  concurrency: 1 # Sequential processing for S3 backups
+  labels:
+    backup-tier: "important"
+    backup-type: "s3-backup"
+    application: "mosquitto"
+    backup-group: "home-automation"
+    data-type: "mqtt-data"
+---
+# Redis cache backup (important tier, shorter retention)
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: redis-cache-snapshot
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: backup
+    backup-tier: "important"
+    backup-type: "snapshot"
+    application: "redis"
+spec:
+  # Daily snapshots at 2:45 AM for Redis cache
+  cron: "45 2 * * *"
+  task: "snapshot"
+  groups:
+    - redis-cache
+  retain: 3 # Keep 3 daily snapshots (shorter retention for cache)
+  concurrency: 1 # Sequential processing for Redis consistency
+  labels:
+    backup-tier: "important"
+    backup-type: "snapshot"
+    application: "redis"
+    backup-group: "home-automation"
+    data-type: "cache"
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: redis-cache-weekly-backup
+  namespace: longhorn-system
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: backup
+    backup-tier: "important"
+    backup-type: "s3-backup"
+    application: "redis"
+spec:
+  # Weekly S3 backups on Sunday at 4:45 AM for Redis cache
+  cron: "45 4 * * 0"
+  task: "backup"
+  groups:
+    - redis-cache
+  retain: 2 # Keep 2 weekly backups (shorter retention for cache)
+  concurrency: 1 # Sequential processing for S3 backups
+  labels:
+    backup-tier: "important"
+    backup-type: "s3-backup"
+    application: "redis"
+    backup-group: "home-automation"
+    data-type: "cache"

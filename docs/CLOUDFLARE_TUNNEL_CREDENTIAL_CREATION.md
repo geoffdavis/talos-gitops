@@ -54,25 +54,30 @@ Before running the script, ensure you have:
 ### What the Script Does
 
 1. **Prerequisites Check**:
+
    - Verifies 1Password CLI is installed and authenticated
    - Checks mise and cloudflared availability
    - Validates access to the Automation vault
 
 2. **Existing Credential Check**:
+
    - Checks if tunnel already exists in Cloudflare
    - Verifies if credentials exist in 1Password
    - Prompts for confirmation if recreating existing resources
 
 3. **Cleanup (if needed)**:
+
    - Removes old tunnel credentials from 1Password
    - Deletes old tunnel from Cloudflare
 
 4. **Tunnel Creation**:
+
    - Creates new Cloudflare tunnel: `home-ops-tunnel`
    - Generates fresh tunnel credentials
    - Validates credential file format and size
 
 5. **Credential Storage**:
+
    - Stores credentials in 1Password as: `Home-ops cloudflare-tunnel.json`
    - Validates successful storage and retrieval
 

@@ -13,10 +13,12 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 **Key Changes:**
 
 - **Disabled automatic disk creation**: `createDefaultDiskLabeledNodes: false`
+
   - Prevents conflicts with manually managed USB SSD disks
   - Allows explicit control over disk configuration
 
 - **Optimized storage settings for SSDs**:
+
   - `storageOverProvisioningPercentage: 150` (reduced from 200)
   - `storageMinimalAvailablePercentage: 15` (reduced from 25)
   - Better utilization and efficiency for SSD storage

@@ -329,6 +329,7 @@ The pre-commit implementation successfully identified real issues:
    ```
 
 2. **Daily workflow**:
+
    - Make changes to files
    - Commit as usual - hooks run automatically
    - If enforced hooks fail, fix issues and commit again
@@ -350,11 +351,13 @@ The pre-commit implementation successfully identified real issues:
 ### For Maintainers
 
 1. **Monitor hook effectiveness**:
+
    - Review pre-commit failures in development
    - Update configurations based on false positives
    - Adjust enforcement levels as needed
 
 2. **Maintain configurations**:
+
    - Update `.secrets.baseline` when legitimate secrets change
    - Adjust `.yamllint.yaml` for new Kubernetes patterns
    - Update hook versions periodically

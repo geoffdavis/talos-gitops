@@ -35,3 +35,30 @@ spec:
     - name: infrastructure-ingress-nginx
   retryInterval: 1m0s
   wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-home-automation
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 15m0s
+  path: ./apps/home-automation
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-postgresql-cluster
+    - name: infrastructure-longhorn
+    - name: infrastructure-ingress-nginx-internal
+    - name: infrastructure-cert-manager
+    - name: infrastructure-authentik-proxy
+  retryInterval: 2m0s
+  wait: true
+  healthChecks:
+    - apiVersion: v1
+      kind: Namespace
+      name: home-automation
+      namespace: ""

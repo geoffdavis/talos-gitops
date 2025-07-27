@@ -130,7 +130,7 @@ repos:
     hooks:
       - id: pytest-critical
         name: 🧪 Python tests (critical scripts)
-        entry: bash -c 'cd scripts/token-management && python3 -m pytest test_authentik_token_manager.py -v'
+        entry: bash -c 'cd scripts/token-management && mise exec -- python -m pytest test_authentik_token_manager.py -v'
         language: system
         files: scripts/token-management/.*\.py$
         pass_filenames: false

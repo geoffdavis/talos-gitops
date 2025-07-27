@@ -309,6 +309,7 @@ talosctl -n $NODE_IP ls /var/lib/longhorn/
    ```
 
 3. **USB device reseat**:
+
    - Shutdown node
    - Physically disconnect and reconnect USB SSD
    - Boot node
@@ -386,6 +387,7 @@ kubectl get --raw /api/v1/nodes/$NODE_NAME/proxy/stats/summary
    ```
 
 2. **Rebalance replicas**:
+
    - Use Longhorn UI to rebalance replicas across nodes
    - Ensure even distribution of storage load
 

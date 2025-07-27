@@ -1,0 +1,138 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+    app.kubernetes.io/part-of: home-automation-stack
+data:
+  redis.conf: |
+    # Redis configuration optimized for Home Assistant caching and session storage
+
+    # Network and Security Configuration
+    bind 0.0.0.0
+    port 6379
+    protected-mode no
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+
+    # General Configuration
+    daemonize no
+    supervised no
+    pidfile /var/run/redis_6379.pid
+    loglevel notice
+    logfile ""
+    databases 16
+
+    # Persistence Configuration - Both RDB and AOF for data durability
+    # RDB Configuration
+    save 900 1
+    save 300 10
+    save 60 10000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir /data
+
+    # AOF Configuration
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+    aof-load-truncated yes
+    aof-use-rdb-preamble yes
+
+    # Memory Management - Optimized for Home Assistant workload
+    maxmemory 200mb
+    maxmemory-policy allkeys-lru
+    maxmemory-samples 5
+
+    # Lazy Freeing
+    lazyfree-lazy-eviction no
+    lazyfree-lazy-expire no
+    lazyfree-lazy-server-del no
+    replica-lazy-flush no
+
+    # Threaded I/O
+    io-threads 1
+    io-threads-do-reads no
+
+    # Client Configuration
+    maxclients 10000
+
+    # Slow Log Configuration
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+
+    # Latency Monitoring
+    latency-monitor-threshold 0
+
+    # Event Notification
+    notify-keyspace-events ""
+
+    # Hash Configuration
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+
+    # List Configuration
+    list-max-ziplist-size -2
+    list-compress-depth 0
+
+    # Set Configuration
+    set-max-intset-entries 512
+
+    # Sorted Set Configuration
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+
+    # HyperLogLog Configuration
+    hll-sparse-max-bytes 3000
+
+    # Streams Configuration
+    stream-node-max-bytes 4096
+    stream-node-max-entries 100
+
+    # Active Rehashing
+    activerehashing yes
+
+    # Client Output Buffer Limits
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+
+    # Client Query Buffer Limit
+    client-query-buffer-limit 1gb
+
+    # Protocol Max Bulk Length
+    proto-max-bulk-len 512mb
+
+    # Frequency of rehashing
+    hz 10
+
+    # Enable dynamic HZ
+    dynamic-hz yes
+
+    # AOF rewrite incremental fsync
+    aof-rewrite-incremental-fsync yes
+
+    # RDB save incremental fsync
+    rdb-save-incremental-fsync yes
+
+    # LFU Configuration
+    lfu-log-factor 10
+    lfu-decay-time 1
+
+    # Disable some potentially dangerous commands for security
+    # rename-command FLUSHDB ""
+    # rename-command FLUSHALL ""
+    # rename-command DEBUG ""
+    # rename-command CONFIG ""
+    # rename-command SHUTDOWN SHUTDOWN_MENOT
+    # rename-command EVAL ""

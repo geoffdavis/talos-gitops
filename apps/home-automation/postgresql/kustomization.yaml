@@ -1,0 +1,35 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: postgresql
+  namespace: home-automation
+
+# PostgreSQL database resources for Home Assistant
+resources:
+  - cluster.yaml
+  - database-init-job.yaml
+  - external-secret-superuser.yaml
+  - external-secret-database.yaml
+  - external-secret-s3-backup.yaml
+  - postgresql-backup.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: homeassistant-postgresql
+      app.kubernetes.io/component: database
+      app.kubernetes.io/part-of: home-automation-stack
+      backup-tier: "important"
+      backup-type: "database"
+      application: "homeassistant"
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/name: homeassistant-postgresql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: home-automation-stack
+
+# Namespace for all resources
+namespace: home-automation

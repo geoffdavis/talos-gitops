@@ -102,6 +102,7 @@ Automated backup jobs configured for different data tiers:
 ### Daily Operations
 
 1. **Automated Backups** (No manual intervention required)
+
    - 1:00 AM: Database snapshots created
    - 2:00 AM: Monitoring snapshots created
    - Backup verification runs at 8:00 AM
@@ -114,6 +115,7 @@ Automated backup jobs configured for different data tiers:
 ### Weekly Operations
 
 1. **Sunday Backup Schedule**
+
    - 3:00 AM: Monitoring S3 backups
    - 4:00 AM: Database S3 backups
    - 5:00 AM: Application snapshots
@@ -128,6 +130,7 @@ Automated backup jobs configured for different data tiers:
 ### Monthly Operations
 
 1. **Backup Strategy Review**
+
    - Analyze backup success rates
    - Review storage usage trends
    - Update retention policies if needed
@@ -272,11 +275,13 @@ The backup system exposes the following metrics:
 ### Quarterly Reviews
 
 1. **Backup Strategy Assessment**
+
    - Review RPO/RTO requirements
    - Analyze backup success rates
    - Update procedures based on lessons learned
 
 2. **Technology Updates**
+
    - Update Longhorn version
    - Review new backup features
    - Test compatibility with cluster updates

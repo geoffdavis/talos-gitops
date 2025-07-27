@@ -193,6 +193,7 @@ Before deploying, set up your Cloudflare tunnel:
    ```
 
 2. **Store Credentials in 1Password**:
+
    - Create item "Cloudflare Tunnel Credentials"
    - Add `credentials.json` field with tunnel credentials
    - Add `tunnel-token` field with tunnel token
@@ -274,6 +275,7 @@ The phased bootstrap approach provides systematic, resumable cluster deployment 
    ```
 
    This will execute all phases systematically:
+
    - **Phase 1**: Environment validation (mise, tools, connectivity)
    - **Phase 2**: Talos cluster initialization (etcd bootstrap)
    - **Phase 3**: CNI deployment (Cilium)
@@ -332,6 +334,7 @@ For detailed information, see: **[Phased Bootstrap Guide](docs/PHASED_BOOTSTRAP_
    ```
 
    This single command will:
+
    - Bootstrap all secrets from 1Password
    - Generate Talos configuration
    - Apply configuration to nodes
