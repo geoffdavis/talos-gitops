@@ -47,6 +47,16 @@ spec:
           cpu: 10m
           memory: 32Mi
 
+      # Configure logging
+      logLevel: 2
+
+      # Configure leader election
+      leaderElection:
+        namespace: cert-manager
+
+      # Configure DNS policy
+      dnsPolicy: "ClusterFirst"
+
       # Enable metrics
       prometheus:
         enabled: true
@@ -145,16 +155,6 @@ spec:
 
     # Enable feature gates
     featureGates: ""
-
-    # Configure logging
-    logLevel: 2
-
-    # Configure leader election
-    leaderElection:
-      namespace: cert-manager
-
-    # Configure DNS policy
-    dnsPolicy: "ClusterFirst"
 
     # Configure pod disruption budget
     podDisruptionBudget:
