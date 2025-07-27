@@ -24,25 +24,8 @@ spec:
   # Backup method and configuration
   method: barmanObjectStore
 
-  # Immediate checkpoint for consistent backup
-  immediate: true
-
   # Suspend backup if needed
   suspend: false
-
-  # Additional metadata for backup tracking
-  metadata:
-    labels:
-      backup-tier: "important"
-      backup-type: "database"
-      application: "homeassistant"
-      scheduled: "true"
-      backup-group: "home-automation"
-    annotations:
-      backup.cnpg.io/retention-policy: "30d"
-      backup.cnpg.io/backup-type: "full"
-      backup.cnpg.io/compression: "gzip"
-      backup.cnpg.io/schedule: "daily"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Backup
@@ -64,18 +47,3 @@ spec:
 
   # Backup method
   method: barmanObjectStore
-
-  # Immediate checkpoint for consistent backup
-  immediate: true
-
-  # Additional metadata
-  metadata:
-    labels:
-      backup-tier: "important"
-      backup-type: "database"
-      application: "homeassistant"
-      backup-purpose: "bootstrap"
-      backup-group: "home-automation"
-    annotations:
-      backup.cnpg.io/backup-type: "bootstrap"
-      backup.cnpg.io/compression: "gzip"
