@@ -98,15 +98,6 @@ spec:
       memory: "1Gi"
       cpu: "500m"
 
-  # Pod security context
-  podSecurityContext:
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-    runAsNonRoot: true
-    seccompProfile:
-      type: RuntimeDefault
-
   # Container security context
   containerSecurityContext:
     allowPrivilegeEscalation: false
@@ -128,10 +119,8 @@ spec:
           name: homeassistant-postgresql-s3-backup
           key: AWS_SECRET_ACCESS_KEY
       wal:
-        retention: "30d"
         maxParallel: 1
       data:
-        retention: "7d"
         immediateCheckpoint: true
         jobs: 1
       tags:
