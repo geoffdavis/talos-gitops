@@ -76,19 +76,6 @@ spec:
     size: 10Gi
     storageClass: longhorn-ssd
 
-  # Monitoring configuration
-  monitoring:
-    enabled: true
-    podMonitorMetricRelabelings:
-      - sourceLabels: [__name__]
-        regex: "cnpg_.*"
-        targetLabel: __name__
-        replacement: "${1}"
-    podMonitorRelabelings:
-      - sourceLabels: [__meta_kubernetes_pod_name]
-        targetLabel: instance
-        replacement: "${1}"
-
   # Resource limits appropriate for Home Assistant
   resources:
     requests:
@@ -97,14 +84,6 @@ spec:
     limits:
       memory: "1Gi"
       cpu: "500m"
-
-  # Container security context
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop:
-        - ALL
 
   # Backup configuration
   backup:
@@ -139,14 +118,3 @@ spec:
   superuserSecret:
     name: homeassistant-postgresql-superuser
   enableSuperuserAccess: true
-
-  # Additional labels for Longhorn backup integration
-  metadata:
-    labels:
-      backup-tier: "important"
-      backup-type: "database"
-      application: "homeassistant"
-      backup-group: "home-automation"
-    annotations:
-      backup.longhorn.io/volume-snapshot-class: "longhorn-snapshot-vsc"
-      backup.longhorn.io/recurring-job-group: "home-automation"
