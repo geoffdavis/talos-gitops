@@ -48,6 +48,7 @@ The Cloudflare tunnel configuration was modified to remove public ingress resour
 **Key Changes**:
 
 1. **Longhorn Public Ingress Removal**
+
    - **File**: [`infrastructure/cloudflare-tunnel/ingress-longhorn-public.yaml`](../infrastructure/cloudflare-tunnel/ingress-longhorn-public.yaml)
    - **Action**: Removed duplicate public Longhorn ingress configuration
    - **Result**: Longhorn UI now accessible only via internal ingress
@@ -62,11 +63,13 @@ The Cloudflare tunnel configuration was modified to remove public ingress resour
 **Internal Access Configuration**:
 
 1. **Longhorn Storage Management**
+
    - **File**: [`infrastructure/longhorn/ingress.yaml`](../infrastructure/longhorn/ingress.yaml)
    - **Hostname**: `longhorn.k8s.home.geoffdavis.com`
    - **Features**: Basic authentication, TLS certificates, internal DNS
 
 2. **Kubernetes Dashboard**
+
    - **File**: [`apps/dashboard/ingress.yaml`](../apps/dashboard/ingress.yaml)
    - **Hostname**: `dashboard.k8s.home.geoffdavis.com`
    - **Features**: TLS certificates, admin service account, internal DNS
@@ -96,6 +99,7 @@ The Cloudflare tunnel configuration was modified to remove public ingress resour
 **Configuration Management**:
 
 1. **Removed Public Ingress References**
+
    - Cleaned up kustomization files to remove references to deleted public ingress resources
    - Maintained proper resource dependencies and ordering
 

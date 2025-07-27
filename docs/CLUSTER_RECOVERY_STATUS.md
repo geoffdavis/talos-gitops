@@ -25,6 +25,7 @@
 Since the nodes are completely unresponsive to software commands, **physical power cycling is required**:
 
 1. **mini01 (172.29.51.11)**:
+
    - Physically power off the device (unplug power or press power button)
    - Wait 10 seconds
    - Power back on

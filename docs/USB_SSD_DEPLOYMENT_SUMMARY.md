@@ -11,16 +11,19 @@ The USB SSD storage configuration enables high-performance external storage for 
 ### New Files
 
 1. **[`talos/patches/usb-ssd-storage.yaml`](../talos/patches/usb-ssd-storage.yaml)**
+
    - Talos machine configuration patch for USB SSD support
    - Includes automatic detection, mounting, and optimization scripts
    - Configures systemd service for USB SSD management
 
 2. **[`docs/USB_SSD_STORAGE_CONFIGURATION.md`](USB_SSD_STORAGE_CONFIGURATION.md)**
+
    - Comprehensive documentation for USB SSD requirements and configuration
    - Hardware specifications and connection guidelines
    - Troubleshooting and maintenance procedures
 
 3. **[`scripts/validate-usb-ssd-storage.sh`](../scripts/validate-usb-ssd-storage.sh)**
+
    - Automated validation script for USB SSD storage
    - Tests detection, mounting, and Longhorn integration
    - Provides detailed error reporting and troubleshooting
@@ -173,11 +176,13 @@ talosctl dmesg | grep -i usb
 ### Common Issues
 
 1. **USB SSD not detected**
+
    - Check physical connection and power
    - Verify device appears in `/dev/disk/by-id/usb-*`
    - Check system logs: `talosctl dmesg | grep usb`
 
 2. **Mount point not created**
+
    - Verify systemd service is running: `talosctl service mount-usb-ssd status`
    - Check filesystem format: `talosctl blkid /dev/disk/by-id/usb-*`
    - Review service logs: `talosctl logs mount-usb-ssd`
@@ -190,6 +195,7 @@ talosctl dmesg | grep -i usb
 ### Recovery Procedures
 
 1. **USB SSD disconnection**
+
    - Longhorn automatically handles temporary disconnections
    - Reconnect USB SSD and verify mount restoration
    - Check replica status in Longhorn UI

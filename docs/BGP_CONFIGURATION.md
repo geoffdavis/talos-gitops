@@ -51,13 +51,16 @@ talos-gitops/scripts/unifi-bgp-config.conf
 #### Step 2: Upload Configuration
 
 1. **Open UniFi Network UI**
+
    - Navigate to your UniFi Network interface
    - Typically `https://unifi.ui.com` or local controller IP
 
 2. **Navigate to BGP Settings**
+
    - Go to **Network** > **Settings** > **Routing** > **BGP**
 
 3. **Upload Configuration**
+
    - Click **Upload Configuration** or **Import Configuration**
    - Select the file: `scripts/unifi-bgp-config.conf`
    - Click **Upload** or **Import**
@@ -104,15 +107,18 @@ task bgp:verify-peering
 The simplified configuration includes:
 
 1. **Router Configuration**
+
    - BGP ASN: 64513 (UDM Pro)
    - Router ID: 172.29.51.1
 
 2. **IPv4 BGP Neighbors**
+
    - 172.29.51.11 (talos-node-1) - ASN 64512
    - 172.29.51.12 (talos-node-2) - ASN 64512
    - 172.29.51.13 (talos-node-3) - ASN 64512
 
 3. **IPv6 BGP Neighbors**
+
    - fd47:25e1:2f96:51::11 (talos-node-1) - ASN 64512
    - fd47:25e1:2f96:51::12 (talos-node-2) - ASN 64512
    - fd47:25e1:2f96:51::13 (talos-node-3) - ASN 64512

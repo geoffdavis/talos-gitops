@@ -385,11 +385,13 @@ task talos:apply-config
 When using this cluster as a template:
 
 1. **Update Network Configuration**:
+
    - Modify IP ranges in [`talconfig.yaml`](../talconfig.yaml)
    - Update BGP ASN numbers in [`infrastructure/cilium-bgp/`](../infrastructure/cilium-bgp/)
    - Adjust load balancer pools in [`infrastructure/cilium/`](../infrastructure/cilium/)
 
 2. **Customize Secret Management**:
+
    - Update 1Password vault references in scripts
    - Modify secret store configurations
 

@@ -17,21 +17,25 @@ The enhanced token management system provides:
 ### Components
 
 1. **Enhanced Token Setup Job** ([`enhanced-token-setup-job.yaml`](../infrastructure/authentik-outpost-config/enhanced-token-setup-job.yaml))
+
    - Creates 1-year tokens with proper expiry management
    - Validates existing tokens and prevents unnecessary recreation
    - Provides detailed logging and status reporting
 
 2. **Token Management Scripts** ([`scripts/token-management/`](../scripts/token-management/))
+
    - Python-based token management with shared logic
    - Unit tests for reliability
    - CLI interface for manual operations
 
 3. **Enhanced External Secrets** ([`external-secret-admin-token-enhanced.yaml`](../infrastructure/authentik/external-secret-admin-token-enhanced.yaml))
+
    - Supports token rotation metadata
    - Multiple token entries for overlap periods
    - Automated sync with 1Password
 
 4. **Token Rotation CronJob** ([`token-rotation-cronjob.yaml`](../infrastructure/authentik/token-rotation-cronjob.yaml))
+
    - Daily automated token health checks
    - Automatic rotation when tokens approach expiry
    - Notification integration for status updates
@@ -324,6 +328,7 @@ If automated systems fail, you can manually recover:
    ```
 
 3. **Update 1Password with new token**:
+
    - Copy token from job logs
    - Update 1Password item
    - Verify External Secret sync
