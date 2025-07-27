@@ -57,7 +57,7 @@ spec:
         proxy-body-size: "50m"
         proxy-buffer-size: "16k"
         proxy-buffers: "8 16k"
-        proxy-busy-buffers-size: "32k"
+        proxy-busy-buffers-size: "64k"
         client-header-buffer-size: "64k"
         client-body-buffer-size: "128k"
         large-client-header-buffers: "4 64k"
