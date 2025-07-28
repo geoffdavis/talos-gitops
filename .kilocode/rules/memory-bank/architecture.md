@@ -274,6 +274,18 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Schema Compatibility**: Resolved CloudNativePG v1.26.1 compatibility issues by removing invalid backup resource fields
 - **Security Configuration**: Updated namespace PodSecurity policy from "restricted" to "privileged" for s6-overlay container init system compatibility
 
+### Monitoring Stack Architecture
+
+- **Monitoring Platform**: **PRODUCTION-READY** - Comprehensive observability infrastructure with full external access and complete recovery from Renovate-induced failures
+- **Core Components**: Prometheus v2.54.1, Grafana v11.1.0, AlertManager v0.27.0 deployed via kube-prometheus-stack v75.15.0
+- **External Access**: All monitoring services accessible via BGP-advertised LoadBalancer IPs (Grafana: 172.29.52.101, Prometheus: 172.29.52.102, AlertManager: 172.29.52.103)
+- **Metric Collection**: 29 healthy monitoring targets providing comprehensive cluster observability
+- **Configuration Management**: Single source of truth deployment from `infrastructure/monitoring/` with duplicate configuration elimination
+- **LoadBalancer Integration**: Full integration with Cilium LoadBalancer IPAM and BGP route advertisement
+- **Deployment Recovery**: Successfully recovered from complete failure caused by duplicate HelmRelease conflicts and LoadBalancer IPAM dysfunction
+- **Renovate Compatibility**: Resolved major version upgrade (v61.3.2 → v75.15.0) with proper dependency management
+- **Service Selector Fix**: Implemented required service labels for LoadBalancer IPAM pool selection (`io.cilium/lb-ipam-pool: "bgp-default"`)
+
 ## Critical Implementation Paths
 
 ### Bootstrap Sequence

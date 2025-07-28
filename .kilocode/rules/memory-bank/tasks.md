@@ -920,6 +920,127 @@ This task documents the successful elimination of manual bearer token requiremen
 
 This task represents the successful completion of the Kubernetes Dashboard bearer token elimination project, providing seamless SSO access and full administrative capabilities through integration with the existing external Authentik outpost system.
 
+### Resolve Monitoring Stack Failures After Renovate Updates
+
+**Last performed:** July 2025 (successful completion - MAJOR SUCCESS)
+**Files to modify:**
+
+- `apps/monitoring/` - Remove duplicate monitoring directory (DELETE ENTIRE DIRECTORY)
+- `clusters/home-ops/infrastructure/apps.yaml` - Remove apps-monitoring Kustomization reference
+- `infrastructure/monitoring/prometheus.yaml` - Add required service labels for LoadBalancer IPAM
+- `apps/home-automation/mosquitto/service.yaml` - Add required service labels for LoadBalancer IPAM
+
+**Context:**
+This task documents the comprehensive resolution of monitoring stack failures caused by Renovate dependency updates. The failures were caused by dual issues: duplicate HelmRelease conflicts and LoadBalancer IPAM dysfunction that prevented external IP assignment and blocked Flux reconciliation.
+
+**Root Causes Identified:**
+
+- **Duplicate HelmRelease Conflicts**: Both `apps/monitoring/` and `infrastructure/monitoring/` contained identical kube-prometheus-stack configurations that Renovate updated simultaneously
+- **Renovate Trigger**: Renovate PR #10 updated kube-prometheus-stack from v61.3.2 → v75.15.0 in both locations, causing Helm controller conflicts
+- **LoadBalancer IPAM Dysfunction**: Cilium IPAM controller failure and service selector mismatch preventing external IP assignment
+- **Service Configuration Issue**: IP pools expected services to have `io.cilium/lb-ipam-pool` labels, but services only had annotations
+
+**Steps:**
+
+1. **Root Cause Analysis and Investigation**:
+
+   - Investigate Flux reconciliation status: `flux get kustomizations`
+   - Check HelmRelease status: `flux get helmreleases -A`
+   - Analyze monitoring pod status: `kubectl get pods -n monitoring`
+   - Review LoadBalancer service status: `kubectl get svc -A --field-selector spec.type=LoadBalancer`
+   - Examine Helm release history: `helm history kube-prometheus-stack -n monitoring`
+
+2. **Eliminate Duplicate HelmRelease Configurations**:
+
+   - **Problem**: Two identical HelmReleases causing "missing target release for rollback" errors
+   - **Solution**: Remove entire `apps/monitoring/` directory (legacy configuration):
+
+     ```bash
+     rm -rf apps/monitoring/
+     ```
+
+   - **Update Flux Configuration**: Remove `apps-monitoring` Kustomization from `clusters/home-ops/infrastructure/apps.yaml`
+   - **Validation**: Verify only `infrastructure/monitoring/` remains as single source of truth
+
+3. **Clean Corrupted Helm Release State**:
+
+   - **Problem**: Corrupted Helm release preventing clean deployment
+   - **Solution**: Delete failed Helm release:
+
+     ```bash
+     helm delete kube-prometheus-stack -n monitoring
+     ```
+
+   - **Result**: Allow Flux to redeploy cleanly from single authoritative source
+
+4. **Fix LoadBalancer IPAM Controller Issues**:
+
+   - **Problem**: Cilium IPAM controller stopped processing requests after monitoring stack deployment failures
+   - **Solution**: Restart Cilium operator to reset IPAM controller state:
+
+     ```bash
+     kubectl delete pod -n kube-system -l io.cilium/app=operator
+     ```
+
+   - **Validation**: Monitor IPAM controller logs for resumed activity
+
+5. **Resolve Service Selector Mismatch**:
+
+   - **Problem**: IP pools configured to select services with `io.cilium/lb-ipam-pool` labels, but services only had annotations
+   - **Solution**: Add required labels to all affected services:
+
+     ```yaml
+     # Add to service metadata
+     labels:
+       io.cilium/lb-ipam-pool: "bgp-default"
+     ```
+
+   - **Services Updated**: Monitoring services (Grafana, Prometheus, AlertManager) and Mosquitto service
+
+6. **Deploy and Validate Complete Resolution**:
+
+   - Commit all changes to Git repository
+   - Monitor Flux reconciliation: `flux get kustomizations --watch`
+   - Verify all monitoring services receive external IPs
+   - Test external access to monitoring services
+   - Validate BGP route advertisement for new IPs
+
+**Critical Technical Fixes Applied:**
+
+- **Configuration Deduplication**: Eliminated duplicate HelmRelease configurations causing Helm controller conflicts
+- **Helm State Cleanup**: Deleted corrupted Helm release allowing clean redeployment from single authoritative source
+- **IPAM Controller Recovery**: Restarted Cilium operator to reset LoadBalancer IPAM controller state after crash
+- **Service Selector Fix**: Added required `io.cilium/lb-ipam-pool: "bgp-default"` labels to services
+- **BGP Route Advertisement**: Verified all monitoring service IPs properly advertised via BGP and accessible from network
+- **End-to-End Validation**: Confirmed complete monitoring stack functionality with external access and proper metric collection
+
+**Important notes:**
+
+- **Dual Root Causes**: Both duplicate HelmRelease conflicts AND LoadBalancer IPAM dysfunction required resolution
+- **Renovate Impact**: Major version jump (v61.3.2 → v75.15.0) in duplicate locations caused systematic failures
+- **Service Selector Requirements**: Cilium LoadBalancer IPAM requires services to have pool labels, not just annotations
+- **IPAM Controller Fragility**: IPAM controller can crash during deployment failures and requires restart to resume processing
+- **Single Source of Truth**: Maintaining single authoritative configuration source prevents duplicate conflicts
+
+**Success Criteria:**
+
+- ✅ All monitoring components running and healthy (Prometheus, Grafana, AlertManager, node-exporters, operators)
+- ✅ All monitoring services have external IPs from BGP pools (Grafana: 172.29.52.101, Prometheus: 172.29.52.102, AlertManager: 172.29.52.103)
+- ✅ Flux reconciliation completed successfully with no stuck loops
+- ✅ BGP routes properly advertised for all monitoring service IPs
+- ✅ Complete monitoring functionality validated with 29 healthy targets
+- ✅ End-to-end monitoring pipeline operational with external access
+
+**Troubleshooting:**
+
+- **Duplicate HelmRelease errors**: Check for multiple directories containing identical HelmRelease configurations
+- **IPAM controller failures**: Restart Cilium operator if LoadBalancer services stuck in pending state
+- **Service selector mismatches**: Ensure services have required labels matching IP pool selectors
+- **BGP advertisement issues**: Verify service labels match BGP policy service selectors
+- **Helm state corruption**: Delete failed Helm releases to allow clean redeployment
+
+This task represents a comprehensive recovery of a completely non-functional monitoring stack, demonstrating systematic troubleshooting methodology for complex GitOps and LoadBalancer IPAM issues.
+
 ## Monitoring and Maintenance
 
 ### Update Monitoring Dashboards

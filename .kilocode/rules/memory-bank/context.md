@@ -2,6 +2,8 @@
 
 ## Current Work Focus
 
+**🎉 MAJOR SUCCESS: Monitoring Stack Recovery Complete (COMPLETED - July 2025)**: Successfully resolved comprehensive monitoring stack failures caused by Renovate dependency updates. Eliminated duplicate HelmRelease conflicts and fixed critical LoadBalancer IPAM issues, restoring full monitoring functionality with external access via BGP-advertised IPs.
+
 **🎉 MAJOR SUCCESS: Home Assistant Stack Deployment Complete (COMPLETED - July 2025)**: Successfully deployed comprehensive Home Assistant home automation platform with PostgreSQL database, Mosquitto MQTT broker, and Redis cache. Full integration with cluster authentication system via external Authentik outpost. Production-ready home automation infrastructure operational.
 
 **🎉 MAJOR SUCCESS: Pre-commit Implementation Complete (COMPLETED - July 2025)**: Successfully implemented comprehensive pre-commit strategy with balanced enforcement approach. Security issues and syntax errors are enforced (block commits), while formatting issues are warnings only. System includes 600+ real issues identified across YAML, Python, Shell, Markdown, and Kubernetes manifests.
@@ -55,7 +57,38 @@
 - ✅ **COMPREHENSIVE DOCUMENTATION**: Complete operational procedures and troubleshooting guides created
 - ✅ **DASHBOARD SERVICE RESOLVED**: Kong service configuration issue fixed via GitOps database update job
 
+**Monitoring Stack Recovery Achievement**: Resolved complex monitoring stack failures through systematic investigation and resolution of both duplicate HelmRelease conflicts and LoadBalancer IPAM dysfunction. All monitoring components (Prometheus, Grafana, AlertManager) now operational with external access via BGP-advertised IPs and comprehensive metric collection from 29 healthy targets.
+
 ## Recent Changes
+
+### 🎉 Monitoring Stack Recovery Complete (July 2025 - COMPLETED)
+
+**MAJOR ACHIEVEMENT**: Successfully resolved comprehensive monitoring stack failures caused by Renovate dependency updates. Through systematic investigation and coordinated resolution across multiple specialized modes, restored full monitoring functionality with external access and proper Flux reconciliation.
+
+**Monitoring Stack Recovery Completed**:
+
+- **✅ DUPLICATE HELMRELEASE CONFLICTS RESOLVED**: Eliminated conflicting configurations where both `apps/monitoring/` and `infrastructure/monitoring/` contained identical kube-prometheus-stack deployments
+- **✅ RENOVATE TRIGGER IDENTIFIED**: Renovate PR #10 updated kube-prometheus-stack from v61.3.2 → v75.15.0 in both locations simultaneously, causing Helm controller conflicts
+- **✅ LOADBALANCER IPAM DYSFUNCTION FIXED**: Resolved critical Cilium IPAM controller failure and service selector mismatch preventing external IP assignment
+- **✅ SINGLE SOURCE OF TRUTH ESTABLISHED**: Maintained `infrastructure/monitoring/` as authoritative source, removed duplicate `apps/monitoring/` directory
+- **✅ EXTERNAL ACCESS RESTORED**: All monitoring services now accessible via BGP-advertised LoadBalancer IPs (Grafana: 172.29.52.101, Prometheus: 172.29.52.102, AlertManager: 172.29.52.103)
+- **✅ COMPREHENSIVE FUNCTIONALITY VALIDATED**: 29 healthy monitoring targets, complete metric collection, and end-to-end monitoring pipeline operational
+
+**Critical Technical Fixes Applied**:
+
+- **Configuration Deduplication**: Eliminated duplicate HelmRelease configurations causing "missing target release for rollback" errors
+- **Helm State Cleanup**: Deleted corrupted Helm release allowing clean redeployment from single authoritative source
+- **IPAM Controller Recovery**: Restarted Cilium operator to reset LoadBalancer IPAM controller state after crash
+- **Service Selector Fix**: Added required `io.cilium/lb-ipam-pool: "bgp-default"` labels to services (IP pools expected labels, services only had annotations)
+- **BGP Route Advertisement**: Verified all monitoring service IPs properly advertised via BGP and accessible from network
+- **End-to-End Validation**: Confirmed complete monitoring stack functionality with external access and proper metric collection
+
+**Deployment Recovery Process**:
+
+- **Root Cause Analysis**: Identified dual issues of duplicate HelmRelease conflicts and LoadBalancer IPAM dysfunction
+- **Systematic Resolution**: Applied fixes in logical order (eliminate duplicates → clean Helm state → fix IPAM → validate functionality)
+- **Multi-Mode Coordination**: Leveraged Debug mode for investigation, Code mode for resolution, and Debug mode for validation
+- **Production Deployment**: All changes committed to Git and deployed via GitOps for permanent resolution
 
 ### 🎉 Home Assistant Stack Troubleshooting and Recovery Complete (July 2025 - COMPLETED)
 
