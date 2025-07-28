@@ -14,7 +14,6 @@ resources:
   - configmap.yaml
   - secret.yaml
   - external-outpost-secret.yaml
-  - admin-token-secret.yaml
   - outpost-id-configmap.yaml
   - service-discovery-config.yaml
 
