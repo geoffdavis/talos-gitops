@@ -23,8 +23,8 @@ This is a GitOps-driven Kubernetes cluster running on Talos OS, designed to oper
 - **Node IPs**: 172.29.51.11-13
 - **Pod CIDR**: 10.244.0.0/16 (IPv4), fd47:25e1:2f96:51:2000::/64 (IPv6)
 - **Service CIDR**: 10.96.0.0/12 (IPv4), fd47:25e1:2f96:51:1000::/108 (IPv6)
-- **LoadBalancer Pool**: 172.29.51.100-199
-- **Ingress IP**: 172.29.51.200
+- **LoadBalancer Pools**: 172.29.52.50-220 (BGP-advertised, VLAN 52)
+- **Ingress IP**: 172.29.52.200 (from bgp-ingress pool)
 
 ## Key Design Principles
 

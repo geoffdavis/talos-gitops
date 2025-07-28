@@ -2,6 +2,279 @@
 
 This file documents repetitive tasks and operational workflows that follow established patterns in the cluster.
 
+## Home Assistant Stack Management
+
+### Deploy Home Assistant Stack
+
+**Last performed:** July 2025 (successful deployment)
+**Files to modify:**
+
+- `apps/home-automation/` - Complete Home Assistant stack deployment
+- `clusters/home-ops/infrastructure/apps.yaml` - Flux Kustomization for apps
+
+**Steps:**
+
+1. **Prerequisites Validation**:
+
+   - Verify PostgreSQL cluster operator is operational
+   - Confirm Longhorn storage is available
+   - Check external Authentik outpost is working
+   - Validate ingress controller and cert-manager functionality
+
+2. **Deploy Database Infrastructure**:
+
+   - Deploy PostgreSQL cluster: `kubectl apply -f apps/home-automation/postgresql/`
+   - Verify cluster status: `kubectl get cluster homeassistant-postgresql -n home-automation`
+   - Check database initialization job completion
+   - Validate database credentials from 1Password integration
+
+3. **Deploy Supporting Services**:
+
+   - Deploy Mosquitto MQTT broker: `kubectl apply -f apps/home-automation/mosquitto/`
+   - Deploy Redis cache: `kubectl apply -f apps/home-automation/redis/`
+   - Verify service endpoints: `kubectl get endpoints -n home-automation`
+
+4. **Deploy Home Assistant Core**:
+
+   - Deploy Home Assistant: `kubectl apply -f apps/home-automation/home-assistant/`
+   - Monitor deployment: `kubectl rollout status deployment home-assistant -n home-automation`
+   - Check health probes: `kubectl get pods -n home-automation -l app.kubernetes.io/name=home-assistant`
+
+5. **Configure Authentication Integration**:
+
+   - Verify external Authentik outpost handles homeassistant.k8s.home.geoffdavis.com
+   - Test SSO authentication flow
+   - Validate trusted proxy configuration for Authentik integration
+
+6. **Validate Complete Stack**:
+   - Test web interface: <https://homeassistant.k8s.home.geoffdavis.com>
+   - Verify database connectivity and data persistence
+   - Test MQTT broker functionality
+   - Check Redis cache performance
+   - Validate backup strategy execution
+
+**Important notes:**
+
+- **Database Integration**: PostgreSQL cluster provides high availability with automated backups
+- **Authentication Flow**: Full SSO integration with existing external Authentik outpost
+- **Resource Management**: Production-ready resource limits and health checks
+- **IoT Integration**: Mosquitto MQTT broker for secure IoT device communication
+- **Performance**: Redis cache for session storage and optimization
+
+**Success Criteria:**
+
+- ✅ All Home Assistant stack components running and healthy
+- ✅ Database cluster operational with proper backup configuration
+- ✅ MQTT broker accessible for IoT device integration
+- ✅ Redis cache operational and connected
+- ✅ SSO authentication working via external Authentik outpost
+- ✅ Web interface accessible and functional
+
+**Troubleshooting:**
+
+- **Database connection issues**: Check PostgreSQL cluster status and credentials
+- **Authentication failures**: Verify external Authentik outpost proxy provider configuration
+- **MQTT connectivity**: Check Mosquitto service endpoints and security configuration
+- **Performance issues**: Monitor Redis cache utilization and Home Assistant resource usage
+
+### Troubleshoot Home Assistant Stack Deployment Issues
+
+**Last performed:** July 2025 (successful completion - MAJOR SUCCESS)
+**Files to modify:**
+
+- `apps/home-automation/postgresql/postgresql-backup.yaml` - Remove invalid CloudNativePG schema fields
+- `apps/home-automation/postgresql/cluster.yaml` - Fix TLS certificate configuration
+- `apps/home-automation/postgresql/external-secret-superuser.yaml` - Fix 1Password credential references
+- `apps/home-automation/namespace.yaml` - Update PodSecurity policy for s6-overlay compatibility
+- `apps/home-automation/home-assistant/deployment.yaml` - Add required security context
+- `apps/home-automation/mosquitto/configmap.yaml` - Simplify MQTT listener configuration
+
+**Context:**
+This task documents the comprehensive troubleshooting and recovery of a completely non-functional Home Assistant stack deployment. Through systematic investigation and resolution of multiple critical blocking issues, the entire stack was restored to full operational status.
+
+**Root Causes Identified:**
+
+- **PostgreSQL Schema Validation**: CloudNativePG v1.26.1 compatibility issues with invalid `immediate: true` fields blocking all resource deployment
+- **Missing 1Password Credentials**: Required credential entries missing from 1Password vault preventing external secrets synchronization
+- **PostgreSQL TLS Certificate Issues**: Manual certificate configuration conflicts with CloudNativePG automatic certificate management
+- **Container Security Constraints**: Namespace PodSecurity policy "restricted" incompatible with s6-overlay init system requirements
+- **MQTT Port Binding Conflicts**: Mosquitto configuration causing port 1883 binding conflicts preventing service startup
+
+**Steps:**
+
+1. **Root Cause Analysis and Investigation**:
+
+   - Investigate Flux Kustomization status: `flux get kustomizations -n home-automation`
+   - Check resource deployment failures: `kubectl get all -n home-automation`
+   - Analyze PostgreSQL cluster status: `kubectl get cluster homeassistant-postgresql -n home-automation`
+   - Review external secrets synchronization: `kubectl get externalsecrets -n home-automation`
+   - Examine pod startup failures: `kubectl describe pods -n home-automation`
+
+2. **PostgreSQL Schema Validation Fix**:
+
+   - **Problem**: CloudNativePG v1.26.1 rejecting invalid `immediate: true` fields in Backup and ScheduledBackup resources
+   - **Solution**: Remove invalid fields from `postgresql-backup.yaml`:
+
+     ```yaml
+     # Remove these invalid fields:
+     # immediate: true  # Not supported in CloudNativePG v1.26.1
+     ```
+
+   - **Validation**: Verify resource deployment: `kubectl apply -f apps/home-automation/postgresql/postgresql-backup.yaml`
+
+3. **1Password Credential Management**:
+
+   - **Problem**: Missing credential entries in 1Password vault preventing external secrets from syncing
+   - **Solution**: Create missing 1Password entries with optimized architecture:
+     - PostgreSQL credentials with proper naming convention
+     - Home Assistant configuration secrets
+     - MQTT broker credentials
+   - **Validation**: Check external secret sync: `kubectl get secrets -n home-automation`
+
+4. **PostgreSQL TLS Certificate Resolution**:
+
+   - **Problem**: Manual TLS certificate configuration conflicting with CloudNativePG automatic certificate management
+   - **Solution**: Remove explicit certificate references from `cluster.yaml`:
+
+     ```yaml
+     # Remove manual certificate configuration (lines 106-111)
+     # Enable CloudNativePG automatic certificate management
+     ```
+
+   - **Validation**: Verify cluster certificate generation: `kubectl get certificates -n home-automation`
+
+5. **Home Assistant Security Policy Fix**:
+
+   - **Problem**: Namespace PodSecurity policy "restricted" preventing s6-overlay init system from starting
+   - **Solution**: Update namespace and deployment security configuration:
+
+     ```yaml
+     # namespace.yaml - Update PodSecurity policy
+     pod-security.kubernetes.io/enforce: privileged
+
+     # deployment.yaml - Add required security context
+     securityContext:
+       privileged: true
+       capabilities:
+         add: ["SYS_ADMIN"]
+     ```
+
+   - **Validation**: Verify pod startup: `kubectl get pods -n home-automation -l app.kubernetes.io/name=home-assistant`
+
+6. **Mosquitto MQTT Configuration Fix**:
+
+   - **Problem**: MQTT listener configuration causing port 1883 binding conflicts
+   - **Solution**: Simplify configuration to use explicit listeners only:
+
+     ```yaml
+     # Remove conflicting port 1883 configuration
+     # Use explicit listener configuration only
+     ```
+
+   - **Validation**: Check service startup: `kubectl logs -n home-automation -l app.kubernetes.io/name=mosquitto`
+
+7. **End-to-End Stack Validation**:
+   - Verify all components running: `kubectl get pods -n home-automation`
+   - Test database connectivity: `kubectl exec -n home-automation <postgres-pod> -- psql -c "\l"`
+   - Validate MQTT broker: `kubectl port-forward -n home-automation svc/mosquitto 1883:1883`
+   - Test Home Assistant access: `curl -I https://homeassistant.k8s.home.geoffdavis.com`
+   - Confirm SSO authentication via external Authentik outpost
+
+**Critical Technical Fixes Applied:**
+
+- **Schema Compatibility**: Fixed CloudNativePG backup resource validation preventing any deployment
+- **Credential Architecture**: Implemented optimized 1Password entry structure for Home Assistant stack
+- **Certificate Management**: Enabled automatic TLS certificate generation removing manual configuration conflicts
+- **Container Security**: Configured proper security contexts for s6-overlay container init system requirements
+- **MQTT Configuration**: Resolved listener configuration conflicts causing service startup failures
+- **End-to-End Validation**: Confirmed complete stack functionality with SSO authentication via external Authentik outpost
+
+**Important notes:**
+
+- **Systematic Approach**: Applied fixes in dependency order (database → credentials → security → services)
+- **Component Validation**: Verified each component individually before proceeding to next fix
+- **CloudNativePG Compatibility**: v1.26.1 has stricter schema validation requiring removal of unsupported fields
+- **s6-overlay Requirements**: Container init system requires privileged security context and specific capabilities
+- **Production Ready**: Complete stack now operational with proper security, monitoring, and authentication integration
+
+**Success Criteria:**
+
+- ✅ All Home Assistant stack components running and healthy (Home Assistant Core v2025.7, PostgreSQL, Mosquitto MQTT, Redis)
+- ✅ PostgreSQL cluster operational with proper backup configuration and automatic certificate management
+- ✅ All external secrets syncing successfully from 1Password vault
+- ✅ MQTT broker accessible for IoT device integration without port binding conflicts
+- ✅ Home Assistant web interface accessible via <https://homeassistant.k8s.home.geoffdavis.com>
+- ✅ SSO authentication working via external Authentik outpost
+- ✅ Complete stack integrated with cluster monitoring and alerting systems
+
+**Troubleshooting:**
+
+- **Schema validation errors**: Check CloudNativePG version compatibility and remove unsupported fields
+- **External secret sync failures**: Verify 1Password credential entries exist and have correct naming
+- **Certificate issues**: Enable CloudNativePG automatic certificate management, remove manual configuration
+- **Pod security failures**: Update namespace PodSecurity policy and add required security contexts
+- **Service startup failures**: Check configuration conflicts and port binding issues
+- **Authentication failures**: Verify external Authentik outpost proxy provider configuration
+
+This task represents a comprehensive recovery of a completely non-functional Home Assistant stack, demonstrating systematic troubleshooting methodology and the importance of understanding component dependencies and compatibility requirements.
+
+### Maintain Home Assistant Stack
+
+**Last performed:** Ongoing operational requirement
+**Files to modify:** Various Home Assistant configuration files as needed
+
+**Steps:**
+
+1. **Regular Health Checks**:
+
+   - Monitor Home Assistant pod status: `kubectl get pods -n home-automation`
+   - Check database cluster health: `kubectl get cluster homeassistant-postgresql -n home-automation`
+   - Verify MQTT broker connectivity and message flow
+   - Monitor Redis cache performance and memory usage
+
+2. **Configuration Updates**:
+
+   - Update Home Assistant configuration via ConfigMap
+   - Restart deployment after configuration changes: `kubectl rollout restart deployment home-assistant -n home-automation`
+   - Test configuration changes in development environment first
+   - Monitor logs for configuration errors: `kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant`
+
+3. **Database Maintenance**:
+
+   - Monitor PostgreSQL cluster backup status
+   - Check database size and performance metrics
+   - Validate backup restoration procedures periodically
+   - Update database credentials if needed via 1Password integration
+
+4. **Security Updates**:
+
+   - Update Home Assistant image version in deployment.yaml
+   - Update Mosquitto and Redis images as needed
+   - Review and update network policies for IoT device access
+   - Validate TLS certificates and authentication integration
+
+5. **Performance Optimization**:
+   - Monitor resource usage and adjust limits if needed
+   - Optimize Redis cache configuration for Home Assistant workload
+   - Review and tune PostgreSQL performance settings
+   - Scale components if needed based on usage patterns
+
+**Important notes:**
+
+- **Backup Strategy**: Regular database backups with automated restoration testing
+- **Security First**: Keep all components updated and properly secured
+- **IoT Integration**: Monitor MQTT broker for security and performance
+- **Authentication**: Maintain SSO integration with external Authentik outpost
+
+**Monitoring Checklist:**
+
+- [ ] Home Assistant web interface responsive and functional
+- [ ] Database cluster healthy with recent backups
+- [ ] MQTT broker processing messages correctly
+- [ ] Redis cache operational with good performance
+- [ ] SSO authentication working properly
+- [ ] All pods running with healthy status
+
 ## Cluster Operations
 
 ### Complete Cluster Bootstrap

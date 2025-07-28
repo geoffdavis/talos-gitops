@@ -29,6 +29,13 @@
 - **GitHub**: Git repository hosting with webhook integration
 - **Renovate**: Automated dependency updates
 
+### Application Stack
+
+- **Home Assistant v2025.7**: Home automation platform
+- **PostgreSQL v16.4**: Database with CloudNativePG operator
+- **Mosquitto MQTT v2.0.18**: IoT device communication broker
+- **Redis**: Caching and session storage
+
 ### Secret Management
 
 - **1Password Connect**: Centralized secret management
@@ -179,11 +186,12 @@ task pre-commit:clean         # Clean cache
 - **Cluster ASN**: 64512 (all nodes participate in BGP)
 - **UDM Pro ASN**: 64513 (BGP peer and route acceptor)
 - **BGP Peering Status**: ✅ Established and stable
-- **Route Advertisement**: ❌ Currently not working (CiliumBGPAdvertisement issue)
+- **Route Advertisement**: ✅ Working with legacy CiliumBGPPeeringPolicy
 - **IP Pool Architecture**:
   - bgp-default: 172.29.52.100-199 (default services)
   - bgp-ingress: 172.29.52.200-220 (ingress controllers)
-  - bgp-reserved: 172.29.52.221-250 (reserved for future use)
+  - bgp-reserved: 172.29.52.50-99 (reserved for future use)
+  - bgp-default-ipv6: fd47:25e1:2f96:52:100::/120 (IPv6 pool)
 
 ## Tool Usage Patterns
 
@@ -234,10 +242,15 @@ task bgp:verify-peering     # BGP status
 task network:check-ipv6     # IPv6 configuration
 
 # BGP troubleshooting
-kubectl get ciliumbgppeers  # BGP peering status
-kubectl get ciliumbgpadvertisements # Route advertisement config
+kubectl get ciliumbgppeeringpolicies # BGP peering policy status
 kubectl exec -n kube-system -l k8s-app=cilium -- cilium bgp routes # BGP routes
+kubectl exec -n kube-system -l k8s-app=cilium -- cilium bgp peers # BGP peer status
 kubectl logs -n kube-system -l k8s-app=cilium | grep -i bgp # BGP logs
+
+# Home Assistant stack
+kubectl get pods -n home-automation # Stack health
+kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant # Home Assistant logs
+kubectl get cluster homeassistant-postgresql -n home-automation # Database status
 
 # Storage diagnostics
 task storage:check-longhorn  # Storage health
@@ -307,4 +320,32 @@ task storage:validate-usb-ssd # USB SSD validation
 - **Testing**: Automated testing for critical scripts
 - **Documentation**: Markdown validation for readable documentation
 
-This technology stack provides a robust, secure, and scalable foundation for home lab operations while demonstrating enterprise-grade Kubernetes practices, GitOps workflows, and comprehensive code quality standards.
+## Home Automation Integration
+
+### Home Assistant Stack
+
+- **Platform**: Home Assistant Core v2025.7 running on Kubernetes with comprehensive troubleshooting recovery completed
+- **Database**: PostgreSQL cluster with CloudNativePG for high availability, automatic certificate management, and schema compatibility fixes
+- **Communication**: Mosquitto MQTT broker for IoT device integration with resolved port binding conflicts and simplified listener configuration
+- **Performance**: Redis cache for session storage and optimization
+- **Authentication**: Seamless SSO integration via external Authentik outpost with complete proxy configuration
+- **Access**: <https://homeassistant.k8s.home.geoffdavis.com>
+- **Production Status**: **PRODUCTION-READY** - Successfully recovered from complete non-functional state through systematic troubleshooting
+
+### IoT Device Integration
+
+- **MQTT Protocol**: Secure communication with IoT devices via Mosquitto with resolved configuration conflicts
+- **Network Isolation**: Proper network policies for IoT device security with updated PodSecurity policies
+- **Device Discovery**: Automatic device discovery and integration with proper security contexts
+- **Data Persistence**: PostgreSQL storage for device states and history with CloudNativePG automatic certificate management
+
+### Home Assistant Troubleshooting Recovery
+
+- **Schema Compatibility**: Resolved CloudNativePG v1.26.1 compatibility issues by removing invalid backup resource fields
+- **Credential Management**: Implemented optimized 1Password entry structure for Home Assistant stack components
+- **Certificate Management**: Enabled CloudNativePG automatic certificate generation removing manual configuration conflicts
+- **Container Security**: Configured proper security contexts for s6-overlay container init system requirements
+- **MQTT Configuration**: Resolved listener configuration conflicts causing service startup failures
+- **End-to-End Validation**: Confirmed complete stack functionality with SSO authentication via external Authentik outpost
+
+This technology stack provides a robust, secure, and scalable foundation for home lab operations while demonstrating enterprise-grade Kubernetes practices, GitOps workflows, comprehensive code quality standards, and full home automation capabilities with proven troubleshooting and recovery procedures.

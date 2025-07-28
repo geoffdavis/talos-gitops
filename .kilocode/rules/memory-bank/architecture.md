@@ -42,10 +42,16 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 │   ├── authentik-proxy/        # External outpost for authentication
 │   ├── authentik-outpost-config/ # Outpost configuration jobs
 │   ├── cilium/                 # CNI configuration (GitOps part)
+│   ├── cilium-pools/           # LoadBalancer IP pool definitions
+│   ├── cilium-bgp/             # BGP peering configuration
 │   ├── longhorn/               # Distributed storage
 │   ├── onepassword-connect/    # Secret management
+│   ├── postgresql-cluster/     # PostgreSQL database clusters
 │   └── monitoring/             # Observability stack
 ├── apps/                       # Application deployments
+│   ├── dashboard/              # Kubernetes Dashboard
+│   ├── home-automation/        # Home Assistant stack
+│   └── monitoring/             # Monitoring applications
 ├── charts/                     # Helm charts
 │   └── authentik-proxy-config/ # Authentik proxy configuration chart
 ├── scripts/                    # Bootstrap and utility scripts
@@ -119,25 +125,38 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 #### 2. Network Services
 
 - **Cilium BGP**: [`infrastructure/cilium-bgp/`](../infrastructure/cilium-bgp/)
-  - CiliumBGPClusterConfig: Global BGP configuration
-  - CiliumBGPPeerConfig: BGP peering with UDM Pro (ASN 64513)
-  - CiliumBGPAdvertisement: Route advertisement configuration (currently problematic)
-- **Load Balancer Pools**: [`infrastructure/cilium/loadbalancer-pool-bgp.yaml`](../infrastructure/cilium/loadbalancer-pool-bgp.yaml)
+  - CiliumBGPPeeringPolicy: Legacy BGP configuration for Cilium v1.17.6 compatibility
+  - Multiple virtual routers for different IP pools (bgp-default, bgp-ingress, bgp-reserved)
+  - BGP peering with UDM Pro (ASN 64513) with graceful restart enabled
+- **Load Balancer Pools**: [`infrastructure/cilium-pools/loadbalancer-pools.yaml`](../infrastructure/cilium-pools/loadbalancer-pools.yaml)
   - bgp-default: 172.29.52.100-199 (default services)
   - bgp-ingress: 172.29.52.200-220 (ingress controllers)
-  - bgp-reserved: 172.29.52.221-250 (reserved for future use)
+  - bgp-reserved: 172.29.52.50-99 (reserved for future use)
+  - bgp-default-ipv6: fd47:25e1:2f96:52:100::/120 (IPv6 pool)
 - **External DNS**: Multiple providers (Cloudflare, Unifi, internal)
 - **Cloudflare Tunnel**: [`infrastructure/cloudflare-tunnel/`](../infrastructure/cloudflare-tunnel/)
 
 #### 3. Identity Management
 
 - **Authentik**: [`infrastructure/authentik/`](../infrastructure/authentik/) - Complete SSO identity provider
-- **PostgreSQL Backend**: [`infrastructure/postgresql-cluster/`](../infrastructure/postgresql-cluster/) - Database for Authentik
+- **PostgreSQL Backend**: [`infrastructure/postgresql-cluster/`](../infrastructure/postgresql-cluster/) - Database for Authentik and applications
 - **External Authentik-Proxy**: [`infrastructure/authentik-proxy/`](../infrastructure/authentik-proxy/) - External outpost for Kubernetes services with hybrid URL architecture
 - **Authentik Configuration Scripts**: [`scripts/authentik-proxy-config/`](../scripts/authentik-proxy-config/) - Comprehensive configuration automation and troubleshooting scripts
 - **Authentik Helm Chart**: [`charts/authentik-proxy-config/`](../charts/authentik-proxy-config/) - Helm chart for proxy provider configuration
 - **Authentication Architecture**: External outpost handles all \*.k8s.home.geoffdavis.com services with dedicated deployment, Redis session storage, and hybrid URL configuration for DNS resolution
 - **Testing Infrastructure**: [`tests/authentik-proxy-config/`](../tests/authentik-proxy-config/) - Comprehensive test suites for authentication system validation
+
+#### 4. Application Services
+
+- **Home Assistant Stack**: [`apps/home-automation/`](../apps/home-automation/) - **PRODUCTION-READY** comprehensive home automation platform
+  - **Home Assistant Core v2025.7**: Main automation platform with web interface and comprehensive troubleshooting recovery completed
+  - **PostgreSQL Database**: CloudNativePG cluster for persistent storage with automatic certificate management and schema compatibility fixes
+  - **Mosquitto MQTT**: IoT device communication broker with resolved port binding conflicts and simplified listener configuration
+  - **Redis Cache**: Session storage and performance optimization
+  - **Authentication Integration**: Full SSO via external Authentik outpost at <https://homeassistant.k8s.home.geoffdavis.com>
+  - **Deployment Recovery**: Successfully recovered from complete non-functional state through systematic troubleshooting of schema validation, credentials, certificates, security policies, and MQTT configuration
+- **Kubernetes Dashboard**: [`apps/dashboard/`](../apps/dashboard/) - Cluster management interface with SSO integration
+- **Monitoring Applications**: [`apps/monitoring/`](../apps/monitoring/) - Application-level monitoring components
 
 ## Key Technical Decisions
 
@@ -174,7 +193,8 @@ This cluster implements a sophisticated two-phase architecture that separates fo
   - Cluster ASN: 64512 (all nodes participate in BGP)
   - UDM Pro ASN: 64513 (BGP peer and route acceptor)
   - Peering Status: ✅ Established and stable
-  - Route Advertisement: ❌ Currently not working (CiliumBGPAdvertisement issue)
+  - Route Advertisement: ✅ Working with legacy CiliumBGPPeeringPolicy
+  - Multiple Virtual Routers: Dedicated routers for each IP pool with explicit service selectors
 - **Network Separation**:
   - Management Traffic: VLAN 51 (172.29.51.x) - L2 announcements
   - LoadBalancer IPs: VLAN 52 (172.29.52.x) - BGP advertisements
@@ -199,7 +219,7 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Ingress Architecture**: **CRITICAL** - Only external outpost ingress handles \*.k8s.home.geoffdavis.com domains
 - **Service Integration**: Individual services must NOT have their own ingresses for authenticated domains
 - **Token Management**: External outpost API tokens properly managed with 1Password integration
-- **Service Coverage**: All \*.k8s.home.geoffdavis.com services redirect to Authentik for authentication via external outpost
+- **Service Coverage**: All \*.k8s.home.geoffdavis.com services redirect to Authentik for authentication via external outpost (7 services total)
 - **Session Storage**: Dedicated Redis instance in authentik-proxy namespace for session management
 - **SSL/TLS**: Proper certificate validation and secure communication between external outpost and Authentik server
 - **Network Connectivity**: Verified clear network path between authentik-proxy namespace and service namespaces
@@ -240,6 +260,19 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Testing Infrastructure**: Comprehensive test suites for critical authentication and token management components
 - **Automated Validation**: Pre-commit hooks provide fast local feedback before CI/CD pipeline execution
 - **Developer Experience**: Balanced approach prioritizes security without blocking development workflow for formatting issues
+
+### Home Assistant Stack Architecture
+
+- **Home Automation Platform**: **PRODUCTION-READY** - Comprehensive home automation infrastructure with full cluster integration and complete troubleshooting recovery
+- **Database Backend**: PostgreSQL cluster with CloudNativePG operator providing high availability, automated backups, and automatic certificate management
+- **MQTT Communication**: Mosquitto broker for IoT device integration with resolved port binding conflicts and simplified listener configuration
+- **Caching Layer**: Redis instance for session storage and performance optimization
+- **Authentication Integration**: Seamless SSO via external Authentik outpost with proper proxy configuration at <https://homeassistant.k8s.home.geoffdavis.com>
+- **Resource Management**: Production-ready resource limits, health checks, and monitoring integration with proper security contexts for s6-overlay
+- **Network Integration**: Full integration with cluster networking, DNS, and load balancer systems
+- **Deployment Recovery**: Successfully recovered from complete non-functional state through systematic troubleshooting of CloudNativePG schema validation, 1Password credentials, TLS certificates, security policies, and MQTT configuration
+- **Schema Compatibility**: Resolved CloudNativePG v1.26.1 compatibility issues by removing invalid backup resource fields
+- **Security Configuration**: Updated namespace PodSecurity policy from "restricted" to "privileged" for s6-overlay container init system compatibility
 
 ## Critical Implementation Paths
 
