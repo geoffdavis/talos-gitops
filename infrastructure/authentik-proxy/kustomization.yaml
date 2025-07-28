@@ -24,9 +24,17 @@ resources:
   - service.yaml
   - ingress.yaml
 
-  # Configuration jobs
-  - proxy-config-job-simple.yaml
-  - fix-dashboard-kong-service-job.yaml
+  # Configuration approaches (choose one):
+
+  # Option 1: Helm-based configuration (centralized)
+  # - helmrelease-config.yaml
+
+  # Option 2: Label-based service discovery (automatic)
+  - service-discovery-job.yaml
+
+  # Legacy configuration jobs (can be removed after migration)
+  # - proxy-config-job-simple.yaml
+  # - fix-dashboard-kong-service-job.yaml
 
 commonLabels:
   app.kubernetes.io/name: authentik-proxy
