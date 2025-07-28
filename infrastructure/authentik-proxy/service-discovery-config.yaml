@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-service-discovery-config
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/component: service-discovery
+data:
+  # Authentik API configuration
+  authentik_host: "http://authentik-server.authentik.svc.cluster.local"
+  external_outpost_id: "3f0970c5-d6a3-43b2-9a36-d74665c6b24e"
+
+  # Default proxy provider configuration
+  authorization_flow_uuid: "be0ee023-11fe-4a43-b453-bc67957cafbf"
+  cookie_domain: "k8s.home.geoffdavis.com"
+  skip_path_regex: "^/api/.*$"
+
+  # Default application configuration
+  policy_engine_mode: "any"
+
+  # SSL and security settings
+  internal_host_ssl_validation: "false"
+  basic_auth_enabled: "false"
+  proxy_mode: "proxy"

@@ -15,6 +15,7 @@ resources:
   - secret.yaml
   - external-outpost-secret.yaml
   - outpost-id-configmap.yaml
+  - service-discovery-config.yaml
 
   # Redis for session storage
   - redis.yaml

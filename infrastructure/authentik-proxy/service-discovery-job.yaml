@@ -38,14 +38,55 @@ spec:
               type: RuntimeDefault
           env:
             - name: AUTHENTIK_HOST
-              value: "http://authentik-server.authentik.svc.cluster.local"
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: authentik_host
             - name: AUTHENTIK_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: authentik-external-outpost-token
                   key: token
             - name: EXTERNAL_OUTPOST_ID
-              value: "3f0970c5-d6a3-43b2-9a36-d74665c6b24e"
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: external_outpost_id
+            - name: AUTHORIZATION_FLOW_UUID
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: authorization_flow_uuid
+            - name: COOKIE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: cookie_domain
+            - name: SKIP_PATH_REGEX
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: skip_path_regex
+            - name: POLICY_ENGINE_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: policy_engine_mode
+            - name: INTERNAL_HOST_SSL_VALIDATION
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: internal_host_ssl_validation
+            - name: BASIC_AUTH_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: basic_auth_enabled
+            - name: PROXY_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: proxy_mode
           command:
             - /bin/bash
             - -c
@@ -151,14 +192,14 @@ spec:
                 echo "Creating proxy provider: $provider_name"
                 provider_data="{
                   \"name\": \"$provider_name\",
-                  \"authorization_flow\": \"be0ee023-11fe-4a43-b453-bc67957cafbf\",
+                  \"authorization_flow\": \"$AUTHORIZATION_FLOW_UUID\",
                   \"external_host\": \"https://$external_host\",
                   \"internal_host\": \"http://$name.$namespace.svc.cluster.local:$port\",
-                  \"internal_host_ssl_validation\": false,
-                  \"mode\": \"proxy\",
-                  \"cookie_domain\": \"k8s.home.geoffdavis.com\",
-                  \"skip_path_regex\": \"^/api/.*$\",
-                  \"basic_auth_enabled\": false
+                  \"internal_host_ssl_validation\": $INTERNAL_HOST_SSL_VALIDATION,
+                  \"mode\": \"$PROXY_MODE\",
+                  \"cookie_domain\": \"$COOKIE_DOMAIN\",
+                  \"skip_path_regex\": \"$SKIP_PATH_REGEX\",
+                  \"basic_auth_enabled\": $BASIC_AUTH_ENABLED
                 }"
 
                 if api_call "POST" "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "$provider_data"; then
@@ -175,7 +216,7 @@ spec:
                     \"meta_description\": \"$description\",
                     \"meta_publisher\": \"$publisher\",
                     \"meta_launch_url\": \"https://$external_host\",
-                    \"policy_engine_mode\": \"any\"
+                    \"policy_engine_mode\": \"$POLICY_ENGINE_MODE\"
                   }"
 
                   if api_call "POST" "${AUTHENTIK_HOST}/api/v3/core/applications/" "$app_data"; then
