@@ -42,29 +42,29 @@ spec:
             - |
               set -e
               echo "=== Discovering Services with Authentik Proxy Labels ==="
-              
+
               # Find all services with authentik proxy labels
               kubectl get services --all-namespaces \
                 -l "authentik.io/proxy=enabled" \
                 -o jsonpath='{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.labels.authentik\.io/external-host}{"|"}{.metadata.labels.authentik\.io/service-name}{"|"}{.spec.ports[0].port}{"\n"}{end}' \
                 > /tmp/discovered_services.txt
-              
+
               echo "Discovered services:"
               cat /tmp/discovered_services.txt
-              
+
               # Process each discovered service
               while IFS='|' read -r namespace service_name external_host display_name port; do
                 if [ -n "$namespace" ] && [ -n "$service_name" ] && [ -n "$external_host" ]; then
                   echo "Processing: $display_name ($namespace/$service_name)"
-                  
+
                   # Create proxy provider configuration
                   internal_host="http://${service_name}.${namespace}.svc.cluster.local:${port}"
-                  
+
                   # Call Authentik API to create provider (simplified example)
                   echo "Would create proxy provider for $display_name"
                   echo "  External: $external_host"
                   echo "  Internal: $internal_host"
                 fi
               done < /tmp/discovered_services.txt
-              
+
               echo "=== Service Discovery Complete ==="

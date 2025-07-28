@@ -17,7 +17,7 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: infrastructure-sources  # Only needs basic sources
+    - name: infrastructure-sources # Only needs basic sources
   retryInterval: 1m0s
   wait: true
   healthChecks:
@@ -224,8 +224,8 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: infrastructure-cilium-pools  # Phase 2: Requires IP pools first
-    - name: infrastructure-onepassword   # Needs secrets for BGP auth
+    - name: infrastructure-cilium-pools # Phase 2: Requires IP pools first
+    - name: infrastructure-onepassword # Needs secrets for BGP auth
   retryInterval: 1m0s
   wait: true
 ---

@@ -154,6 +154,7 @@ If the job is stuck or failed:
    ```
 
 2. Force Flux to reconcile:
+
    ```bash
    flux reconcile kustomization infrastructure-authentik-outpost-config -n flux-system
    ```
@@ -206,7 +207,6 @@ If authentication isn't working:
 If the automated configuration jobs fail, you can manually configure through the Authentik web interface:
 
 1. **Create Proxy Provider**:
-
    - Go to Applications → Providers
    - Create new Proxy Provider
    - Name: `longhorn-proxy`
@@ -214,7 +214,6 @@ If the automated configuration jobs fail, you can manually configure through the
    - Internal host: `http://longhorn-frontend.longhorn-system.svc.cluster.local`
 
 2. **Create Application**:
-
    - Go to Applications → Applications
    - Create new Application
    - Name: `Longhorn Storage`

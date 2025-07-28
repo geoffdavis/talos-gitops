@@ -41,7 +41,7 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-volume-snapshots
-    - name: infrastructure-cilium-bgp  # Phase 3: Wait for BGP LoadBalancer IPAM
+    - name: infrastructure-cilium-bgp # Phase 3: Wait for BGP LoadBalancer IPAM
   retryInterval: 3m0s
   wait: true
   # Removed cilium dependency as it's managed by Talos bootstrap
