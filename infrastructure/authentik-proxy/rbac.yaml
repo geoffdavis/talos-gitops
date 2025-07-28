@@ -68,6 +68,39 @@ subjects:
     namespace: authentik-proxy
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: authentik-proxy-authentik-access
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: external-outpost
+rules:
+  # Allow reading secrets in authentik namespace for admin token
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: authentik-proxy-authentik-access
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/part-of: identity-provider
+    app.kubernetes.io/component: external-outpost
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: authentik-proxy-authentik-access
+subjects:
+  - kind: ServiceAccount
+    name: authentik-proxy
+    namespace: authentik-proxy
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: authentik-proxy-cluster
