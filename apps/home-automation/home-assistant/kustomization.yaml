@@ -12,7 +12,6 @@ resources:
   - pvc.yaml
   - configmap.yaml
   - external-secret.yaml
-  - authentik-proxy-config-job.yaml
 
 labels:
   - pairs:
