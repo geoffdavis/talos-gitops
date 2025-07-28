@@ -99,14 +99,14 @@ spec:
         immediateCheckpoint: true
         jobs: 1
       tags:
-        environment: "homelab"  # pragma: allowlist secret
-        cluster: "homeassistant-postgresql"  # pragma: allowlist secret
-        backup-tier: "important"  # pragma: allowlist secret
+        environment: "homelab" # pragma: allowlist secret
+        cluster: "homeassistant-postgresql" # pragma: allowlist secret
+        backup-tier: "important" # pragma: allowlist secret
 
   # Certificates configuration - CloudNativePG manages TLS automatically
   # No explicit certificate configuration needed
 
   # Superuser secret
-  superuserSecret:  # pragma: allowlist secret
+  superuserSecret: # pragma: allowlist secret
     name: homeassistant-postgresql-superuser
   enableSuperuserAccess: true

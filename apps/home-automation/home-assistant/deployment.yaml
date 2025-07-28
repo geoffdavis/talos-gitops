@@ -30,8 +30,8 @@ spec:
     spec:
       # Security context - Home Assistant needs root for s6-overlay init
       securityContext:
-        fsGroup: 1000  # Keep fsGroup for volume permissions
-        runAsNonRoot: false  # Allow root for s6-overlay init system
+        fsGroup: 1000 # Keep fsGroup for volume permissions
+        runAsNonRoot: false # Allow root for s6-overlay init system
         seccompProfile:
           type: RuntimeDefault
 
@@ -54,16 +54,16 @@ spec:
 
           # Container security context - Home Assistant needs root for s6-overlay
           securityContext:
-            privileged: true  # Required for s6-overlay init system to work properly
-            allowPrivilegeEscalation: true  # Required for s6-overlay init system
+            privileged: true # Required for s6-overlay init system to work properly
+            allowPrivilegeEscalation: true # Required for s6-overlay init system
             readOnlyRootFilesystem: false # Home Assistant needs to write to config
-            runAsUser: 0  # Run as root for s6-overlay init system
+            runAsUser: 0 # Run as root for s6-overlay init system
             capabilities:
               drop:
                 - ALL
               add:
-                - SETUID  # Required for s6-overlay suexec functionality
-                - SETGID  # Required for s6-overlay group management
+                - SETUID # Required for s6-overlay suexec functionality
+                - SETGID # Required for s6-overlay group management
 
           # Resource limits appropriate for Home Assistant workload
           resources:
