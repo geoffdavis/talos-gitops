@@ -152,7 +152,7 @@ spec:
           - name: KUBERNETES_DASHBOARD_ENABLE_INSECURE_LOGIN
             value: "true"
           - name: KUBERNETES_DASHBOARD_AUTH_MODE
-            value: "token"
+            value: "header"
           - name: KUBERNETES_DASHBOARD_DISABLE_AUTH
             value: "true"
         args:
