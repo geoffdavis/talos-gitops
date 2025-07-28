@@ -35,11 +35,15 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-pool: "bgp-default"
+        labels:
+          io.cilium/lb-ipam-pool: "bgp-default"
 
     prometheus:
       service:
         type: LoadBalancer
         annotations:
+          io.cilium/lb-ipam-pool: "bgp-default"
+        labels:
           io.cilium/lb-ipam-pool: "bgp-default"
 
       prometheusSpec:
@@ -72,6 +76,8 @@ spec:
       service:
         type: LoadBalancer
         annotations:
+          io.cilium/lb-ipam-pool: "bgp-default"
+        labels:
           io.cilium/lb-ipam-pool: "bgp-default"
 
       persistence:
