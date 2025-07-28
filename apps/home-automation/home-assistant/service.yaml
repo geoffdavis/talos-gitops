@@ -8,6 +8,15 @@ metadata:
     app.kubernetes.io/name: home-assistant
     app.kubernetes.io/component: home-automation-core
     app.kubernetes.io/part-of: home-automation-stack
+    # Enable Authentik proxy discovery
+    authentik.io/proxy: "enabled"
+  annotations:
+    # Authentik proxy configuration
+    authentik.io/external-host: "homeassistant.k8s.home.geoffdavis.com"
+    authentik.io/service-name: "Home Assistant"
+    authentik.io/description: "Home Assistant home automation platform"
+    authentik.io/publisher: "Home Assistant"
+    authentik.io/slug: "homeassistant"
 spec:
   type: ClusterIP
   ports:

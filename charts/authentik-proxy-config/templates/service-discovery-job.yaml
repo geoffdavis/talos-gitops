@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "authentik-proxy-config.fullname" . }}-service-discovery
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "authentik-proxy-config.labels" . | nindent 4 }}
+    app.kubernetes.io/component: service-discovery
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.hooks.retries }}
+  activeDeadlineSeconds: {{ .Values.hooks.timeout }}
+  template:
+    metadata:
+      labels:
+        {{- include "authentik-proxy-config.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: service-discovery
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "authentik-proxy-config.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: discover-services
+          image: bitnami/kubectl:latest
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - name: AUTHENTIK_HOST
+              value: {{ .Values.authentik.host | quote }}
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.tokenSecretName }}
+                  key: {{ .Values.externalSecrets.tokenSecretKey }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "=== Discovering Services with Authentik Proxy Labels ==="
+              
+              # Find all services with authentik proxy labels
+              kubectl get services --all-namespaces \
+                -l "authentik.io/proxy=enabled" \
+                -o jsonpath='{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.labels.authentik\.io/external-host}{"|"}{.metadata.labels.authentik\.io/service-name}{"|"}{.spec.ports[0].port}{"\n"}{end}' \
+                > /tmp/discovered_services.txt
+              
+              echo "Discovered services:"
+              cat /tmp/discovered_services.txt
+              
+              # Process each discovered service
+              while IFS='|' read -r namespace service_name external_host display_name port; do
+                if [ -n "$namespace" ] && [ -n "$service_name" ] && [ -n "$external_host" ]; then
+                  echo "Processing: $display_name ($namespace/$service_name)"
+                  
+                  # Create proxy provider configuration
+                  internal_host="http://${service_name}.${namespace}.svc.cluster.local:${port}"
+                  
+                  # Call Authentik API to create provider (simplified example)
+                  echo "Would create proxy provider for $display_name"
+                  echo "  External: $external_host"
+                  echo "  Internal: $internal_host"
+                fi
+              done < /tmp/discovered_services.txt
+              
+              echo "=== Service Discovery Complete ==="

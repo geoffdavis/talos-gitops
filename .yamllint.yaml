@@ -36,3 +36,4 @@ ignore: |
   .task/
   clusterconfig/
   talos/generated/
+  charts/*/templates/

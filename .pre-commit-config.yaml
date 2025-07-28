@@ -40,6 +40,7 @@ repos:
         name: 📋 YAML syntax check
         args: ["-c", ".yamllint.yaml"]
         types: [yaml]
+        exclude: ^charts/.*/templates/.*\.yaml$
 
   # YAML formatting - WARNING ONLY
   - repo: https://github.com/pre-commit/mirrors-prettier
