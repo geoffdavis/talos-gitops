@@ -35,7 +35,6 @@ spec:
     - name: infrastructure-longhorn
     - name: infrastructure-ingress-nginx-internal
     - name: infrastructure-cert-manager
-    - name: infrastructure-authentik-proxy
   retryInterval: 2m0s
   wait: true
   healthChecks:
