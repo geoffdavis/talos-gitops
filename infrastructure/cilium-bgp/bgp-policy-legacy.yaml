@@ -11,40 +11,14 @@ spec:
     matchLabels:
       kubernetes.io/os: linux
   virtualRouters:
-    # Virtual router for bgp-default pool services
+    # Single virtual router for all IP pools
     - localASN: 64512
       exportPodCIDR: true
       serviceSelector:
-        matchLabels:
-          "io.cilium/lb-ipam-pool": "bgp-default"
-      serviceAdvertisements:
-        - LoadBalancerIP
-      neighbors:
-        - peerAddress: "172.29.51.1/32"
-          peerASN: 64513
-          gracefulRestart:
-            enabled: true
-            restartTimeSeconds: 120
-    # Virtual router for bgp-ingress pool services
-    - localASN: 64512
-      exportPodCIDR: false
-      serviceSelector:
-        matchLabels:
-          "io.cilium/lb-ipam-pool": "bgp-ingress"
-      serviceAdvertisements:
-        - LoadBalancerIP
-      neighbors:
-        - peerAddress: "172.29.51.1/32"
-          peerASN: 64513
-          gracefulRestart:
-            enabled: true
-            restartTimeSeconds: 120
-    # Virtual router for bgp-reserved pool services
-    - localASN: 64512
-      exportPodCIDR: false
-      serviceSelector:
-        matchLabels:
-          "io.cilium/lb-ipam-pool": "bgp-reserved"
+        matchExpressions:
+          - key: "io.cilium/lb-ipam-pool"
+            operator: In
+            values: ["bgp-default", "bgp-ingress", "bgp-reserved"]
       serviceAdvertisements:
         - LoadBalancerIP
       neighbors:

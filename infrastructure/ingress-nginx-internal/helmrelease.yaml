@@ -43,15 +43,13 @@ spec:
       # Internal controller specific configuration
       ingressClass: nginx-internal
 
-      # Service configuration for L2 LoadBalancer
+      # Service configuration for BGP LoadBalancer
       service:
         enabled: true
         type: LoadBalancer
         annotations:
-          # Use the ingress pool for BGP advertisement
           io.cilium/lb-ipam-pool: "bgp-ingress"
         labels:
-          # Required label for Cilium LoadBalancer IP pool selector
           io.cilium/lb-ipam-pool: "bgp-ingress"
         externalTrafficPolicy: Local
         ipFamilyPolicy: SingleStack
