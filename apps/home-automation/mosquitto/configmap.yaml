@@ -10,56 +10,27 @@ metadata:
     app.kubernetes.io/part-of: home-automation-stack
 data:
   mosquitto.conf: |
-    # =================================================================
-    # Mosquitto MQTT Broker Configuration
-    # Optimized for Home Assistant IoT device communication
-    # =================================================================
-
-    # General configuration
+    # Minimal Mosquitto configuration to avoid port conflicts
     user mosquitto
 
-    # Persistence configuration for reliability
+    # Persistence
     persistence true
     persistence_location /mosquitto/data/
-    autosave_interval 1800
-    autosave_on_changes false
 
-    # Connection settings
-    max_connections 1000
-    max_inflight_messages 100
-    max_queued_messages 1000
-    message_size_limit 0
-
-    # Logging configuration
-    log_dest file /mosquitto/log/mosquitto.log
+    # Logging
     log_dest stdout
     log_type error
     log_type warning
-    log_type notice
     log_type information
-    log_timestamp true
-    log_timestamp_format %Y-%m-%dT%H:%M:%S
 
-    # Connection logging for troubleshooting
-    connection_messages true
-
-    # =================================================================
-    # Security Configuration
-    # =================================================================
-
-    # Password file location (created by init container)
+    # Authentication
     password_file /mosquitto/config/passwd
 
-    # =================================================================
-    # Network Listeners
-    # =================================================================
-
-    # Standard MQTT listener (port 1883) - explicit listener only
-    listener 1883
+    # Network listeners - explicit only, no default listener
+    listener 1883 0.0.0.0
     allow_anonymous false
 
-    # WebSocket listener for web clients (port 9001)
-    listener 9001
+    listener 9001 0.0.0.0
     protocol websockets
     allow_anonymous false
 
