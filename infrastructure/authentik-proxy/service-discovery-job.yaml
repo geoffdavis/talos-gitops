@@ -57,6 +57,11 @@ spec:
                 configMapKeyRef:
                   name: authentik-service-discovery-config
                   key: authorization_flow_uuid
+            - name: INVALIDATION_FLOW_UUID
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: invalidation_flow_uuid
             - name: COOKIE_DOMAIN
               valueFrom:
                 configMapKeyRef:
@@ -193,6 +198,7 @@ spec:
                 provider_data="{
                   \"name\": \"$provider_name\",
                   \"authorization_flow\": \"$AUTHORIZATION_FLOW_UUID\",
+                  \"invalidation_flow\": \"$INVALIDATION_FLOW_UUID\",
                   \"external_host\": \"https://$external_host\",
                   \"internal_host\": \"http://$name.$namespace.svc.cluster.local:$port\",
                   \"internal_host_ssl_validation\": $INTERNAL_HOST_SSL_VALIDATION,

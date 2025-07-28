@@ -13,6 +13,7 @@ data:
 
   # Default proxy provider configuration
   authorization_flow_uuid: "be0ee023-11fe-4a43-b453-bc67957cafbf"
+  invalidation_flow_uuid: "be0ee023-11fe-4a43-b453-bc67957cafbf"
   cookie_domain: "k8s.home.geoffdavis.com"
   skip_path_regex: "^/api/.*$"
 
