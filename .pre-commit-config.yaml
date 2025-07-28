@@ -48,7 +48,6 @@ repos:
       - id: prettier
         name: 💅 YAML formatting (warning)
         types: [yaml]
-        args: ["--list-different"]
         verbose: true
         # Allow failure but show warnings
         stages: [manual]
@@ -166,7 +165,6 @@ repos:
       - id: prettier
         name: 📝 Markdown formatting (warning)
         types: [markdown]
-        args: ["--list-different"]
         stages: [manual]
 
   # ============================================================================
