@@ -45,14 +45,15 @@ spec:
         tls:
           enabled: false
         # Add service annotations and labels for Authentik service discovery
-        annotations:
-          authentik.io/external-host: "dashboard.k8s.home.geoffdavis.com"
-          authentik.io/service-name: "Kubernetes Dashboard"
-          authentik.io/description: "Kubernetes cluster management dashboard"
-          authentik.io/publisher: "Kubernetes"
-          authentik.io/slug: "dashboard"
-        labels:
-          authentik.io/proxy: "enabled"
+        service:
+          annotations:
+            authentik.io/external-host: "dashboard.k8s.home.geoffdavis.com"
+            authentik.io/service-name: "Kubernetes Dashboard"
+            authentik.io/description: "Kubernetes cluster management dashboard"
+            authentik.io/publisher: "Kubernetes"
+            authentik.io/slug: "dashboard"
+          labels:
+            authentik.io/proxy: "enabled"
 
       # Disable admin API for security
       admin:
