@@ -2,7 +2,7 @@
 
 Welcome to the comprehensive documentation for the Talos GitOps home-ops cluster. This documentation is organized to help you quickly find the information you need, whether you're getting started, operating the cluster daily, or diving deep into specific components.
 
-> **📝 Documentation Status Note**: This documentation structure is currently being reorganized. Some links may reference files that are still being created. For immediate help, see the [Existing Documentation](#existing-documentation) section below for available resources.
+> **📝 Documentation Overview**: This documentation suite is comprehensive and actively maintained. All core operational procedures and component guides are production-ready. For immediate help with common tasks, see our quick reference sections below.
 
 ## Quick Start
 
