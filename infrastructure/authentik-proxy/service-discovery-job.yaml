@@ -27,19 +27,16 @@ spec:
         - name: discover-services
           image: registry.k8s.io/kubectl:v1.31.1
           securityContext:
-            allowPrivilegeEscalation: true
-            runAsNonRoot: false
-            runAsUser: 0
-            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
             capabilities:
-              add:
-                - NET_ADMIN
-                - NET_RAW
-                - SYS_ADMIN
               drop:
                 - ALL
             seccompProfile:
               type: RuntimeDefault
+            readOnlyRootFilesystem: true
           env:
             - name: AUTHENTIK_HOST
               value: "http://authentik-server.authentik.svc.cluster.local:80"
@@ -48,6 +45,9 @@ spec:
                 secretKeyRef:
                   name: authentik-admin-token
                   key: token
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
           command:
             - /bin/bash
             - -c
@@ -58,7 +58,7 @@ spec:
               # Find all services with authentik proxy labels
               kubectl get services --all-namespaces \
                 -l "authentik.io/proxy=enabled" \
-                -o jsonpath='{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.labels.authentik\.io/external-host}{"|"}{.metadata.labels.authentik\.io/service-name}{"|"}{.spec.ports[0].port}{"\n"}{end}' \
+                -o jsonpath='{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.annotations.authentik\.io/external-host}{"|"}{.metadata.annotations.authentik\.io/service-name}{"|"}{.spec.ports[0].port}{"\n"}{end}' \
                 > /tmp/discovered_services.txt
 
               echo "Discovered services:"
@@ -80,3 +80,6 @@ spec:
               done < /tmp/discovered_services.txt
 
               echo "=== Service Discovery Complete ==="
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
