@@ -155,7 +155,7 @@ This cluster implements a sophisticated two-phase architecture that separates fo
   - **Redis Cache**: Session storage and performance optimization
   - **Authentication Integration**: Full SSO via external Authentik outpost at <https://homeassistant.k8s.home.geoffdavis.com>
   - **Deployment Recovery**: Successfully recovered from complete non-functional state through systematic troubleshooting of schema validation, credentials, certificates, security policies, and MQTT configuration
-- **Kubernetes Dashboard**: [`apps/dashboard/`](../apps/dashboard/) - Cluster management interface with SSO integration
+- **Kubernetes Dashboard**: [`apps/dashboard/`](../apps/dashboard/) - **PRODUCTION-READY** cluster management interface with seamless SSO integration and bearer token elimination completed
 - **Monitoring Applications**: [`apps/monitoring/`](../apps/monitoring/) - Application-level monitoring components
 
 ## Key Technical Decisions
@@ -250,6 +250,8 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Seamless Access**: Dashboard now provides seamless SSO access via <https://dashboard.k8s.home.geoffdavis.com> without manual token entry
 - **Administrative Capabilities**: Full cluster administrative functionality available through authenticated Dashboard access
 - **Production Status**: All configuration changes committed to Git and deployed via GitOps for production use
+- **Kong Proxy Configuration**: Kong enabled with proper authentication headers and service discovery annotations for Authentik integration
+- **Authentication Headers**: Configured to trust forwarded headers from Authentik proxy with proper IP trust configuration
 
 ### Development Quality and Testing Architecture
 

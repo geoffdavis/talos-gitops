@@ -51,7 +51,7 @@
 
 ### Identity & Security
 
-- **Authentik**: Identity provider and SSO
+- **Authentik v2025.6.4**: Identity provider and SSO with external outpost architecture
 - **PostgreSQL**: Database backend for Authentik
 - **cert-manager**: TLS certificate automation
 - **Let's Encrypt**: Certificate authority for internal services

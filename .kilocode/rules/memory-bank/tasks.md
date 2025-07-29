@@ -15,33 +15,28 @@ This file documents repetitive tasks and operational workflows that follow estab
 **Steps:**
 
 1. **Prerequisites Validation**:
-
    - Verify PostgreSQL cluster operator is operational
    - Confirm Longhorn storage is available
    - Check external Authentik outpost is working
    - Validate ingress controller and cert-manager functionality
 
 2. **Deploy Database Infrastructure**:
-
    - Deploy PostgreSQL cluster: `kubectl apply -f apps/home-automation/postgresql/`
    - Verify cluster status: `kubectl get cluster homeassistant-postgresql -n home-automation`
    - Check database initialization job completion
    - Validate database credentials from 1Password integration
 
 3. **Deploy Supporting Services**:
-
    - Deploy Mosquitto MQTT broker: `kubectl apply -f apps/home-automation/mosquitto/`
    - Deploy Redis cache: `kubectl apply -f apps/home-automation/redis/`
    - Verify service endpoints: `kubectl get endpoints -n home-automation`
 
 4. **Deploy Home Assistant Core**:
-
    - Deploy Home Assistant: `kubectl apply -f apps/home-automation/home-assistant/`
    - Monitor deployment: `kubectl rollout status deployment home-assistant -n home-automation`
    - Check health probes: `kubectl get pods -n home-automation -l app.kubernetes.io/name=home-assistant`
 
 5. **Configure Authentication Integration**:
-
    - Verify external Authentik outpost handles homeassistant.k8s.home.geoffdavis.com
    - Test SSO authentication flow
    - Validate trusted proxy configuration for Authentik integration
@@ -103,7 +98,6 @@ This task documents the comprehensive troubleshooting and recovery of a complete
 **Steps:**
 
 1. **Root Cause Analysis and Investigation**:
-
    - Investigate Flux Kustomization status: `flux get kustomizations -n home-automation`
    - Check resource deployment failures: `kubectl get all -n home-automation`
    - Analyze PostgreSQL cluster status: `kubectl get cluster homeassistant-postgresql -n home-automation`
@@ -111,7 +105,6 @@ This task documents the comprehensive troubleshooting and recovery of a complete
    - Examine pod startup failures: `kubectl describe pods -n home-automation`
 
 2. **PostgreSQL Schema Validation Fix**:
-
    - **Problem**: CloudNativePG v1.26.1 rejecting invalid `immediate: true` fields in Backup and ScheduledBackup resources
    - **Solution**: Remove invalid fields from `postgresql-backup.yaml`:
 
@@ -123,7 +116,6 @@ This task documents the comprehensive troubleshooting and recovery of a complete
    - **Validation**: Verify resource deployment: `kubectl apply -f apps/home-automation/postgresql/postgresql-backup.yaml`
 
 3. **1Password Credential Management**:
-
    - **Problem**: Missing credential entries in 1Password vault preventing external secrets from syncing
    - **Solution**: Create missing 1Password entries with optimized architecture:
      - PostgreSQL credentials with proper naming convention
@@ -132,7 +124,6 @@ This task documents the comprehensive troubleshooting and recovery of a complete
    - **Validation**: Check external secret sync: `kubectl get secrets -n home-automation`
 
 4. **PostgreSQL TLS Certificate Resolution**:
-
    - **Problem**: Manual TLS certificate configuration conflicting with CloudNativePG automatic certificate management
    - **Solution**: Remove explicit certificate references from `cluster.yaml`:
 
@@ -144,7 +135,6 @@ This task documents the comprehensive troubleshooting and recovery of a complete
    - **Validation**: Verify cluster certificate generation: `kubectl get certificates -n home-automation`
 
 5. **Home Assistant Security Policy Fix**:
-
    - **Problem**: Namespace PodSecurity policy "restricted" preventing s6-overlay init system from starting
    - **Solution**: Update namespace and deployment security configuration:
 
@@ -162,7 +152,6 @@ This task documents the comprehensive troubleshooting and recovery of a complete
    - **Validation**: Verify pod startup: `kubectl get pods -n home-automation -l app.kubernetes.io/name=home-assistant`
 
 6. **Mosquitto MQTT Configuration Fix**:
-
    - **Problem**: MQTT listener configuration causing port 1883 binding conflicts
    - **Solution**: Simplify configuration to use explicit listeners only:
 
@@ -226,28 +215,24 @@ This task represents a comprehensive recovery of a completely non-functional Hom
 **Steps:**
 
 1. **Regular Health Checks**:
-
    - Monitor Home Assistant pod status: `kubectl get pods -n home-automation`
    - Check database cluster health: `kubectl get cluster homeassistant-postgresql -n home-automation`
    - Verify MQTT broker connectivity and message flow
    - Monitor Redis cache performance and memory usage
 
 2. **Configuration Updates**:
-
    - Update Home Assistant configuration via ConfigMap
    - Restart deployment after configuration changes: `kubectl rollout restart deployment home-assistant -n home-automation`
    - Test configuration changes in development environment first
    - Monitor logs for configuration errors: `kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant`
 
 3. **Database Maintenance**:
-
    - Monitor PostgreSQL cluster backup status
    - Check database size and performance metrics
    - Validate backup restoration procedures periodically
    - Update database credentials if needed via 1Password integration
 
 4. **Security Updates**:
-
    - Update Home Assistant image version in deployment.yaml
    - Update Mosquitto and Redis images as needed
    - Review and update network policies for IoT device access
@@ -508,27 +493,23 @@ This task represents a comprehensive recovery of a completely non-functional Hom
 **Steps:**
 
 1. **Regular Health Checks**:
-
    - Verify all services accessible: Test key services like Longhorn, Grafana, Dashboard
    - Check external outpost status in Authentik admin interface (outpost ID: `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`)
    - Monitor authentication response times and Redis connectivity
 
 2. **External Outpost Health Monitoring**:
-
    - Check external outpost API token expiration dates in 1Password
    - Verify outpost connectivity status in Authentik admin interface
    - Monitor authentik-proxy pod logs for connection issues
    - Check Redis instance health and session storage functionality
 
 3. **Proactive Token Rotation**:
-
    - Schedule external outpost token regeneration before expiration (monthly recommended)
    - Update token in 1Password and force ExternalSecret sync
    - Restart authentik-proxy deployment after token rotation
    - Test all services after token rotation
 
 4. **Service Integration Validation**:
-
    - Ensure new services use nginx-internal ingress class
    - Verify NO individual service ingresses for \*.k8s.home.geoffdavis.com domains
    - Test SSO functionality for newly deployed services through external outpost
@@ -559,21 +540,18 @@ This task represents a comprehensive recovery of a completely non-functional Hom
 **Steps:**
 
 1. **Prerequisites Validation**:
-
    - Verify Authentik server is operational and accessible
    - Confirm 1Password Connect is working for secret management
    - Check BGP load balancer and ingress controller functionality
    - Validate network connectivity between namespaces
 
 2. **External Outpost Token Setup**:
-
    - Create external outpost in Authentik admin interface
    - Generate API token for external outpost (not admin user token)
    - Store token in 1Password with proper naming convention
    - Configure ExternalSecret to sync token from 1Password
 
 3. **Deploy External Outpost Infrastructure**:
-
    - Deploy namespace: `kubectl apply -f infrastructure/authentik-proxy/namespace.yaml`
    - Deploy Redis instance: `kubectl apply -f infrastructure/authentik-proxy/redis.yaml`
    - Deploy RBAC and ConfigMap: `kubectl apply -f infrastructure/authentik-proxy/rbac.yaml infrastructure/authentik-proxy/configmap.yaml`
@@ -581,14 +559,12 @@ This task represents a comprehensive recovery of a completely non-functional Hom
    - Deploy authentik-proxy: `kubectl apply -f infrastructure/authentik-proxy/deployment.yaml`
 
 4. **Network and Ingress Configuration**:
-
    - Deploy service: `kubectl apply -f infrastructure/authentik-proxy/service.yaml`
    - Deploy ingress with BGP load balancer: `kubectl apply -f infrastructure/authentik-proxy/ingress.yaml`
    - Verify ingress gets external IP from BGP pool
    - Test DNS resolution for \*.k8s.home.geoffdavis.com domains
 
 5. **Outpost Registration and Validation**:
-
    - Verify external outpost appears in Authentik admin interface
    - Check outpost connectivity status (should show connected)
    - Monitor authentik-proxy pod logs for successful registration
@@ -632,7 +608,6 @@ This task documents the deployment of comprehensive fixes for internal cluster D
 **Steps:**
 
 1. **Root Cause Analysis and Fix Identification**:
-
    - Identify three sources of internal cluster DNS redirect issues:
      - Environment variables using external URLs for outpost connections
      - ConfigMap hardcoded URLs causing internal DNS resolution conflicts
@@ -640,25 +615,21 @@ This task documents the deployment of comprehensive fixes for internal cluster D
    - Develop hybrid URL architecture solution
 
 2. **Environment Variable Configuration Fix**:
-
    - Update `AUTHENTIK_HOST` in `secret.yaml` from `https://authentik.k8s.home.geoffdavis.com` to `http://authentik-server.authentik.svc.cluster.local:80`
    - Ensure outpost can connect to Authentik server using internal cluster DNS
    - Maintain external URL references for user-facing redirects in other configurations
 
 3. **ConfigMap External URL Configuration**:
-
    - Update all hardcoded URLs in `configmap.yaml` to use external domains (`https://authentik.k8s.home.geoffdavis.com`)
    - Ensure user browser redirects go to external URLs instead of internal cluster DNS
    - Configure service routing for all 6 services (longhorn, grafana, prometheus, alertmanager, dashboard, hubble)
 
 4. **Configuration Job Updates**:
-
    - Apply `proxy-config-job-simple.yaml` with known outpost ID `3f0970c5-d6a3-43b2-9a36-d74665c6b24e`
    - Remove problematic `fix-oauth2-redirect-urls` job that was interfering
    - Ensure configuration job updates outpost settings in Authentik database
 
 5. **GitOps Deployment Process**:
-
    - Commit all configuration fixes to Git repository
    - Monitor Flux deployment and reconciliation of changes
    - Verify pods restart and pick up new environment variables and ConfigMap
@@ -730,35 +701,30 @@ This task documents the final fix for the dashboard service configuration issue 
 **Steps:**
 
 1. **Root Cause Analysis**:
-
    - Identified dashboard service as the final non-working service (5/6 working)
    - Investigated Dashboard HelmRelease configuration and found Kong disabled
    - Discovered proxy provider still configured for Kong service URL
    - Confirmed authentication system working for other 5 services
 
 2. **GitOps Database Update Solution**:
-
    - Created Python job to directly update Authentik database
    - Updated proxy provider configuration to use correct service URL
    - Used GitOps approach with Kubernetes Job for database modification
    - Avoided manual database intervention by using automated job
 
 3. **Database Update Job Creation**:
-
    - Created `fix-dashboard-service-job.yaml` with Python script
    - Job connects to Authentik PostgreSQL database
    - Updates proxy provider external_host field to correct service URL
    - Includes proper RBAC and database connection configuration
 
 4. **Job Deployment and Execution**:
-
    - Deploy job via GitOps: `kubectl apply -f infrastructure/authentik-proxy/fix-dashboard-service-job.yaml`
    - Monitor job execution: `kubectl logs -n authentik-proxy job/fix-dashboard-service`
    - Verify database update completed successfully
    - Confirm job completion status
 
 5. **Service Validation**:
-
    - Test dashboard service access: `curl -I https://dashboard.k8s.home.geoffdavis.com`
    - Verify proper redirect to Authentik authentication
    - Confirm successful authentication and dashboard access
@@ -816,7 +782,8 @@ This task represents the final completion of the comprehensive external Authenti
 **Last performed:** July 2025 (successful completion - COMPLETED)
 **Files to modify:**
 
-- `apps/dashboard/kong-config-override-job.yaml` - Remove problematic configuration job (DELETE FILE)
+- `apps/dashboard/kubernetes-dashboard.yaml` - Dashboard HelmRelease with Kong proxy configuration
+- `apps/dashboard/kustomization.yaml` - Service patches for Authentik integration
 - `apps/dashboard/dashboard-service-account.yaml` - Enhance RBAC permissions for administrative access
 - Browser cache - Clear cache to ensure configuration changes take effect
 
@@ -832,35 +799,30 @@ This task documents the successful elimination of manual bearer token requiremen
 **Steps:**
 
 1. **Root Cause Analysis**:
-
    - Identified conflicting Kong configuration jobs in Dashboard deployment
    - Discovered `kong-config-override-job.yaml` was overriding proper authentication configuration
    - Confirmed external Authentik outpost system was operational for other 5 services
    - Analyzed Dashboard service account RBAC permissions
 
 2. **Kong Configuration Conflict Resolution**:
-
    - Located problematic `kong-config-override-job.yaml` file in Dashboard configuration
    - Identified that this job was overriding proper Kong service configuration
    - Removed the conflicting configuration job to allow proper authentication flow
    - Verified that Dashboard HelmRelease had Kong disabled as intended
 
 3. **RBAC Permissions Enhancement**:
-
    - Updated Dashboard service account with proper cluster-admin permissions
    - Enhanced ClusterRoleBinding to provide full administrative access
    - Ensured service account has sufficient permissions for Dashboard functionality
    - Validated RBAC configuration matches administrative requirements
 
 4. **Authentication System Integration**:
-
    - Verified Dashboard proxy provider configuration in Authentik admin interface
    - Confirmed external outpost was handling Dashboard authentication requests
    - Tested authentication flow integration with existing external Authentik outpost
    - Validated seamless SSO integration with other cluster services
 
 5. **Configuration Deployment and Testing**:
-
    - Committed all configuration changes to Git repository
    - Deployed changes via GitOps using Flux reconciliation
    - Cleared browser cache to ensure configuration changes take effect (CRITICAL STEP)
@@ -889,10 +851,11 @@ This task documents the successful elimination of manual bearer token requiremen
 **Important notes:**
 
 - **Browser Cache Clearing**: CRITICAL step for ensuring configuration changes take effect
-- **Kong Configuration**: Dashboard HelmRelease has Kong disabled, conflicting jobs must be removed
-- **External Outpost Integration**: Dashboard authentication fully integrated with existing external outpost system
+- **Kong Configuration**: Dashboard HelmRelease has Kong enabled with proper authentication headers and service discovery annotations
+- **External Outpost Integration**: Dashboard authentication fully integrated with existing external Authentik outpost system
 - **Production Ready**: All changes committed to Git and deployed via GitOps for production use
 - **Administrative Access**: Dashboard now provides full administrative capabilities without manual token entry
+- **Service Patches**: Kustomization patches add Authentik service discovery annotations to Kong proxy service
 
 **Success Criteria:**
 
@@ -943,7 +906,6 @@ This task documents the comprehensive resolution of monitoring stack failures ca
 **Steps:**
 
 1. **Root Cause Analysis and Investigation**:
-
    - Investigate Flux reconciliation status: `flux get kustomizations`
    - Check HelmRelease status: `flux get helmreleases -A`
    - Analyze monitoring pod status: `kubectl get pods -n monitoring`
@@ -951,7 +913,6 @@ This task documents the comprehensive resolution of monitoring stack failures ca
    - Examine Helm release history: `helm history kube-prometheus-stack -n monitoring`
 
 2. **Eliminate Duplicate HelmRelease Configurations**:
-
    - **Problem**: Two identical HelmReleases causing "missing target release for rollback" errors
    - **Solution**: Remove entire `apps/monitoring/` directory (legacy configuration):
 
@@ -963,7 +924,6 @@ This task documents the comprehensive resolution of monitoring stack failures ca
    - **Validation**: Verify only `infrastructure/monitoring/` remains as single source of truth
 
 3. **Clean Corrupted Helm Release State**:
-
    - **Problem**: Corrupted Helm release preventing clean deployment
    - **Solution**: Delete failed Helm release:
 
@@ -974,7 +934,6 @@ This task documents the comprehensive resolution of monitoring stack failures ca
    - **Result**: Allow Flux to redeploy cleanly from single authoritative source
 
 4. **Fix LoadBalancer IPAM Controller Issues**:
-
    - **Problem**: Cilium IPAM controller stopped processing requests after monitoring stack deployment failures
    - **Solution**: Restart Cilium operator to reset IPAM controller state:
 
@@ -985,7 +944,6 @@ This task documents the comprehensive resolution of monitoring stack failures ca
    - **Validation**: Monitor IPAM controller logs for resumed activity
 
 5. **Resolve Service Selector Mismatch**:
-
    - **Problem**: IP pools configured to select services with `io.cilium/lb-ipam-pool` labels, but services only had annotations
    - **Solution**: Add required labels to all affected services:
 
@@ -998,7 +956,6 @@ This task documents the comprehensive resolution of monitoring stack failures ca
    - **Services Updated**: Monitoring services (Grafana, Prometheus, AlertManager) and Mosquitto service
 
 6. **Deploy and Validate Complete Resolution**:
-
    - Commit all changes to Git repository
    - Monitor Flux reconciliation: `flux get kustomizations --watch`
    - Verify all monitoring services receive external IPs
@@ -1096,31 +1053,26 @@ This task represents a comprehensive recovery of a completely non-functional mon
 **Steps:**
 
 1. **Diagnose Authentication Failures**:
-
    - Check service accessibility: `curl -I https://<service>.k8s.home.geoffdavis.com`
    - Verify ingress configuration: `kubectl get ingress -A`
    - Check Authentik outpost logs: `kubectl logs -n authentik -l app.kubernetes.io/name=authentik`
 
 2. **Check for Conflicting Ingress Configurations**:
-
    - Identify individual service ingresses: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
    - Verify embedded outpost ingress exists: `kubectl get ingress -n authentik`
    - Check for duplicate domain handling between individual services and embedded outpost
 
 3. **Remove Conflicting Individual Service Ingresses**:
-
    - Delete individual service ingresses that conflict with embedded outpost
    - Ensure only embedded outpost handles \*.k8s.home.geoffdavis.com domains
    - Verify service endpoints are accessible: `kubectl get endpoints -A`
 
 4. **Configure Embedded Outpost**:
-
    - Delete outpost config job: `kubectl delete job -n authentik outpost-config`
    - Apply outpost config: `kubectl apply -f infrastructure/authentik-outpost-config/outpost-config-job.yaml`
    - Verify outpost registration in Authentik admin interface
 
 5. **Create Proxy Providers**:
-
    - Access Authentik admin interface
    - Create proxy providers for each service (dashboard, longhorn, hubble, grafana, prometheus, alertmanager)
    - Configure forward auth with proper internal service URLs
@@ -1159,32 +1111,27 @@ This task represents a comprehensive recovery of a completely non-functional mon
 **Steps:**
 
 1. **Identify Conflicting Ingress Configurations**:
-
    - List all ingresses handling \*.k8s.home.geoffdavis.com: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
    - Identify individual service ingresses that conflict with embedded outpost
    - Check embedded outpost ingress configuration: `kubectl get ingress -n authentik`
 
 2. **Remove Individual Service Ingresses**:
-
    - Delete individual service ingress resources that handle \*.k8s.home.geoffdavis.com domains
    - Ensure only embedded outpost ingress handles these domains
    - Verify service endpoints remain accessible: `kubectl get endpoints -A`
 
 3. **Configure Embedded Outpost**:
-
    - Apply embedded outpost configuration job
    - Verify outpost registration in Authentik admin interface
    - Check outpost connectivity and health status
 
 4. **Create Proxy Providers**:
-
    - Access Authentik admin interface
    - Create proxy providers for all services (dashboard, longhorn, hubble, grafana, prometheus, alertmanager)
    - Configure forward auth with proper internal service URLs and ports
    - Verify network connectivity between authentik namespace and service namespaces
 
 5. **Validate Service Configuration**:
-
    - Fix service names and port configurations (e.g., Grafana service name)
    - Ensure services are discoverable from authentik namespace
    - Test network connectivity: `kubectl exec -n authentik <pod> -- curl <service>.<namespace>:<port>`
@@ -1219,26 +1166,22 @@ This task represents a comprehensive recovery of a completely non-functional mon
 **Steps:**
 
 1. **Daily Authentication Health Checks**:
-
    - Test key service access: `curl -I https://longhorn.k8s.home.geoffdavis.com`
    - Verify all 6 services accessible: Dashboard, Longhorn, Hubble, Grafana, Prometheus, AlertManager
    - Check for authentication response times and any 404/500 errors
 
 2. **Weekly Ingress Configuration Validation**:
-
    - List all ingresses handling \*.k8s.home.geoffdavis.com: `kubectl get ingress -A | grep k8s.home.geoffdavis.com`
    - Verify only embedded outpost ingress handles these domains
    - Check for any new individual service ingresses that might conflict
 
 3. **Monthly Outpost Health Assessment**:
-
    - Access Authentik admin interface and check outpost status
    - Verify all proxy providers are operational
    - Review authentication logs for any recurring errors
    - Check API token expiration dates and plan rotation if needed
 
 4. **Proactive Configuration Monitoring**:
-
    - Monitor for new service deployments that might create conflicting ingresses
    - Validate network connectivity between authentik namespace and service namespaces
    - Check for any changes to service names or ports that might break proxy providers
@@ -1272,20 +1215,17 @@ This task represents a comprehensive recovery of a completely non-functional mon
 **Steps:**
 
 1. **Service Deployment Guidelines**:
-
    - When adding new services to \*.k8s.home.geoffdavis.com domain:
    - Do NOT create individual service ingresses for authenticated domains
    - Ensure services use proper internal service names and ports
    - Verify network connectivity from authentik namespace
 
 2. **Configuration Validation Process**:
-
    - Before deploying new services, check existing ingress configurations
    - Validate that embedded outpost will have exclusive domain handling
    - Test service endpoints are accessible from authentik namespace
 
 3. **Automated Configuration Checks**:
-
    - Implement pre-deployment validation scripts
    - Check for conflicting ingress configurations before Git commits
    - Validate service discovery and network connectivity
@@ -1313,7 +1253,6 @@ This task addresses persistent connectivity issues where services at \*.k8s.home
 **Steps:**
 
 1. **Systematic Connectivity Diagnosis**:
-
    - Test DNS resolution from client machines: `dig longhorn.k8s.home.geoffdavis.com`
    - Test DNS resolution from cluster: `kubectl run -it --rm debug --image=busybox --restart=Never -- nslookup longhorn.k8s.home.geoffdavis.com`
    - Verify load balancer IP accessibility: `ping 172.29.51.200` and `telnet 172.29.51.200 443`
@@ -1321,7 +1260,6 @@ This task addresses persistent connectivity issues where services at \*.k8s.home
    - Check ingress controller health: `kubectl get pods -n ingress-nginx-internal` and `kubectl logs -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-nginx`
 
 2. **Infrastructure Layer Validation**:
-
    - Verify BGP advertisement for load balancer IPs: `task bgp:verify-peering`
    - Check BGP route advertisement: `kubectl exec -n kube-system -l k8s-app=cilium -- cilium bgp routes`
    - Validate Cilium CNI health: `cilium status` and `cilium connectivity test`
@@ -1330,14 +1268,12 @@ This task addresses persistent connectivity issues where services at \*.k8s.home
    - Test ingress controller service endpoints: `kubectl get endpoints -n ingress-nginx-internal`
 
 3. **Authentication System Integration Testing**:
-
    - Test Authentik service accessibility from cluster: `kubectl exec -it -n authentik <authentik-pod> -- curl -I http://authentik-server:9000`
    - Verify embedded outpost connectivity: Check outpost status in Authentik admin interface
    - Test forward-auth endpoint: `kubectl exec -it -n authentik <authentik-pod> -- curl -I http://authentik-server:9000/outpost.goauthentik.io/auth/nginx`
    - Validate service-to-service communication: `kubectl exec -it -n authentik <authentik-pod> -- curl -I http://longhorn-frontend.longhorn-system:80`
 
 4. **Client-Side Troubleshooting**:
-
    - Test DNS resolution from multiple client machines: `dig longhorn.k8s.home.geoffdavis.com @<dns-server>`
    - Check network routing to cluster IPs: `traceroute 172.29.51.200`
    - Verify certificate trust chain: Check browser certificate validation and system certificate store
@@ -1345,7 +1281,6 @@ This task addresses persistent connectivity issues where services at \*.k8s.home
    - Check firewall rules: Verify no blocking of ports 80/443 to cluster IP range
 
 5. **Network Infrastructure Validation**:
-
    - Verify UDM Pro BGP peering status: Check BGP neighbor status and route advertisement
    - Test load balancer IP reachability from router: `ping 172.29.51.200` from UDM Pro
    - Check VLAN configuration: Verify VLAN 51 routing and inter-VLAN communication
@@ -1353,7 +1288,6 @@ This task addresses persistent connectivity issues where services at \*.k8s.home
    - Test network segmentation: Verify no network policies blocking traffic
 
 6. **Kubernetes Service Discovery Validation**:
-
    - Check service endpoints: `kubectl get endpoints -A | grep -E "(longhorn|grafana|prometheus|alertmanager|dashboard)"`
    - Verify service port configurations: `kubectl get svc -A | grep -E "(longhorn|grafana|prometheus|alertmanager|dashboard)"`
    - Test internal service connectivity: `kubectl run -it --rm debug --image=busybox --restart=Never -- wget -O- http://longhorn-frontend.longhorn-system:80`
@@ -1428,25 +1362,21 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
 **Steps Completed:**
 
 1. **✅ Cilium v1.17.6 Deployment**:
-
    - Upgraded from v1.16.1 with XDP disabled: `--set loadBalancer.acceleration=disabled`
    - LoadBalancer IPAM enabled: `--set loadBalancer.l2.enabled=false --set enable-lb-ipam=true`
    - Bootstrap configuration updated in `Taskfile.yml` for future deployments
 
 2. **✅ BGP IP Pools Configured**:
-
    - Deployed BGP IP pools via GitOps: `infrastructure/cilium/loadbalancer-pool-bgp.yaml`
    - Pools: `bgp-default` (172.29.52.100-199), `bgp-ingress` (172.29.52.200-220), `bgp-reserved` (172.29.52.221-250)
    - Removed conflicting legacy pools to prevent IPAM conflicts
 
 3. **✅ Service Annotations Updated**:
-
    - Ingress services annotated with `io.cilium/lb-ipam-pool=ingress`
    - Other services annotated with `io.cilium/lb-ipam-pool=default`
    - Pool selectors properly matched between pools and service annotations
 
 4. **✅ BGP Peering Established**:
-
    - UDM Pro BGP configuration deployed (ASN 64513)
    - Cluster BGP configuration deployed (ASN 64512)
    - BGP peering status: **ESTABLISHED** and stable
@@ -1467,13 +1397,11 @@ This migration successfully resolved L2 announcement conflicts by moving to a BG
 **Migration Completion Steps:**
 
 1. **✅ Schema Compatibility Resolution**:
-
    - Identified newer BGP CRDs incompatible with Cilium v1.17.6
    - Switched to legacy CiliumBGPPeeringPolicy schema
    - Removed problematic CiliumBGPClusterConfig/CiliumBGPAdvertisement resources
 
 2. **✅ BGP Route Advertisement Working**:
-
    - Legacy schema enables proper route advertisement
    - BGP routes visible in UDM Pro routing table
    - Services accessible via BGP-advertised IPs
@@ -1537,13 +1465,11 @@ Create dedicated virtual routers for each IP pool with explicit service selector
 **Steps:**
 
 1. **Diagnose BGP Advertisement Issue**:
-
    - Check BGP routes: `kubectl exec -n kube-system <cilium-pod> -- cilium bgp routes`
    - Verify service pool assignments: `kubectl get svc -A --field-selector spec.type=LoadBalancer -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metadata.name,EXTERNAL-IP:.status.loadBalancer.ingress[0].ip,POOL:.metadata.annotations.io\.cilium/lb-ipam-pool"`
    - Identify missing routes for specific pools
 
 2. **Update BGP Policy Configuration**:
-
    - Replace single virtual router with multiple virtual routers
    - Create dedicated virtual router for each IP pool:
      - `bgp-default` pool: `serviceSelector.matchLabels.io.cilium/lb-ipam-pool: "bgp-default"`
@@ -1553,13 +1479,11 @@ Create dedicated virtual routers for each IP pool with explicit service selector
    - Each virtual router has same BGP neighbor configuration
 
 3. **Verify Service Pool Annotations**:
-
    - Ensure services have correct `io.cilium/lb-ipam-pool` annotations
    - Match service annotations with IP pool names exactly
    - Update service configurations if pool names don't match
 
 4. **Test BGP Route Advertisement**:
-
    - Apply BGP policy changes via GitOps
    - Monitor BGP routes: `kubectl exec -n kube-system <cilium-pod> -- cilium bgp routes`
    - Verify all LoadBalancer service IPs are advertised
@@ -1639,13 +1563,11 @@ This fix ensures robust BGP advertisement for all IP pools and resolves service 
 **Steps:**
 
 1. **One-time Setup**:
-
    - Install pre-commit tools: `mise install` (includes pre-commit in `.mise.toml`)
    - Setup pre-commit environment: `task pre-commit:setup`
    - Install git hooks: `task pre-commit:install`
 
 2. **Verify Installation**:
-
    - Test all hooks: `task pre-commit:run`
    - Test security hooks only: `task pre-commit:security`
    - Test formatting hooks: `task pre-commit:format`
@@ -1670,7 +1592,6 @@ This fix ensures robust BGP advertisement for all IP pools and resolves service 
 **Steps:**
 
 1. **Automatic Validation**:
-
    - Make changes to files as normal
    - Commit changes: `git commit -m "your message"`
    - Pre-commit hooks run automatically
@@ -1678,7 +1599,6 @@ This fix ensures robust BGP advertisement for all IP pools and resolves service 
    - Address formatting warnings when convenient
 
 2. **Manual Validation**:
-
    - Run all enforced hooks: `task pre-commit:run`
    - Check formatting issues: `task pre-commit:format`
    - Security scan only: `task pre-commit:security`
@@ -1709,21 +1629,18 @@ This fix ensures robust BGP advertisement for all IP pools and resolves service 
 **Steps:**
 
 1. **Regular Maintenance**:
-
    - Update hook versions: `task pre-commit:update`
    - Review and update `.secrets.baseline` when legitimate secrets change
    - Adjust validation rules based on false positives
    - Monitor hook effectiveness and performance
 
 2. **Handle False Positives**:
-
    - Update `.secrets.baseline` for legitimate secrets
    - Adjust `.yamllint.yaml` for new Kubernetes patterns
    - Update exclusion patterns for generated files
    - Document any permanent exceptions
 
 3. **Configuration Tuning**:
-
    - Review enforcement vs warning balance based on team feedback
    - Add new hooks for additional file types as needed
    - Optimize hook performance for large repositories
@@ -1750,7 +1667,6 @@ This fix ensures robust BGP advertisement for all IP pools and resolves service 
 **Steps:**
 
 1. **Common Issues and Solutions**:
-
    - **Hook fails to run**: Check tool installation with `mise install`
    - **False positive secrets**: Update `.secrets.baseline` with `detect-secrets scan --baseline .secrets.baseline`
    - **YAML validation errors**: Check syntax with `yamllint -c .yamllint.yaml <file>`
@@ -1758,14 +1674,12 @@ This fix ensures robust BGP advertisement for all IP pools and resolves service 
    - **Python syntax errors**: Check with `python -m py_compile <file>`
 
 2. **Performance Issues**:
-
    - Clean pre-commit cache: `task pre-commit:clean`
    - Skip slow hooks temporarily: `SKIP=hook-name git commit`
    - Update to latest hook versions: `task pre-commit:update`
    - Review file exclusion patterns in `.pre-commit-config.yaml`
 
 3. **Emergency Procedures**:
-
    - Bypass all hooks: `git commit --no-verify`
    - Skip specific hook: `SKIP=hook-name git commit`
    - Uninstall hooks temporarily: `task pre-commit:uninstall`
