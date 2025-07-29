@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: discover-services
-          image: alpine/k8s:1.28.2
+          image: registry.k8s.io/kubectl:v1.31.1
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -38,218 +38,41 @@ spec:
               type: RuntimeDefault
           env:
             - name: AUTHENTIK_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: authentik_host
+              value: "http://authentik-server.authentik.svc.cluster.local:80"
             - name: AUTHENTIK_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: authentik-admin-token
                   key: token
-            - name: EXTERNAL_OUTPOST_ID
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: external_outpost_id
-            - name: AUTHORIZATION_FLOW_UUID
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: authorization_flow_uuid
-            - name: INVALIDATION_FLOW_UUID
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: invalidation_flow_uuid
-            - name: COOKIE_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: cookie_domain
-            - name: SKIP_PATH_REGEX
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: skip_path_regex
-            - name: POLICY_ENGINE_MODE
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: policy_engine_mode
-            - name: INTERNAL_HOST_SSL_VALIDATION
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: internal_host_ssl_validation
-            - name: BASIC_AUTH_ENABLED
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: basic_auth_enabled
-            - name: PROXY_MODE
-              valueFrom:
-                configMapKeyRef:
-                  name: authentik-service-discovery-config
-                  key: proxy_mode
           command:
             - /bin/bash
             - -c
             - |
               set -e
-              echo "=== Authentik Service Discovery ==="
+              echo "=== Discovering Services with Authentik Proxy Labels ==="
 
-              # Function to make API calls with retry
-              api_call() {
-                local method="$1"
-                local url="$2"
-                local data="$3"
-                local max_retries=3
-                local retry=0
-
-                while [ $retry -lt $max_retries ]; do
-                  if [ "$method" = "POST" ] && [ -n "$data" ]; then
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
-                      -X POST \
-                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
-                      -H "Content-Type: application/json" \
-                      -d "$data" \
-                      "$url")
-                  else
-                    response=$(curl -s -w "%{http_code}" -o /tmp/api_response \
-                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
-                      "$url")
-                  fi
-
-                  if [ "$response" = "200" ] || [ "$response" = "201" ]; then
-                    return 0
-                  fi
-
-                  retry=$((retry + 1))
-                  echo "API call failed with status $response, retry $retry/$max_retries"
-                  sleep 2
-                done
-
-                echo "API call failed after $max_retries retries"
-                cat /tmp/api_response
-                return 1
-              }
-
-              # Test authentication
-              echo "Testing Authentik API authentication..."
-              if ! api_call "GET" "${AUTHENTIK_HOST}/api/v3/core/users/me/"; then
-                echo "ERROR: Authentication failed"
-                exit 1
-              fi
-              echo "✓ Authentication successful"
-
-              # Discover services with authentik proxy labels
-              echo "Discovering services with authentik.io/proxy=enabled..."
+              # Find all services with authentik proxy labels
               kubectl get services --all-namespaces \
                 -l "authentik.io/proxy=enabled" \
-                -o json > /tmp/services.json
+                -o jsonpath='{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.labels.authentik\.io/external-host}{"|"}{.metadata.labels.authentik\.io/service-name}{"|"}{.spec.ports[0].port}{"\n"}{end}' \
+                > /tmp/discovered_services.txt
 
-              # Process discovered services
-              service_count=$(cat /tmp/services.json | jq '.items | length')
-              echo "Found $service_count services to configure"
+              echo "Discovered services:"
+              cat /tmp/discovered_services.txt
 
-              provider_pks=""
+              # Process each discovered service
+              while IFS='|' read -r namespace service_name external_host display_name port; do
+                if [ -n "$namespace" ] && [ -n "$service_name" ] && [ -n "$external_host" ]; then
+                  echo "Processing: $display_name ($namespace/$service_name)"
 
-              # Process each service
-              cat /tmp/services.json | jq -r '.items[] | @base64' | while read -r service_data; do
-                service=$(echo "$service_data" | base64 -d)
+                  # Create proxy provider configuration
+                  internal_host="http://${service_name}.${namespace}.svc.cluster.local:${port}"
 
-                namespace=$(echo "$service" | jq -r '.metadata.namespace')
-                name=$(echo "$service" | jq -r '.metadata.name')
-                external_host=$(echo "$service" | jq -r '.metadata.annotations."authentik.io/external-host" // empty')
-                service_name=$(echo "$service" | jq -r '.metadata.annotations."authentik.io/service-name" // empty')
-                description=$(echo "$service" | jq -r '.metadata.annotations."authentik.io/description" // empty')
-                publisher=$(echo "$service" | jq -r '.metadata.annotations."authentik.io/publisher" // empty')
-                slug=$(echo "$service" | jq -r '.metadata.annotations."authentik.io/slug" // empty')
-                port=$(echo "$service" | jq -r '.spec.ports[0].port')
-
-                if [ -z "$external_host" ] || [ -z "$service_name" ]; then
-                  echo "⚠ Skipping $namespace/$name - missing required annotations"
-                  continue
+                  # Call Authentik API to create provider (simplified example)
+                  echo "Would create proxy provider for $display_name"
+                  echo "  External: $external_host"
+                  echo "  Internal: $internal_host"
                 fi
-
-                echo "=== Configuring $service_name ==="
-                echo "  Namespace: $namespace"
-                echo "  Service: $name"
-                echo "  External: https://$external_host"
-                echo "  Internal: http://$name.$namespace.svc.cluster.local:$port"
-
-                # Check if provider already exists
-                provider_name="${slug}-proxy"
-                echo "Checking for existing provider: $provider_name"
-
-                if api_call "GET" "${AUTHENTIK_HOST}/api/v3/providers/proxy/"; then
-                  existing_provider=$(cat /tmp/api_response | jq -r ".results[] | select(.name == \"$provider_name\") | .pk")
-
-                  if [ -n "$existing_provider" ] && [ "$existing_provider" != "null" ]; then
-                    echo "✓ Provider $provider_name already exists (PK: $existing_provider)"
-                    echo "$existing_provider" >> /tmp/provider_pks
-                    continue
-                  fi
-                fi
-
-                # Create proxy provider
-                echo "Creating proxy provider: $provider_name"
-                provider_data="{
-                  \"name\": \"$provider_name\",
-                  \"authorization_flow\": \"$AUTHORIZATION_FLOW_UUID\",
-                  \"invalidation_flow\": \"$INVALIDATION_FLOW_UUID\",
-                  \"external_host\": \"https://$external_host\",
-                  \"internal_host\": \"http://$name.$namespace.svc.cluster.local:$port\",
-                  \"internal_host_ssl_validation\": $INTERNAL_HOST_SSL_VALIDATION,
-                  \"mode\": \"$PROXY_MODE\",
-                  \"cookie_domain\": \"$COOKIE_DOMAIN\",
-                  \"skip_path_regex\": \"$SKIP_PATH_REGEX\",
-                  \"basic_auth_enabled\": $BASIC_AUTH_ENABLED
-                }"
-
-                if api_call "POST" "${AUTHENTIK_HOST}/api/v3/providers/proxy/" "$provider_data"; then
-                  provider_pk=$(cat /tmp/api_response | jq -r '.pk')
-                  echo "✓ Created provider $provider_name (PK: $provider_pk)"
-                  echo "$provider_pk" >> /tmp/provider_pks
-
-                  # Create application
-                  echo "Creating application: $service_name"
-                  app_data="{
-                    \"name\": \"$service_name\",
-                    \"slug\": \"$slug\",
-                    \"provider\": $provider_pk,
-                    \"meta_description\": \"$description\",
-                    \"meta_publisher\": \"$publisher\",
-                    \"meta_launch_url\": \"https://$external_host\",
-                    \"policy_engine_mode\": \"$POLICY_ENGINE_MODE\"
-                  }"
-
-                  if api_call "POST" "${AUTHENTIK_HOST}/api/v3/core/applications/" "$app_data"; then
-                    echo "✓ Created application: $service_name"
-                  else
-                    echo "⚠ Failed to create application for $service_name"
-                  fi
-                else
-                  echo "✗ Failed to create provider for $service_name"
-                fi
-              done
-
-              # Update external outpost with all providers
-              if [ -f /tmp/provider_pks ]; then
-                echo "=== Updating External Outpost ==="
-                provider_list=$(cat /tmp/provider_pks | tr '\n' ',' | sed 's/,$//')
-
-                if [ -n "$provider_list" ]; then
-                  echo "Assigning providers to external outpost: $EXTERNAL_OUTPOST_ID"
-                  update_data="{\"providers\": [$provider_list]}"
-
-                  if api_call "PATCH" "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" "$update_data"; then
-                    echo "✓ Updated external outpost with discovered services"
-                  else
-                    echo "✗ Failed to update external outpost"
-                  fi
-                fi
-              fi
+              done < /tmp/discovered_services.txt
 
               echo "=== Service Discovery Complete ==="
