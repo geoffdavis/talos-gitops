@@ -2,6 +2,8 @@
 
 Welcome to the comprehensive documentation for the Talos GitOps home-ops cluster. This documentation is organized to help you quickly find the information you need, whether you're getting started, operating the cluster daily, or diving deep into specific components.
 
+> **📝 Documentation Status Note**: This documentation structure is currently being reorganized. Some links may reference files that are still being created. For immediate help, see the [Existing Documentation](#existing-documentation) section below for available resources.
+
 ## Quick Start
 
 New to the cluster? Start here:
@@ -201,6 +203,26 @@ task apps:deploy-core
 - **Flux Documentation**: <https://fluxcd.io/flux/>
 - **Cilium Documentation**: <https://docs.cilium.io/>
 - **Longhorn Documentation**: <https://longhorn.io/docs/>
+
+## Existing Documentation
+
+While the full documentation structure is being organized, these comprehensive guides are currently available:
+
+### 🎯 Quick Access - Available Now
+
+- **[Bootstrap vs GitOps](architecture/bootstrap-vs-gitops.md)** - Core operational decision framework
+- **[Home Assistant Deployment](components/applications/home-assistant.md)** - Complete home automation setup
+- **[BGP LoadBalancer Guide](components/networking/bgp-loadbalancer.md)** - Network architecture and BGP setup
+- **[Authentik External Outpost](AUTHENTIK_EXTERNAL_OUTPOST_CONNECTION_FIX_DOCUMENTATION.md)** - Authentication system
+- **[Pre-commit Implementation](PRE_COMMIT_IMPLEMENTATION_SUMMARY.md)** - Development quality standards
+
+### 📋 Comprehensive System Guides
+
+- **[Cluster Recovery Procedures](CLUSTER_RECOVERY.md)** - Emergency procedures and troubleshooting
+- **[USB SSD Operations](USB_SSD_OPERATIONAL_PROCEDURES.md)** - Storage management procedures
+- **[BGP Migration Guide](BGP_ONLY_LOADBALANCER_MIGRATION.md)** - Network architecture migration
+- **[LLDP Configuration](LLDPD_CONFIGURATION_FIX.md)** - Network stability configuration
+- **[All Control Plane Setup](ALL_CONTROL_PLANE_SETUP.md)** - Node architecture details
 
 ---
 

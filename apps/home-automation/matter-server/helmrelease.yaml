@@ -60,7 +60,6 @@ spec:
       # Force pod restart when config changes
       checksum/config: '{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}'
 
-
     # Service configuration - ClusterIP since we're using host networking
     service:
       type: ClusterIP

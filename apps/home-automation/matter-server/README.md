@@ -53,7 +53,7 @@ Matter is an industry-standard protocol for smart home devices that enables inte
 
 ```yaml
 # Network interface for Matter/Thread device discovery
-networkInterface: "enp3s0f0"  # Mac mini primary interface
+networkInterface: "enp3s0f0" # Mac mini primary interface
 
 # Bluetooth commissioning support
 bluetoothCommissioning:
@@ -98,27 +98,30 @@ matter:
 ### Deployment Process
 
 1. **Deploy Matter Server**:
+
    ```bash
    kubectl apply -k apps/home-automation/matter-server/
    ```
 
 2. **Verify Deployment**:
+
    ```bash
    # Check pod status
    kubectl get pods -n home-automation -l app.kubernetes.io/name=matter-server
-   
+
    # Check service
    kubectl get svc -n home-automation matter-server
-   
+
    # View logs
    kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
    ```
 
 3. **Validate Integration**:
+
    ```bash
    # Restart Home Assistant to pick up Matter integration
    kubectl rollout restart deployment home-assistant -n home-automation
-   
+
    # Check Home Assistant logs for Matter integration
    kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant | grep -i matter
    ```
@@ -135,7 +138,7 @@ matter:
 
 #### Commissioning Process
 
-1. **Access Home Assistant**: Navigate to https://homeassistant.k8s.home.geoffdavis.com
+1. **Access Home Assistant**: Navigate to <https://homeassistant.k8s.home.geoffdavis.com>
 2. **Add Integration**: Go to Settings → Devices & Services → Add Integration
 3. **Select Matter**: Choose "Matter (BETA)" from the integration list
 4. **Commission Device**: Follow the Matter commissioning flow:
@@ -256,6 +259,7 @@ The Matter Server integrates with Home Assistant through:
 **Symptoms**: Pod in `CrashLoopBackOff` or `Error` state
 
 **Diagnosis**:
+
 ```bash
 # Check pod events
 kubectl describe pod -n home-automation -l app.kubernetes.io/name=matter-server
@@ -265,11 +269,13 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --previo
 ```
 
 **Common Causes**:
+
 - Network interface `enp3s0f0` not available
 - Insufficient privileges for network operations
 - Storage volume mount issues
 
 **Solutions**:
+
 - Verify network interface exists on nodes
 - Check security context and capabilities
 - Validate Longhorn storage availability
@@ -279,6 +285,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --previo
 **Symptoms**: Matter integration shows connection errors in Home Assistant
 
 **Diagnosis**:
+
 ```bash
 # Test WebSocket connectivity
 kubectl exec -n home-automation deployment/home-assistant -- \
@@ -289,6 +296,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 ```
 
 **Solutions**:
+
 - Verify both pods are running on the same node (host networking)
 - Check Matter Server WebSocket endpoint is responding
 - Restart Home Assistant to retry connection
@@ -298,6 +306,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 **Symptoms**: Unable to commission Matter devices through Home Assistant
 
 **Diagnosis**:
+
 ```bash
 # Check Bluetooth availability
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -309,6 +318,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Solutions**:
+
 - Ensure device is in pairing mode
 - Verify network connectivity between cluster and devices
 - Check Bluetooth functionality if using Bluetooth commissioning
@@ -319,6 +329,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 **Symptoms**: Matter Server loses device data or certificates
 
 **Diagnosis**:
+
 ```bash
 # Check PVC status
 kubectl get pvc -n home-automation | grep matter-server
@@ -328,6 +339,7 @@ kubectl describe pod -n home-automation -l app.kubernetes.io/name=matter-server 
 ```
 
 **Solutions**:
+
 - Verify Longhorn storage system health
 - Check volume mount permissions
 - Restore from backup if data corruption occurred
@@ -363,6 +375,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 **Symptoms**: Matter Server consuming excessive CPU or memory
 
 **Diagnosis**:
+
 ```bash
 # Monitor resource usage
 kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server --containers
@@ -373,6 +386,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Solutions**:
+
 - Review device count and activity levels
 - Consider increasing resource limits
 - Check for problematic devices causing excessive traffic
@@ -382,11 +396,13 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 **Symptoms**: Matter devices respond slowly to commands
 
 **Diagnosis**:
+
 - Check network latency to devices
 - Monitor Matter Server processing logs
 - Verify Thread network performance
 
 **Solutions**:
+
 - Optimize network configuration
 - Reduce device polling frequency
 - Check Thread border router performance
@@ -437,10 +453,10 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 
 ## Support Resources
 
-- **Matter Specification**: https://csa-iot.org/all-solutions/matter/
-- **Home Assistant Matter**: https://www.home-assistant.io/integrations/matter/
-- **Python Matter Server**: https://github.com/home-assistant-libs/python-matter-server
-- **Thread Group**: https://www.threadgroup.org/
+- **Matter Specification**: <https://csa-iot.org/all-solutions/matter/>
+- **Home Assistant Matter**: <https://www.home-assistant.io/integrations/matter/>
+- **Python Matter Server**: <https://github.com/home-assistant-libs/python-matter-server>
+- **Thread Group**: <https://www.threadgroup.org/>
 - **Cluster Documentation**: [../../docs/](../../docs/)
 
 ---

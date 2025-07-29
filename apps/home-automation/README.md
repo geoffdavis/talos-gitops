@@ -6,7 +6,7 @@ The Home Assistant stack provides a comprehensive home automation platform deplo
 
 ## Quick Access
 
-- **Home Assistant Web Interface**: https://homeassistant.k8s.home.geoffdavis.com
+- **Home Assistant Web Interface**: <https://homeassistant.k8s.home.geoffdavis.com>
 - **Authentication**: Seamless SSO via external Authentik outpost
 - **Namespace**: `home-automation`
 
@@ -105,9 +105,9 @@ The complete documentation covers:
 
 ## Support Resources
 
-- **Home Assistant Documentation**: https://www.home-assistant.io/docs/
-- **CNPG Documentation**: https://cloudnative-pg.io/documentation/
-- **Mosquitto Documentation**: https://mosquitto.org/documentation/
+- **Home Assistant Documentation**: <https://www.home-assistant.io/docs/>
+- **CNPG Documentation**: <https://cloudnative-pg.io/documentation/>
+- **Mosquitto Documentation**: <https://mosquitto.org/documentation/>
 - **Cluster Documentation**: [../../docs/](../../docs/)
 
 ---

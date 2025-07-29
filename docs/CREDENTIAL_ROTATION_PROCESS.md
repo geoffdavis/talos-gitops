@@ -225,6 +225,7 @@ kubectl rollout restart deployment onepassword-connect -n onepassword-connect
    ```
 
 3. **Start over**:
+
    ```bash
    task onepassword:prepare-credential-rotation
    task onepassword:bootstrap-fresh-credentials
@@ -239,6 +240,7 @@ kubectl rollout restart deployment onepassword-connect -n onepassword-connect
    ```
 
 2. **Safe reboot alternative**:
+
    ```bash
    task cluster:safe-reboot
    ```

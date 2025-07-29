@@ -30,7 +30,7 @@ kubectl get pods -n home-automation
 # Expected output: All pods should be Running (1/1 Ready)
 # - home-assistant-xxx
 # - homeassistant-postgresql-xxx
-# - mosquitto-xxx  
+# - mosquitto-xxx
 # - redis-xxx
 
 # Check Home Assistant web interface accessibility
@@ -454,7 +454,7 @@ kubectl get pods -n home-automation
 
 # Expected: All pods Running (1/1 Ready)
 # - home-assistant-xxx
-# - homeassistant-postgresql-xxx  
+# - homeassistant-postgresql-xxx
 # - mosquitto-xxx
 # - redis-xxx
 # - matter-server-xxx
@@ -551,18 +551,21 @@ kubectl get networkpolicies -n home-automation
 #### Issue: Pod in CrashLoopBackOff
 
 **Diagnosis:**
+
 ```bash
 kubectl describe pod -n home-automation -l app.kubernetes.io/name=matter-server
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --previous
 ```
 
 **Common Causes:**
+
 - Network interface `enp3s0f0` not available on node
 - Insufficient privileges for network operations
 - Storage volume mount failures
 - Helm chart configuration errors
 
 **Solutions:**
+
 - Verify network interface exists: `kubectl debug node/NODE_NAME -it --image=busybox -- ip addr show`
 - Check security context and capabilities in Helm configuration
 - Verify Longhorn storage system health
@@ -571,18 +574,21 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --previo
 #### Issue: Pod Pending State
 
 **Diagnosis:**
+
 ```bash
 kubectl describe pod -n home-automation -l app.kubernetes.io/name=matter-server
 kubectl get events -n home-automation --sort-by='.lastTimestamp'
 ```
 
 **Common Causes:**
+
 - Insufficient resources on nodes
 - Storage provisioning failures
 - Node selector constraints not met
 - Pod security policy violations
 
 **Solutions:**
+
 - Check node resource availability
 - Verify Longhorn storage class and provisioner
 - Review node selector and tolerations
@@ -593,6 +599,7 @@ kubectl get events -n home-automation --sort-by='.lastTimestamp'
 #### Issue: Helm Release Failed
 
 **Diagnosis:**
+
 ```bash
 kubectl get helmrelease -n home-automation matter-server -o yaml
 kubectl describe helmrelease -n home-automation matter-server
@@ -600,12 +607,14 @@ flux logs --level=error
 ```
 
 **Common Causes:**
+
 - Helm repository not accessible
 - Chart version not found
 - Invalid configuration values
 - Flux reconciliation errors
 
 **Solutions:**
+
 - Verify Helm repository sync status
 - Check chart version availability
 - Validate Helm values configuration
@@ -616,6 +625,7 @@ flux logs --level=error
 #### Issue: Home Assistant Can't Connect to Matter Server
 
 **Diagnosis:**
+
 ```bash
 kubectl exec -n home-automation deployment/home-assistant -- \
   curl -v http://localhost:5580/ws
@@ -623,6 +633,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 ```
 
 **Solutions:**
+
 - Verify both pods are on same node (host networking requirement)
 - Check Matter Server WebSocket endpoint is responding
 - Restart Home Assistant deployment
@@ -668,9 +679,9 @@ After successful deployment:
 
 ## Support Resources
 
-- **Matter Server Documentation**: https://github.com/home-assistant-libs/python-matter-server
-- **Home Assistant Matter Integration**: https://www.home-assistant.io/integrations/matter/
-- **Helm Chart Documentation**: https://github.com/derwitt-dev/helm-charts/tree/main/charts/home-assistant-matter-server
+- **Matter Server Documentation**: <https://github.com/home-assistant-libs/python-matter-server>
+- **Home Assistant Matter Integration**: <https://www.home-assistant.io/integrations/matter/>
+- **Helm Chart Documentation**: <https://github.com/derwitt-dev/helm-charts/tree/main/charts/home-assistant-matter-server>
 - **Cluster Documentation**: [../../../docs/](../../../docs/)
 
 ---

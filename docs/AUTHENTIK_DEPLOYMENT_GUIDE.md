@@ -202,6 +202,7 @@ kubectl get svc -n ingress-nginx-internal ingress-nginx-internal-controller
 
 1. Navigate to **Settings** → **Profiles** → **RADIUS**
 2. Create new RADIUS profile:
+
    ```
    Name: Authentik RADIUS
    Auth Server: <radius-loadbalancer-ip>
@@ -245,6 +246,7 @@ radtest username password <radius-ip> 1812 <shared-secret>
    ```
 
 5. Provider Configuration:
+
    ```
    Authorization flow: default-authorization-flow
    Client type: Confidential
@@ -280,6 +282,7 @@ data:
    ```
 
 2. Download metadata:
+
    ```bash
    curl -o metadata.xml https://authentik.k8s.home.geoffdavis.com/application/saml/my-app/metadata/
    ```

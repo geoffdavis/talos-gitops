@@ -195,7 +195,7 @@ The Home Assistant deployment integrates with the cluster's external Authentik o
 
 ### Access URL and User Experience
 
-- **Primary URL**: https://homeassistant.k8s.home.geoffdavis.com
+- **Primary URL**: <https://homeassistant.k8s.home.geoffdavis.com>
 - **Authentication**: Seamless SSO with cluster identity provider
 - **Mobile Access**: Compatible with Home Assistant mobile apps
 - **API Access**: Direct API access available for automation and integrations
@@ -839,8 +839,8 @@ apps/home-automation/
 
 ### Important URLs
 
-- **Home Assistant**: https://homeassistant.k8s.home.geoffdavis.com
-- **Internal Service**: http://home-assistant.home-automation.svc.cluster.local:8123
+- **Home Assistant**: <https://homeassistant.k8s.home.geoffdavis.com>
+- **Internal Service**: <http://home-assistant.home-automation.svc.cluster.local:8123>
 
 ### Key Commands
 
@@ -870,9 +870,9 @@ kubectl get cluster homeassistant-postgresql -n home-automation
 
 ### Support Resources
 
-- **Home Assistant Documentation**: https://www.home-assistant.io/docs/
-- **CNPG Documentation**: https://cloudnative-pg.io/documentation/
-- **Mosquitto Documentation**: https://mosquitto.org/documentation/
+- **Home Assistant Documentation**: <https://www.home-assistant.io/docs/>
+- **CNPG Documentation**: <https://cloudnative-pg.io/documentation/>
+- **Mosquitto Documentation**: <https://mosquitto.org/documentation/>
 - **Cluster Documentation**: [Cluster Documentation Index](../docs/)
 
 ---

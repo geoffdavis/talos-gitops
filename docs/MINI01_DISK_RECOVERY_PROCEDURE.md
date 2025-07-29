@@ -83,6 +83,7 @@ parted $INTERNAL_DISK print
    ```
 
 2. Remove USB drive and reboot:
+
    ```bash
    reboot
    ```

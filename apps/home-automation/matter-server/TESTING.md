@@ -214,12 +214,14 @@ kubectl exec -n home-automation deployment/home-assistant -- \
 #### 1. Device Preparation
 
 **Physical Device Setup:**
+
 1. Ensure Matter device is powered on and in factory reset state
 2. Put device in commissioning/pairing mode (refer to device manual)
 3. Note the device's setup code or QR code
 4. Ensure device is on the same network segment as cluster nodes
 
 **Network Preparation:**
+
 ```bash
 # Verify network connectivity to device subnet
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -243,11 +245,13 @@ curl -I https://homeassistant.k8s.home.geoffdavis.com
 #### Method 1: QR Code Commissioning
 
 **Prerequisites:**
+
 - Home Assistant mobile app installed
 - Mobile device on same network as cluster
 - Matter device with visible QR code
 
 **Steps:**
+
 1. **Access Home Assistant Mobile App**
    - Open Home Assistant app on mobile device
    - Navigate to Settings → Devices & Services
@@ -264,6 +268,7 @@ curl -I https://homeassistant.k8s.home.geoffdavis.com
    - Configure device name and settings
 
 **Validation:**
+
 ```bash
 # Check Matter Server logs for commissioning activity
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f
@@ -277,12 +282,14 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f
 #### Method 2: Manual Setup Code Entry
 
 **Prerequisites:**
+
 - Device setup code (11-digit numeric code)
 - Access to Home Assistant web interface
 
 **Steps:**
+
 1. **Access Matter Integration**
-   - Navigate to https://homeassistant.k8s.home.geoffdavis.com
+   - Navigate to <https://homeassistant.k8s.home.geoffdavis.com>
    - Go to Settings → Devices & Services
    - Click "Add Integration" → "Matter (BETA)"
 
@@ -297,6 +304,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f
    - Test device functionality
 
 **Validation:**
+
 ```bash
 # Monitor commissioning progress
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=50 | grep -i commission
@@ -308,19 +316,23 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant --tail=
 #### Method 3: Bluetooth Commissioning
 
 **Prerequisites:**
+
 - Bluetooth-enabled Matter device
 - Bluetooth support in Matter Server pod
 
 **Steps:**
+
 1. **Verify Bluetooth Availability**
+
    ```bash
    kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
      bluetoothctl list
-   
+
    # Expected: Should show available Bluetooth adapter
    ```
 
 2. **Start Bluetooth Discovery**
+
    ```bash
    kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
      bluetoothctl scan on
@@ -333,6 +345,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant --tail=
    - Follow commissioning workflow
 
 **Validation:**
+
 ```bash
 # Check Bluetooth pairing logs
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -i bluetooth
@@ -346,6 +359,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 #### Issue: Device Not Discovered
 
 **Diagnosis:**
+
 ```bash
 # Check network connectivity to device
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -360,6 +374,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 ```
 
 **Solutions:**
+
 - Ensure device is in commissioning mode
 - Verify network connectivity between cluster and device
 - Check firewall rules for mDNS traffic (port 5353)
@@ -368,6 +383,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 #### Issue: Commissioning Fails
 
 **Diagnosis:**
+
 ```bash
 # Check commissioning logs
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -i commission
@@ -378,6 +394,7 @@ kubectl exec -n home-automation deployment/home-assistant -- \
 ```
 
 **Solutions:**
+
 - Verify setup code is correct
 - Ensure device is not already commissioned to another controller
 - Check network stability during commissioning
@@ -390,6 +407,7 @@ kubectl exec -n home-automation deployment/home-assistant -- \
 #### 1. Device Control Testing
 
 **Basic Device Control:**
+
 ```bash
 # Access Home Assistant web interface
 # Navigate to: Overview → [Device Name]
@@ -402,6 +420,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f
 ```
 
 **Automation Testing:**
+
 ```bash
 # Create test automation in Home Assistant:
 # 1. Go to Settings → Automations & Scenes
@@ -415,6 +434,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant | grep 
 #### 2. State Synchronization Testing
 
 **Real-time State Updates:**
+
 ```bash
 # Monitor state changes in real-time
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f &
@@ -425,6 +445,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f &
 ```
 
 **State Persistence Testing:**
+
 ```bash
 # Change device state via Home Assistant
 # Restart Matter Server pod
@@ -439,6 +460,7 @@ kubectl wait --for=condition=Ready pod -n home-automation -l app.kubernetes.io/n
 #### 3. WebSocket Communication Testing
 
 **Connection Stability:**
+
 ```bash
 # Monitor WebSocket connections
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -i websocket
@@ -459,6 +481,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 1. Response Time Testing
 
 **Command Response Time:**
+
 ```bash
 # Test device response times
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -477,6 +500,7 @@ asyncio.run(test_response_time())
 ```
 
 **Load Testing:**
+
 ```bash
 # Test multiple simultaneous commands
 # This requires manual testing via Home Assistant interface
@@ -486,6 +510,7 @@ asyncio.run(test_response_time())
 #### 2. Resource Usage Monitoring
 
 **CPU and Memory Usage:**
+
 ```bash
 # Monitor Matter Server resource usage
 kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server --containers
@@ -499,6 +524,7 @@ watch -n 5 'kubectl top pods -n home-automation -l app.kubernetes.io/name=matter
 ```
 
 **Storage Usage:**
+
 ```bash
 # Check persistent storage usage
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -586,6 +612,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### Issue: Matter Devices Not Discovered
 
 **Diagnosis Steps:**
+
 ```bash
 # Check network connectivity
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -600,6 +627,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 ```
 
 **Common Solutions:**
+
 - Ensure devices are in commissioning mode
 - Verify network connectivity between cluster and devices
 - Check firewall rules for mDNS (port 5353)
@@ -608,6 +636,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 #### Issue: Bluetooth Commissioning Fails
 
 **Diagnosis Steps:**
+
 ```bash
 # Check Bluetooth adapter status
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -619,6 +648,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Common Solutions:**
+
 - Verify Bluetooth adapter is available and enabled
 - Check device Bluetooth compatibility
 - Ensure device is in Bluetooth pairing mode
@@ -629,6 +659,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### Issue: Home Assistant Can't Control Devices
 
 **Diagnosis Steps:**
+
 ```bash
 # Check WebSocket connection
 kubectl exec -n home-automation deployment/home-assistant -- \
@@ -642,6 +673,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant | grep 
 ```
 
 **Common Solutions:**
+
 - Verify WebSocket connection is stable
 - Check device network connectivity
 - Restart Home Assistant to refresh device connections
@@ -650,6 +682,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant | grep 
 #### Issue: Slow Device Response
 
 **Diagnosis Steps:**
+
 ```bash
 # Monitor network latency
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -660,6 +693,7 @@ kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server
 ```
 
 **Common Solutions:**
+
 - Optimize network configuration
 - Check for network congestion
 - Verify adequate resources for Matter Server
@@ -670,6 +704,7 @@ kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server
 #### Issue: High Resource Usage
 
 **Diagnosis Steps:**
+
 ```bash
 # Monitor detailed resource usage
 kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server --containers
@@ -684,6 +719,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Common Solutions:**
+
 - Review device count and activity levels
 - Increase resource limits if needed
 - Check for problematic devices causing excessive traffic
@@ -696,6 +732,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 The Matter Server testing is considered successful when:
 
 #### Infrastructure Tests
+
 - ✅ Matter Server pod is healthy and responsive
 - ✅ WebSocket endpoint accessible from Home Assistant
 - ✅ Host networking properly configured
@@ -703,24 +740,28 @@ The Matter Server testing is considered successful when:
 - ✅ Persistent storage mounted and writable
 
 #### Device Discovery Tests
+
 - ✅ mDNS discovery functional for Matter devices
 - ✅ Bluetooth discovery working (if enabled)
 - ✅ Thread network discovery operational (if applicable)
 - ✅ Network connectivity to device subnet confirmed
 
 #### Commissioning Tests
+
 - ✅ At least one Matter device successfully commissioned
 - ✅ Device appears in Home Assistant interface
 - ✅ Device responds to basic control commands
 - ✅ Device state synchronization working
 
 #### Integration Tests
+
 - ✅ Home Assistant can control commissioned devices
 - ✅ Device state changes reflected in real-time
 - ✅ Automations work with Matter devices
 - ✅ WebSocket communication stable
 
 #### Performance Tests
+
 - ✅ Device commands execute within 2 seconds
 - ✅ Resource usage within expected limits
 - ✅ No memory leaks or excessive storage growth
@@ -731,6 +772,7 @@ The Matter Server testing is considered successful when:
 #### Test Results Recording
 
 Create a test results log:
+
 ```bash
 # Create test results file
 cat > matter-server-test-results.md << EOF
@@ -768,6 +810,7 @@ EOF
 ### Successful Testing
 
 If all tests pass:
+
 1. **Document Configuration**: Record successful device types and configurations
 2. **Update Monitoring**: Add Matter Server metrics to monitoring dashboards
 3. **Create Backups**: Ensure Matter certificates and device data are backed up
@@ -776,6 +819,7 @@ If all tests pass:
 ### Failed Testing
 
 If tests fail:
+
 1. **Review Logs**: Analyze Matter Server and Home Assistant logs for errors
 2. **Check Configuration**: Verify Helm configuration and network settings
 3. **Consult Troubleshooting**: Follow troubleshooting procedures in this guide
@@ -783,10 +827,10 @@ If tests fail:
 
 ## Support Resources
 
-- **Matter Specification**: https://csa-iot.org/all-solutions/matter/
-- **Home Assistant Matter Integration**: https://www.home-assistant.io/integrations/matter/
-- **Python Matter Server**: https://github.com/home-assistant-libs/python-matter-server
-- **Thread Group Documentation**: https://www.threadgroup.org/
+- **Matter Specification**: <https://csa-iot.org/all-solutions/matter/>
+- **Home Assistant Matter Integration**: <https://www.home-assistant.io/integrations/matter/>
+- **Python Matter Server**: <https://github.com/home-assistant-libs/python-matter-server>
+- **Thread Group Documentation**: <https://www.threadgroup.org/>
 - **Cluster Documentation**: [../../../docs/](../../../docs/)
 
 ---

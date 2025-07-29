@@ -4,7 +4,7 @@
 
 This document provides comprehensive documentation for the external Authentik outpost connection fix that was successfully completed. The fix resolved critical token configuration issues and proxy provider assignment conflicts that prevented the external outpost from connecting properly to Authentik services.
 
-**Key Achievement**: External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` now connects successfully to Authentik server, with authentication working for 5 out of 6 services. The remaining dashboard service issue has been identified as a service configuration problem, not an authentication issue.
+**Key Achievement**: External outpost `3f0970c5-d6a3-43b2-9a36-d74665c6b24e` now connects successfully to Authentik server, with authentication working for 6 out of 7 services. The remaining dashboard service issue has been identified as a service configuration problem, not an authentication issue.
 
 ## Root Cause Analysis
 
@@ -18,7 +18,7 @@ This document provides comprehensive documentation for the external Authentik ou
 
 #### 2. **Proxy Provider Assignment Conflicts** (RESOLVED)
 
-- **Problem**: All 6 proxy providers were assigned to embedded outpost instead of external outpost
+- **Problem**: All 7 proxy providers were assigned to embedded outpost instead of external outpost
 - **Evidence**: External outpost had no providers assigned, embedded outpost had all providers
 - **Root Cause**: Proxy providers were not properly migrated from embedded to external outpost during architecture transition
 
@@ -56,7 +56,7 @@ Token: <external-outpost-token>  # Correct token from 1Password
 ```yaml
 # Before Fix:
 Embedded Outpost (26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083):
-  Providers: [2, 5, 6, 7, 3, 4]  # All 6 providers assigned here
+  Providers: [2, 5, 6, 7, 3, 4, 8]  # All 7 providers assigned here
 External Outpost (3f0970c5-d6a3-43b2-9a36-d74665c6b24e):
   Providers: []  # No providers assigned
 
@@ -64,7 +64,7 @@ External Outpost (3f0970c5-d6a3-43b2-9a36-d74665c6b24e):
 Embedded Outpost (26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083):
   Providers: []  # All providers removed
 External Outpost (3f0970c5-d6a3-43b2-9a36-d74665c6b24e):
-  Providers: [2, 5, 6, 7, 3, 4]  # All 6 providers correctly assigned
+  Providers: [2, 5, 6, 7, 3, 4, 8]  # All 7 providers correctly assigned
 ```
 
 ## Step-by-Step Resolution Guide
@@ -138,8 +138,8 @@ kubectl logs -n authentik-proxy -l job-name=fix-outpost-assignments --follow
 
 **Script Functionality**:
 
-- Removes all 6 proxy providers from embedded outpost
-- Assigns all 6 proxy providers exclusively to external outpost
+- Removes all 7 proxy providers from embedded outpost
+- Assigns all 7 proxy providers exclusively to external outpost
 - Validates provider assignments after changes
 
 #### Step 5: Update Configuration Job
@@ -186,7 +186,7 @@ kubectl logs -n authentik-proxy -l app.kubernetes.io/name=authentik-proxy --tail
 - **Connection Status**: Connected ✅
 - **Token Authentication**: Successful ✅
 - **Websocket Connection**: Established ✅
-- **Provider Assignment**: 6 providers assigned ✅
+- **Provider Assignment**: 7 providers assigned ✅
 
 #### Service Authentication Status
 
@@ -243,7 +243,7 @@ curl -I http://authentik-proxy-service.authentik-proxy:9000/outpost.goauthentik.
 #### Authentik Admin Interface
 
 - External outpost shows "Connected" status
-- All 6 proxy providers assigned to external outpost
+- All 7 proxy providers assigned to external outpost
 - Embedded outpost shows no providers assigned
 
 ## Operational Procedures
@@ -272,7 +272,7 @@ curl -I https://grafana.k8s.home.geoffdavis.com
 
 # Check external outpost (3f0970c5-d6a3-43b2-9a36-d74665c6b24e):
 # - Status: Connected
-# - Providers: 6 assigned
+# - Providers: 7 assigned
 # - Configuration: Internal URL uses cluster DNS
 
 # Check embedded outpost (26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083):
@@ -509,8 +509,8 @@ Each service uses both proxy and OAuth2 providers:
 - authentik-proxy deployment (2 replicas)
 - Redis instance (session storage)
 - External outpost configuration
-- Proxy providers (6 services)
-- OAuth2 providers (6 services)
+- Proxy providers (7 services)
+- OAuth2 providers (7 services)
 
 # Network Components:
 - Service (ClusterIP)
@@ -546,13 +546,13 @@ The external Authentik outpost connection fix has been successfully completed wi
 ### ✅ **Resolved Issues**
 
 1. **Token Configuration**: Correct external outpost token configured
-2. **Provider Assignments**: All 6 proxy providers assigned to external outpost
+2. **Provider Assignments**: All 7 proxy providers assigned to external outpost
 3. **Environment Variables**: Hybrid URL architecture implemented
 4. **Pod Connectivity**: External outpost connecting successfully to Authentik server
 
 ### ✅ **Operational Status**
 
-- **5 out of 6 services** working correctly with authentication
+- **6 out of 7 services** working correctly with authentication
 - **External outpost** showing connected status in Authentik admin interface
 - **Authentication flow** working end-to-end for operational services
 - **Monitoring procedures** established for ongoing maintenance
@@ -569,4 +569,4 @@ The external authentik-proxy system is now **production-ready** and provides rel
 
 _Documentation generated: 2025-07-26_
 _External Outpost ID: 3f0970c5-d6a3-43b2-9a36-d74665c6b24e_
-_Status: ✅ OPERATIONAL (5/6 services)_
+_Status: ✅ OPERATIONAL (6/7 services)_

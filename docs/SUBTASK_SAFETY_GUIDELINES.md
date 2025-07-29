@@ -220,6 +220,7 @@ talosctl service "$SERVICE" status --nodes "$NODE_IP"
    ```
 
 3. **Prepare for recovery**:
+
    ```bash
    # Ensure USB installer is ready
    task talos:generate-schematic

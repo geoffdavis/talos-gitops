@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: authentik-proxy
     app.kubernetes.io/component: service-discovery
 spec:
-  schedule: "*/15 * * * *"  # Run every 15 minutes
+  schedule: "*/15 * * * *" # Run every 15 minutes
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:

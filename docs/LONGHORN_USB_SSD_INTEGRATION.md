@@ -214,6 +214,7 @@ kubectl top nodes
    ```
 
 4. **Check Longhorn disk discovery**:
+
    ```bash
    kubectl logs -n longhorn-system deployment/longhorn-manager
    kubectl get events -n longhorn-system --sort-by='.lastTimestamp'
@@ -228,6 +229,7 @@ kubectl top nodes
    ```
 
 2. **Check PVC binding issues**:
+
    ```bash
    kubectl describe pvc <pvc-name>
    kubectl get events --field-selector involvedObject.name=<pvc-name>
@@ -249,6 +251,7 @@ kubectl top nodes
    ```
 
 3. **Verify T5 SSD optimizations**:
+
    ```bash
    talosctl cat /sys/block/*/queue/rotational
    talosctl cat /sys/block/*/device/model

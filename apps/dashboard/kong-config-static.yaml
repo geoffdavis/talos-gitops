@@ -162,7 +162,7 @@ data:
 
     # Read the service account token
     SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-    
+
     # Substitute the token in the Kong configuration
     sed "s/\${SA_TOKEN}/$SA_TOKEN/g" /tmp/kong-config/kong.yml > /kong-config/kong.yml
 

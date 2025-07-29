@@ -241,6 +241,7 @@ talosctl reset --system-labels-to-wipe <unknown-label>
    ```
 
 5. **Component-Specific Fixes**
+
    ```bash
    task talos:fix-cilium
    task talos:recover-kubeconfig

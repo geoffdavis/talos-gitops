@@ -13,6 +13,7 @@ This document describes the migration of LLDPD configuration from a separate boo
 - **Added LLDPD patch** to the `controlPlane.patches` section
 - **Integrated LLDPD environment variables** (`LLDPD_OPTS: "-c -e -f -s -r"`)
 - **Added LLDPD configuration file** at `/etc/lldpd.conf` with proper settings:
+
   ```yaml
   configure lldp portidsubtype ifname
   unconfigure lldp management-addresses-advertisements

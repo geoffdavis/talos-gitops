@@ -13,6 +13,7 @@ The Matter Server operational procedures ensure reliable Thread/Matter device su
 #### 1. Daily Health Checks
 
 **Morning Health Verification:**
+
 ```bash
 # Check Matter Server pod status
 kubectl get pods -n home-automation -l app.kubernetes.io/name=matter-server
@@ -34,6 +35,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=5
 ```
 
 **Resource Usage Monitoring:**
+
 ```bash
 # Check CPU and memory usage
 kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server
@@ -50,6 +52,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Device Connectivity Verification:**
+
 ```bash
 # Test sample device connectivity (replace with actual device IP)
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -63,6 +66,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 2. Weekly Health Assessment
 
 **Comprehensive System Check:**
+
 ```bash
 # Generate weekly health report
 cat > weekly-matter-health-$(date +%Y%m%d).md << EOF
@@ -90,6 +94,7 @@ EOF
 ```
 
 **Log Analysis:**
+
 ```bash
 # Analyze logs for patterns or issues
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --since=168h > matter-server-weekly.log
@@ -105,6 +110,7 @@ grep -i "connection\|timeout\|error\|fail" matter-server-weekly.log | sort | uni
 #### 1. Response Time Monitoring
 
 **Device Command Response Times:**
+
 ```bash
 # Monitor command response times (manual testing required)
 # Access Home Assistant web interface
@@ -116,6 +122,7 @@ echo "$(date): Device response time check - [NORMAL/SLOW/TIMEOUT]" >> matter-per
 ```
 
 **WebSocket Performance:**
+
 ```bash
 # Monitor WebSocket connection stability
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --since=24h | grep -i websocket
@@ -127,6 +134,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --since=
 #### 2. Resource Trend Analysis
 
 **CPU and Memory Trends:**
+
 ```bash
 # Collect resource usage data
 echo "$(date),$(kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server --no-headers | awk '{print $2","$3}')" >> matter-resources.csv
@@ -136,6 +144,7 @@ tail -7 matter-resources.csv | awk -F, '{cpu+=$2; mem+=$3} END {print "Weekly av
 ```
 
 **Storage Growth Monitoring:**
+
 ```bash
 # Track storage usage over time
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -152,6 +161,7 @@ tail -30 matter-storage-usage.log
 #### 1. Pre-Addition Checklist
 
 **Infrastructure Readiness:**
+
 ```bash
 # Verify Matter Server health
 kubectl get pods -n home-automation -l app.kubernetes.io/name=matter-server
@@ -165,6 +175,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Device Preparation:**
+
 - Ensure device is Matter-certified
 - Verify device is on same network segment as cluster
 - Have device setup code or QR code ready
@@ -173,8 +184,9 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 2. Device Addition Process
 
 **Commission New Device:**
+
 1. **Access Home Assistant Interface:**
-   - Navigate to https://homeassistant.k8s.home.geoffdavis.com
+   - Navigate to <https://homeassistant.k8s.home.geoffdavis.com>
    - Go to Settings → Devices & Services
    - Click "Add Integration" → "Matter (BETA)"
 
@@ -185,10 +197,11 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
    - Configure device name and settings
 
 3. **Verify Device Addition:**
+
    ```bash
    # Monitor commissioning in logs
    kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f
-   
+
    # Expected log entries:
    # - "Starting device commissioning"
    # - "Device discovery successful"
@@ -203,6 +216,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 3. Post-Addition Tasks
 
 **Documentation Update:**
+
 ```bash
 # Update device inventory
 cat >> matter-device-inventory.md << EOF
@@ -219,6 +233,7 @@ EOF
 ```
 
 **Monitoring Setup:**
+
 - Add device to monitoring dashboards if applicable
 - Configure alerts for critical devices
 - Update backup procedures if device stores important data
@@ -228,6 +243,7 @@ EOF
 #### 1. Device Removal Process
 
 **Remove from Home Assistant:**
+
 1. **Access Device Settings:**
    - Navigate to Settings → Devices & Services → Matter
    - Find device to remove
@@ -239,10 +255,11 @@ EOF
    - Verify device no longer appears in device list
 
 3. **Monitor Removal:**
+
    ```bash
    # Check logs for device removal
    kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=50 | grep -i remove
-   
+
    # Verify device cleanup
    kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant --tail=50 | grep -i device
    ```
@@ -250,11 +267,13 @@ EOF
 #### 2. Physical Device Reset
 
 **Factory Reset Device:**
+
 - Follow manufacturer instructions to factory reset device
 - Verify device is no longer connected to Matter network
 - Document removal in device inventory
 
 **Network Cleanup:**
+
 ```bash
 # Verify device no longer appears in network scans
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -268,6 +287,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 1. Unresponsive Devices
 
 **Diagnosis Steps:**
+
 ```bash
 # Check device network connectivity
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -282,16 +302,18 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep <
 ```
 
 **Resolution Steps:**
+
 1. **Network Troubleshooting:**
    - Verify device power and network connection
    - Check for network connectivity issues
    - Restart device if necessary
 
 2. **Matter Server Refresh:**
+
    ```bash
    # Restart Matter Server to refresh device connections
    kubectl rollout restart deployment matter-server -n home-automation
-   
+
    # Monitor restart and device reconnection
    kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server -f
    ```
@@ -303,6 +325,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep <
 #### 2. Slow Device Response
 
 **Performance Analysis:**
+
 ```bash
 # Check network latency to device
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -317,6 +340,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Optimization Steps:**
+
 - Verify adequate resources for Matter Server
 - Check network configuration for optimal performance
 - Consider Thread network optimization for Thread devices
@@ -329,6 +353,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 1. Matter Server Data Backup
 
 **Automated Backup (via Longhorn):**
+
 ```bash
 # Verify automatic snapshots are working
 kubectl get volumesnapshots -n home-automation | grep matter-server
@@ -340,6 +365,7 @@ kubectl get volumesnapshotclass -o yaml | grep -A 10 matter
 ```
 
 **Manual Backup Creation:**
+
 ```bash
 # Create manual snapshot for maintenance or upgrades
 kubectl apply -f - <<EOF
@@ -359,6 +385,7 @@ kubectl get volumesnapshots -n home-automation | grep matter-server-manual
 ```
 
 **Data Export for External Backup:**
+
 ```bash
 # Export Matter Server data for external backup
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -371,6 +398,7 @@ kubectl cp home-automation/$(kubectl get pod -n home-automation -l app.kubernete
 #### 2. Configuration Backup
 
 **Helm Configuration Backup:**
+
 ```bash
 # Backup Helm release configuration
 kubectl get helmrelease -n home-automation matter-server -o yaml > matter-server-helmrelease-backup-$(date +%Y%m%d).yaml
@@ -380,6 +408,7 @@ kubectl get all,pvc,secrets,configmaps -n home-automation -o yaml > home-automat
 ```
 
 **Device Configuration Export:**
+
 ```bash
 # Export Home Assistant configuration (includes Matter device config)
 kubectl exec -n home-automation deployment/home-assistant -- \
@@ -394,6 +423,7 @@ kubectl cp home-automation/$(kubectl get pod -n home-automation -l app.kubernete
 #### 1. Matter Server Data Recovery
 
 **Recovery from Volume Snapshot:**
+
 ```bash
 # List available snapshots
 kubectl get volumesnapshots -n home-automation | grep matter-server
@@ -428,6 +458,7 @@ spec:
 ```
 
 **Recovery from External Backup:**
+
 ```bash
 # Create temporary pod for data restoration
 kubectl run matter-restore --image=busybox --rm -i --tty --restart=Never \
@@ -464,6 +495,7 @@ kubectl rollout restart deployment matter-server -n home-automation
 #### 2. Complete System Recovery
 
 **Full Stack Recovery:**
+
 ```bash
 # Restore complete home-automation namespace
 kubectl delete namespace home-automation
@@ -480,6 +512,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
 ```
 
 **Device Re-commissioning After Recovery:**
+
 - Some devices may need to be re-commissioned after major recovery
 - Follow device addition procedures for affected devices
 - Update device inventory with any changes
@@ -489,6 +522,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
 #### 1. Recovery Time Objectives (RTO)
 
 **Target Recovery Times:**
+
 - **Matter Server Pod Recovery:** 5 minutes (automatic restart)
 - **Data Recovery from Snapshot:** 15 minutes
 - **Complete System Recovery:** 30 minutes
@@ -497,6 +531,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
 #### 2. Recovery Point Objectives (RPO)
 
 **Data Loss Tolerance:**
+
 - **Matter Certificates:** Maximum 24 hours (daily snapshots)
 - **Device Configuration:** Maximum 1 hour (frequent snapshots)
 - **Operational Data:** Maximum 15 minutes (continuous replication)
@@ -504,6 +539,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
 #### 3. Disaster Recovery Testing
 
 **Monthly DR Test:**
+
 ```bash
 # Test snapshot restoration (non-production)
 # 1. Create test namespace
@@ -522,6 +558,7 @@ kubectl delete namespace matter-test
 #### 1. Matter Certificate Monitoring
 
 **Certificate Health Check:**
+
 ```bash
 # Check Matter certificate storage
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -538,11 +575,13 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 #### 2. Certificate Rotation
 
 **Automatic Certificate Management:**
+
 - Matter Server handles certificate lifecycle automatically
 - Monitor logs for certificate renewal activities
 - Backup certificates as part of regular data backup
 
 **Manual Certificate Intervention (if needed):**
+
 ```bash
 # Only perform if directed by Matter Server documentation
 # Backup existing certificates before any manual intervention
@@ -555,6 +594,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 1. RBAC Monitoring
 
 **Service Account Permissions:**
+
 ```bash
 # Verify Matter Server service account permissions
 kubectl describe serviceaccount matter-server -n home-automation
@@ -566,6 +606,7 @@ kubectl auth can-i --list --as=system:serviceaccount:home-automation:matter-serv
 #### 2. Network Security
 
 **Network Policy Validation:**
+
 ```bash
 # Check network policies affecting Matter Server
 kubectl get networkpolicies -n home-automation
@@ -576,6 +617,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Host Network Security:**
+
 ```bash
 # Monitor host network access (required for Matter Server)
 kubectl get pod -n home-automation -l app.kubernetes.io/name=matter-server -o yaml | grep hostNetwork
@@ -588,6 +630,7 @@ kubectl get pod -n home-automation -l app.kubernetes.io/name=matter-server -o ya
 #### 1. Security Alert Procedures
 
 **Suspicious Activity Detection:**
+
 ```bash
 # Monitor for unusual network activity
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -E "unauthorized|failed|denied"
@@ -597,17 +640,20 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 ```
 
 **Incident Response Steps:**
+
 1. **Isolate Affected Components:**
+
    ```bash
    # If security incident detected, isolate Matter Server
    kubectl scale deployment matter-server -n home-automation --replicas=0
    ```
 
 2. **Collect Evidence:**
+
    ```bash
    # Collect logs for analysis
    kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --since=24h > matter-incident-logs.txt
-   
+
    # Export configuration for analysis
    kubectl get pod -n home-automation -l app.kubernetes.io/name=matter-server -o yaml > matter-incident-config.yaml
    ```
@@ -624,6 +670,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server | grep -
 #### 1. Matter Server Metrics
 
 **Resource Metrics:**
+
 ```bash
 # Collect CPU and memory metrics
 kubectl top pods -n home-automation -l app.kubernetes.io/name=matter-server --containers
@@ -634,6 +681,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Application Metrics:**
+
 ```bash
 # WebSocket connection count (if exposed by Matter Server)
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=100 | grep -c "WebSocket.*connected"
@@ -645,6 +693,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=1
 #### 2. Integration with Cluster Monitoring
 
 **Prometheus Integration:**
+
 ```bash
 # Verify Matter Server is included in monitoring
 kubectl get servicemonitor -n home-automation | grep matter-server
@@ -655,6 +704,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Grafana Dashboard:**
+
 - Create Matter Server dashboard in Grafana
 - Include pod health, resource usage, and device count metrics
 - Set up alerts for critical thresholds
@@ -664,6 +714,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 1. Critical Alerts
 
 **Pod Health Alerts:**
+
 ```yaml
 # Example Prometheus alert rule
 groups:
@@ -680,41 +731,44 @@ groups:
 ```
 
 **Resource Usage Alerts:**
+
 ```yaml
-      - alert: MatterServerHighMemory
-        expr: container_memory_usage_bytes{pod=~"matter-server.*"} / container_spec_memory_limit_bytes > 0.8
-        for: 10m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Matter Server high memory usage"
-          description: "Matter Server memory usage is above 80%"
+- alert: MatterServerHighMemory
+  expr: container_memory_usage_bytes{pod=~"matter-server.*"} / container_spec_memory_limit_bytes > 0.8
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Matter Server high memory usage"
+    description: "Matter Server memory usage is above 80%"
 ```
 
 #### 2. Warning Alerts
 
 **Performance Alerts:**
+
 ```yaml
-      - alert: MatterServerHighCPU
-        expr: rate(container_cpu_usage_seconds_total{pod=~"matter-server.*"}[5m]) > 0.5
-        for: 15m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Matter Server high CPU usage"
-          description: "Matter Server CPU usage is above 50%"
+- alert: MatterServerHighCPU
+  expr: rate(container_cpu_usage_seconds_total{pod=~"matter-server.*"}[5m]) > 0.5
+  for: 15m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Matter Server high CPU usage"
+    description: "Matter Server CPU usage is above 50%"
 ```
 
 **Storage Alerts:**
+
 ```yaml
-      - alert: MatterServerStorageFull
-        expr: kubelet_volume_stats_used_bytes{persistentvolumeclaim="matter-server-data"} / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim="matter-server-data"} > 0.85
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Matter Server storage usage high"
-          description: "Matter Server storage usage is above 85%"
+- alert: MatterServerStorageFull
+  expr: kubelet_volume_stats_used_bytes{persistentvolumeclaim="matter-server-data"} / kubelet_volume_stats_capacity_bytes{persistentvolumeclaim="matter-server-data"} > 0.85
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Matter Server storage usage high"
+    description: "Matter Server storage usage is above 85%"
 ```
 
 ### Log Management
@@ -722,6 +776,7 @@ groups:
 #### 1. Log Aggregation
 
 **Centralized Logging:**
+
 ```bash
 # Configure log forwarding to centralized logging system
 # This depends on your logging infrastructure (ELK, Loki, etc.)
@@ -731,6 +786,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=1
 ```
 
 **Log Retention:**
+
 ```bash
 # Configure log retention policies
 # Retain Matter Server logs for at least 30 days for troubleshooting
@@ -740,6 +796,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=1
 #### 2. Log Analysis
 
 **Automated Log Analysis:**
+
 ```bash
 # Create log analysis script
 cat > analyze-matter-logs.sh << 'EOF'
@@ -806,6 +863,7 @@ chmod +x analyze-matter-logs.sh
 #### 1. Matter Server Upgrades
 
 **Pre-Upgrade Checklist:**
+
 ```bash
 # Create backup before upgrade
 kubectl apply -f - <<EOF
@@ -824,6 +882,7 @@ kubectl get volumesnapshots -n home-automation | grep pre-upgrade
 ```
 
 **Upgrade Process:**
+
 ```bash
 # Update Helm chart version in helmrelease.yaml
 # Commit changes to Git repository
@@ -835,6 +894,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server --tail=5
 ```
 
 **Post-Upgrade Validation:**
+
 ```bash
 # Test WebSocket connectivity
 kubectl exec -n home-automation deployment/home-assistant -- \
@@ -847,6 +907,7 @@ kubectl exec -n home-automation deployment/home-assistant -- \
 #### 2. Rollback Procedures
 
 **Automatic Rollback:**
+
 ```bash
 # If upgrade fails, Flux will automatically rollback
 # Monitor rollback process
@@ -857,6 +918,7 @@ kubectl get pods -n home-automation -l app.kubernetes.io/name=matter-server
 ```
 
 **Manual Rollback:**
+
 ```bash
 # If manual rollback needed, revert Git changes
 git revert <upgrade-commit-hash>
@@ -871,6 +933,7 @@ git push
 #### 1. Resource Planning
 
 **Growth Projections:**
+
 ```bash
 # Monitor resource usage trends
 # Plan for device growth (estimate 10-20MB per device)
@@ -883,6 +946,7 @@ echo "Storage planning: [Current usage + growth projection]"
 ```
 
 **Scaling Recommendations:**
+
 - **CPU**: Increase limits if consistently above 300m
 - **Memory**: Increase if consistently above 400Mi
 - **Storage**: Plan for 100MB per 10 devices plus certificates
@@ -891,6 +955,7 @@ echo "Storage planning: [Current usage + growth projection]"
 #### 2. Performance Optimization
 
 **Network Optimization:**
+
 ```bash
 # Monitor network latency to devices
 kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
@@ -901,6 +966,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 ```
 
 **Resource Optimization:**
+
 ```bash
 # Optimize resource requests and limits based on actual usage
 # Monitor and adjust based on device count and activity
@@ -914,6 +980,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 1. First-Level Support
 
 **Common Issue Resolution:**
+
 - Pod restart issues → Check resource availability and logs
 - Device connectivity → Verify network and device status
 - Performance issues → Check resource usage and network latency
@@ -922,6 +989,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 2. Escalation Criteria
 
 **Escalate to Second-Level Support:**
+
 - Persistent pod crashes after restart
 - Data corruption or loss
 - Security incidents
@@ -931,22 +999,23 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 
 #### 1. Documentation Resources
 
-- **Matter Specification**: https://csa-iot.org/all-solutions/matter/
-- **Home Assistant Matter Integration**: https://www.home-assistant.io/integrations/matter/
-- **Python Matter Server**: https://github.com/home-assistant-libs/python-matter-server
-- **Helm Chart Documentation**: https://github.com/derwitt-dev/helm-charts
+- **Matter Specification**: <https://csa-iot.org/all-solutions/matter/>
+- **Home Assistant Matter Integration**: <https://www.home-assistant.io/integrations/matter/>
+- **Python Matter Server**: <https://github.com/home-assistant-libs/python-matter-server>
+- **Helm Chart Documentation**: <https://github.com/derwitt-dev/helm-charts>
 
 #### 2. Community Support
 
-- **Home Assistant Community**: https://community.home-assistant.io/
-- **Matter Developer Community**: https://github.com/project-chip/connectedhomeip
-- **Kubernetes Community**: https://kubernetes.io/community/
+- **Home Assistant Community**: <https://community.home-assistant.io/>
+- **Matter Developer Community**: <https://github.com/project-chip/connectedhomeip>
+- **Kubernetes Community**: <https://kubernetes.io/community/>
 
 ### Incident Management
 
 #### 1. Incident Classification
 
 **Severity Levels:**
+
 - **Critical**: Complete service outage, security breach
 - **High**: Significant functionality loss, multiple device failures
 - **Medium**: Single device issues, performance degradation
@@ -955,6 +1024,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 #### 2. Response Procedures
 
 **Critical Incident Response:**
+
 1. **Immediate Actions:**
    - Assess impact and scope
    - Implement temporary workarounds
@@ -985,6 +1055,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 # Matter Server Daily Operations - [DATE]
 
 ## Health Checks
+
 - [ ] Pod status: Running (1/1 Ready)
 - [ ] WebSocket connectivity: Functional
 - [ ] Resource usage: Within normal limits
@@ -992,16 +1063,19 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 - [ ] Device connectivity: Sample devices responsive
 
 ## Performance Monitoring
-- [ ] CPU usage: ___m (target: <200m)
-- [ ] Memory usage: ___Mi (target: <400Mi)
-- [ ] Storage usage: __% (target: <80%)
+
+- [ ] CPU usage: \_\_\_m (target: <200m)
+- [ ] Memory usage: \_\_\_Mi (target: <400Mi)
+- [ ] Storage usage: \_\_% (target: <80%)
 - [ ] Response times: Normal (<2s)
 
 ## Issues Identified
+
 - [ ] None
 - [ ] [Describe any issues and actions taken]
 
 ## Notes
+
 [Add any operational notes or observations]
 
 Completed by: [Name]
@@ -1014,6 +1088,7 @@ Time: [Time]
 # Matter Server Weekly Maintenance - [DATE]
 
 ## System Health Review
+
 - [ ] Generated weekly health report
 - [ ] Analyzed log patterns
 - [ ] Reviewed device inventory
@@ -1021,18 +1096,21 @@ Time: [Time]
 - [ ] Updated documentation
 
 ## Performance Analysis
+
 - [ ] Resource usage trends reviewed
 - [ ] Device response time analysis
 - [ ] Network connectivity assessment
 - [ ] Storage growth evaluation
 
 ## Maintenance Actions
+
 - [ ] Log cleanup performed
 - [ ] Configuration updates applied
 - [ ] Security patches reviewed
 - [ ] Monitoring dashboards updated
 
 ## Planning
+
 - [ ] Capacity planning reviewed
 - [ ] Upgrade schedule confirmed
 - [ ] Training needs identified

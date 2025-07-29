@@ -151,19 +151,19 @@ After successful completion:
 
 ## Troubleshooting
 
-### If disk wipe fails:
+### If disk wipe fails
 
 - Try different wipe tools: `dd`, `shred`, `scrub`
 - Use multiple passes: `shred -vfz -n 3`
 - Check for hardware write protection
 
-### If Talos won't install:
+### If Talos won't install
 
 - Verify UEFI boot mode
 - Check network connectivity
 - Ensure Talos installer image is valid
 
-### If still getting encryption errors:
+### If still getting encryption errors
 
 - Repeat the secure wipe process
 - Try zeroing more of the disk

@@ -1,59 +1,13 @@
-# Reference
+# Technical Reference Documentation
 
-This section contains reference materials and quick lookup information.
+This section provides detailed technical reference documentation for various aspects of the Talos GitOps Home-Ops Cluster. It is intended for users who require in-depth information on specific configurations, APIs, or underlying technologies.
 
-## Quick Navigation
+## Key Reference Areas
 
-- [Configuration Files](configuration-files.md) - Key configuration file reference
-- [Task Commands](task-commands.md) - Taskfile command reference
-- [Network Topology](network-topology.md) - Network configuration details
-- [Resource Requirements](resource-requirements.md) - Hardware and resource specifications
+- [Talos OS Configuration](../../talos/README.md) (Note: This link is a placeholder as `talos/README.md` does not currently exist, but it is a logical place for its documentation.)
+- [Kubernetes API Reference](https://kubernetes.io/docs/reference/kubernetes-api/) (External Link)
+- [Cilium API Reference](https://docs.cilium.io/en/stable/api/) (External Link)
+- [Flux CD API Reference](https://fluxcd.io/flux/components/) (External Link)
+- [Authentik API Reference](https://goauthentik.io/docs/api/) (External Link)
 
-## Quick Reference
-
-### Key URLs
-
-- **Home Assistant**: <https://homeassistant.k8s.home.geoffdavis.com>
-- **Longhorn**: <https://longhorn.k8s.home.geoffdavis.com>
-- **Grafana**: <https://grafana.k8s.home.geoffdavis.com>
-- **Prometheus**: <https://prometheus.k8s.home.geoffdavis.com>
-- **Dashboard**: <https://dashboard.k8s.home.geoffdavis.com>
-
-### Network Configuration
-
-- **Cluster VIP**: 172.29.51.10
-- **Node IPs**: 172.29.51.11-13
-- **Pod CIDR**: 10.244.0.0/16 (IPv4), fd47:25e1:2f96:51:2000::/64 (IPv6)
-- **Service CIDR**: 10.96.0.0/12 (IPv4), fd47:25e1:2f96:51:1000::/108 (IPv6)
-- **LoadBalancer Pools**: 172.29.52.50-220 (BGP-advertised)
-
-### Essential Commands
-
-```bash
-# Cluster status
-task cluster:status
-
-# GitOps health
-flux get kustomizations
-
-# Node health
-kubectl get nodes
-
-# Pod status
-kubectl get pods --all-namespaces
-```
-
-### Emergency Procedures
-
-```bash
-# Safe cluster reset
-task cluster:safe-reset
-
-# Emergency recovery
-task cluster:emergency-recovery
-
-# Redeploy core services
-task apps:deploy-core
-```
-
-For detailed procedures, see the [Operations](../operations/) section.
+Please ensure this file is updated with the exact content provided. After updating, use the `attempt_completion` tool to report the successful update of the file.

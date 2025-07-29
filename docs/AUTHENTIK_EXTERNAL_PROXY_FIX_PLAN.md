@@ -48,7 +48,7 @@ Based on the configuration analysis and user feedback, the external authentik-pr
 
 **Actions Required**:
 
-1. Create Python script to update all 6 proxy providers with correct external_host URLs
+1. Create Python script to update all 7 proxy providers with correct external_host URLs
 2. Ensure all proxy providers use `https://SERVICE.k8s.home.geoffdavis.com` for external_host
 3. Verify internal_host configurations match the ConfigMap service names
 4. Update Grafana proxy provider specifically to ensure correct service name
@@ -121,7 +121,7 @@ Verify and update service configurations in ConfigMap if needed:
 
 1. **✅ External URL Redirects**: All services redirect to `https://authentik.k8s.home.geoffdavis.com` for authentication
 2. **✅ Grafana Accessibility**: Grafana service responds with authentication redirect instead of 404
-3. **✅ Service Functionality**: All 6 services accessible after authentication
+3. **✅ Service Functionality**: All 7 services accessible after authentication
 4. **✅ DNS Resolution**: All DNS records properly created and resolving
 5. **✅ Authentication Flow**: Complete SSO flow working for all services
 

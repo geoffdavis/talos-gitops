@@ -168,6 +168,7 @@ kubectl describe externalsecret -n NAMESPACE SECRET_NAME
    ```
 
 4. **Verify External Secrets sync**:
+
    ```bash
    kubectl get externalsecrets -A
    ```

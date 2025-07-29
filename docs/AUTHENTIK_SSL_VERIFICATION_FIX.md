@@ -67,6 +67,7 @@ If the fix doesn't work immediately:
    ```
 
 3. **Verify Provider Configuration**:
+
    ```bash
    TOKEN=$(kubectl get secret -n authentik authentik-admin-token -o jsonpath='{.data.token}' | base64 -d)
    curl -k -H "Authorization: Bearer $TOKEN" https://authentik.k8s.home.geoffdavis.com/api/v3/outposts/instances/

@@ -1,399 +1,82 @@
-# Pre-commit Implementation Summary
+# Pre-commit System Documentation
 
-## Overview
+The pre-commit system in the Talos GitOps Home-Ops Cluster enforces code quality, security, and consistency standards across the repository. This document details its purpose, architecture, configuration, and operational aspects, highlighting its balanced enforcement approach.
 
-Successfully implemented a comprehensive pre-commit strategy for the Talos GitOps home-ops cluster repository with a **balanced enforcement approach** that prioritizes security and syntax validation while treating formatting issues as warnings.
+## Purpose
 
-## Implementation Philosophy
+The pre-commit system aims to:
 
-### Balanced Enforcement Strategy
+- **Prevent Issues**: Catch security vulnerabilities, syntax errors, and formatting inconsistencies before code is committed.
+- **Improve Code Quality**: Ensure adherence to coding standards and best practices.
+- **Automate Checks**: Provide fast, local feedback to developers, reducing reliance on CI/CD pipelines for basic checks.
+- **Maintain Consistency**: Enforce a consistent code style across the entire project.
 
-- **ENFORCED (Blocks commits)**: Security issues, syntax errors, critical validation
-- **WARNING ONLY**: Code formatting, style preferences, non-critical issues
+## Architecture and Enforcement
 
-This approach ensures:
+The pre-commit system utilizes the `pre-commit` framework, which manages and runs various hooks configured in `.pre-commit-config.yaml`. A balanced enforcement approach is employed:
 
-- Security incidents are prevented
-- Syntax errors don't reach the repository
-- Developers aren't blocked by minor formatting preferences
-- Code quality is improved gradually through warnings
+- **Enforced Hooks (Blocking Commits)**:
+  - **Security**: `detect-secrets`, `gitleaks` (to prevent credential leaks).
+  - **Syntax Validation**: `yamllint` (for YAML syntax), Kubernetes manifest validation (`kubectl dry-run`), Python syntax checks, `shellcheck` (for shell script security).
+  - These hooks block commits if issues are found, ensuring critical problems are addressed immediately.
 
-## Implemented Hooks
+- **Warning Hooks (Non-Blocking)**:
+  - **Formatting**: `prettier` (for YAML, Markdown), `black` (for Python), `isort` (for Python imports).
+  - These hooks provide suggestions and automatically fix issues where possible, but do not block commits, allowing developers to address them at their convenience.
 
-### 🔒 Security Hooks (ENFORCED - CRITICAL)
+## Configuration
 
-#### Secret Detection
+The core configuration is defined in the `.pre-commit-config.yaml` file. This file specifies:
 
-- **Hook**: `detect-secrets`
-- **Purpose**: Prevent credential leaks after security incident
-- **Configuration**: Uses `.secrets.baseline` for managing false positives
-- **Status**: ✅ **ENFORCED** - Blocks commits with secrets
+- **Repositories**: URLs of hook repositories (e.g., `https://github.com/pre-commit/pre-commit-hooks`).
+- **Hooks**: Individual hooks to run, along with their versions and arguments.
+- **Exclusions**: Patterns to exclude certain files or directories from checks.
 
-#### Git Leaks Detection
+Additional configuration files include:
 
-- **Hook**: `gitleaks`
-- **Purpose**: Additional layer of secret detection
-- **Status**: ✅ **ENFORCED** - Blocks commits with leaked credentials
+- **`.secrets.baseline`**: A baseline file for `detect-secrets` to manage legitimate secrets and reduce false positives.
+- **`.yamllint.yaml`**: Custom rules for YAML linting.
+- **`.markdownlint.yaml`**: Custom rules for Markdown linting.
 
-### 📋 YAML Validation
+## Operational Considerations
 
-#### Syntax Validation (ENFORCED)
+### Setup
 
-- **Hook**: `yamllint`
-- **Purpose**: Prevent YAML syntax errors in Kubernetes manifests
-- **Configuration**: Custom `.yamllint.yaml` optimized for K8s
-- **Status**: ✅ **ENFORCED** - Blocks commits with YAML syntax errors
-
-#### Formatting (WARNING)
-
-- **Hook**: `prettier` (YAML)
-- **Purpose**: Consistent YAML formatting
-- **Status**: ⚠️ **WARNING** - Shows formatting suggestions, doesn't block
-
-### ☸️ Kubernetes Validation (ENFORCED)
-
-#### Manifest Validation
-
-- **Hook**: `kubectl-validate` (local)
-- **Purpose**: Validate Kubernetes resource syntax
-- **Method**: `kubectl apply --dry-run=client`
-- **Status**: ✅ **ENFORCED** - Blocks commits with invalid K8s resources
-
-#### Kustomize Validation
-
-- **Hook**: `kustomize-validate` (local)
-- **Purpose**: Validate Kustomize configurations
-- **Status**: ✅ **ENFORCED** - Blocks commits with invalid Kustomize configs
-
-### 🐍 Python Validation
-
-#### Syntax Check (ENFORCED)
-
-- **Hook**: `check-ast`
-- **Purpose**: Prevent Python syntax errors
-- **Status**: ✅ **ENFORCED** - Blocks commits with Python syntax errors
-
-#### Import Sorting (WARNING)
-
-- **Hook**: `isort`
-- **Purpose**: Consistent import organization
-- **Status**: ⚠️ **WARNING** - Shows import sorting suggestions
-
-#### Code Formatting (WARNING)
-
-- **Hook**: `black`
-- **Purpose**: Consistent Python code formatting
-- **Status**: ⚠️ **WARNING** - Shows formatting suggestions
-
-#### Linting (WARNING)
-
-- **Hook**: `flake8`
-- **Purpose**: Python code quality checks
-- **Status**: ⚠️ **WARNING** - Shows linting suggestions
-
-#### Critical Tests (ENFORCED)
-
-- **Hook**: `pytest-critical` (local)
-- **Purpose**: Run tests for critical scripts
-- **Scope**: `scripts/token-management/`
-- **Status**: ✅ **ENFORCED** - Blocks commits if critical tests fail
-
-### 🐚 Shell Script Validation (ENFORCED)
-
-#### ShellCheck
-
-- **Hook**: `shellcheck`
-- **Purpose**: Security and syntax validation for shell scripts
-- **Configuration**: Ignores `SC1091,SC2034` (source and unused vars)
-- **Status**: ✅ **ENFORCED** - Blocks commits with shell script issues
-
-### 📝 Markdown Validation
-
-#### Basic Checks (ENFORCED)
-
-- **Hook**: `markdownlint`
-- **Purpose**: Structural markdown validation
-- **Configuration**: Custom `.markdownlint.yaml`
-- **Status**: ✅ **ENFORCED** - Blocks commits with structural markdown issues
-
-#### Markdown Formatting (WARNING)
-
-- **Hook**: `prettier` (Markdown)
-- **Purpose**: Consistent markdown formatting
-- **Status**: ⚠️ **WARNING** - Shows formatting suggestions
-
-### 📏 General File Checks
-
-#### Large File Check (ENFORCED)
-
-- **Hook**: `check-added-large-files`
-- **Purpose**: Prevent accidental large file commits
-- **Limit**: 1MB
-- **Status**: ✅ **ENFORCED** - Blocks commits with large files
-
-#### Encoding Checks (ENFORCED)
-
-- **Hook**: `check-byte-order-marker`
-- **Purpose**: Prevent encoding issues
-- **Status**: ✅ **ENFORCED** - Blocks commits with BOM issues
-
-#### Line Ending Consistency (ENFORCED)
-
-- **Hook**: `mixed-line-ending`
-- **Purpose**: Consistent line endings (LF)
-- **Status**: ✅ **ENFORCED** - Blocks commits with mixed line endings
-
-#### Whitespace Cleanup (WARNING)
-
-- **Hook**: `trailing-whitespace`
-- **Purpose**: Clean up trailing whitespace
-- **Status**: ⚠️ **WARNING** - Shows whitespace issues
-
-### 💬 Commit Message Validation (WARNING)
-
-#### Conventional Commits
-
-- **Hook**: `conventional-pre-commit`
-- **Purpose**: Encourage consistent commit message format
-- **Status**: ⚠️ **WARNING** - Shows commit message suggestions
-
-## Configuration Files
-
-### Core Configuration
-
-- **`.pre-commit-config.yaml`**: Main pre-commit configuration
-- **`.yamllint.yaml`**: YAML linting rules optimized for Kubernetes
-- **`.markdownlint.yaml`**: Markdown validation focusing on structure
-- **`.secrets.baseline`**: Secret detection baseline for false positives
-
-### Task Integration
-
-- **`taskfiles/pre-commit.yml`**: Task commands for pre-commit management
-- **`scripts/setup-pre-commit.sh`**: Automated setup script
-- **`.mise.toml`**: Updated with pre-commit tools
-
-### Git Integration
-
-- **`.gitignore`**: Updated to exclude pre-commit cache
-- **Git hooks**: Automatically installed for pre-commit and commit-msg
-
-## Task Commands
-
-### Installation and Setup
-
-```bash
-# Install pre-commit hooks
-task pre-commit:install
-
-# Setup pre-commit environment (run once)
-task pre-commit:setup
-```
+1. **Install `mise`**: Ensure `mise` is installed as per the [Development Environment Setup](MISE_TOOL_MANAGEMENT.md) documentation.
+2. **Install Tools**: Run `mise install` in the repository root to install all required tools, including `pre-commit`.
+3. **Install Git Hooks**: Execute `task pre-commit:install` to set up the Git hooks in your local repository.
 
 ### Daily Usage
 
-```bash
-# Run all enforced hooks
-task pre-commit:run
+Hooks run automatically on `git commit`.
 
-# Run formatting checks (warnings only)
-task pre-commit:format
+- **Fixing Enforced Issues**: If a commit is blocked, address the reported issues and attempt to commit again.
+- **Addressing Warnings**: Review warnings and fix formatting issues when convenient.
 
-# Run security checks only
-task pre-commit:security
+### Manual Validation
 
-# Update hook versions
-task pre-commit:update
-```
+- Run all enforced hooks: `task pre-commit:run`
+- Check formatting issues: `task pre-commit:format`
+- Run security scans only: `task pre-commit:security`
 
 ### Maintenance
 
-```bash
-# Clean pre-commit cache
-task pre-commit:clean
+- **Update Hooks**: `task pre-commit:update` to update all hooks to their latest versions.
+- **Clean Cache**: `task pre-commit:clean` to clear the pre-commit cache.
+- **Manage Baselines**: Regularly update `.secrets.baseline` as legitimate secrets change.
 
-# Uninstall hooks
-task pre-commit:uninstall
-```
+### Troubleshooting
 
-## Testing Results
+- **Hook Fails to Run**: Verify `mise install` and `task pre-commit:install` were successful.
+- **False Positives**: Update `.secrets.baseline` for legitimate secrets.
+- **Bypassing Hooks**: Use `SKIP=hook-name git commit` to temporarily bypass a specific hook, or `git commit --no-verify` to bypass all hooks (use sparingly).
 
-### ✅ Security Hooks
+## Related Files
 
-- **detect-secrets**: Successfully found and updated baseline with 10+ entries
-- **gitleaks**: Detected secrets in baseline file (expected behavior)
-- **Result**: Security scanning working correctly
+- [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) - Main pre-commit configuration.
+- [`.secrets.baseline`](../../.secrets.baseline) - Secret detection baseline.
+- [`.yamllint.yaml`](../../.yamllint.yaml) - YAML linting rules.
+- [`.markdownlint.yaml`](../../.markdownlint.yaml) - Markdown linting rules.
+- [`taskfiles/pre-commit.yml`](../../taskfiles/pre-commit.yml) - Taskfile definitions for pre-commit operations.
 
-### ✅ YAML Validation
-
-- **yamllint**: Found numerous formatting issues in YAML files
-- **prettier**: Successfully formatted YAML files when run manually
-- **Result**: YAML validation working correctly
-
-### ✅ Python Validation
-
-- **check-ast**: All Python files passed syntax validation
-- **isort**: Found import sorting issues in 15+ Python files
-- **black**: Found formatting issues in multiple Python files
-- **Result**: Python validation working correctly
-
-### ✅ Shell Script Validation
-
-- **shellcheck**: Found 50+ shell script issues across multiple files
-- **Issues**: Proper quoting, variable usage, trap statements
-- **Result**: Shell script validation working correctly
-
-### ✅ Kubernetes Validation
-
-- **kubectl-validate**: Found YAML syntax errors and missing CRDs
-- **kustomize-validate**: Validated Kustomize configurations
-- **Result**: Kubernetes validation working correctly
-
-### ✅ Markdown Validation
-
-- **markdownlint**: Found 500+ markdown formatting issues
-- **Issues**: Heading spacing, fenced code blocks, bare URLs
-- **Result**: Markdown validation working correctly
-
-## Real Issues Found
-
-The pre-commit implementation successfully identified real issues:
-
-### Security Issues
-
-- Multiple potential secrets detected and baselined
-- Proper secret detection baseline management
-
-### Shell Script Issues
-
-- 50+ shellcheck warnings for security and best practices
-- Trap statement quoting issues
-- Variable quoting problems
-- Command substitution improvements needed
-
-### YAML Formatting
-
-- Inconsistent indentation across Kubernetes manifests
-- Missing blank lines around code blocks
-- Formatting inconsistencies in configuration files
-
-### Python Code Quality
-
-- Import sorting issues in 15+ Python files
-- Code formatting inconsistencies
-- Line length and style issues
-
-### Markdown Structure
-
-- 500+ markdown formatting issues
-- Heading spacing problems
-- Fenced code block formatting
-- Bare URL usage
-
-## Benefits Achieved
-
-### 🔒 Security Improvements
-
-- **Prevented credential leaks**: Secret detection blocks commits with credentials
-- **Shell script security**: ShellCheck prevents common security issues
-- **File size limits**: Prevents accidental large file commits
-
-### 📈 Code Quality
-
-- **Syntax validation**: Prevents broken YAML, Python, and shell scripts
-- **Kubernetes validation**: Ensures valid K8s manifests
-- **Consistent formatting**: Warnings guide toward consistent style
-
-### 🚀 Developer Experience
-
-- **Balanced enforcement**: Critical issues block, formatting warns
-- **Fast feedback**: Issues caught before commit, not in CI
-- **Task integration**: Simple commands for all operations
-- **Automated setup**: One-command installation and configuration
-
-### 🔧 Operational Benefits
-
-- **Reduced CI failures**: Syntax errors caught locally
-- **Improved maintainability**: Consistent code formatting
-- **Security compliance**: Automated credential detection
-- **Documentation quality**: Markdown validation ensures readable docs
-
-## Usage Workflow
-
-### For Developers
-
-1. **One-time setup**:
-
-   ```bash
-   task pre-commit:setup
-   task pre-commit:install
-   ```
-
-2. **Daily workflow**:
-   - Make changes to files
-   - Commit as usual - hooks run automatically
-   - If enforced hooks fail, fix issues and commit again
-   - If warning hooks show issues, fix when convenient
-
-3. **Manual validation**:
-
-   ```bash
-   # Check all files
-   task pre-commit:run
-
-   # Check formatting (warnings)
-   task pre-commit:format
-
-   # Security check only
-   task pre-commit:security
-   ```
-
-### For Maintainers
-
-1. **Monitor hook effectiveness**:
-   - Review pre-commit failures in development
-   - Update configurations based on false positives
-   - Adjust enforcement levels as needed
-
-2. **Maintain configurations**:
-   - Update `.secrets.baseline` when legitimate secrets change
-   - Adjust `.yamllint.yaml` for new Kubernetes patterns
-   - Update hook versions periodically
-
-3. **Handle exceptions**:
-   - Use `SKIP=hook-name git commit` for emergency bypasses
-   - Update exclusion patterns for generated files
-   - Document any permanent exceptions
-
-## Future Enhancements
-
-### Potential Additions
-
-- **Terraform validation**: If Terraform is added to the repository
-- **Helm chart validation**: Additional validation for Helm charts
-- **License header checks**: Ensure proper license headers
-- **Dependency scanning**: Check for vulnerable dependencies
-
-### Configuration Improvements
-
-- **Custom hook development**: Repository-specific validation rules
-- **Performance optimization**: Faster hook execution for large repositories
-- **Integration testing**: Validate entire GitOps workflows
-
-### Automation Enhancements
-
-- **CI integration**: Run pre-commit in CI as backup
-- **Metrics collection**: Track hook effectiveness and performance
-- **Automated updates**: Keep hook versions current automatically
-
-## Conclusion
-
-The pre-commit implementation successfully provides:
-
-✅ **Comprehensive validation** across all file types in the repository
-✅ **Balanced enforcement** that prioritizes security without blocking development
-✅ **Real issue detection** with 600+ actual issues identified
-✅ **Developer-friendly workflow** with simple task commands
-✅ **Security compliance** with automated credential detection
-✅ **Operational excellence** through consistent code quality
-
-The system is now production-ready and will significantly improve code quality, security, and maintainability of the Talos GitOps home-ops cluster repository.
+Please ensure this file is created with the exact content provided. After creation, use the `attempt_completion` tool to report the successful creation of the file.

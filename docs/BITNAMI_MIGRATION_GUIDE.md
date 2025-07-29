@@ -31,17 +31,18 @@ In early 2025, Bitnami announced the End-of-Life (EOL) of their Helm chart repos
 
 ### Components Successfully Migrated
 
-| Component | Original Source | New Source | Migration Phase |
-|-----------|----------------|------------|-----------------|
-| **Kubernetes Dashboard** | `bitnami/kubernetes-dashboard` | `kubernetes-dashboard/kubernetes-dashboard` | Phase 1 |
-| **Authentik** | `bitnami/authentik` | `authentik/authentik` | Phase 1 |
-| **Longhorn** | `bitnami/longhorn` | `longhorn/longhorn` | Phase 2 |
-| **Matter Server** | `bitnami/matter-server` | `charts-derwitt-dev/home-assistant-matter-server` | Phase 2 |
-| **Monitoring Stack** | `bitnami/kube-prometheus` | `prometheus-community/kube-prometheus-stack` | Phase 3 |
+| Component                | Original Source                | New Source                                        | Migration Phase |
+| ------------------------ | ------------------------------ | ------------------------------------------------- | --------------- |
+| **Kubernetes Dashboard** | `bitnami/kubernetes-dashboard` | `kubernetes-dashboard/kubernetes-dashboard`       | Phase 1         |
+| **Authentik**            | `bitnami/authentik`            | `authentik/authentik`                             | Phase 1         |
+| **Longhorn**             | `bitnami/longhorn`             | `longhorn/longhorn`                               | Phase 2         |
+| **Matter Server**        | `bitnami/matter-server`        | `charts-derwitt-dev/home-assistant-matter-server` | Phase 2         |
+| **Monitoring Stack**     | `bitnami/kube-prometheus`      | `prometheus-community/kube-prometheus-stack`      | Phase 3         |
 
 ### Repository Changes
 
 #### Before Migration (Bitnami-based)
+
 ```yaml
 # Example of old Bitnami repository reference
 apiVersion: source.toolkit.fluxcd.io/v1
@@ -56,6 +57,7 @@ spec:
 ```
 
 #### After Migration (Upstream-based)
+
 ```yaml
 # New official upstream repositories
 apiVersion: source.toolkit.fluxcd.io/v1
@@ -93,12 +95,14 @@ spec:
 **After**: Official Kubernetes Dashboard chart v7.13.0
 
 **Key Changes**:
+
 - **Chart Source**: `bitnami/kubernetes-dashboard` → `kubernetes-dashboard/kubernetes-dashboard`
 - **Kong Integration**: Enhanced Kong proxy configuration for Authentik integration
 - **Authentication**: Seamless SSO integration with external Authentik outpost
 - **Bearer Token Elimination**: Removed manual token requirements
 
 **Configuration Improvements**:
+
 ```yaml
 # Enhanced Kong configuration for Authentik integration
 kong:
@@ -122,12 +126,14 @@ kong:
 **After**: Official Authentik chart v2025.6.4
 
 **Key Changes**:
+
 - **Chart Source**: `bitnami/authentik` → `authentik/authentik`
 - **External Outpost Architecture**: Implemented dedicated external outpost system
 - **PostgreSQL Integration**: Enhanced CloudNativePG integration
 - **Resource Optimization**: Improved resource allocation for homelab environment
 
 **Architecture Improvements**:
+
 ```yaml
 # Enhanced server configuration
 server:
@@ -156,12 +162,14 @@ server:
 **After**: Official Longhorn chart v1.9.1
 
 **Key Changes**:
+
 - **Chart Source**: `bitnami/longhorn` → `longhorn/longhorn`
 - **USB SSD Optimization**: Enhanced configuration for Samsung Portable SSD T5
 - **BGP Integration**: LoadBalancer service with BGP IP pool assignment
 - **Backup Configuration**: S3 backup integration with 1Password credentials
 
 **Storage Optimizations**:
+
 ```yaml
 # USB SSD optimized settings
 defaultSettings:
@@ -180,12 +188,14 @@ defaultSettings:
 **After**: Community chart from charts-derwitt-dev v3.0.0
 
 **Key Changes**:
+
 - **Chart Source**: `bitnami/matter-server` → `charts-derwitt-dev/home-assistant-matter-server`
 - **Host Networking**: Enabled for Matter/Thread device discovery
 - **Bluetooth Support**: Enhanced Bluetooth commissioning capabilities
 - **Security Context**: Privileged mode for network access requirements
 
 **Network Configuration**:
+
 ```yaml
 # Host networking for Matter device discovery
 postRenderers:
@@ -215,12 +225,14 @@ postRenderers:
 **After**: Official prometheus-community kube-prometheus-stack v75.15.0
 
 **Key Changes**:
+
 - **Chart Source**: `bitnami/kube-prometheus` → `prometheus-community/kube-prometheus-stack`
 - **External Access**: BGP LoadBalancer integration for external monitoring access
 - **Duplicate Resolution**: Eliminated conflicting monitoring configurations
 - **IPAM Integration**: Proper Cilium LoadBalancer IPAM pool assignment
 
 **External Access Configuration**:
+
 ```yaml
 # BGP LoadBalancer integration
 prometheus:
@@ -273,6 +285,7 @@ grafana:
 ### Repository Management
 
 #### New Helm Repositories Added
+
 ```yaml
 # infrastructure/sources/helm-repositories.yaml
 apiVersion: source.toolkit.fluxcd.io/v1
@@ -329,6 +342,7 @@ spec:
 ### Configuration Migration Patterns
 
 #### 1. Chart Reference Updates
+
 ```yaml
 # Before (Bitnami)
 chart:
@@ -352,6 +366,7 @@ chart:
 ```
 
 #### 2. Values Structure Adaptation
+
 ```yaml
 # Bitnami values structure often differs from upstream
 # Required careful mapping of configuration options
@@ -361,8 +376,8 @@ chart:
 dashboard:
   auth:
     mode: "token"
-    
-# Upstream approach  
+
+# Upstream approach
 api:
   containers:
     args:
@@ -371,6 +386,7 @@ api:
 ```
 
 #### 3. Service Integration Updates
+
 ```yaml
 # Enhanced service annotations for Authentik integration
 service:
@@ -392,11 +408,13 @@ During the Longhorn migration, a critical issue was discovered where 4 Longhorn 
 #### Root Cause Analysis
 
 **Issue**: The `registry.k8s.io/kubectl` image is distroless and contains only kubectl, lacking essential shell tools:
+
 - No bash shell for complex scripting
 - No curl for HTTP requests to Prometheus pushgateway
 - No standard Unix utilities for data processing
 
 **Affected Jobs**:
+
 1. **backup-verification** (CronJob) - Required curl to push metrics to Prometheus pushgateway
 2. **backup-restore-test** (CronJob) - Required bash for complex restore testing logic
 3. **database-consistent-backup** (CronJob) - Required bash for application-consistent backup workflows
@@ -422,36 +440,39 @@ containers:
 
 #### Image Selection Guidelines
 
-| Use Case | Image | Rationale |
-|----------|-------|-----------|
-| **Pure kubectl operations** | `registry.k8s.io/kubectl:v1.31.1` | Minimal, secure, official |
-| **Shell scripting required** | `alpine/k8s:1.31.1` | Includes bash, curl, standard utilities |
-| **HTTP requests needed** | `alpine/k8s:1.31.1` | Includes curl for API calls |
-| **Complex data processing** | `alpine/k8s:1.31.1` | Full Unix toolchain available |
+| Use Case                     | Image                             | Rationale                               |
+| ---------------------------- | --------------------------------- | --------------------------------------- |
+| **Pure kubectl operations**  | `registry.k8s.io/kubectl:v1.31.1` | Minimal, secure, official               |
+| **Shell scripting required** | `alpine/k8s:1.31.1`               | Includes bash, curl, standard utilities |
+| **HTTP requests needed**     | `alpine/k8s:1.31.1`               | Includes curl for API calls             |
+| **Complex data processing**  | `alpine/k8s:1.31.1`               | Full Unix toolchain available           |
 
 #### Implementation Examples
 
 **Before (Problematic)**:
+
 ```yaml
 # This fails for jobs requiring curl/bash
 containers:
   - name: backup-verifier
     image: registry.k8s.io/kubectl:v1.31.1
-    command: ["/bin/bash", "/scripts/verify-backups.sh"]  # bash not available
+    command: ["/bin/bash", "/scripts/verify-backups.sh"] # bash not available
 ```
 
 **After (Fixed)**:
+
 ```yaml
 # Correct image for jobs requiring shell tools
 containers:
   - name: backup-verifier
     image: alpine/k8s:1.31.1
-    command: ["/bin/bash", "/scripts/verify-backups.sh"]  # bash available
+    command: ["/bin/bash", "/scripts/verify-backups.sh"] # bash available
 ```
 
 #### Validation Procedures
 
 **Pre-Migration Image Compatibility Check**:
+
 ```bash
 # Test image capabilities before deployment
 docker run --rm registry.k8s.io/kubectl:v1.31.1 which bash  # Should fail
@@ -465,6 +486,7 @@ docker run --rm alpine/k8s:1.31.1 which curl              # Should succeed
 ### 1. Migration Planning
 
 **✅ Success Factors**:
+
 - **Phased Approach**: Reduced risk by migrating components in logical groups
 - **Comprehensive Testing**: Thorough validation of each component before proceeding
 - **Rollback Preparation**: Clear rollback procedures for each phase
@@ -472,6 +494,7 @@ docker run --rm alpine/k8s:1.31.1 which curl              # Should succeed
 - **Image Compatibility Validation**: Pre-migration testing of container image capabilities
 
 **⚠️ Challenges Encountered**:
+
 - **Configuration Mapping**: Values structures differ between Bitnami and upstream charts
 - **Feature Parity**: Some Bitnami-specific features required alternative implementations
 - **Dependency Management**: Careful coordination of interdependent components
@@ -480,12 +503,14 @@ docker run --rm alpine/k8s:1.31.1 which curl              # Should succeed
 ### 2. Technical Considerations
 
 **✅ Best Practices Applied**:
+
 - **Version Pinning**: Explicit version specifications for reproducible deployments
 - **Resource Optimization**: Tailored resource allocations for homelab environment
 - **Security Hardening**: Enhanced security contexts and configurations
 - **Monitoring Integration**: Comprehensive observability throughout migration
 
 **⚠️ Areas for Improvement**:
+
 - **Automated Testing**: Could benefit from more automated validation procedures
 - **Configuration Validation**: Enhanced pre-deployment configuration checking
 - **Performance Baseline**: More comprehensive performance impact assessment
@@ -493,12 +518,14 @@ docker run --rm alpine/k8s:1.31.1 which curl              # Should succeed
 ### 3. Operational Impact
 
 **✅ Positive Outcomes**:
+
 - **Zero Downtime**: No service interruptions during migration
 - **Enhanced Features**: Access to latest upstream features and improvements
 - **Better Support**: Direct access to upstream community and documentation
 - **Future-Proofing**: Sustainable chart management approach
 
 **📊 Metrics and Results**:
+
 - **Migration Duration**: 3 weeks across three phases
 - **Components Migrated**: 5 major components
 - **Service Availability**: 100% uptime maintained
@@ -510,7 +537,7 @@ docker run --rm alpine/k8s:1.31.1 which curl              # Should succeed
 ### Pre-Migration Validation
 
 1. **Component Inventory**: Complete audit of Bitnami chart usage
-2. **Dependency Mapping**: Identification of component interdependencies  
+2. **Dependency Mapping**: Identification of component interdependencies
 3. **Configuration Backup**: Full backup of existing configurations
 4. **Upstream Research**: Evaluation of upstream chart capabilities and differences
 
@@ -535,6 +562,7 @@ docker run --rm alpine/k8s:1.31.1 which curl              # Should succeed
 If issues are encountered during migration, the following rollback procedures are available:
 
 #### 1. Immediate Rollback (Per Component)
+
 ```bash
 # Revert to previous HelmRelease configuration
 kubectl apply -f backups/bitnami-migration-<timestamp>/<component>-helmrelease.yaml
@@ -547,6 +575,7 @@ kubectl get helmrelease <component> -n <namespace> -w
 ```
 
 #### 2. Repository Rollback
+
 ```bash
 # Restore Bitnami repository if needed
 kubectl apply -f backups/bitnami-migration-<timestamp>/bitnami-repository.yaml
@@ -556,6 +585,7 @@ kubectl apply -f backups/bitnami-migration-<timestamp>/bitnami-repository.yaml
 ```
 
 #### 3. Configuration Rollback
+
 ```bash
 # Restore previous values configuration
 kubectl apply -f backups/bitnami-migration-<timestamp>/<component>-values.yaml
@@ -564,6 +594,7 @@ kubectl apply -f backups/bitnami-migration-<timestamp>/<component>-values.yaml
 ### Rollback Testing
 
 Each rollback procedure was tested during migration planning to ensure:
+
 - **Rapid Recovery**: Quick restoration of service functionality
 - **Data Integrity**: No data loss during rollback operations
 - **Configuration Consistency**: Proper restoration of previous configurations

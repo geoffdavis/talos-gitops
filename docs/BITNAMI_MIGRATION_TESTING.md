@@ -332,11 +332,11 @@ echo "Testing backup verification job..."
 kubectl get cronjob backup-verification -n longhorn-system
 if [ $? -eq 0 ]; then
     echo "✅ Backup verification CronJob exists"
-    
+
     # Test job image has curl capability
     kubectl create job --from=cronjob/backup-verification test-backup-verification -n longhorn-system
     kubectl wait --for=condition=Ready pod -l job-name=test-backup-verification -n longhorn-system --timeout=60s
-    
+
     # Test curl availability in job pod
     TEST_POD=$(kubectl get pod -n longhorn-system -l job-name=test-backup-verification -o jsonpath='{.items[0].metadata.name}')
     kubectl exec -n longhorn-system $TEST_POD -- which curl
@@ -346,7 +346,7 @@ if [ $? -eq 0 ]; then
         echo "❌ Curl not available in backup verification job"
         exit 1
     fi
-    
+
     # Test bash availability
     kubectl exec -n longhorn-system $TEST_POD -- which bash
     if [ $? -eq 0 ]; then
@@ -355,7 +355,7 @@ if [ $? -eq 0 ]; then
         echo "❌ Bash not available in backup verification job"
         exit 1
     fi
-    
+
     # Cleanup test job
     kubectl delete job test-backup-verification -n longhorn-system
 else
@@ -368,7 +368,7 @@ echo "Testing backup restore test job..."
 kubectl get cronjob backup-restore-test -n longhorn-system
 if [ $? -eq 0 ]; then
     echo "✅ Backup restore test CronJob exists"
-    
+
     # Verify image is alpine/k8s:1.31.1
     IMAGE=$(kubectl get cronjob backup-restore-test -n longhorn-system -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}')
     if [ "$IMAGE" = "alpine/k8s:1.31.1" ]; then
@@ -387,7 +387,7 @@ echo "Testing database consistent backup job..."
 kubectl get cronjob database-consistent-backup -n database 2>/dev/null
 if [ $? -eq 0 ]; then
     echo "✅ Database consistent backup CronJob exists"
-    
+
     # Verify image supports bash scripting
     IMAGE=$(kubectl get cronjob database-consistent-backup -n database -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}')
     if [ "$IMAGE" = "alpine/k8s:1.31.1" ]; then
@@ -404,7 +404,7 @@ fi
 echo "Testing Prometheus pushgateway connectivity..."
 if kubectl get svc prometheus-pushgateway -n monitoring >/dev/null 2>&1; then
     echo "✅ Prometheus pushgateway service exists"
-    
+
     # Test connectivity from backup verification job context
     kubectl run curl-test --image=alpine/k8s:1.31.1 --rm -it --restart=Never -- curl -I http://prometheus-pushgateway.monitoring.svc.cluster.local:9091/metrics
     if [ $? -eq 0 ]; then
@@ -578,7 +578,7 @@ services=("dashboard" "longhorn" "grafana" "prometheus" "alertmanager" "hubble")
 
 for service in "${services[@]}"; do
     echo "Testing $service authentication flow..."
-    
+
     # 1. Test initial redirect to Authentik
     response=$(curl -k -s -o /dev/null -w "%{http_code}" https://$service.k8s.home.geoffdavis.com)
     if [ "$response" -eq 200 ] || [ "$response" -eq 302 ]; then
@@ -586,7 +586,7 @@ for service in "${services[@]}"; do
     else
         echo "❌ $service: Initial request failed (HTTP $response)"
     fi
-    
+
     # 2. Test outpost health endpoint
     curl -k -s https://$service.k8s.home.geoffdavis.com/outpost.goauthentik.io/ping
     if [ $? -eq 0 ]; then
@@ -724,23 +724,23 @@ echo "=== Rollback Testing Procedures ==="
 test_rollback() {
     local component=$1
     local namespace=$2
-    
+
     echo "Testing rollback for $component..."
-    
+
     # 1. Create backup of current state
     kubectl get helmrelease $component -n $namespace -o yaml > /tmp/${component}-current.yaml
-    
+
     # 2. Simulate rollback (don't actually execute)
     echo "Simulating rollback for $component..."
     echo "Would execute: kubectl apply -f backups/bitnami-migration-backup/${component}-helmrelease.yaml"
-    
+
     # 3. Verify rollback readiness
     if [ -f "backups/bitnami-migration-backup/${component}-helmrelease.yaml" ]; then
         echo "✅ Rollback configuration available for $component"
     else
         echo "❌ Rollback configuration missing for $component"
     fi
-    
+
     # 4. Test configuration validation
     kubectl apply --dry-run=client -f /tmp/${component}-current.yaml
     if [ $? -eq 0 ]; then
@@ -779,7 +779,7 @@ mkdir -p $TEST_RESULTS_DIR
 run_test() {
     local test_name=$1
     local test_script=$2
-    
+
     echo "Running $test_name..."
     if bash $test_script > $TEST_RESULTS_DIR/${test_name}.log 2>&1; then
         echo "✅ $test_name: PASSED"
@@ -818,7 +818,7 @@ for result_file in $TEST_RESULTS_DIR/*.result; do
     test_name=$(basename $result_file .result)
     result=$(cat $result_file)
     echo "$test_name: $result" >> $TEST_RESULTS_DIR/summary.txt
-    
+
     if [ "$result" = "PASSED" ]; then
         ((passed_tests++))
     else
@@ -847,7 +847,7 @@ fi
 
 ### Dashboard Manual Testing Checklist
 
-- [ ] **Access Dashboard**: Navigate to https://dashboard.k8s.home.geoffdavis.com
+- [ ] **Access Dashboard**: Navigate to <https://dashboard.k8s.home.geoffdavis.com>
 - [ ] **Authentication Flow**: Verify redirect to Authentik and successful login
 - [ ] **No Bearer Token Prompt**: Confirm no manual token entry required
 - [ ] **Cluster Overview**: Verify cluster overview page loads correctly
@@ -859,17 +859,17 @@ fi
 
 ### Authentik Manual Testing Checklist
 
-- [ ] **Admin Interface**: Access https://authentik.k8s.home.geoffdavis.com/if/admin/
+- [ ] **Admin Interface**: Access <https://authentik.k8s.home.geoffdavis.com/if/admin/>
 - [ ] **User Management**: Verify user creation and management
 - [ ] **Provider Configuration**: Check proxy provider configurations
 - [ ] **Outpost Status**: Verify external outpost shows as connected
-- [ ] **Service Integration**: Test SSO for all 6 services
+- [ ] **Service Integration**: Test SSO for all 7 services
 - [ ] **Session Management**: Verify session persistence and logout
 - [ ] **Flow Configuration**: Test authentication and authorization flows
 
 ### Longhorn Manual Testing Checklist
 
-- [ ] **UI Access**: Navigate to https://longhorn.k8s.home.geoffdavis.com
+- [ ] **UI Access**: Navigate to <https://longhorn.k8s.home.geoffdavis.com>
 - [ ] **Volume Management**: Verify volume creation and management
 - [ ] **Node Status**: Check all nodes show healthy with USB SSDs
 - [ ] **Backup Configuration**: Verify S3 backup settings
@@ -888,9 +888,9 @@ fi
 
 ### Monitoring Manual Testing Checklist
 
-- [ ] **Grafana Access**: Navigate to https://grafana.k8s.home.geoffdavis.com
-- [ ] **Prometheus Access**: Navigate to https://prometheus.k8s.home.geoffdavis.com
-- [ ] **AlertManager Access**: Navigate to https://alertmanager.k8s.home.geoffdavis.com
+- [ ] **Grafana Access**: Navigate to <https://grafana.k8s.home.geoffdavis.com>
+- [ ] **Prometheus Access**: Navigate to <https://prometheus.k8s.home.geoffdavis.com>
+- [ ] **AlertManager Access**: Navigate to <https://alertmanager.k8s.home.geoffdavis.com>
 - [ ] **Dashboard Functionality**: Verify Grafana dashboards load correctly
 - [ ] **Metrics Collection**: Check Prometheus targets and metrics
 - [ ] **Alert Configuration**: Verify AlertManager rules and notifications
@@ -905,6 +905,7 @@ fi
 **Issue**: Jobs fail with "command not found" errors for curl or bash
 **Root Cause**: Using distroless `registry.k8s.io/kubectl` image that lacks shell tools
 **Solution**:
+
 ```bash
 # Check current image in failing job
 kubectl get cronjob <job-name> -n <namespace> -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}'
@@ -919,6 +920,7 @@ kubectl run test-tools --image=alpine/k8s:1.31.1 --rm -it --restart=Never -- /bi
 **Issue**: Backup monitoring fails to push metrics to Prometheus
 **Root Cause**: Curl not available in job container
 **Solution**:
+
 ```bash
 # Test Prometheus pushgateway connectivity
 kubectl run curl-test --image=alpine/k8s:1.31.1 --rm -it --restart=Never -- curl -I http://prometheus-pushgateway.monitoring.svc.cluster.local:9091/metrics
@@ -933,6 +935,7 @@ kubectl get cronjob backup-verification -n longhorn-system -o yaml | grep image:
 **Issue**: Database backup jobs fail with bash script errors
 **Root Cause**: Complex bash scripting requires full shell environment
 **Solution**:
+
 ```bash
 # Ensure alpine/k8s:1.31.1 image is used for database jobs
 kubectl get cronjob database-consistent-backup -n database -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}'
@@ -950,6 +953,7 @@ kubectl logs -n database -l job-name=database-consistent-backup --tail=100
 
 **Issue**: Dashboard not accessible after migration
 **Solution**:
+
 ```bash
 # Check HelmRelease status
 kubectl describe helmrelease kubernetes-dashboard -n kubernetes-dashboard
@@ -965,6 +969,7 @@ kubectl get endpoints -n kubernetes-dashboard
 
 **Issue**: Authentication not working for services
 **Solution**:
+
 ```bash
 # Check external outpost connectivity
 kubectl logs -n authentik-proxy deployment/authentik-proxy
@@ -984,6 +989,7 @@ kubectl exec -n authentik-proxy deployment/authentik-proxy -- curl -I http://aut
 
 **Issue**: Volume provisioning fails
 **Solution**:
+
 ```bash
 # Check Longhorn manager logs
 kubectl logs -n longhorn-system daemonset/longhorn-manager
@@ -999,6 +1005,7 @@ kubectl get storageclass longhorn -o yaml
 
 **Issue**: External access not working
 **Solution**:
+
 ```bash
 # Check LoadBalancer service status
 kubectl get svc -n monitoring -o wide
@@ -1022,6 +1029,7 @@ kubectl get svc -n monitoring -o yaml | grep -A 5 -B 5 "lb-ipam-pool"
 **Migration Phase**: [Phase Number]
 
 ## Test Summary
+
 - Total Tests: [Number]
 - Passed: [Number]
 - Failed: [Number]
@@ -1030,10 +1038,13 @@ kubectl get svc -n monitoring -o yaml | grep -A 5 -B 5 "lb-ipam-pool"
 ## Component Results
 
 ### Kubernetes Dashboard
+
 - Migration Validation: [PASS/FAIL]
 - Functionality Tests: [PASS/FAIL]
 - Authentication Integration: [PASS/FAIL]
 - Notes: [Any issues or observations]
 
 ### Authentik
+
 - Migration Validation
+```
