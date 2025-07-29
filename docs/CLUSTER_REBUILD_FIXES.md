@@ -142,8 +142,8 @@ kubectl logs -n onepassword-connect deployment/onepassword-connect -c connect-sy
    ipam:
    mode: cluster-pool
    operator:
-      clusterPoolIPv4PodCIDRList: ["10.0.0.0/8"]
-      clusterPoolIPv4MaskSize: 24
+     clusterPoolIPv4PodCIDRList: ["10.0.0.0/8"]
+     clusterPoolIPv4MaskSize: 24
    ```
 
 2. **1Password Connect credentials mount**:

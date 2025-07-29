@@ -22,9 +22,9 @@ This repository contains the configuration and automation for managing a Talos K
 
 **BEFORE PERFORMING ANY CLUSTER OPERATIONS, READ THE SAFETY DOCUMENTATION:**
 
-🚨 **[CLUSTER RESET SAFETY GUIDE](docs/CLUSTER_RESET_SAFETY.md)** - **MANDATORY READING**
+🚨 **[CLUSTER RESET SAFETY GUIDE](docs/operations/cluster-reset-safety.md)** - **MANDATORY READING**
 
-🛡️ **[SUBTASK SAFETY GUIDELINES](docs/SUBTASK_SAFETY_GUIDELINES.md)** - **REQUIRED FOR ALL OPERATIONS**
+🛡️ **[SUBTASK SAFETY GUIDELINES](docs/operations/safety-guidelines.md)** - **REQUIRED FOR ALL OPERATIONS**
 
 ### Safe Operations Available
 
@@ -51,7 +51,7 @@ This cluster is configured with all three nodes functioning as both control plan
 - **Better Resilience**: Control plane components distributed across all nodes
 
 For detailed information about the all-control-plane setup, conversion procedures, and troubleshooting, see:
-📖 **[All-Control-Plane Setup Guide](docs/ALL_CONTROL_PLANE_SETUP.md)**
+📖 **[All-Control-Plane Setup Guide](docs/architecture/all-control-plane-setup.md)**
 
 ## Mac Mini Specific Features
 
@@ -253,7 +253,7 @@ task bootstrap:validate-1password-secrets
 - **Services Vault**: API tokens, tunnel credentials
 
 For detailed setup instructions, see:
-📖 **[1Password Connect Setup Guide](docs/1PASSWORD_CONNECT_SETUP.md)**
+📖 **[1Password Connect Setup Guide](docs/components/secrets/1password-connect-setup.md)**
 
 ## Quick Start
 
@@ -315,7 +315,7 @@ The phased bootstrap approach provides systematic, resumable cluster deployment 
 - **📊 Progress Tracking**: Real-time status and detailed logging
 - **🔄 Operational Confidence**: Tested procedures with clear recovery paths
 
-For detailed information, see: **[Phased Bootstrap Guide](docs/PHASED_BOOTSTRAP_GUIDE.md)**
+For detailed information, see: **[Phased Bootstrap Guide](docs/getting-started/phased-bootstrap.md)**
 
 ### 🔧 Legacy: Streamlined Bootstrap (Original Approach)
 
@@ -488,10 +488,10 @@ task bgp:verify-peering
 ```
 
 For detailed BGP configuration instructions, troubleshooting, and network architecture details, see:
-📖 **[BGP Configuration Guide](docs/BGP_CONFIGURATION.md)**
+📖 **[BGP Configuration Guide](docs/components/networking/bgp-configuration.md)**
 
 For comprehensive IPv6 dual-stack setup and configuration details, see:
-📖 **[IPv6 Configuration Guide](docs/IPV6_CONFIGURATION.md)**
+📖 **[IPv6 Configuration Guide](docs/components/networking/ipv6-configuration.md)**
 
 ## Access Patterns
 
@@ -697,7 +697,7 @@ kubectl apply -f restore-from-backup.yaml
 ```
 
 For comprehensive USB SSD operational procedures, see:
-📖 **[USB SSD Operational Procedures](docs/USB_SSD_OPERATIONAL_PROCEDURES.md)**
+📖 **[USB SSD Operational Procedures](docs/components/storage/usb-ssd-operations.md)**
 
 ## Troubleshooting
 
@@ -820,17 +820,17 @@ Renovate runs automatically on schedule and creates PRs for updates. Check the d
 
 This cluster uses a carefully designed separation between **Bootstrap Script Deployment** and **Flux GitOps Deployment** phases. Understanding this separation is crucial for operational success and day-to-day cluster management.
 
-### 🎯 **[Day-to-Day Operations Guide](docs/BOOTSTRAP_VS_GITOPS_PHASES.md)** - **PRIMARY OPERATIONAL REFERENCE**
+### 🎯 **[Day-to-Day Operations Guide](docs/architecture/bootstrap-vs-gitops.md)** - **PRIMARY OPERATIONAL REFERENCE**
 
 **Your go-to guide for daily cluster operations, troubleshooting, and decision-making.**
 
 ### 📚 **Complete Documentation Suite**
 
-1. **[📋 Day-to-Day Operations Guide](docs/BOOTSTRAP_VS_GITOPS_PHASES.md)** - **START HERE** for operational decisions
-2. **[📖 Executive Summary](docs/BOOTSTRAP_GITOPS_SUMMARY.md)** - Quick reference and decision matrix
-3. **[🏗️ Architectural Guide](docs/BOOTSTRAP_VS_GITOPS_ARCHITECTURE.md)** - Comprehensive technical details
-4. **[⚡ Operational Workflows](docs/OPERATIONAL_WORKFLOWS.md)** - Step-by-step procedures for common tasks
-5. **[🔄 Component Migration Guide](docs/COMPONENT_MIGRATION_GUIDE.md)** - Moving components between phases
+1. **[📋 Day-to-Day Operations Guide](docs/architecture/bootstrap-vs-gitops.md)** - **START HERE** for operational decisions
+2. **[📖 Executive Summary](docs/reference/bootstrap-gitops-summary.md)** - Quick reference and decision matrix
+3. **[🏗️ Architectural Guide](docs/architecture/system-overview.md)** - Comprehensive technical details
+4. **[⚡ Operational Workflows](docs/operations/daily-workflows.md)** - Step-by-step procedures for common tasks
+5. **[🔄 Component Migration Guide](docs/operations/component-migration.md)** - Moving components between phases
 
 ### 🚀 5-Second Decision Rules
 
@@ -905,4 +905,46 @@ task talos:generate-config
 task talos:apply-config
 ```
 
-For detailed operational procedures, see the **[Day-to-Day Operations Guide](docs/BOOTSTRAP_VS_GITOPS_PHASES.md)**.
+For detailed operational procedures, see the **[Day-to-Day Operations Guide](docs/architecture/bootstrap-vs-gitops.md)**.
+
+## 📚 Documentation
+
+This repository includes comprehensive documentation organized by user journey and task type:
+
+### 🚀 [Getting Started](docs/getting-started/README.md)
+
+- New user guides and initial setup procedures
+- Phased bootstrap process
+- Quick start guides
+
+### 🏗️ [Architecture](docs/architecture/README.md)
+
+- System design and technical architecture
+- Bootstrap vs GitOps operational model
+- Component relationships and dependencies
+
+### ⚙️ [Operations](docs/operations/README.md)
+
+- Daily operational procedures
+- Troubleshooting guides
+- Maintenance workflows
+
+### 🔧 [Components](docs/components/README.md)
+
+- Component-specific documentation
+- Configuration guides
+- Integration procedures
+
+### 📖 [Reference](docs/reference/README.md)
+
+- Quick reference materials
+- Command cheat sheets
+- Configuration templates
+
+### 👨‍💻 [Development](docs/development/README.md)
+
+- Developer resources
+- Contributing guidelines
+- Code quality standards
+
+For the complete documentation index, see **[docs/README.md](docs/README.md)**.

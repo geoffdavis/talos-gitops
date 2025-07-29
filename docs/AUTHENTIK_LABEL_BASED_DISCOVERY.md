@@ -73,31 +73,31 @@ metadata:
 spec:
   group: authentik.io
   versions:
-  - name: v1
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-            properties:
-              serviceName:
-                type: string
-              serviceNamespace:
-                type: string
-              externalHost:
-                type: string
-              displayName:
-                type: string
-              description:
-                type: string
-              publisher:
-                type: string
-              enabled:
-                type: boolean
-                default: true
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                serviceName:
+                  type: string
+                serviceNamespace:
+                  type: string
+                externalHost:
+                  type: string
+                displayName:
+                  type: string
+                description:
+                  type: string
+                publisher:
+                  type: string
+                enabled:
+                  type: boolean
+                  default: true
   scope: Namespaced
   names:
     plural: authentikproxies
@@ -137,7 +137,7 @@ metadata:
     # Standard ingress annotations
     kubernetes.io/ingress.class: nginx-internal
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    
+
     # Authentik proxy annotations
     authentik.io/proxy: "enabled"
     authentik.io/service-name: "Home Assistant"
@@ -230,12 +230,12 @@ spec:
 
 ## Comparison with Current Approaches
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Manual Config** | Simple, explicit | Error-prone, maintenance overhead |
-| **Helm Values** | Templated, validated | Still manual, centralized config |
-| **Label-Based** | Automatic, declarative | Requires controller/operator |
-| **CRD-Based** | Type-safe, Kubernetes-native | More complex setup |
+| Approach          | Pros                         | Cons                                |
+| ----------------- | ---------------------------- | ----------------------------------- |
+| **Manual Config** | Simple, explicit             | Error-prone, maintenance overhead   |
+| **Helm Values**   | Templated, validated         | Still manual, centralized config    |
+| **Label-Based**   | Automatic, declarative       | Requires controller/operator        |
+| **CRD-Based**     | Type-safe, Kubernetes-native | More complex setup                  |
 | **Ingress-Based** | Leverages existing resources | Limited to ingress-exposed services |
 
 ## Recommended Implementation
