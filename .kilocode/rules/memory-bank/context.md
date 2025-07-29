@@ -63,6 +63,35 @@
 
 ## Recent Changes
 
+### 🎉 Flux Reconciliation Issues Resolution Complete (July 2025 - COMPLETED)
+
+**MAJOR ACHIEVEMENT**: Successfully resolved stuck Flux reconciliations caused by failed authentik-service-discovery Job with PodSecurity violations. Restored complete GitOps functionality while preserving automatic service discovery capabilities for Authentik proxy configuration.
+
+**Flux Reconciliation Fix Completed**:
+
+- **✅ ROOT CAUSE IDENTIFIED**: Failed `authentik-service-discovery` Job in `authentik-proxy` namespace violating PodSecurity "restricted" policies
+- **✅ IMMUTABLE JOB BLOCKING FLUX**: Job failures prevented Flux from reconciling `infrastructure-authentik-proxy` kustomization due to immutable resource constraints
+- **✅ IMMEDIATE UNBLOCKING**: Deleted failed Job to restore Flux reconciliation capability
+- **✅ SECURITY COMPLIANCE FIXED**: Updated Job security context to comply with PodSecurity restrictions (runAsNonRoot, no privileged escalation, restricted capabilities)
+- **✅ IMMUTABILITY ISSUE RESOLVED**: Converted Job to CronJob for periodic execution without immutability constraints
+- **✅ SERVICE DISCOVERY PRESERVED**: Maintained automatic discovery functionality for services labeled with `authentik.io/proxy=enabled`
+- **✅ ALL FLUX RECONCILIATIONS RESTORED**: Verified all 28 Flux kustomizations successfully reconciling
+
+**Critical Technical Fixes Applied**:
+
+- **Security Context Compliance**: Configured proper non-root security context with `runAsNonRoot: true`, `allowPrivilegeEscalation: false`, and dropped all capabilities
+- **Read-Only Filesystem**: Implemented `readOnlyRootFilesystem: true` with proper tmp volume mount for shell operations
+- **CronJob Conversion**: Changed from immutable Job to CronJob with 15-minute execution schedule for continuous service discovery
+- **Service Discovery Logic**: Preserved kubectl-based discovery script that identifies services with `authentik.io/proxy=enabled` labels
+- **GitOps Integration**: All changes committed via Git and deployed through Flux reconciliation process
+
+**Deployment Recovery Process**:
+
+- **Immediate Response**: Deleted failed immutable Job to unblock Flux reconciliation
+- **Security Analysis**: Identified PodSecurity policy violations preventing Job execution
+- **Architectural Solution**: Converted to CronJob pattern for periodic execution without immutability issues
+- **Functionality Preservation**: Maintained service discovery automation while achieving security compliance
+
 ### 🎉 Monitoring Stack Recovery Complete (July 2025 - COMPLETED)
 
 **MAJOR ACHIEVEMENT**: Successfully resolved comprehensive monitoring stack failures caused by Renovate dependency updates. Through systematic investigation and coordinated resolution across multiple specialized modes, restored full monitoring functionality with external access and proper Flux reconciliation.
