@@ -25,7 +25,7 @@ spec:
         {{- toYaml .Values.securityContext | nindent 8 }}
       containers:
         - name: discover-services
-          image: bitnami/kubectl:latest
+          image: registry.k8s.io/kubectl:v1.31.1
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:

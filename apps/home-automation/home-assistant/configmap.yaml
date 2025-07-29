@@ -64,6 +64,13 @@ data:
         topic: "homeassistant/status"
         payload: "offline"
 
+    # Matter integration for Thread/Matter device support
+    # Connects to the Matter Server via WebSocket API
+    matter:
+      server: "ws://localhost:5580/ws"
+      # Enable debug logging for Matter integration
+      log_level: info
+
     # Redis configuration for session storage and caching
     # Note: Home Assistant doesn't directly support Redis, but we can use it for custom components
 

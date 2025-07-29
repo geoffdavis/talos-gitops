@@ -4,6 +4,8 @@
 
 This guide provides procedures for safely migrating components between Bootstrap and GitOps phases. While the current architecture is well-designed, there may be cases where components need to be moved between phases due to changing requirements or architectural improvements.
 
+**For Helm chart repository migrations (e.g., Bitnami EOL), see the dedicated [Bitnami Migration Guide](BITNAMI_MIGRATION_GUIDE.md).**
+
 ## Table of Contents
 
 1. [Migration Principles](#migration-principles)
@@ -14,6 +16,7 @@ This guide provides procedures for safely migrating components between Bootstrap
 6. [Idempotency Verification](#idempotency-verification)
 7. [Rollback Procedures](#rollback-procedures)
 8. [Testing Framework](#testing-framework)
+9. [Related Migration Guides](#related-migration-guides)
 
 ## Migration Principles
 
@@ -554,8 +557,22 @@ echo "Migration test suite completed!"
 3. **Train team members** on new processes
 4. **Review migration** for lessons learned
 
+## Related Migration Guides
+
+### Helm Chart Repository Migrations
+
+- **[Bitnami Migration Guide](BITNAMI_MIGRATION_GUIDE.md)** - Complete guide for migrating from Bitnami charts to upstream repositories
+- **[Bitnami Migration Testing](BITNAMI_MIGRATION_TESTING.md)** - Comprehensive testing procedures for Bitnami migration validation
+
+### Other Migration Types
+
+- **[BGP LoadBalancer Migration](BGP_ONLY_LOADBALANCER_MIGRATION.md)** - Migration from L2 announcements to BGP-only architecture
+- **[LLDPD Integration Migration](LLDPD_INTEGRATION_MIGRATION.md)** - Integration of LLDPD configuration into main Talos config
+
 ## Conclusion
 
 Component migration between Bootstrap and GitOps phases should be approached carefully with thorough testing and clear rollback procedures. The current architecture is well-designed, and migrations should only be undertaken when there are clear operational benefits or changing requirements.
 
 The hybrid approach demonstrated by Cilium shows that complex components can span both phases when there are clear architectural reasons for the separation.
+
+For specific migration scenarios like Helm chart repository changes, refer to the dedicated migration guides listed above.

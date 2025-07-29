@@ -1,0 +1,169 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-dashboard-kong-config
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/component: kong-config
+data:
+  kong.yml: |
+    _format_version: "3.0"
+    _transform: true
+
+    services:
+    - name: dashboard-api
+      url: http://kubernetes-dashboard-api.kubernetes-dashboard.svc.cluster.local:8000
+      plugins:
+      - name: request-transformer
+        config:
+          add:
+            headers:
+            - "X-Auth-Request-User:${headers.x-authentik-username}"
+            - "X-Auth-Request-Email:${headers.x-authentik-email}"
+            - "X-Auth-Request-Groups:${headers.x-authentik-groups}"
+            - "Authorization:Bearer ${SA_TOKEN}"
+          remove:
+            headers:
+            - "x-authentik-token"
+      - name: cors
+        config:
+          origins:
+          - "https://dashboard.k8s.home.geoffdavis.com"
+          methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+          - PATCH
+          headers:
+          - Accept
+          - Accept-Version
+          - Content-Length
+          - Content-MD5
+          - Content-Type
+          - Date
+          - X-Auth-Request-User
+          - X-Auth-Request-Email
+          - X-Auth-Request-Groups
+          - X-Authentik-Username
+          - X-Authentik-Email
+          - X-Authentik-Groups
+          - Authorization
+          credentials: true
+          max_age: 3600
+
+    - name: dashboard-web
+      url: http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000
+      plugins:
+      - name: request-transformer
+        config:
+          add:
+            headers:
+            - "X-Auth-Request-User:${headers.x-authentik-username}"
+            - "X-Auth-Request-Email:${headers.x-authentik-email}"
+            - "X-Auth-Request-Groups:${headers.x-authentik-groups}"
+      - name: cors
+        config:
+          origins:
+          - "https://dashboard.k8s.home.geoffdavis.com"
+          methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+          headers:
+          - Accept
+          - Accept-Version
+          - Content-Length
+          - Content-MD5
+          - Content-Type
+          - Date
+          - X-Auth-Request-User
+          - X-Auth-Request-Email
+          - X-Auth-Request-Groups
+          - X-Authentik-Username
+          - X-Authentik-Email
+          - X-Authentik-Groups
+          credentials: true
+          max_age: 3600
+
+    - name: dashboard-auth
+      url: http://kubernetes-dashboard-auth.kubernetes-dashboard.svc.cluster.local:8000
+      plugins:
+      - name: request-transformer
+        config:
+          add:
+            headers:
+            - "Authorization:Bearer ${SA_TOKEN}"
+
+    routes:
+    - name: dashboard-api-route
+      service: dashboard-api
+      paths:
+      - /api
+      strip_path: false
+      preserve_host: true
+
+    - name: dashboard-web-route
+      service: dashboard-web
+      paths:
+      - /
+      strip_path: false
+      preserve_host: true
+
+    - name: dashboard-auth-login
+      service: dashboard-auth
+      paths:
+      - /api/v1/login
+      strip_path: false
+      preserve_host: true
+
+    - name: dashboard-auth-csrf
+      service: dashboard-auth
+      paths:
+      - /api/v1/csrftoken/login
+      strip_path: false
+      preserve_host: true
+
+    - name: dashboard-auth-me
+      service: dashboard-auth
+      paths:
+      - /api/v1/me
+      strip_path: false
+      preserve_host: true
+
+    # Global plugins
+    plugins:
+    - name: response-transformer
+      config:
+        add:
+          headers:
+          - "X-Frame-Options:SAMEORIGIN"
+          - "X-Content-Type-Options:nosniff"
+          - "X-XSS-Protection:1; mode=block"
+          - "Referrer-Policy:strict-origin-when-cross-origin"
+---
+# Init container to substitute the service account token
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-token-substitution-script
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/component: kong-config
+data:
+  substitute-token.sh: |
+    #!/bin/bash
+    set -e
+
+    # Read the service account token
+    SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    
+    # Substitute the token in the Kong configuration
+    sed "s/\${SA_TOKEN}/$SA_TOKEN/g" /tmp/kong-config/kong.yml > /kong-config/kong.yml
+
+    echo "Kong configuration with token substitution created successfully"

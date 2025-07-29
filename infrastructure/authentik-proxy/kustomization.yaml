@@ -14,7 +14,7 @@ resources:
   - configmap.yaml
   - secret.yaml
   - external-outpost-secret.yaml
-  - outpost-id-configmap.yaml
+  - outpost-id-static.yaml
   - service-discovery-config.yaml
 
   # Redis for session storage
@@ -33,8 +33,8 @@ resources:
   # Option 2: Label-based service discovery (automatic)
   - service-discovery-job.yaml
 
-  # Legacy configuration jobs (can be removed after migration)
-  # - proxy-config-job-simple.yaml
+  # Legacy configuration jobs (removed after migration to static ConfigMaps)
+  # - proxy-config-job-simple.yaml (converted to outpost-id-static.yaml)
   # - fix-dashboard-kong-service-job.yaml
 
 commonLabels:

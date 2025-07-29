@@ -947,4 +947,11 @@ This repository includes comprehensive documentation organized by user journey a
 - Contributing guidelines
 - Code quality standards
 
+### 🔄 [Migration Guides](docs/)
+
+- **[Bitnami Migration Guide](docs/BITNAMI_MIGRATION_GUIDE.md)** - Complete migration from Bitnami charts to upstream repositories
+- **[Bitnami Migration Testing](docs/BITNAMI_MIGRATION_TESTING.md)** - Testing procedures for Bitnami migration validation
+- **[Component Migration Guide](docs/COMPONENT_MIGRATION_GUIDE.md)** - Moving components between Bootstrap and GitOps phases
+- **[BGP LoadBalancer Migration](docs/BGP_ONLY_LOADBALANCER_MIGRATION.md)** - Migration to BGP-only architecture
+
 For the complete documentation index, see **[docs/README.md](docs/README.md)**.

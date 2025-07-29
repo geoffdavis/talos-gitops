@@ -90,6 +90,15 @@ For developers and contributors:
 - [Testing](development/testing.md) - Testing procedures
 - [Code Quality](development/code-quality.md) - Pre-commit and quality standards
 
+### 🔄 Migration Guides
+
+Comprehensive guides for various migration scenarios:
+
+- [Bitnami Migration Guide](BITNAMI_MIGRATION_GUIDE.md) - Complete migration from Bitnami charts to upstream repositories
+- [Bitnami Migration Testing](BITNAMI_MIGRATION_TESTING.md) - Testing procedures for Bitnami migration validation
+- [Component Migration Guide](COMPONENT_MIGRATION_GUIDE.md) - Moving components between Bootstrap and GitOps phases
+- [BGP LoadBalancer Migration](BGP_ONLY_LOADBALANCER_MIGRATION.md) - Migration to BGP-only architecture
+
 ## Cluster Overview
 
 ### Key Features

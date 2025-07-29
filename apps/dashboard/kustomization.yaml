@@ -7,8 +7,8 @@ resources:
   - dashboard-service-account.yaml
   - kong-config-service-account.yaml
   - kong-config.yaml
-  - dashboard-frontend-config.yaml
-  - kong-token-injection-job.yaml
+  - kong-config-static.yaml
+  - dashboard-settings-static.yaml
 
 patches:
   - target:

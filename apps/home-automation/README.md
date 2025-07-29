@@ -28,6 +28,17 @@ The Home Assistant stack provides a comprehensive home automation platform deplo
 │                          │    (Cache)      │                    │
 │                          │   Port: 6379    │                    │
 │                          └─────────────────┘                    │
+│                                   │                             │
+│                          ┌─────────────────┐                    │
+│                          │  Matter Server  │                    │
+│                          │ (Thread/Matter) │                    │
+│                          │   Port: 5580    │                    │
+│                          └─────────────────┘                    │
+│                                   │                             │
+│                          ┌─────────────────┐                    │
+│                          │ Matter/Thread   │                    │
+│                          │    Devices      │                    │
+│                          └─────────────────┘                    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -38,6 +49,7 @@ The Home Assistant stack provides a comprehensive home automation platform deplo
 - **PostgreSQL (v16.4)**: Persistent storage with CloudNativePG operator
 - **Mosquitto MQTT (v2.0.18)**: IoT device communication broker
 - **Redis**: Session storage and performance caching
+- **Matter Server (v8.0.0)**: Thread/Matter device support and commissioning
 
 ## Quick Commands
 
@@ -48,6 +60,9 @@ kubectl get pods -n home-automation
 # View Home Assistant logs
 kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant
 
+# View Matter Server logs
+kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
+
 # Access Home Assistant shell
 kubectl exec -it -n home-automation deployment/home-assistant -- bash
 
@@ -56,6 +71,9 @@ kubectl rollout restart deployment home-assistant -n home-automation
 
 # Check database status
 kubectl get cluster homeassistant-postgresql -n home-automation
+
+# Check Matter Server status
+kubectl get pods -n home-automation -l app.kubernetes.io/name=matter-server
 ```
 
 ## Key Files
@@ -65,6 +83,8 @@ kubectl get cluster homeassistant-postgresql -n home-automation
 - **Secrets**: [`home-assistant/external-secret.yaml`](home-assistant/external-secret.yaml)
 - **Database**: [`postgresql/cluster.yaml`](postgresql/cluster.yaml)
 - **MQTT Broker**: [`mosquitto/deployment.yaml`](mosquitto/deployment.yaml)
+- **Matter Server**: [`matter-server/helmrelease.yaml`](matter-server/helmrelease.yaml)
+- **Matter Documentation**: [`matter-server/README.md`](matter-server/README.md)
 - **Backup Strategy**: [`BACKUP_STRATEGY.md`](BACKUP_STRATEGY.md)
 
 ## 📖 Complete Documentation

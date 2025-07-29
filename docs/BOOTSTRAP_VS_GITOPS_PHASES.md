@@ -241,7 +241,7 @@ spec:
       version: "17.3.7"
       sourceRef:
         kind: HelmRepository
-        name: bitnami
+        name: redis-community
         namespace: flux-system
   install:
     createNamespace: true

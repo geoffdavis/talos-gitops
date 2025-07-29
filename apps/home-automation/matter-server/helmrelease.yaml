@@ -1,0 +1,169 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: matter-server
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: matter-server
+    app.kubernetes.io/component: matter-server
+    app.kubernetes.io/part-of: home-automation-stack
+spec:
+  interval: 30m
+  timeout: 15m
+  install:
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+    cleanupOnFail: true
+  rollback:
+    timeout: 10m
+    cleanupOnFail: true
+  chart:
+    spec:
+      chart: home-assistant-matter-server
+      version: "3.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: charts-derwitt-dev
+        namespace: flux-system
+      interval: 12h
+  values:
+    # Container image configuration
+    image:
+      repository: ghcr.io/home-assistant-libs/python-matter-server
+      tag: "8.0.0"
+      pullPolicy: IfNotPresent
+
+    # Required network interface for Matter/Thread device discovery
+    # Using enp3s0f0 as configured in talconfig.yaml for Mac mini nodes
+    networkInterface: "enp3s0f0"
+
+    # Enable Bluetooth commissioning for Matter devices
+    bluetoothCommissioning:
+      enabled: true
+
+    # Service account configuration
+    serviceAccount:
+      create: true
+      automount: false
+      annotations: {}
+      name: "matter-server"
+
+    # Pod configuration with host networking for Matter device discovery
+    podAnnotations:
+      # Force pod restart when config changes
+      checksum/config: '{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}'
+
+    podLabels:
+      app.kubernetes.io/name: matter-server
+      app.kubernetes.io/component: matter-server
+      app.kubernetes.io/part-of: home-automation-stack
+
+    # Service configuration - ClusterIP since we're using host networking
+    service:
+      type: ClusterIP
+      port: 5580
+
+    # Ingress disabled - Matter Server is accessed via WebSocket API from Home Assistant
+    ingress:
+      enabled: false
+
+    # Resource limits appropriate for Matter Server workload
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+    # Persistent storage for Matter certificates and device data using Longhorn
+    persistence:
+      storageClassName: "longhorn"
+      size: 5Gi
+
+    # Health probes for Matter Server
+    livenessProbe:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+    # Node selector and tolerations for control plane scheduling
+    nodeSelector:
+      kubernetes.io/os: linux
+
+    tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+
+    # Affinity rules to ensure single instance and proper scheduling
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: matter-server
+            topologyKey: kubernetes.io/hostname
+
+    # Additional volumes and volume mounts (none needed for basic setup)
+    volumes: []
+    volumeMounts: []
+
+  # Post-install configuration to enable host networking
+  # This needs to be done via a patch since the chart doesn't directly support hostNetwork
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: matter-server
+            patch: |
+              - op: add
+                path: /spec/template/spec/hostNetwork
+                value: true
+              - op: add
+                path: /spec/template/spec/dnsPolicy
+                value: ClusterFirstWithHostNet
+              - op: add
+                path: /spec/template/spec/securityContext
+                value:
+                  runAsNonRoot: false
+                  seccompProfile:
+                    type: RuntimeDefault
+              - op: add
+                path: /spec/template/spec/containers/0/securityContext
+                value:
+                  privileged: true
+                  allowPrivilegeEscalation: true
+                  readOnlyRootFilesystem: false
+                  runAsUser: 0
+                  capabilities:
+                    drop:
+                      - ALL
+                    add:
+                      - NET_ADMIN
+                      - NET_RAW
+                      - SYS_ADMIN

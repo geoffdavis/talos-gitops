@@ -137,7 +137,7 @@ EOF
             - name: shared-data
               mountPath: /shared
         - name: update-configmap
-          image: bitnami/kubectl:1.31.1
+          image: registry.k8s.io/kubectl:v1.31.1
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
