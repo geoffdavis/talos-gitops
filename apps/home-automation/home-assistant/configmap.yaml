@@ -97,8 +97,8 @@ data:
     # Zone integration
     zone:
       - name: Home
-        latitude: !secret home_latitude
-        longitude: !secret home_longitude
+        latitude: !env_var HOME_LATITUDE
+        longitude: !env_var HOME_LONGITUDE
         radius: 100
         icon: mdi:account-multiple
 
@@ -139,75 +139,75 @@ data:
     stream:
 
     # Automation
-    automation: !include automations.yaml
+    automation: []
 
     # Scripts
-    script: !include scripts.yaml
+    script: {}
 
     # Scenes
-    scene: !include scenes.yaml
+    scene: []
 
     # Sensors
-    sensor: !include sensors.yaml
+    sensor: []
 
     # Binary sensors
-    binary_sensor: !include binary_sensors.yaml
+    binary_sensor: []
 
     # Switches
-    switch: !include switches.yaml
+    switch: []
 
     # Lights
-    light: !include lights.yaml
+    light: []
 
     # Climate
-    climate: !include climate.yaml
+    climate: []
 
     # Covers
-    cover: !include covers.yaml
+    cover: []
 
     # Fans
-    fan: !include fans.yaml
+    fan: []
 
     # Media players
-    media_player: !include media_players.yaml
+    media_player: []
 
     # Cameras
-    camera: !include cameras.yaml
+    camera: []
 
     # Input boolean
-    input_boolean: !include input_boolean.yaml
+    input_boolean: {}
 
     # Input number
-    input_number: !include input_number.yaml
+    input_number: {}
 
     # Input select
-    input_select: !include input_select.yaml
+    input_select: {}
 
     # Input text
-    input_text: !include input_text.yaml
+    input_text: {}
 
     # Input datetime
-    input_datetime: !include input_datetime.yaml
+    input_datetime: {}
 
     # Timer
-    timer: !include timer.yaml
+    timer: {}
 
     # Counter
-    counter: !include counter.yaml
+    counter: {}
 
     # Template
-    template: !include template.yaml
+    template: []
 
     # Group
-    group: !include groups.yaml
+    group: {}
 
     # Customize
     homeassistant:
-      customize: !include customize.yaml
+      customize: {}
       # Location configuration
-      latitude: !secret home_latitude
-      longitude: !secret home_longitude
-      elevation: !secret home_elevation
+      latitude: !env_var HOME_LATITUDE
+      longitude: !env_var HOME_LONGITUDE
+      elevation: !env_var HOME_ELEVATION
       unit_system: imperial
       time_zone: America/New_York
       country: US

@@ -137,6 +137,23 @@ spec:
             - name: HASS_HTTP_USE_X_FORWARDED_FOR
               value: "true"
 
+            # Location configuration from secrets
+            - name: HOME_LATITUDE
+              valueFrom:
+                secretKeyRef:
+                  name: home-assistant-secrets
+                  key: home_latitude
+            - name: HOME_LONGITUDE
+              valueFrom:
+                secretKeyRef:
+                  name: home-assistant-secrets
+                  key: home_longitude
+            - name: HOME_ELEVATION
+              valueFrom:
+                secretKeyRef:
+                  name: home-assistant-secrets
+                  key: home_elevation
+
           # Volume mounts
           volumeMounts:
             - name: home-assistant-config
