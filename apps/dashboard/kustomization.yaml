@@ -9,3 +9,6 @@ resources:
   - kong-config.yaml
   - dashboard-frontend-config.yaml
   - kong-token-injection-job.yaml
+
+patchesStrategicMerge:
+  - kong-service-patch.yaml
