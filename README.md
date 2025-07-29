@@ -911,6 +911,17 @@ For detailed operational procedures, see the **[Day-to-Day Operations Guide](doc
 
 This repository includes comprehensive documentation organized by user journey and task type:
 
+### 🎯 Advanced Operational Documentation (Phase 4)
+
+**Production-ready operational guides for advanced users and operators:**
+
+- **[🔧 Comprehensive Troubleshooting Guide](docs/operations/troubleshooting.md)** - Systematic troubleshooting for all cluster components
+- **[⚖️ Bootstrap vs GitOps Decision Framework](docs/architecture/bootstrap-vs-gitops.md)** - Clear criteria for operational decisions
+- **[🚨 Disaster Recovery Procedures](docs/operations/disaster-recovery.md)** - Complete disaster recovery and business continuity
+- **[🤝 Contributing Guidelines](docs/development/contributing.md)** - Standards and processes for contributions
+- **[⚙️ Advanced Configuration Reference](docs/reference/advanced-configuration.md)** - Technical examples and patterns for experts
+- **[📝 Documentation Maintenance](docs/operations/documentation-maintenance.md)** - Procedures for maintaining high-quality documentation
+
 ### 🚀 [Getting Started](docs/getting-started/README.md)
 
 - New user guides and initial setup procedures
@@ -920,13 +931,15 @@ This repository includes comprehensive documentation organized by user journey a
 ### 🏗️ [Architecture](docs/architecture/README.md)
 
 - System design and technical architecture
-- Bootstrap vs GitOps operational model
+- **[Bootstrap vs GitOps operational model](docs/architecture/bootstrap-vs-gitops.md)**
 - Component relationships and dependencies
 
 ### ⚙️ [Operations](docs/operations/README.md)
 
 - Daily operational procedures
-- Troubleshooting guides
+- **[Comprehensive troubleshooting guides](docs/operations/troubleshooting.md)**
+- **[Disaster recovery procedures](docs/operations/disaster-recovery.md)**
+- **[Documentation maintenance workflows](docs/operations/documentation-maintenance.md)**
 - Maintenance workflows
 
 ### 🔧 [Components](docs/components/README.md)
@@ -938,13 +951,14 @@ This repository includes comprehensive documentation organized by user journey a
 ### 📖 [Reference](docs/reference/README.md)
 
 - Quick reference materials
+- **[Advanced configuration examples](docs/reference/advanced-configuration.md)**
 - Command cheat sheets
 - Configuration templates
 
 ### 👨‍💻 [Development](docs/development/README.md)
 
 - Developer resources
-- Contributing guidelines
+- **[Contributing guidelines and standards](docs/development/contributing.md)**
 - Code quality standards
 
 ### 🔄 [Migration Guides](docs/)

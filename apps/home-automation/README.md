@@ -12,7 +12,7 @@ The Home Assistant stack provides a comprehensive home automation platform deplo
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Home Assistant Stack                        │
 ├─────────────────────────────────────────────────────────────────┤
