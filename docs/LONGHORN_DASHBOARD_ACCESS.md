@@ -67,7 +67,6 @@ kubectl port-forward -n longhorn-system svc/longhorn-frontend 8081:80 --address=
 To access via the intended hostname `longhorn.k8s.home.geoffdavis.com`:
 
 1. **Option A: Router DNS Override**
-
    - Configure router to resolve `longhorn.k8s.home.geoffdavis.com` to `172.29.51.200`
    - Access via: `https://longhorn.k8s.home.geoffdavis.com:31752`
 

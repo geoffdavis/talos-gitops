@@ -1,6 +1,6 @@
 # Week 3 Infrastructure Deployment Report
 
-**Fix-First Strategy - Infrastructure Deployment and Integration Testing**
+Strategy: **Fix-First Strategy - Infrastructure Deployment and Integration Testing**
 
 ## Executive Summary
 
@@ -13,13 +13,11 @@ Week 3 successfully deployed the missing infrastructure components needed for fu
 #### Phase 1 - Core Infrastructure
 
 - **cert-manager**: ✅ Deployed via official YAML manifests (v1.13.2)
-
   - Status: Running (webhook experiencing API connectivity issues)
   - Components: cert-manager, cert-manager-cainjector, cert-manager-webhook
   - Location: `cert-manager` namespace
 
 - **external-secrets**: ✅ Already operational from bootstrap
-
   - Status: Fully functional
   - Components: external-secrets, webhook, cert-controller
   - Location: `external-secrets-system` namespace
@@ -31,7 +29,6 @@ Week 3 successfully deployed the missing infrastructure components needed for fu
 #### Phase 2 - Storage & Monitoring
 
 - **longhorn**: ✅ Already operational from Week 2 migration
-
   - Status: Fully functional with USB SSD storage
   - Location: `longhorn-system` namespace
 
@@ -42,7 +39,6 @@ Week 3 successfully deployed the missing infrastructure components needed for fu
 #### Phase 3 - Networking
 
 - **ingress-nginx**: ✅ Deployed via official manifests (v1.8.2)
-
   - Status: Running, LoadBalancer pending external IP
   - Location: `ingress-nginx` namespace
   - Issue: External IP assignment pending BGP configuration
@@ -135,7 +131,7 @@ Week 3 successfully deployed the missing infrastructure components needed for fu
 
 ### Operational Components
 
-```
+```text
 ✅ external-secrets-system (3/3 pods running)
 ✅ onepassword-connect (1/1 pods running)
 ✅ longhorn-system (22/22 pods running)
@@ -147,7 +143,7 @@ Week 3 successfully deployed the missing infrastructure components needed for fu
 
 ### Network Configuration
 
-```
+```text
 ✅ BGP Cluster Config: cilium-bgp
 ✅ Load Balancer Pools:
    - default: 100 IPs available
@@ -158,7 +154,7 @@ Week 3 successfully deployed the missing infrastructure components needed for fu
 
 ### Storage Integration
 
-```
+```text
 ✅ Longhorn: Fully operational with USB SSD storage
 ✅ Storage Classes: longhorn, longhorn-usb-ssd
 ✅ Volume Snapshots: Configured and functional

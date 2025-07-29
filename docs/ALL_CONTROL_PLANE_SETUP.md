@@ -14,14 +14,12 @@ This Talos cluster is configured to run all three nodes as both control plane an
 ### Key Modifications Made
 
 1. **Taskfile.yml Updates**:
-
    - Removed worker configuration patch from config generation
    - Updated bootstrap process to handle multiple control plane nodes
    - Added conversion task for existing clusters
    - Enhanced cluster status reporting
 
 2. **Control Plane Optimizations**:
-
    - Added leader election tuning for better performance
    - Optimized etcd settings for 3-node cluster
    - Enabled scheduling on control planes (already configured)
@@ -120,6 +118,7 @@ talosctl -n 172.29.51.11,172.29.51.12,172.29.51.13 service etcd
    ```
 
 3. Check etcd cluster membership:
+
    ```bash
    talosctl -n <node-ip> etcd members
    ```
@@ -139,6 +138,7 @@ talosctl -n 172.29.51.11,172.29.51.12,172.29.51.13 service etcd
    ```
 
 3. Check scheduler/controller manager:
+
    ```bash
    kubectl get pods -n kube-system -l tier=control-plane
    ```

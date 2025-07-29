@@ -77,7 +77,7 @@
 
 **Nodes**: All Ready ✅
 
-```
+```text
 mini01   Ready    control-plane   13h   v1.31.1
 mini02   Ready    control-plane   13h   v1.31.1
 mini03   Ready    control-plane   13h   v1.31.1
@@ -92,14 +92,12 @@ mini03   Ready    control-plane   13h   v1.31.1
 ### Next Steps
 
 1. **Update 1Password Connect Credentials** (CRITICAL):
-
    - Follow instructions in `docs/1PASSWORD_CONNECT_SETUP.md`
    - Generate new version 2 credentials
    - Update the Kubernetes secret
    - Restart the 1Password Connect deployment
 
 2. **After credentials are updated**:
-
    - ClusterSecretStore should validate
    - External Secrets will start syncing
    - Dependent services will deploy automatically
@@ -140,23 +138,23 @@ kubectl logs -n onepassword-connect deployment/onepassword-connect -c connect-sy
 
 1. **Cilium IPAM mode** (removed from Flux management):
 
-```yaml
-ipam:
-  mode: cluster-pool
-  operator:
-    clusterPoolIPv4PodCIDRList: ["10.0.0.0/8"]
-    clusterPoolIPv4MaskSize: 24
-```
+   ```yaml
+   ipam:
+   mode: cluster-pool
+   operator:
+      clusterPoolIPv4PodCIDRList: ["10.0.0.0/8"]
+      clusterPoolIPv4MaskSize: 24
+   ```
 
 2. **1Password Connect credentials mount**:
 
-```yaml
-volumeMounts:
-  - name: credentials
-    mountPath: /home/opuser/.op/1password-credentials.json
-    subPath: 1password-credentials.json
-    readOnly: true
-```
+   ```yaml
+   volumeMounts:
+   - name: credentials
+      mountPath: /home/opuser/.op/1password-credentials.json
+      subPath: 1password-credentials.json
+      readOnly: true
+   ```
 
 3. **Namespace updates**: Changed from `cilium-system` to `kube-system` for all Cilium BGP resources
 

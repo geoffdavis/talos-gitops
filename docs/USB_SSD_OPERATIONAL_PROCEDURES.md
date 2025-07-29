@@ -309,7 +309,6 @@ talosctl -n $NODE_IP ls /var/lib/longhorn/
    ```
 
 3. **USB device reseat**:
-
    - Shutdown node
    - Physically disconnect and reconnect USB SSD
    - Boot node
@@ -354,6 +353,7 @@ kubectl get replicas.longhorn.io -n longhorn-system
    ```
 
 3. **Check node storage availability**:
+
    ```bash
    kubectl get nodes.longhorn.io -n longhorn-system -o yaml
    ```
@@ -387,11 +387,11 @@ kubectl get --raw /api/v1/nodes/$NODE_NAME/proxy/stats/summary
    ```
 
 2. **Rebalance replicas**:
-
    - Use Longhorn UI to rebalance replicas across nodes
    - Ensure even distribution of storage load
 
 3. **Optimize Longhorn settings**:
+
    ```bash
    # Update via GitOps
    vim infrastructure/longhorn/helmrelease.yaml
@@ -785,6 +785,7 @@ git push
    ```
 
 4. **Execute Recovery** (< 2 hours):
+
    ```bash
    # Follow specific recovery procedures based on failure type
    ./scripts/deploy-usb-ssd-storage.sh --emergency-recovery
@@ -813,6 +814,7 @@ git push
    ```
 
 4. **Validate Recovery**:
+
    ```bash
    ./scripts/validate-complete-usb-ssd-setup.sh --full
    ```

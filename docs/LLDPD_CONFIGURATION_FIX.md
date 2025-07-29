@@ -9,7 +9,6 @@ Fixed critical LLDPD configuration that was causing service startup failures and
 The LLDPD ExtensionServiceConfig was not being properly applied due to incorrect configuration approaches:
 
 1. **Initial attempts failed**:
-
    - Tried `machine.extensionServiceConfigs` in patches (not supported in Talos)
    - Tried `machine.files` approach (incorrect for extension services)
    - Tried `extraManifests` in talconfig.yaml (wrong context - for Kubernetes manifests)
@@ -54,7 +53,7 @@ talosctl --talosconfig ./clusterconfig/talosconfig \
 
 ### Extension Service Configs Loaded
 
-```
+```text
 NODE           NAMESPACE   TYPE                     ID      VERSION
 172.29.51.11   runtime     ExtensionServiceConfig   lldpd   1
 172.29.51.12   runtime     ExtensionServiceConfig   lldpd   1
@@ -63,7 +62,7 @@ NODE           NAMESPACE   TYPE                     ID      VERSION
 
 ### LLDPD Services Running
 
-```
+```text
 172.29.51.11   runtime     Service   ext-lldpd    1         true      false     true
 172.29.51.12   runtime     Service   ext-lldpd    1         true      false     true
 172.29.51.13   runtime     Service   ext-lldpd    1         true      false     true

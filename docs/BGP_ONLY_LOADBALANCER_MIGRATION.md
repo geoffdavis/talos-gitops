@@ -40,7 +40,6 @@ The current cluster uses L2 announcements (`CiliumL2AnnouncementPolicy`) on the 
 ### Prerequisites
 
 1. **Network Infrastructure**
-
    - VLAN 52 (172.29.52.0/24) configured on UDM Pro
    - IPv6 ULA segment: fd47:25e1:2f96:52::/64
    - BGP peering configured between cluster and UDM Pro
@@ -176,6 +175,7 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
    ```
 
 5. **Verify BGP Peering**
+
    ```bash
    ssh unifi-admin@udm-pro "vtysh -c 'show bgp summary'"
    ```
@@ -185,19 +185,16 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
 ### New Configuration Files
 
 1. **`infrastructure/cilium/loadbalancer-pool-bgp.yaml`**
-
    - BGP-only load balancer IP pools
    - Dedicated network segment (172.29.52.0/24)
    - IPv4/IPv6 dual-stack support
 
 2. **`infrastructure/cilium-bgp/bgp-policy-bgp-only.yaml`**
-
    - Enhanced BGP advertisements
    - Community tagging for route identification
    - Improved peer configuration
 
 3. **`infrastructure/cilium/helmrelease-bgp-only.yaml`**
-
    - L2 announcements disabled
    - BGP control plane enabled
    - Optimized for BGP-only operation
@@ -210,7 +207,6 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
 ### Migration Scripts
 
 1. **`scripts/migrate-to-bgp-only-loadbalancer.sh`**
-
    - Automated migration process
    - Backup and rollback capabilities
    - Comprehensive validation
@@ -239,7 +235,6 @@ kubectl patch svc -n ingress-nginx-internal -l app.kubernetes.io/name=ingress-ng
    ```
 
 2. **Update DNS Records**
-
    - Revert DNS records to original IP addresses
    - Wait for DNS propagation
 
@@ -263,7 +258,6 @@ prometheus.k8s.home.geoffdavis.com -> 172.29.52.xxx
 ### Monitoring Updates
 
 1. **Update Monitoring Dashboards**
-
    - Modify Grafana dashboards for new IP ranges
    - Update Prometheus targets if using static configuration
 
@@ -274,7 +268,6 @@ prometheus.k8s.home.geoffdavis.com -> 172.29.52.xxx
 ### Documentation Updates
 
 1. **Update Network Documentation**
-
    - Document new IP allocation scheme
    - Update network diagrams
 
@@ -332,22 +325,18 @@ kubectl get svc --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE
 ## Benefits of BGP-Only Architecture
 
 1. **Clean Network Separation**
-
    - Load balancer traffic isolated from cluster management
    - Eliminates ARP conflicts and L2/L3 boundary confusion
 
 2. **True Load Balancing**
-
    - BGP provides actual load balancing across multiple nodes
    - Better failover and traffic distribution
 
 3. **Scalability**
-
    - Dedicated /24 network provides 254 usable IPs
    - Easy to expand with additional network segments
 
 4. **Operational Simplicity**
-
    - Single announcement mechanism (BGP only)
    - Consistent with enterprise networking practices
 

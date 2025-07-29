@@ -485,7 +485,6 @@ curl -I https://<service-name>.k8s.home.geoffdavis.com
 The external authentik-proxy system uses a hybrid URL architecture to resolve DNS conflicts:
 
 - **Internal Communication**: `http://authentik-server.authentik.svc.cluster.local:80`
-
   - Used by outpost pods to communicate with Authentik server
   - Resolves via cluster DNS
   - Avoids external DNS resolution issues

@@ -13,12 +13,10 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 **Key Changes:**
 
 - **Disabled automatic disk creation**: `createDefaultDiskLabeledNodes: false`
-
   - Prevents conflicts with manually managed USB SSD disks
   - Allows explicit control over disk configuration
 
 - **Optimized storage settings for SSDs**:
-
   - `storageOverProvisioningPercentage: 150` (reduced from 200)
   - `storageMinimalAvailablePercentage: 15` (reduced from 25)
   - Better utilization and efficiency for SSD storage
@@ -64,36 +62,36 @@ The Longhorn configuration has been updated to optimally utilize USB SSDs mounte
 
 ## Integration Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Talos Layer                              │
 ├─────────────────────────────────────────────────────────────┤
-│ • USB SSD Detection & Mounting                             │
-│ • Mount Point: /var/lib/longhorn-ssd                       │
-│ • Disk Tagging: "ssd" label                                │
-│ • I/O Optimization: mq-deadline scheduler                  │
+│ • USB SSD Detection & Mounting                              │
+│ • Mount Point: /var/lib/longhorn-ssd                        │
+│ • Disk Tagging: "ssd" label                                 │
+│ • I/O Optimization: mq-deadline scheduler                   │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  Longhorn Layer                             │
 ├─────────────────────────────────────────────────────────────┤
-│ • Disk Discovery: Disabled automatic creation              │
+│ • Disk Discovery: Disabled automatic creation               │
 │ • Storage Classes:                                          │
-│   - longhorn-ssd (USB SSDs, diskSelector: "ssd")          │
-│   - longhorn (Default, system storage)                     │
+│   - longhorn-ssd (USB SSDs, diskSelector: "ssd")            │
+│   - longhorn (Default, system storage)                      │
 │ • Snapshot Classes:                                         │
-│   - longhorn-ssd-snapshot-vsc (SSD-optimized)             │
-│   - longhorn-snapshot-vsc (Default)                        │
+│   - longhorn-ssd-snapshot-vsc (SSD-optimized)               │
+│   - longhorn-snapshot-vsc (Default)                         │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                Application Layer                            │
 ├─────────────────────────────────────────────────────────────┤
-│ • High-Performance Workloads → longhorn-ssd                │
-│ • General Applications → longhorn (default)                │
-│ • Testing/Development → longhorn-single-replica            │
+│ • High-Performance Workloads → longhorn-ssd                 │
+│ • General Applications → longhorn (default)                 │
+│ • Testing/Development → longhorn-single-replica             │
 └─────────────────────────────────────────────────────────────┘
 ```
 

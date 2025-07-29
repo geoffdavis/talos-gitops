@@ -31,70 +31,70 @@ This document outlines the comprehensive architectural plan for implementing a G
 
 ### Component Architecture Diagram
 
-```
+```none
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                 Internet                                        │
 └─────────────────────────┬───────────────────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────────────────────────┐
-│                    GitHub Webhook                                              │
-│                flux-webhook.geoffdavis.com                                     │
+│                    GitHub Webhook                                               │
+│                flux-webhook.geoffdavis.com                                      │
 └─────────────────────────┬───────────────────────────────────────────────────────┘
                           │ HTTPS (TLS 1.3)
                           │ Webhook Secret Validation
 ┌─────────────────────────▼───────────────────────────────────────────────────────┐
-│                  Cloudflare Tunnel                                             │
-│  ┌─────────────────────────────────────────────────────────────────────────┐   │
-│  │ Ingress Rules:                                                          │   │
-│  │ - flux-webhook.geoffdavis.com → ingress-nginx-public:443               │   │
-│  │ - Default: http_status:404                                              │   │
-│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                  Cloudflare Tunnel                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │ Ingress Rules:                                                          │    │
+│  │ - flux-webhook.geoffdavis.com → ingress-nginx-public:443                │    │
+│  │ - Default: http_status:404                                              │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
 └─────────────────────────┬───────────────────────────────────────────────────────┘
                           │ HTTP/HTTPS
 ┌─────────────────────────▼───────────────────────────────────────────────────────┐
-│                 Kubernetes Cluster                                             │
+│                 Kubernetes Cluster                                              │
 │                                                                                 │
-│  ┌─────────────────────────────────────────────────────────────────────────┐   │
-│  │                    ingress-nginx-public                                 │   │
-│  │                  (nginx-public class)                                   │   │
-│  │  ┌─────────────────────────────────────────────────────────────────┐   │   │
-│  │  │ Ingress Resource:                                               │   │   │
-│  │  │ - Host: flux-webhook.geoffdavis.com                             │   │   │
-│  │  │ - TLS: Let's Encrypt certificate                                │   │   │
-│  │  │ - Path: /hook/flux-system → webhook-receiver:9292              │   │   │
-│  │  │ - Security: Rate limiting, IP filtering                        │   │   │
-│  │  └─────────────────────────────────────────────────────────────────┘   │   │
-│  └─────────────────────────┬───────────────────────────────────────────────┘   │
-│                            │                                                     │
-│  ┌─────────────────────────▼───────────────────────────────────────────────┐   │
-│  │                    flux-system namespace                                │   │
-│  │                                                                         │   │
-│  │  ┌─────────────────────────────────────────────────────────────────┐   │   │
-│  │  │              webhook-receiver Service                           │   │   │
-│  │  │                    Port: 9292                                   │   │   │
-│  │  └─────────────────────────┬───────────────────────────────────────┘   │   │
-│  │                            │                                             │   │
-│  │  ┌─────────────────────────▼───────────────────────────────────────┐   │   │
-│  │  │           notification-controller Pod                           │   │   │
-│  │  │  - Webhook receiver endpoint: /hook/{receiver-name}             │   │   │
-│  │  │  - Secret validation                                            │   │   │
-│  │  │  - Event processing                                             │   │   │
-│  │  └─────────────────────────┬───────────────────────────────────────┘   │   │
-│  │                            │                                             │   │
-│  │  ┌─────────────────────────▼───────────────────────────────────────┐   │   │
-│  │  │                 Receiver Resource                               │   │   │
-│  │  │  - GitHub webhook configuration                                 │   │   │
-│  │  │  - Secret reference                                             │   │   │
-│  │  │  - Event filtering                                              │   │   │
-│  │  └─────────────────────────┬───────────────────────────────────────┘   │   │
-│  └────────────────────────────┼─────────────────────────────────────────────┘   │
-│                               │                                                 │
-│  ┌────────────────────────────▼─────────────────────────────────────────────┐   │
-│  │                     GitRepository Resources                              │   │
-│  │  - Trigger reconciliation on webhook events                             │   │
-│  │  - Validate webhook signatures                                           │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                    ingress-nginx-public                                 │    │
+│  │                  (nginx-public class)                                   │    │
+│  │  ┌─────────────────────────────────────────────────────────────────┐    │    │
+│  │  │ Ingress Resource:                                               │    │    │
+│  │  │ - Host: flux-webhook.geoffdavis.com                             │    │    │
+│  │  │ - TLS: Let's Encrypt certificate                                │    │    │
+│  │  │ - Path: /hook/flux-system → webhook-receiver:9292               │    │    │
+│  │  │ - Security: Rate limiting, IP filtering                         │    │    │
+│  │  └─────────────────────────────────────────────────────────────────┘    │    │
+│  └─────────────────────────┬───────────────────────────────────────────────┘    │
+│                            │                                                    │
+│  ┌─────────────────────────▼───────────────────────────────────────────────┐    │
+│  │                    flux-system namespace                                │    │
+│  │                                                                         │    │
+│  │  ┌─────────────────────────────────────────────────────────────────┐    │   │
+│  │  │              webhook-receiver Service                           │    │   │
+│  │  │                    Port: 9292                                   │    │   │
+│  │  └─────────────────────────┬───────────────────────────────────────┘    │   │
+│  │                            │                                            │   │
+│  │  ┌─────────────────────────▼───────────────────────────────────────┐    │   │
+│  │  │           notification-controller Pod                           │    │   │
+│  │  │  - Webhook receiver endpoint: /hook/{receiver-name}             │    │   │
+│  │  │  - Secret validation                                            │    │   │
+│  │  │  - Event processing                                             │    │   │
+│  │  └─────────────────────────┬───────────────────────────────────────┘    │   │
+│  │                            │                                            │   │
+│  │  ┌─────────────────────────▼───────────────────────────────────────┐    │   │
+│  │  │                 Receiver Resource                               │    │   │
+│  │  │  - GitHub webhook configuration                                 │    │   │
+│  │  │  - Secret reference                                             │    │   │
+│  │  │  - Event filtering                                              │    │   │
+│  │  └─────────────────────────┬───────────────────────────────────────┘    │   │
+│  └────────────────────────────┼────────────────────────────────────────────┘   │
+│                               │                                                │
+│  ┌────────────────────────────▼─────────────────────────────────────────────┐  │
+│  │                     GitRepository Resources                              │  │
+│  │  - Trigger reconciliation on webhook events                              │  │
+│  │  - Validate webhook signatures                                           │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                │
 │  ┌─────────────────────────────────────────────────────────────────────────┐   │
 │  │                      Monitoring Stack                                   │   │
 │  │  - Prometheus metrics collection                                        │   │
@@ -102,7 +102,7 @@ This document outlines the comprehensive architectural plan for implementing a G
 │  │  - Performance monitoring                                               │   │
 │  │  - Security event logging                                               │   │
 │  └─────────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Detailed Component Specifications
@@ -426,13 +426,11 @@ spec:
 #### Phase 1: Foundation Setup (Low Risk)
 
 1. **Create webhook namespace resources**
-
    - Namespace (if needed)
    - ServiceAccount
    - RBAC permissions
 
 2. **Configure secret management**
-
    - Create 1Password entry for webhook secret
    - Deploy ExternalSecret resource
    - Verify secret creation
@@ -444,7 +442,6 @@ spec:
 #### Phase 2: Ingress Configuration (Medium Risk)
 
 1. **Deploy public ingress resource**
-
    - Create ingress with security annotations
    - Verify certificate provisioning
    - Test internal connectivity
@@ -456,7 +453,6 @@ spec:
 #### Phase 3: Tunnel Configuration (Medium Risk)
 
 1. **Update Cloudflare tunnel config**
-
    - Add ingress rule for webhook domain
    - Deploy updated ConfigMap
    - Restart tunnel pods
@@ -469,7 +465,6 @@ spec:
 #### Phase 4: Flux Integration (High Risk)
 
 1. **Deploy Receiver resource**
-
    - Create GitHub webhook receiver
    - Configure event filtering
    - Test webhook endpoint
@@ -482,7 +477,6 @@ spec:
 #### Phase 5: Monitoring and Validation (Low Risk)
 
 1. **Deploy monitoring resources**
-
    - ServiceMonitor for metrics collection
    - PrometheusRule for alerting
    - Verify metrics collection
@@ -546,21 +540,18 @@ spec:
 **Common Issues**:
 
 1. **Webhook not reachable**:
-
    - Check Cloudflare tunnel logs
    - Verify ingress controller status
    - Test internal service connectivity
    - Validate DNS resolution
 
 2. **Certificate issues**:
-
    - Check cert-manager logs
    - Verify Let's Encrypt rate limits
    - Test DNS01 challenge resolution
    - Validate Cloudflare API token
 
 3. **Authentication failures**:
-
    - Verify webhook secret in 1Password
    - Check ExternalSecret status
    - Validate GitHub webhook configuration

@@ -166,6 +166,7 @@ If Cilium pods are in CrashLoopBackOff or Unknown status:
 2. Ensure Cilium is configured with the correct k8sServiceHost and k8sServicePort
 3. Verify the capabilities are set correctly (no SYS_MODULE for Talos)
 4. If all Cilium pods show Unknown status, redeploy Cilium completely:
+
    ```bash
    task apps:deploy-cilium
    ```
@@ -182,7 +183,6 @@ If External Secrets shows ClusterSecretStore as ValidationFailed:
    ```
 
 2. **Common errors**:
-
    - "credentials file is not version 2" - Old or invalid credentials
    - "failed to FindCredentialsUniqueKey" - Mismatch between JWT token and credentials
    - "illegal base64 data" - Invalid dummy credentials file
@@ -223,6 +223,7 @@ If External Secrets shows ClusterSecretStore as ValidationFailed:
    ```
 
 5. **Verify ClusterSecretStore**:
+
    ```bash
    kubectl get clustersecretstore
    # Should show STATUS: Valid and READY: True
@@ -242,13 +243,11 @@ If the API server is in CrashLoopBackOff or continuously exiting:
    ```
 
 2. **Common issues**:
-
    - **OIDC configuration errors**: Ensure the OIDC issuer URL is accessible
    - **PodSecurity admission errors**: Check for duplicate namespaces in exemptions (talhelper bug)
    - **Certificate errors**: Verify all certificates are valid
 
 3. **Fix and restart**:
-
    - Fix configuration issues in `talconfig.yaml`
    - If fixing generated files manually, use `task talos:apply-config-only`
    - Restart kubelet to force static pod recreation:

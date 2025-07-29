@@ -1,6 +1,6 @@
 # Network Recovery Status Report
 
-_Generated: 2025-07-13T05:31:00Z_
+Generated: 2025-07-13T05:31:00Z
 
 ## Emergency Recovery Summary
 
@@ -67,7 +67,6 @@ _Generated: 2025-07-13T05:31:00Z_
   - mini01 node has pending Cilium pods
   - Operator running but health checks failing
 - **Longhorn Storage**:
-
   - UI pods running (2/2)
   - Manager pods experiencing webhook timeout issues
   - Driver deployer pods stuck in Init state
@@ -142,13 +141,11 @@ _Generated: 2025-07-13T05:31:00Z_
 ### Immediate Actions
 
 1. **Node Recovery**: Investigate mini01 node issues
-
    - Check Talos node status
    - Verify network interface configuration
    - Restart kubelet if necessary
 
 2. **Cilium Stabilization**:
-
    - Monitor DaemonSet rollout completion
    - Verify pod scheduling on all nodes
    - Check CNI functionality
@@ -161,13 +158,11 @@ _Generated: 2025-07-13T05:31:00Z_
 ### Medium-term Actions
 
 1. **BGP Re-enablement**: Once network is stable
-
    - Test BGP configuration in isolated environment
    - Gradually re-enable BGP control plane
    - Monitor for VXLAN loop recurrence
 
 2. **Cloudflare Tunnel**:
-
    - Debug container creation issues
    - Verify external secrets integration
    - Test tunnel connectivity
