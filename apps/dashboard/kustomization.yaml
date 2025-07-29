@@ -6,7 +6,6 @@ resources:
   - kubernetes-dashboard.yaml
   - dashboard-service-account.yaml
   - kong-config-service-account.yaml
-  - kong-config.yaml
   - kong-config-static.yaml
   - dashboard-settings-static.yaml
 
