@@ -60,10 +60,6 @@ spec:
       # Force pod restart when config changes
       checksum/config: '{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}'
 
-    podLabels:
-      app.kubernetes.io/name: matter-server
-      app.kubernetes.io/component: matter-server
-      app.kubernetes.io/part-of: home-automation-stack
 
     # Service configuration - ClusterIP since we're using host networking
     service:
