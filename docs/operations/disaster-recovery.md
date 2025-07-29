@@ -52,21 +52,25 @@ Recovery prioritization based on business impact:
 ### Scenario Classification
 
 #### Level 1: Service Degradation
+
 - Single pod/service failure
 - Temporary network issues
 - Non-critical component failure
 
 #### Level 2: System Outage
+
 - Single node failure
 - Storage volume corruption
 - Authentication system failure
 
 #### Level 3: Cluster Failure
+
 - Multiple node failure
 - Complete network failure
 - Storage system complete failure
 
 #### Level 4: Site Disaster
+
 - Complete hardware loss
 - Extended power/network outage
 - Physical facility damage

@@ -53,7 +53,7 @@ graph TD
 
 Use this decision matrix to determine the appropriate change management approach:
 
-### Use Bootstrap Phase When:
+### Use Bootstrap Phase When
 
 - ✅ **System Foundation Required**: Change affects components needed for cluster to start
 - ✅ **Hardware/OS Integration**: Change requires direct hardware or OS-level access
@@ -62,7 +62,7 @@ Use this decision matrix to determine the appropriate change management approach
 - ✅ **Security Foundation**: Change affects cluster security fundamentals
 - ✅ **Emergency Recovery**: Cluster is broken and GitOps cannot function
 
-### Use GitOps Phase When:
+### Use GitOps Phase When
 
 - ✅ **Application Deployment**: Change involves application services or infrastructure services
 - ✅ **Configuration Management**: Change benefits from version control and audit trails
@@ -112,6 +112,7 @@ Bootstrap phase changes are managed via Taskfile commands and direct kubectl/tal
   - API server certificates
 
 #### 3. Core Networking (Cilium CNI)
+
 - **Location**: [`Taskfile.yml:apps:deploy-cilium`](../../Taskfile.yml)
 - **Management**: `task apps:deploy-cilium`
 - **Examples**:
@@ -121,6 +122,7 @@ Bootstrap phase changes are managed via Taskfile commands and direct kubectl/tal
   - Kube-proxy replacement configuration
 
 #### 4. Secret Management Foundation
+
 - **Location**: [`scripts/bootstrap-1password-secrets.sh`](../../scripts/bootstrap-1password-secrets.sh)
 - **Management**: `task bootstrap:1password-secrets`
 - **Examples**:
@@ -130,6 +132,7 @@ Bootstrap phase changes are managed via Taskfile commands and direct kubectl/tal
   - Cluster secret encryption keys
 
 #### 5. GitOps System Deployment
+
 - **Location**: [`Taskfile.yml:flux:bootstrap`](../../Taskfile.yml)
 - **Management**: `task flux:bootstrap`
 - **Examples**:
@@ -197,6 +200,7 @@ GitOps phase changes are managed through Git commits that trigger automated depl
   - monitoring stack deployment
 
 #### 2. Network Services (Advanced Configuration)
+
 - **Location**: [`infrastructure/cilium-bgp/`](../../infrastructure/cilium-bgp/), [`infrastructure/cilium-pools/`](../../infrastructure/cilium-pools/)
 - **Management**: GitOps deployment
 - **Examples**:
@@ -206,6 +210,7 @@ GitOps phase changes are managed through Git commits that trigger automated depl
   - Service mesh configuration
 
 #### 3. Security Services
+
 - **Location**: [`infrastructure/authentik/`](../../infrastructure/authentik/), [`infrastructure/authentik-proxy/`](../../infrastructure/authentik-proxy/)
 - **Management**: GitOps deployment
 - **Examples**:
@@ -215,6 +220,7 @@ GitOps phase changes are managed through Git commits that trigger automated depl
   - Certificate issuer configuration
 
 #### 4. Storage Services
+
 - **Location**: [`infrastructure/longhorn/`](../../infrastructure/longhorn/)
 - **Management**: GitOps deployment
 - **Examples**:
@@ -224,6 +230,7 @@ GitOps phase changes are managed through Git commits that trigger automated depl
   - Storage class definitions
 
 #### 5. Application Services
+
 - **Location**: [`apps/`](../../apps/) directory
 - **Management**: GitOps deployment
 - **Examples**:

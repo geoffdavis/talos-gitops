@@ -98,7 +98,6 @@ talosctl logs --nodes 172.29.51.11 machined
   task cluster:emergency-recovery
   ```
 
-
 #### Talos Configuration Issues
 
 **Symptoms**: Configuration validation fails or nodes reject config updates
@@ -127,7 +126,6 @@ talosctl get machineconfigstatus --nodes 172.29.51.11
   task talos:generate-config
   ```
 
-
 ### Kubernetes Cluster Issues
 
 #### Control Plane Problems
@@ -152,7 +150,6 @@ talosctl etcd status --nodes 172.29.51.11,172.29.51.12,172.29.51.13
 - **Etcd corruption**: Restore from backup or bootstrap new cluster
 - **Certificate expiration**: Regenerate cluster certificates
 - **API server resource exhaustion**: Check node resources
-
 
 #### CNI (Cilium) Problems
 
@@ -184,7 +181,6 @@ cilium connectivity test --test-concurrency 1
   ```bash
   kubectl exec -n kube-system -l k8s-app=cilium -- cilium bgp peers
   ```
-
 
 ## GitOps Reconciliation Failures
 
@@ -219,7 +215,6 @@ kubectl logs -n flux-system deploy/notification-controller
 - **Webhook connectivity**: Verify GitHub webhook configuration
 - **Immutable resource conflicts**: Delete and recreate resources
 
-
 #### Git Repository Issues
 
 **Symptoms**: Source repositories fail to sync
@@ -242,7 +237,6 @@ flux reconcile source git flux-system
 - **SSH key rotation**: Update deploy keys in GitHub and cluster
 - **Repository access**: Verify repository permissions
 - **Network connectivity**: Check DNS and firewall rules
-
 
 ### HelmRelease Failures
 
@@ -273,7 +267,6 @@ kubectl logs -n flux-system deploy/helm-controller
   ```bash
   helm delete <release-name> -n <namespace>
   ```
-
 
 ## Network Connectivity Problems
 
@@ -317,7 +310,6 @@ kubectl get svc -A --field-selector spec.type=LoadBalancer
   kubectl delete pod -n kube-system -l io.cilium/app=operator
   ```
 
-
 #### IP Pool Exhaustion
 
 **Symptoms**: New LoadBalancer services remain in "Pending" state
@@ -337,7 +329,6 @@ kubectl get svc -A -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metada
 - **Expand IP pools**: Update pool ranges in `infrastructure/cilium-pools/loadbalancer-pools.yaml`
 - **Reassign services**: Move services to different pools
 - **Clean up unused IPs**: Delete unused LoadBalancer services
-
 
 ### DNS Resolution Issues
 
@@ -363,7 +354,6 @@ nslookup grafana.k8s.home.geoffdavis.com
 - **Annotation issues**: Verify ingress annotations
 - **Rate limiting**: Check for API rate limit errors in logs
 
-
 #### Internal DNS Issues
 
 **Symptoms**: Pod-to-pod DNS resolution fails
@@ -384,7 +374,6 @@ kubectl logs -n kube-system -l k8s-app=kube-dns
 - **CoreDNS configuration**: Check CoreDNS ConfigMap
 - **Network policies**: Verify DNS traffic is allowed
 - **Resource limits**: Ensure CoreDNS has adequate resources
-
 
 ## Authentication System Issues
 
@@ -420,7 +409,6 @@ curl -I https://longhorn.k8s.home.geoffdavis.com/outpost.goauthentik.io/ping
   kubectl exec -n authentik-proxy <redis-pod> -- redis-cli ping
   ```
 
-
 #### Proxy Provider Issues
 
 **Symptoms**: Individual services fail authentication while others work
@@ -443,7 +431,6 @@ kubectl get ingress -A | grep k8s.home.geoffdavis.com
 - **Service URL mismatch**: Update proxy provider configuration in Authentik admin
 - **Port configuration**: Verify service ports match proxy provider settings
 - **Ingress conflicts**: Ensure only external outpost handles authentication domains
-
 
 ### Authentik Server Issues
 
@@ -469,7 +456,6 @@ kubectl get externalsecrets -n authentik
 - **Database credentials**: Verify 1Password integration and secret sync
 - **Database initialization**: Check if database schema is properly initialized
 - **Resource limits**: Ensure database has adequate resources
-
 
 ## Storage Issues
 
@@ -507,7 +493,6 @@ kubectl logs -n longhorn-system -l app=longhorn-manager
   task storage:validate-usb-ssd
   ```
 
-
 #### Backup Failures
 
 **Symptoms**: Longhorn backups fail or are incomplete
@@ -527,7 +512,6 @@ kubectl get secrets -n longhorn-system | grep backup
 - **S3 credentials**: Verify backup destination credentials
 - **Network connectivity**: Check connectivity to backup destination
 - **Storage space**: Ensure adequate space at backup destination
-
 
 ### USB SSD Issues
 
@@ -553,7 +537,6 @@ talosctl logs --nodes 172.29.51.11 kernel | grep -i usb
 - **Physical reconnection**: Unplug and reconnect USB SSDs
 - **Power management**: Check USB power management settings
 - **Disk health**: Run SMART tests on SSDs
-
 
 ## Application Deployment Failures
 
@@ -582,7 +565,6 @@ kubectl exec -n home-automation <postgres-pod> -- psql -c "\l"
 - **Credential sync**: Verify external secrets are syncing properly
 - **Resource limits**: Ensure adequate CPU and memory allocation
 
-
 #### MQTT Broker Issues
 
 **Symptoms**: IoT devices cannot connect or Home Assistant shows MQTT errors
@@ -606,7 +588,6 @@ kubectl get configmap -n home-automation mosquitto-config -o yaml
 - **Port binding conflicts**: Simplify listener configuration
 - **Security context**: Ensure proper Pod Security policies
 - **Network policies**: Verify MQTT traffic is allowed
-
 
 ### Monitoring Stack Issues
 
@@ -632,7 +613,6 @@ kubectl logs -n monitoring -l app.kubernetes.io/name=prometheus
 - **Configuration validation**: Check Prometheus configuration syntax
 - **Resource limits**: Increase memory limits for large configurations
 - **Storage issues**: Verify persistent storage is available
-
 
 ## Emergency Recovery Procedures
 
