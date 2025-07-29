@@ -10,5 +10,29 @@ resources:
   - dashboard-frontend-config.yaml
   - kong-token-injection-job.yaml
 
-patchesStrategicMerge:
-  - kong-service-patch.yaml
+patches:
+  - target:
+      group: ""
+      version: v1
+      kind: Service
+      name: kubernetes-dashboard-kong-proxy
+      namespace: kubernetes-dashboard
+    patch: |-
+      - op: add
+        path: /metadata/labels/authentik.io~1proxy
+        value: enabled
+      - op: add
+        path: /metadata/annotations/authentik.io~1external-host
+        value: dashboard.k8s.home.geoffdavis.com
+      - op: add
+        path: /metadata/annotations/authentik.io~1service-name
+        value: Kubernetes Dashboard
+      - op: add
+        path: /metadata/annotations/authentik.io~1description
+        value: Kubernetes cluster management dashboard
+      - op: add
+        path: /metadata/annotations/authentik.io~1publisher
+        value: Kubernetes
+      - op: add
+        path: /metadata/annotations/authentik.io~1slug
+        value: dashboard
