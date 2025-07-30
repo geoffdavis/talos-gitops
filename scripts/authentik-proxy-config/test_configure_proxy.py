@@ -14,12 +14,8 @@ from unittest.mock import MagicMock, Mock, patch
 from urllib.error import HTTPError
 
 # Import the module under test
-from configure_proxy import (
-    AuthentikAPIError,
-    AuthentikConfig,
-    AuthentikProxyConfigurator,
-    ServiceConfig,
-)
+from configure_proxy import (AuthentikAPIError, AuthentikConfig,
+                             AuthentikProxyConfigurator, ServiceConfig)
 
 
 class TestServiceConfig(unittest.TestCase):

@@ -30,11 +30,11 @@ This guide provides systematic troubleshooting procedures for all major componen
    ```bash
    # Overall cluster status
    task cluster:status
-   
+
    # Node health
    kubectl get nodes -o wide
    kubectl top nodes
-   
+
    # Critical pods
    kubectl get pods -A | grep -v Running | grep -v Completed
    ```
@@ -44,10 +44,10 @@ This guide provides systematic troubleshooting procedures for all major componen
    ```bash
    # Recent Git commits
    git log --oneline -10
-   
+
    # Flux reconciliation status
    flux get kustomizations
-   
+
    # Recent cluster events
    kubectl get events --sort-by='.lastTimestamp' | tail -20
    ```

@@ -94,7 +94,7 @@ machine:
 cluster:
   network:
     cni:
-      name: none  # Cilium deployed separately
+      name: none # Cilium deployed separately
     podSubnets:
       - 10.244.0.0/16
       - fd47:25e1:2f96:51:2000::/64
@@ -110,9 +110,9 @@ cluster:
 machine:
   network:
     nameservers:
-      - 172.29.51.1    # UDM Pro
-      - 1.1.1.1        # Cloudflare
-      - 2606:4700:4700::1111  # Cloudflare IPv6
+      - 172.29.51.1 # UDM Pro
+      - 1.1.1.1 # Cloudflare
+      - 2606:4700:4700::1111 # Cloudflare IPv6
   time:
     servers:
       - pool.ntp.org
@@ -176,7 +176,7 @@ cilium:
   loadBalancer:
     algorithm: "round_robin"
     mode: "hybrid"
-    acceleration: "disabled"  # Required for Mac mini
+    acceleration: "disabled" # Required for Mac mini
   bgpControlPlane:
     enabled: true
   operator:
@@ -193,7 +193,7 @@ metadata:
   name: bgp-default
 spec:
   cidrs:
-    - cidr: "172.29.52.100/26"  # 172.29.52.100-163
+    - cidr: "172.29.52.100/26" # 172.29.52.100-163
   serviceSelector:
     matchLabels:
       io.cilium/lb-ipam-pool: "bgp-default"
@@ -204,7 +204,7 @@ metadata:
   name: bgp-ingress
 spec:
   cidrs:
-    - cidr: "172.29.52.200/28"  # 172.29.52.200-215
+    - cidr: "172.29.52.200/28" # 172.29.52.200-215
   serviceSelector:
     matchLabels:
       io.cilium/lb-ipam-pool: "bgp-ingress"
@@ -310,9 +310,9 @@ kind: Service
 metadata:
   name: application-service
   labels:
-    io.cilium/lb-ipam-pool: "bgp-default"  # Required for pool selection
+    io.cilium/lb-ipam-pool: "bgp-default" # Required for pool selection
   annotations:
-    io.cilium/lb-ipam-pool: "bgp-default"  # Legacy annotation support
+    io.cilium/lb-ipam-pool: "bgp-default" # Legacy annotation support
 spec:
   type: LoadBalancer
   ports:
@@ -417,11 +417,11 @@ env:
   # Internal communication (outpost to Authentik server)
   - name: AUTHENTIK_HOST
     value: "http://authentik-server.authentik.svc.cluster.local:80"
-  
+
   # External redirects (user browser to Authentik)
   - name: AUTHENTIK_HOST_BROWSER
     value: "https://authentik.k8s.home.geoffdavis.com"
-  
+
   # Redis session storage
   - name: AUTHENTIK_REDIS__HOST
     value: "redis.authentik-proxy.svc.cluster.local"
@@ -455,7 +455,7 @@ spec:
                   kubectl get services -A -l authentik.io/proxy=enabled \
                     -o jsonpath='{range .items[*]}{.metadata.name}.{.metadata.namespace}.svc.cluster.local{"\n"}{end}' \
                     > /tmp/discovered-services.txt
-                  
+
                   # Update ConfigMap with discovered services
                   kubectl create configmap discovered-services \
                     --from-file=/tmp/discovered-services.txt \
@@ -561,7 +561,7 @@ metadata:
 spec:
   instances: 3
   primaryUpdateStrategy: unsupervised
-  
+
   postgresql:
     parameters:
       max_connections: "200"
@@ -576,18 +576,18 @@ spec:
       work_mem: "4MB"
       min_wal_size: "1GB"
       max_wal_size: "4GB"
-  
+
   bootstrap:
     initdb:
       database: appdb
       owner: appuser
       secret:
         name: postgres-credentials
-  
+
   storage:
     size: 10Gi
     storageClass: longhorn-fast
-  
+
   backup:
     retentionPolicy: "30d"
     barmanObjectStore:
@@ -604,10 +604,10 @@ spec:
       data:
         retention: "30d"
         jobs: 2
-  
+
   monitoring:
     enabled: true
-  
+
   resources:
     requests:
       memory: "512Mi"
@@ -642,7 +642,7 @@ spec:
           annotations:
             summary: "Node disk usage is above 90%"
             description: "Node {{ $labels.instance }} disk usage is {{ $value }}%"
-        
+
         - alert: PodMemoryUsage
           expr: (container_memory_working_set_bytes / container_spec_memory_limit_bytes) * 100 > 90
           for: 5m
@@ -651,7 +651,7 @@ spec:
           annotations:
             summary: "Pod memory usage is above 90%"
             description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} memory usage is {{ $value }}%"
-        
+
         - alert: CiliumAgentDown
           expr: up{job="cilium-agent"} == 0
           for: 1m
@@ -783,7 +783,7 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    - to: []  # Allow DNS
+    - to: [] # Allow DNS
       ports:
         - protocol: UDP
           port: 53
@@ -944,12 +944,12 @@ machine:
     net.ipv4.tcp_rmem: "4096 87380 134217728"
     net.ipv4.tcp_wmem: "4096 65536 134217728"
     net.core.netdev_max_backlog: 5000
-    
+
     # File system performance
     vm.dirty_ratio: 15
     vm.dirty_background_ratio: 5
     vm.swappiness: 1
-    
+
     # Container performance
     kernel.pid_max: 4194304
     fs.inotify.max_user_instances: 8192

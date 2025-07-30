@@ -343,17 +343,21 @@ git push origin feature/add-new-app
 
 #### Markdown Standards
 
-```markdown
+````markdown
 # Use ATX-style headers (# ## ###)
+
 # Start with level 1 header for document title
+
 # Use descriptive headers with proper hierarchy
 
 ## Code Blocks
+
 Always specify language for syntax highlighting:
 
 ```bash
 kubectl get pods -A
 ```
+````
 
 ```yaml
 apiVersion: v1
@@ -426,7 +430,7 @@ docs/
    ```bash
    # Create service directory
    mkdir -p infrastructure/new-service
-   
+
    # Add manifests
    vim infrastructure/new-service/namespace.yaml
    vim infrastructure/new-service/helmrelease.yaml
@@ -445,10 +449,10 @@ docs/
    ```bash
    # Validate manifests
    kubectl apply --dry-run=client -k infrastructure/new-service/
-   
+
    # Test kustomization build
    kustomize build infrastructure/new-service/
-   
+
    # Deploy to test environment first
    ```
 

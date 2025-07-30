@@ -38,14 +38,14 @@ Recovery prioritization based on business impact:
 
 ## Recovery Time Objectives
 
-| Scenario | Detection Time | Recovery Time | Data Loss Tolerance |
-|----------|----------------|---------------|-------------------|
-| Single node failure | < 5 minutes | < 15 minutes | None |
-| Complete cluster failure | < 10 minutes | < 60 minutes | < 24 hours |
-| Storage system failure | < 5 minutes | < 30 minutes | < 1 hour |
-| Network failure | < 2 minutes | < 20 minutes | None |
-| Security incident | Immediate | < 2 hours | Varies |
-| Complete site disaster | < 30 minutes | < 4 hours | < 24 hours |
+| Scenario                 | Detection Time | Recovery Time | Data Loss Tolerance |
+| ------------------------ | -------------- | ------------- | ------------------- |
+| Single node failure      | < 5 minutes    | < 15 minutes  | None                |
+| Complete cluster failure | < 10 minutes   | < 60 minutes  | < 24 hours          |
+| Storage system failure   | < 5 minutes    | < 30 minutes  | < 1 hour            |
+| Network failure          | < 2 minutes    | < 20 minutes  | None                |
+| Security incident        | Immediate      | < 2 hours     | Varies              |
+| Complete site disaster   | < 30 minutes   | < 4 hours     | < 24 hours          |
 
 ## Disaster Scenarios
 
@@ -646,12 +646,12 @@ kubectl patch deployment <app> --type='merge' \
 
 ### Escalation Matrix
 
-| Severity | Response Time | Contact Method | Personnel |
-|----------|---------------|----------------|-----------|
-| Critical | Immediate | Phone/SMS | Primary operator |
-| High | 30 minutes | Email/Slack | Primary + Secondary |
-| Medium | 2 hours | Email | Primary operator |
-| Low | Next business day | Email | Any operator |
+| Severity | Response Time     | Contact Method | Personnel           |
+| -------- | ----------------- | -------------- | ------------------- |
+| Critical | Immediate         | Phone/SMS      | Primary operator    |
+| High     | 30 minutes        | Email/Slack    | Primary + Secondary |
+| Medium   | 2 hours           | Email          | Primary operator    |
+| Low      | Next business day | Email          | Any operator        |
 
 ### Emergency Communication
 

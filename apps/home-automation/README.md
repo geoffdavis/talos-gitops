@@ -1,115 +1,270 @@
-# Home Assistant Stack
+# Home Assistant Stack - Home Automation Platform
 
 ## Overview
 
-The Home Assistant stack provides a comprehensive home automation platform deployed on the Talos GitOps cluster. This deployment includes Home Assistant Core, PostgreSQL database, Mosquitto MQTT broker, and Redis cache, all integrated with the cluster's authentication and monitoring systems.
-
-## Quick Access
-
-- **Home Assistant Web Interface**: <https://homeassistant.k8s.home.geoffdavis.com>
-- **Authentication**: Seamless SSO via external Authentik outpost
-- **Namespace**: `home-automation`
+This directory contains the complete Home Assistant stack deployment for the Talos GitOps home-ops cluster. The stack provides a comprehensive home automation platform with database backend, MQTT communication, and seamless SSO integration.
 
 ## Architecture
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    Home Assistant Stack                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌──────────────┐ │
-│  │  Home Assistant │    │   PostgreSQL    │    │  Mosquitto   │ │
-│  │    (Core)       │◄──►│   (Database)    │    │   (MQTT)     │ │
-│  │   Port: 8123    │    │   Port: 5432    │    │  Port: 1883  │ │
-│  └─────────────────┘    └─────────────────┘    └──────────────┘ │
-│           │                       │                      │      │
-│           │              ┌─────────────────┐             │      │
-│           └─────────────►│     Redis       │◄────────────┘      │
-│                          │    (Cache)      │                    │
-│                          │   Port: 6379    │                    │
-│                          └─────────────────┘                    │
-│                                   │                             │
-│                          ┌─────────────────┐                    │
-│                          │  Matter Server  │                    │
-│                          │ (Thread/Matter) │                    │
-│                          │   Port: 5580    │                    │
-│                          └─────────────────┘                    │
-│                                   │                             │
-│                          ┌─────────────────┐                    │
-│                          │ Matter/Thread   │                    │
-│                          │    Devices      │                    │
-│                          └─────────────────┘                    │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+### Current Production Stack
 
-## Components
+- **Home Assistant Core v2025.7**: Main automation platform with web interface
+- **PostgreSQL Database**: CloudNativePG cluster for persistent storage with automatic certificate management
+- **Mosquitto MQTT**: IoT device communication broker with resolved port binding conflicts
+- **Redis Cache**: Session storage and performance optimization
+- **Authentication Integration**: Full SSO via external Authentik outpost at https://homeassistant.k8s.home.geoffdavis.com
 
-- **Home Assistant Core (v2025.7)**: Main home automation platform and web interface
-- **PostgreSQL (v16.4)**: Persistent storage with CloudNativePG operator
-- **Mosquitto MQTT (v2.0.18)**: IoT device communication broker
-- **Redis**: Session storage and performance caching
-- **Matter Server (v8.0.0)**: Thread/Matter device support and commissioning
+### Configuration Management Evolution
 
-## Quick Commands
+**Previous Approach (Static ConfigMap)**:
+
+- Used static ConfigMap that overrode `configuration.yaml`
+- Prevented UI-based configuration changes
+- Not compatible with modern Home Assistant workflows
+
+**New Approach (User Data Volume)**:
+
+- Minimal bootstrap configuration for infrastructure settings only
+- Full user control over configuration through Home Assistant UI
+- Persistent configuration changes that survive pod restarts
+- Multiple methods for advanced configuration editing
+
+## Migration to User Data Volume Configuration
+
+### Migration Status
+
+🚧 **READY FOR IMPLEMENTATION** - Complete migration plan and documentation available
+
+### Key Benefits
+
+- **UI-First Configuration**: Configure Home Assistant through the web interface
+- **Persistent Changes**: Configuration changes survive pod restarts and updates
+- **GitOps Compatibility**: Essential infrastructure settings remain version-controlled
+- **Flexibility**: Multiple methods for advanced configuration editing when needed
+- **Backup Integration**: Configuration included in existing Longhorn backup strategy
+
+### Implementation Documents
+
+1. **[HOME_ASSISTANT_CONFIG_MIGRATION.md](./HOME_ASSISTANT_CONFIG_MIGRATION.md)**
+   - Complete migration plan with all implementation files
+   - Step-by-step migration process
+   - Rollback procedures and safety measures
+   - Technical implementation details
+
+2. **[CONFIGURATION_MANAGEMENT_GUIDE.md](./CONFIGURATION_MANAGEMENT_GUIDE.md)**
+   - Comprehensive guide for managing configuration post-migration
+   - Multiple access methods for different user preferences
+   - Common configuration tasks and examples
+   - Security considerations and best practices
+
+3. **[HOME_ASSISTANT_OPERATIONAL_PROCEDURES.md](./HOME_ASSISTANT_OPERATIONAL_PROCEDURES.md)**
+   - Detailed operational procedures for migration execution
+   - Pre-migration checklists and verification steps
+   - Post-migration maintenance and monitoring procedures
+   - Troubleshooting guide for common issues
+
+## Quick Start - Migration Implementation
+
+### Prerequisites
+
+- Kubernetes cluster with Longhorn storage operational
+- PostgreSQL, MQTT, and Redis services running
+- Current Home Assistant deployment healthy
+- Backup systems operational
+
+### Migration Steps
+
+1. **Backup Current Configuration**
+
+   ```bash
+   kubectl exec -n home-automation deployment/home-assistant -- tar -czf /tmp/ha-backup.tar.gz -C /config .
+   kubectl cp home-automation/$(kubectl get pod -n home-automation -l app.kubernetes.io/name=home-assistant -o jsonpath='{.items[0].metadata.name}'):/tmp/ha-backup.tar.gz ./ha-backup.tar.gz
+   ```
+
+2. **Apply New Resources**
+
+   ```bash
+   # Create bootstrap ConfigMap and initialization job
+   # (See HOME_ASSISTANT_OPERATIONAL_PROCEDURES.md for complete commands)
+   ```
+
+3. **Update Deployment**
+
+   ```bash
+   # Remove static ConfigMap mount and update deployment
+   # (See migration documentation for detailed steps)
+   ```
+
+4. **Verify and Test**
+   ```bash
+   # Verify deployment health and test functionality
+   # (See verification procedures in operational guide)
+   ```
+
+## Configuration Access Methods
+
+### Method 1: Home Assistant Web Interface (Recommended)
+
+- Navigate to https://homeassistant.k8s.home.geoffdavis.com
+- Use Configuration → Settings for most options
+- Perfect for integrations, automations, and user preferences
+
+### Method 2: Direct Container Access (Advanced)
 
 ```bash
-# Check stack status
-kubectl get pods -n home-automation
-
-# View Home Assistant logs
-kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant
-
-# View Matter Server logs
-kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
-
-# Access Home Assistant shell
-kubectl exec -it -n home-automation deployment/home-assistant -- bash
-
-# Restart Home Assistant
-kubectl rollout restart deployment home-assistant -n home-automation
-
-# Check database status
-kubectl get cluster homeassistant-postgresql -n home-automation
-
-# Check Matter Server status
-kubectl get pods -n home-automation -l app.kubernetes.io/name=matter-server
+kubectl exec -it -n home-automation deployment/home-assistant -- /bin/bash
+nano /config/configuration.yaml
 ```
 
-## Key Files
+### Method 3: File Manager Pod (Extended Editing)
 
-- **Main Configuration**: [`home-assistant/configmap.yaml`](home-assistant/configmap.yaml)
-- **Deployment**: [`home-assistant/deployment.yaml`](home-assistant/deployment.yaml)
-- **Secrets**: [`home-assistant/external-secret.yaml`](home-assistant/external-secret.yaml)
-- **Database**: [`postgresql/cluster.yaml`](postgresql/cluster.yaml)
-- **MQTT Broker**: [`mosquitto/deployment.yaml`](mosquitto/deployment.yaml)
-- **Matter Server**: [`matter-server/helmrelease.yaml`](matter-server/helmrelease.yaml)
-- **Matter Documentation**: [`matter-server/README.md`](matter-server/README.md)
-- **Backup Strategy**: [`BACKUP_STRATEGY.md`](BACKUP_STRATEGY.md)
+```bash
+# Deploy file manager with web interface
+# (See CONFIGURATION_MANAGEMENT_GUIDE.md for setup)
+```
 
-## 📖 Complete Documentation
+### Method 4: VS Code Remote Development
 
-**For comprehensive documentation including architecture details, configuration management, operational procedures, security considerations, and troubleshooting guides, see:**
+- Use VS Code with Remote-Containers extension
+- Professional development environment with syntax highlighting
 
-### [**📋 HOME_ASSISTANT_DEPLOYMENT.md**](../../docs/HOME_ASSISTANT_DEPLOYMENT.md)
+## Current Deployment Structure
 
-The complete documentation covers:
+```
+apps/home-automation/
+├── README.md                                    # This file
+├── HOME_ASSISTANT_CONFIG_MIGRATION.md          # Migration implementation guide
+├── CONFIGURATION_MANAGEMENT_GUIDE.md           # Post-migration configuration guide
+├── HOME_ASSISTANT_OPERATIONAL_PROCEDURES.md    # Operational procedures
+├── namespace.yaml                               # Namespace with privileged security policy
+├── kustomization.yaml                           # Kustomization configuration
+├── home-assistant/
+│   ├── deployment.yaml                          # Home Assistant deployment
+│   ├── service.yaml                             # Service definition
+│   ├── pvc.yaml                                 # Persistent volume claim (10Gi)
+│   ├── configmap.yaml                           # Current static configuration (to be replaced)
+│   ├── external-secret.yaml                    # 1Password secret integration
+│   └── kustomization.yaml                       # Home Assistant component kustomization
+├── postgresql/                                  # PostgreSQL database cluster
+├── mosquitto/                                   # MQTT broker
+├── redis/                                       # Redis cache
+└── matter-server/                               # Matter/Thread support
+```
 
-- **Architecture & Components**: Detailed component descriptions and connections
-- **Authentication & Access**: External Authentik outpost integration and SSO flow
-- **Configuration Management**: YAML configuration files and update procedures
-- **Operational Procedures**: Deployment, upgrades, monitoring, and health checks
-- **Security Considerations**: 1Password integration, network security, and TLS encryption
-- **Development & Customization**: Adding custom integrations and scaling considerations
-- **Troubleshooting**: Common issues and resolution procedures
+## Post-Migration Structure
 
-## Support Resources
+```
+apps/home-automation/home-assistant/
+├── deployment.yaml                              # Updated deployment (no ConfigMap mount)
+├── service.yaml                                 # Service definition (unchanged)
+├── pvc.yaml                                     # Persistent volume claim (unchanged)
+├── bootstrap-configmap.yaml                    # Minimal bootstrap configuration
+├── config-init-job.yaml                        # Configuration initialization job
+├── external-secret.yaml                        # 1Password secret integration (unchanged)
+└── kustomization.yaml                           # Updated kustomization
+```
 
-- **Home Assistant Documentation**: <https://www.home-assistant.io/docs/>
-- **CNPG Documentation**: <https://cloudnative-pg.io/documentation/>
-- **Mosquitto Documentation**: <https://mosquitto.org/documentation/>
-- **Cluster Documentation**: [../../docs/](../../docs/)
+## Security Considerations
 
----
+### Current Security Context
 
-_This README provides a quick overview. For detailed information, configuration procedures, and operational guidance, refer to the [complete documentation](../../docs/HOME_ASSISTANT_DEPLOYMENT.md)._
+- **Namespace**: `pod-security.kubernetes.io/enforce: privileged` (required for s6-overlay)
+- **Container Security**: Privileged mode with specific capabilities for Home Assistant init system
+- **File Permissions**: Configuration owned by user 1000 (Home Assistant user)
+- **Network Security**: Protected by external Authentik outpost with proper proxy headers
+
+### Secret Management
+
+- Database credentials managed via 1Password Connect
+- MQTT credentials stored in Kubernetes secrets
+- Location data (latitude/longitude) stored securely
+- No secrets stored in configuration files
+
+## Backup and Recovery
+
+### Automatic Backups
+
+- **Longhorn Integration**: Configuration directory included in regular volume snapshots
+- **Database Backups**: PostgreSQL cluster has automated backup strategy
+- **Backup Labels**: PVC labeled for critical backup tier
+
+### Manual Backup Procedures
+
+```bash
+# Create configuration backup
+kubectl exec -n home-automation deployment/home-assistant -- tar -czf /tmp/config-backup.tar.gz -C /config .
+kubectl cp home-automation/$(kubectl get pod -n home-automation -l app.kubernetes.io/name=home-assistant -o jsonpath='{.items[0].metadata.name}'):/tmp/config-backup.tar.gz ./config-backup.tar.gz
+```
+
+### Recovery Procedures
+
+- Full recovery procedures documented in operational guide
+- Rollback procedures available if migration issues occur
+- Database recovery handled by PostgreSQL cluster operator
+
+## Monitoring and Observability
+
+### Health Checks
+
+- **Liveness Probe**: HTTP check on port 8123
+- **Readiness Probe**: Ensures service is ready to accept traffic
+- **Startup Probe**: Extended startup time for Home Assistant initialization
+
+### Metrics Integration
+
+- Home Assistant metrics available via Prometheus integration
+- Grafana dashboards for system health monitoring
+- Alerts configured for critical failures
+
+### Log Management
+
+- Structured logging with configurable levels
+- Integration with cluster logging infrastructure
+- Debug logging available for troubleshooting
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Configuration Not Loading**: Check file permissions and YAML syntax
+2. **Database Connection Issues**: Verify PostgreSQL cluster status and credentials
+3. **MQTT Integration Problems**: Check Mosquitto broker connectivity
+4. **Authentication Failures**: Verify external Authentik outpost configuration
+
+### Diagnostic Commands
+
+```bash
+# Check deployment status
+kubectl get pods -n home-automation -l app.kubernetes.io/name=home-assistant
+
+# View logs
+kubectl logs -n home-automation deployment/home-assistant --tail=50
+
+# Validate configuration
+kubectl exec -n home-automation deployment/home-assistant -- python -m homeassistant --script check_config --config /config
+```
+
+## Support and Documentation
+
+### Internal Documentation
+
+- Complete migration and operational procedures included
+- Configuration management guide for different user scenarios
+- Troubleshooting procedures for common issues
+
+### External Resources
+
+- [Home Assistant Documentation](https://www.home-assistant.io/docs/)
+- [Home Assistant Community](https://community.home-assistant.io/)
+- [CloudNativePG Documentation](https://cloudnative-pg.io/documentation/)
+
+## Next Steps
+
+1. **Review Migration Documentation**: Read through all migration documents
+2. **Plan Migration Window**: Schedule migration during low-usage period
+3. **Execute Migration**: Follow operational procedures step-by-step
+4. **Validate Functionality**: Test all integrations and configurations
+5. **Update GitOps Repository**: Commit changes to version control
+6. **Monitor and Maintain**: Follow ongoing maintenance procedures
+
+This migration enables modern Home Assistant configuration management while maintaining the infrastructure-level control that GitOps provides. The result is a flexible, maintainable, and user-friendly home automation platform.

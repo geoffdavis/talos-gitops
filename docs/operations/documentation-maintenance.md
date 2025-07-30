@@ -27,13 +27,13 @@ This document outlines procedures for maintaining high-quality, current document
 
 ### Documentation Types
 
-| Type | Purpose | Update Frequency | Responsibility |
-|------|---------|------------------|----------------|
-| **Architecture** | System design and decisions | Quarterly | Lead Architect |
-| **Operations** | Procedures and troubleshooting | Monthly | Operations Team |
-| **Reference** | Technical specifications | As needed | Subject Matter Experts |
-| **Getting Started** | Onboarding guides | Quarterly | Documentation Maintainer |
-| **Components** | Service-specific guides | Bi-monthly | Service Owners |
+| Type                | Purpose                        | Update Frequency | Responsibility           |
+| ------------------- | ------------------------------ | ---------------- | ------------------------ |
+| **Architecture**    | System design and decisions    | Quarterly        | Lead Architect           |
+| **Operations**      | Procedures and troubleshooting | Monthly          | Operations Team          |
+| **Reference**       | Technical specifications       | As needed        | Subject Matter Experts   |
+| **Getting Started** | Onboarding guides              | Quarterly        | Documentation Maintainer |
+| **Components**      | Service-specific guides        | Bi-monthly       | Service Owners           |
 
 ## Maintenance Schedule
 
@@ -198,8 +198,9 @@ find docs/ -name "*.md" -exec grep -l "version-number" {} \;
 
 #### Technical Accuracy
 
-```markdown
+````markdown
 # Good Example
+
 ## Restarting Cilium Pods
 
 To restart Cilium pods after configuration changes:
@@ -214,6 +215,7 @@ kubectl wait --for=condition=Ready pods -n kube-system -l k8s-app=cilium --timeo
 # Verify Cilium status
 cilium status
 ```
+````
 
 **Note**: This will briefly interrupt network connectivity. Plan accordingly.
 
@@ -297,16 +299,16 @@ repos:
     rev: v0.37.0
     hooks:
       - id: markdownlint
-        args: ['--config', '.markdownlint.yaml']
-  
+        args: ["--config", ".markdownlint.yaml"]
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
       - id: check-yaml
       - id: check-merge-conflict
       - id: trailing-whitespace
-        args: ['--markdown-linebreak-ext=md']
-  
+        args: ["--markdown-linebreak-ext=md"]
+
   - repo: https://github.com/prettier/prettier
     rev: v3.0.3
     hooks:
@@ -334,24 +336,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-      
+
       - name: Install dependencies
         run: |
           npm install -g markdownlint-cli
           npm install -g markdown-link-check
-      
+
       - name: Lint Markdown
         run: markdownlint docs/**/*.md
-      
+
       - name: Check Links
         run: |
           find docs/ -name "*.md" -exec markdown-link-check {} \;
-      
+
       - name: Validate YAML frontmatter
         run: |
           find docs/ -name "*.md" -exec bash -c '
@@ -378,12 +380,12 @@ tasks:
       - task test:backup-restore
       - echo "Testing troubleshooting commands..."
       - task test:troubleshooting-commands
-  
+
   validate-links:
     desc: Validate all documentation links
     cmds:
       - find docs/ -name "*.md" -exec markdown-link-check {} \;
-  
+
   lint-docs:
     desc: Lint all documentation
     cmds:
@@ -498,6 +500,7 @@ For external contributors:
 
 ```markdown
 # Contributors section in relevant documents
+
 ## Contributors
 
 This document has been improved by the following contributors:
@@ -532,7 +535,7 @@ Track documentation effectiveness:
 
 ### Quality Metrics
 
-```bash
+````bash
 # Documentation quality dashboard
 echo "Documentation Quality Metrics"
 echo "=============================="
@@ -542,7 +545,7 @@ echo "Average file size: $(find docs/ -name "*.md" -exec wc -l {} \; | awk '{sum
 echo "Files with TODO items: $(grep -l "TODO\|FIXME" docs/**/*.md | wc -l)"
 echo "External links: $(grep -ho 'https\?://[^\s\)]*' docs/**/*.md | wc -l)"
 echo "Code blocks: $(grep -c '```' docs/**/*.md | awk '{sum+=$1} END {print sum}')"
-```
+````
 
 ### Improvement Tracking
 
@@ -559,7 +562,7 @@ echo "Documentation Improvement Initiatives"
 echo "======================================"
 echo "This month's focus areas:"
 echo "- Improved troubleshooting coverage"
-echo "- Better cross-references between documents" 
+echo "- Better cross-references between documents"
 echo "- More comprehensive examples"
 echo "- Video tutorials for complex procedures"
 ```
@@ -612,15 +615,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Update Kubernetes versions
         run: |
           # Fetch latest stable Kubernetes version
           LATEST_K8S=$(curl -s https://api.github.com/repos/kubernetes/kubernetes/releases/latest | jq -r .tag_name)
-          
+
           # Update documentation references
           find docs/ -name "*.md" -exec sed -i "s/v1\.30\.[0-9]/$(echo $LATEST_K8S | sed 's/v//')/g" {} \;
-      
+
       - name: Update tool versions
         run: |
           # Update mise tool versions
@@ -631,7 +634,7 @@ jobs:
               sed -i "s/$name.*$current/$name $latest/g" docs/**/*.md
             fi
           done
-      
+
       - name: Create pull request
         run: |
           git add docs/
@@ -641,14 +644,14 @@ jobs:
 
 #### Content Generation
 
-```bash
+````bash
 # Automated content generation
 # Generate command reference documentation
 generate-command-docs() {
   echo "# Command Reference" > docs/reference/commands.md
   echo "Generated: $(date)" >> docs/reference/commands.md
   echo "" >> docs/reference/commands.md
-  
+
   # Extract task commands
   task --list | while read line; do
     if [[ $line =~ ^[[:space:]]*([^[:space:]]+):[[:space:]]*(.+) ]]; then
@@ -663,27 +666,27 @@ generate-command-docs() {
     fi
   done
 }
-```
+````
 
 ### Maintenance Calendar
 
 #### Monthly Tasks Schedule
 
-| Week | Focus Area | Activities |
-|------|------------|------------|
-| Week 1 | Content Accuracy | Test procedures, validate commands |
-| Week 2 | Link Validation | Check internal and external links |
+| Week   | Focus Area       | Activities                           |
+| ------ | ---------------- | ------------------------------------ |
+| Week 1 | Content Accuracy | Test procedures, validate commands   |
+| Week 2 | Link Validation  | Check internal and external links    |
 | Week 3 | Style and Format | Lint, format, style guide compliance |
 | Week 4 | Structure Review | Organize content, improve navigation |
 
 #### Quarterly Initiatives
 
-| Quarter | Initiative | Goal |
-|---------|------------|------|
-| Q1 | Architecture Documentation | Update system designs and decisions |
-| Q2 | Operations Procedures | Improve troubleshooting and procedures |
-| Q3 | User Experience | Enhance getting started and tutorials |
-| Q4 | Reference Materials | Update technical references and examples |
+| Quarter | Initiative                 | Goal                                     |
+| ------- | -------------------------- | ---------------------------------------- |
+| Q1      | Architecture Documentation | Update system designs and decisions      |
+| Q2      | Operations Procedures      | Improve troubleshooting and procedures   |
+| Q3      | User Experience            | Enhance getting started and tutorials    |
+| Q4      | Reference Materials        | Update technical references and examples |
 
 ## Best Practices
 

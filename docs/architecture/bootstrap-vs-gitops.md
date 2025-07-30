@@ -26,7 +26,7 @@ graph TD
     E --> F[Flux GitOps]
     F --> G[Infrastructure Services]
     G --> H[Applications]
-    
+
     subgraph "Bootstrap Phase"
         A
         B
@@ -35,7 +35,7 @@ graph TD
         E
         F
     end
-    
+
     subgraph "GitOps Phase"
         G
         H
@@ -148,10 +148,10 @@ Bootstrap phase changes are managed via Taskfile commands and direct kubectl/tal
    ```bash
    # Check cluster health
    task cluster:status
-   
+
    # Backup current configuration
    git add -A && git commit -m "Pre-change backup: $(date)"
-   
+
    # Validate proposed changes
    talhelper validate-config  # For Talos changes
    ```
@@ -162,7 +162,7 @@ Bootstrap phase changes are managed via Taskfile commands and direct kubectl/tal
    # Example: Talos configuration update
    task talos:generate-config
    task talos:apply-config
-   
+
    # Example: Cilium configuration update
    task apps:deploy-cilium
    ```
@@ -173,7 +173,7 @@ Bootstrap phase changes are managed via Taskfile commands and direct kubectl/tal
    # Verify cluster health
    kubectl get nodes
    kubectl get pods -n kube-system
-   
+
    # Test critical functions
    kubectl run test-pod --image=busybox --rm -it -- /bin/sh
    ```
@@ -246,10 +246,10 @@ GitOps phase changes are managed through Git commits that trigger automated depl
    ```bash
    # Create feature branch
    git checkout -b feature/update-monitoring-config
-   
+
    # Make changes to manifests
    vim infrastructure/monitoring/helmrelease.yaml
-   
+
    # Validate changes locally
    kubectl apply --dry-run=client -f infrastructure/monitoring/
    kustomize build infrastructure/monitoring/
@@ -260,10 +260,10 @@ GitOps phase changes are managed through Git commits that trigger automated depl
    ```bash
    # Stage changes
    git add infrastructure/monitoring/
-   
+
    # Commit with descriptive message
    git commit -m "monitoring: update Prometheus retention to 30d"
-   
+
    # Push to repository
    git push origin feature/update-monitoring-config
    ```
@@ -273,10 +273,10 @@ GitOps phase changes are managed through Git commits that trigger automated depl
    ```bash
    # Monitor Flux reconciliation
    flux get kustomizations --watch
-   
+
    # Check specific deployment
    flux describe kustomization infrastructure-monitoring
-   
+
    # Verify application status
    kubectl get helmreleases -n monitoring
    ```
@@ -286,7 +286,7 @@ GitOps phase changes are managed through Git commits that trigger automated depl
    ```bash
    # Test functionality
    curl -I https://grafana.k8s.home.geoffdavis.com
-   
+
    # Rollback if needed
    flux suspend kustomization infrastructure-monitoring
    git revert <commit-hash>
@@ -413,12 +413,12 @@ flowchart TD
 
 ### Change Risk Matrix
 
-| Risk Level | Bootstrap Impact | GitOps Impact | Approval Required |
-|------------|------------------|---------------|-------------------|
-| **Low** | Configuration tuning | Application updates | Self-approved |
-| **Medium** | Network configuration | Infrastructure updates | Peer review |
-| **High** | OS-level changes | Security policy changes | Lead approval |
-| **Critical** | Cluster rebuild | Authentication system changes | Team approval |
+| Risk Level   | Bootstrap Impact      | GitOps Impact                 | Approval Required |
+| ------------ | --------------------- | ----------------------------- | ----------------- |
+| **Low**      | Configuration tuning  | Application updates           | Self-approved     |
+| **Medium**   | Network configuration | Infrastructure updates        | Peer review       |
+| **High**     | OS-level changes      | Security policy changes       | Lead approval     |
+| **Critical** | Cluster rebuild       | Authentication system changes | Team approval     |
 
 ### Risk Factors
 

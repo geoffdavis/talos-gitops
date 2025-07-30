@@ -17,21 +17,21 @@ To install `mise` on your system, follow these steps:
 
 1. **Download and Install `mise`**:
 
-    ```bash
-    curl https://mise.jdx.dev/install.sh | sh
-    ```
+   ```bash
+   curl https://mise.jdx.dev/install.sh | sh
+   ```
 
-    This script will install `mise` and add it to your shell's PATH.
+   This script will install `mise` and add it to your shell's PATH.
 
 2. **Configure Shell Integration**: Follow the on-screen instructions provided by the installer to integrate `mise` with your shell (e.g., `~/.zshrc`, `~/.bashrc`). This typically involves adding a line like `eval "$(mise activate)"`.
 
 3. **Verify Installation**:
 
-    ```bash
-    mise --version
-    ```
+   ```bash
+   mise --version
+   ```
 
-    You should see the installed `mise` version.
+   You should see the installed `mise` version.
 
 ## Usage
 
@@ -57,10 +57,10 @@ To add a new tool to the project (e.g., `node`):
 
 1. **Add to `.mise.toml`**: Edit the `.mise.toml` file and add the tool and its desired version.
 
-    ```toml
-    [tools]
-    node = "20.11.0"
-    ```
+   ```toml
+   [tools]
+   node = "20.11.0"
+   ```
 
 2. **Install**: Run `mise install` to install the newly added tool.
 

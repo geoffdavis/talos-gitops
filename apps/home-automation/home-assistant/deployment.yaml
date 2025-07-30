@@ -25,8 +25,7 @@ spec:
         app.kubernetes.io/part-of: home-automation-stack
         app.kubernetes.io/version: "2025.7"
       annotations:
-        # Force pod restart when config changes
-        checksum/config: '{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}'
+        # Configuration now managed via persistent volume
     spec:
       # Security context - Home Assistant needs root for s6-overlay init
       securityContext:
@@ -158,10 +157,6 @@ spec:
           volumeMounts:
             - name: home-assistant-config
               mountPath: /config
-            - name: home-assistant-configuration
-              mountPath: /config/configuration.yaml
-              subPath: configuration.yaml
-              readOnly: true
             - name: tmp
               mountPath: /tmp
 
@@ -200,10 +195,6 @@ spec:
         - name: home-assistant-config
           persistentVolumeClaim:
             claimName: home-assistant-config
-        - name: home-assistant-configuration
-          configMap:
-            name: home-assistant-configuration
-            defaultMode: 0644
         - name: tmp
           emptyDir:
             sizeLimit: 1Gi

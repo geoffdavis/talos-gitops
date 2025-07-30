@@ -42,6 +42,13 @@ junit.xml
 # Backup files
 backups/
 *.backup
+# Migration and operational backup files
+*.tar.gz
+*backup*.yaml
+current-pvc-backup.yaml
+k8s-resources-backup-*.yaml
+migration-backup-*.tar.gz
+pre-migration-backup.tar.gz
 
 # Local development
 .env

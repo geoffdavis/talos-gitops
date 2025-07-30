@@ -49,6 +49,7 @@ repos:
       - id: prettier
         name: 💅 YAML formatting (warning)
         types: [yaml]
+        exclude: ^charts/.*/templates/.*\.yaml$
         verbose: true
         # Allow failure but show warnings
         stages: [manual]
@@ -166,6 +167,7 @@ repos:
       - id: prettier
         name: 📝 Markdown formatting (warning)
         types: [markdown]
+        exclude: ^charts/.*/templates/.*\.md$
         stages: [manual]
 
   # ============================================================================
