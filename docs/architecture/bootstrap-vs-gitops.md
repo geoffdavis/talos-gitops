@@ -294,7 +294,7 @@ GitOps phase changes are managed through Git commits that trigger automated depl
    flux resume kustomization infrastructure-monitoring
    ```
 
-## Emergency Override Procedures
+## GitOps Emergency Override Procedures
 
 Sometimes you need to bypass normal procedures during emergencies.
 

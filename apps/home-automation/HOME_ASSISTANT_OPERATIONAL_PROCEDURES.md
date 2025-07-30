@@ -36,7 +36,7 @@ kubectl cp home-automation/$(kubectl get pod -n home-automation -l app.kubernete
 
 ### Phase 1: Preparation and Backup
 
-**Step 1: Create Comprehensive Backup**
+#### Step 1: Create Comprehensive Backup
 
 ```bash
 # Set backup timestamp
@@ -55,7 +55,7 @@ tar -tzf migration-backup-${BACKUP_TIMESTAMP}.tar.gz | head -10
 echo "Backup created: migration-backup-${BACKUP_TIMESTAMP}.tar.gz"
 ```
 
-**Step 2: Verify System Health**
+#### Step 2: Verify System Health
 
 ```bash
 # Check Home Assistant health
@@ -73,7 +73,7 @@ curl -I https://homeassistant.k8s.home.geoffdavis.com
 
 ### Phase 2: Deploy New Configuration Resources
 
-**Step 1: Create Bootstrap ConfigMap**
+#### Step 1: Create Bootstrap ConfigMap
 
 ```bash
 # Apply the bootstrap configuration
@@ -163,7 +163,7 @@ EOF
 kubectl get configmap home-assistant-bootstrap -n home-automation
 ```
 
-**Step 2: Deploy Configuration Initialization Job**
+#### Step 2: Deploy Configuration Initialization Job
 
 ```bash
 # Apply the initialization job
@@ -275,7 +275,7 @@ kubectl logs -n home-automation -l app.kubernetes.io/component=config-initializa
 
 ### Phase 3: Update Home Assistant Deployment
 
-**Step 1: Scale Down Current Deployment**
+#### Step 1: Scale Down Current Deployment
 
 ```bash
 # Scale down to prevent conflicts during update
@@ -285,7 +285,7 @@ kubectl scale deployment home-assistant -n home-automation --replicas=0
 kubectl wait --for=delete pod -l app.kubernetes.io/name=home-assistant -n home-automation --timeout=120s
 ```
 
-**Step 2: Update Deployment Configuration**
+#### Step 2: Update Deployment Configuration
 
 ```bash
 # Get current deployment
@@ -316,7 +316,7 @@ kubectl rollout status deployment/home-assistant -n home-automation --timeout=30
 
 ### Phase 4: Verification and Testing
 
-**Step 1: Verify Deployment Health**
+#### Step 1: Verify Deployment Health
 
 ```bash
 # Check pod status
@@ -330,7 +330,7 @@ kubectl exec -n home-automation deployment/home-assistant -- ls -la /config/
 kubectl exec -n home-automation deployment/home-assistant -- head -20 /config/configuration.yaml
 ```
 
-**Step 2: Test Functionality**
+#### Step 2: Test Functionality
 
 ```bash
 # Test web interface
@@ -363,7 +363,7 @@ except Exception as e:
 "
 ```
 
-**Step 3: Test Configuration Persistence**
+#### Step 3: Test Configuration Persistence
 
 ```bash
 # Make a test configuration change
@@ -512,7 +512,7 @@ except Exception as e:
 
 ### Common Issues and Solutions
 
-**Issue: Home Assistant won't start after migration**
+#### Issue: Home Assistant won't start after migration
 
 ```bash
 # Check logs for specific errors
@@ -525,7 +525,7 @@ kubectl exec -n home-automation deployment/home-assistant -- python -m homeassis
 kubectl exec -n home-automation deployment/home-assistant -- ls -la /config/
 ```
 
-**Issue: Configuration changes not persisting**
+#### Issue: Configuration changes not persisting
 
 ```bash
 # Verify PVC is properly mounted
@@ -538,7 +538,7 @@ kubectl exec -n home-automation deployment/home-assistant -- ls -la /config/
 kubectl get deployment home-assistant -n home-automation -o yaml | grep -A 10 volumeMounts
 ```
 
-**Issue: Database connection failures**
+#### Issue: Database connection failures
 
 ```bash
 # Check PostgreSQL cluster status

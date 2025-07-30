@@ -8,7 +8,7 @@ The Matter Server testing process validates Thread/Matter device support, commis
 
 ## Testing Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Matter Testing Architecture                  │
 ├─────────────────────────────────────────────────────────────────┤
@@ -173,7 +173,7 @@ kubectl exec -n home-automation -l app.kubernetes.io/name=matter-server -- \
 # Expected: Should list nearby Bluetooth devices
 ```
 
-### Network Connectivity Tests
+### Bluetooth Network Connectivity Tests
 
 #### 1. Host Networking Validation
 

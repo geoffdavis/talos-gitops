@@ -97,9 +97,9 @@ ping 172.29.51.13
 curl -I https://github.com/your-username/talos-gitops
 ```
 
-#### Recovery Procedure
+#### All Nodes Unresponsive Recovery Procedure
 
-**Option A: Soft Recovery (OS Intact)**
+##### Option A: Soft Recovery (OS Intact)
 
 ```bash
 # 1. Attempt node recovery
@@ -127,7 +127,7 @@ task apps:deploy-cilium
 flux get kustomizations
 ```
 
-**Option B: Hard Recovery (OS Damaged)**
+##### Option B: Hard Recovery (OS Damaged)
 
 ```bash
 # 1. Prepare for complete rebuild
@@ -154,7 +154,7 @@ task bootstrap:phased
 - etcd pods crash-looping
 - Cluster certificates invalid
 
-#### Recovery Procedure
+#### etcd Recovery Procedure
 
 ```bash
 # 1. Check etcd cluster health
@@ -200,7 +200,7 @@ talosctl ls /dev/disk/by-id/ --nodes 172.29.51.11,172.29.51.12,172.29.51.13
 
 **Recovery Options**:
 
-**Option 1: Volume Recovery**
+#### Option 1: Volume Recovery
 
 ```bash
 # 1. Check for available replicas
@@ -217,7 +217,7 @@ kubectl patch volume.longhorn.io <volume-name> -n longhorn-system \
   --type='merge' -p='{"spec":{"numberOfReplicas":2}}'
 ```
 
-**Option 2: Snapshot Restore**
+#### Option 2: Snapshot Restore
 
 ```bash
 # 1. List available snapshots
@@ -240,7 +240,7 @@ spec:
       storage: 10Gi
 ```
 
-**Option 3: Backup Restore**
+#### Option 3: Backup Restore
 
 ```bash
 # 1. Check available backups in Longhorn UI

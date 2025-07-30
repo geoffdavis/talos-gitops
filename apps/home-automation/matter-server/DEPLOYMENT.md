@@ -78,7 +78,7 @@ curl -I https://homeassistant.k8s.home.geoffdavis.com
 # Expected: Proper redirect to Authentik authentication
 ```
 
-### Configuration Validation
+### Authenticaation Configuration Validation
 
 #### 1. Helm Repository Access
 
@@ -444,7 +444,7 @@ kubectl rollout restart deployment home-assistant -n home-automation
 
 ## Post-deployment Tasks
 
-### Configuration Validation
+### Rollback Configuration Validation
 
 #### 1. Verify Complete Stack Health
 

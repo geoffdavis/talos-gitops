@@ -15,7 +15,7 @@ Matter is an industry-standard protocol for smart home devices that enables inte
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Matter Server Architecture                   │
 ├─────────────────────────────────────────────────────────────────┤
@@ -75,7 +75,7 @@ securityContext:
     add: ["NET_ADMIN", "NET_RAW", "SYS_ADMIN"]
 ```
 
-### Home Assistant Integration
+### Home Assistant Integration for Configuration
 
 The Matter Server integrates with Home Assistant through the following configuration in [`home-assistant/configmap.yaml`](../home-assistant/configmap.yaml):
 
@@ -227,7 +227,7 @@ EOF
 
 ## Integration
 
-### Home Assistant Integration
+### Home Assistant Integration for Recovery
 
 The Matter Server integrates with Home Assistant through:
 

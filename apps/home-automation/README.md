@@ -12,7 +12,7 @@ This directory contains the complete Home Assistant stack deployment for the Tal
 - **PostgreSQL Database**: CloudNativePG cluster for persistent storage with automatic certificate management
 - **Mosquitto MQTT**: IoT device communication broker with resolved port binding conflicts
 - **Redis Cache**: Session storage and performance optimization
-- **Authentication Integration**: Full SSO via external Authentik outpost at https://homeassistant.k8s.home.geoffdavis.com
+- **Authentication Integration**: Full SSO via external Authentik outpost at <https://homeassistant.k8s.home.geoffdavis.com>
 
 ### Configuration Management Evolution
 
@@ -96,6 +96,7 @@ This directory contains the complete Home Assistant stack deployment for the Tal
    ```
 
 4. **Verify and Test**
+
    ```bash
    # Verify deployment health and test functionality
    # (See verification procedures in operational guide)
@@ -105,7 +106,7 @@ This directory contains the complete Home Assistant stack deployment for the Tal
 
 ### Method 1: Home Assistant Web Interface (Recommended)
 
-- Navigate to https://homeassistant.k8s.home.geoffdavis.com
+- Navigate to <https://homeassistant.k8s.home.geoffdavis.com>
 - Use Configuration → Settings for most options
 - Perfect for integrations, automations, and user preferences
 
@@ -130,7 +131,7 @@ nano /config/configuration.yaml
 
 ## Current Deployment Structure
 
-```
+```text
 apps/home-automation/
 ├── README.md                                    # This file
 ├── HOME_ASSISTANT_CONFIG_MIGRATION.md          # Migration implementation guide
@@ -153,7 +154,7 @@ apps/home-automation/
 
 ## Post-Migration Structure
 
-```
+```text
 apps/home-automation/home-assistant/
 ├── deployment.yaml                              # Updated deployment (no ConfigMap mount)
 ├── service.yaml                                 # Service definition (unchanged)

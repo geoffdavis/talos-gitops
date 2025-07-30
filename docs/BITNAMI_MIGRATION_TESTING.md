@@ -898,7 +898,7 @@ fi
 
 ## Troubleshooting Failed Tests
 
-### Common Issues and Solutions
+### Manual Testing Common Issues and Solutions
 
 #### Image Compatibility Issues
 
@@ -947,7 +947,7 @@ kubectl run bash-test --image=alpine/k8s:1.31.1 --rm -it --restart=Never -- /bin
 kubectl logs -n database -l job-name=database-consistent-backup --tail=100
 ```
 
-### Common Issues and Solutions
+### Image Compatibility Common Issues and Solutions
 
 #### Dashboard Issues
 

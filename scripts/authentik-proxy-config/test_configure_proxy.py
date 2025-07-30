@@ -7,10 +7,9 @@ Version: 1.0.0
 """
 
 import io
-import json
 import logging
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
 # Import the module under test
