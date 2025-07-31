@@ -41,6 +41,7 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-cnpg-operator
+    - name: infrastructure-cnpg-barman-plugin
     - name: infrastructure-longhorn
     - name: infrastructure-onepassword
   retryInterval: 2m0s
