@@ -5,4 +5,4 @@ metadata:
   namespace: cnpg-system
 spec:
   interval: 24h
-  url: https://cloudnative-pg.github.io/barman-cloud-plugin
+  url: https://cloudnative-pg.io/charts/
