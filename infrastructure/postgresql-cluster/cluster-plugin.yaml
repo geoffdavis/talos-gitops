@@ -43,23 +43,19 @@ spec:
       min_wal_size: "1GB"
       max_wal_size: "4GB"
 
-      # Logging configuration
-      log_destination: "stderr"
+      # Logging configuration (log_destination managed by CNPG)
       log_statement: "none"
       log_min_duration_statement: "1000"
       log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
 
-      # Connection and authentication
-      ssl: "on"
-      ssl_cert_file: "/controller/certificates/server.crt"
-      ssl_key_file: "/controller/certificates/server.key"
-      ssl_ca_file: "/controller/certificates/ca.crt"
+      # Connection and authentication (SSL managed by CNPG)
+      # SSL configuration is handled automatically by CNPG
 
       # Replication settings
       max_wal_senders: "10"
       max_replication_slots: "10"
       wal_level: "replica"
-      hot_standby: "on"
+      # hot_standby managed by CNPG
 
       # Archive settings for backup
       archive_mode: "on"
