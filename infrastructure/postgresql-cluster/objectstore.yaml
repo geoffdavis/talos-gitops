@@ -14,11 +14,9 @@ spec:
         name: postgresql-s3-backup-credentials
         key: AWS_SECRET_ACCESS_KEY
     wal:
-      retention: "30d"
       maxParallel: 2
       compression: gzip
     data:
-      retention: "7d"
       immediateCheckpoint: true
       jobs: 2
       compression: gzip

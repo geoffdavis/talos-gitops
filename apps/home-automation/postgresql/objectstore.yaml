@@ -14,11 +14,9 @@ spec:
         name: homeassistant-postgresql-s3-backup
         key: password
     wal:
-      retention: "30d"
       maxParallel: 2
       compression: gzip
     data:
-      retention: "7d"
       immediateCheckpoint: true
       jobs: 2
       compression: gzip
