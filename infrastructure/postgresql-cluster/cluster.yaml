@@ -97,17 +97,6 @@ spec:
       memory: "2Gi"
       cpu: "1000m"
 
-  # Affinity and node selection
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                postgresql: postgresql-cluster
-            topologyKey: kubernetes.io/hostname
-
   nodeMaintenanceWindow:
     inProgress: false
     reusePVC: true
@@ -181,13 +170,3 @@ spec:
   superuserSecret:
     name: postgresql-superuser-credentials
 
-  # Additional labels for Longhorn backup integration
-  metadata:
-    labels:
-      backup-tier: "critical"
-      backup-type: "database"
-      application: "postgresql"
-      backup-group: "database"
-    annotations:
-      backup.longhorn.io/volume-snapshot-class: "longhorn-snapshot-vsc"
-      backup.longhorn.io/recurring-job-group: "database"
