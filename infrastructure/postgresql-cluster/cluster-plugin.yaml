@@ -104,13 +104,6 @@ spec:
     seccompProfile:
       type: RuntimeDefault
 
-  # Container security context
-  containerSecurityContext:
-    allowPrivilegeEscalation: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop:
-        - ALL
 
   # Certificates configuration
   certificates:
