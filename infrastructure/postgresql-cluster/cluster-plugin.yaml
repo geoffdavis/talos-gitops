@@ -82,19 +82,6 @@ spec:
     size: 20Gi
     storageClass: longhorn-ssd
 
-  # Monitoring configuration
-  monitoring:
-    enabled: true
-    podMonitorMetricRelabelings:
-      - sourceLabels: [__name__]
-        regex: "cnpg_.*"
-        targetLabel: __name__
-        replacement: "${1}"
-    podMonitorRelabelings:
-      - sourceLabels: [__meta_kubernetes_pod_name]
-        targetLabel: instance
-        replacement: "${1}"
-
   # Resource limits appropriate for homelab
   resources:
     requests:
@@ -103,17 +90,6 @@ spec:
     limits:
       memory: "2Gi"
       cpu: "1000m"
-
-  # Affinity and node selection
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                postgresql: postgresql-cluster
-            topologyKey: kubernetes.io/hostname
 
   nodeMaintenanceWindow:
     inProgress: false
@@ -136,41 +112,13 @@ spec:
       drop:
         - ALL
 
-  # Connection pooling with PgBouncer
-  connectionPooler:
-    enabled: true
-    instances: 2
-    type: "pgbouncer"
-    pgbouncer:
-      poolMode: "transaction"
-      parameters:
-        max_client_conn: "200"
-        default_pool_size: "25"
-        max_db_connections: "50"
-        max_user_connections: "50"
-        server_reset_query: "DISCARD ALL"
-        server_check_query: "SELECT 1"
-        server_check_delay: "30"
-        application_name_add_host: "1"
-
   # Certificates configuration
   certificates:
-    serverTLSSecret: "postgresql-cluster-server-tls"
-    serverCASecret: "postgresql-cluster-ca"
-    clientCASecret: "postgresql-cluster-ca"
-    replicationTLSSecret: "postgresql-cluster-replication-tls"
+    serverTLSSecret: "postgresql-cluster-server-tls"  # pragma: allowlist secret
+    serverCASecret: "postgresql-cluster-ca"  # pragma: allowlist secret
+    clientCASecret: "postgresql-cluster-ca"  # pragma: allowlist secret
+    replicationTLSSecret: "postgresql-cluster-replication-tls"  # pragma: allowlist secret
 
   # Superuser secret
   superuserSecret:
-    name: postgresql-superuser-credentials
-
-  # Additional labels for Longhorn backup integration
-  metadata:
-    labels:
-      backup-tier: "critical"
-      backup-type: "database"
-      application: "postgresql"
-      backup-group: "database"
-    annotations:
-      backup.longhorn.io/volume-snapshot-class: "longhorn-snapshot-vsc"
-      backup.longhorn.io/recurring-job-group: "database"
+    name: postgresql-superuser-credentials  # pragma: allowlist secret
