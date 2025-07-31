@@ -81,32 +81,25 @@ spec:
       memory: "1Gi"
       cpu: "500m"
 
-  # Backup configuration
-  backup:
-    retentionPolicy: "30d"
-    barmanObjectStore:
-      destinationPath: "s3://longhorn-backup/homeassistant-postgresql"
-      s3Credentials:
-        accessKeyId:
-          name: homeassistant-postgresql-s3-backup
-          key: AWS_ACCESS_KEY_ID
-        secretAccessKey:
-          name: homeassistant-postgresql-s3-backup
-          key: AWS_SECRET_ACCESS_KEY
-      wal:
-        maxParallel: 1
-      data:
-        immediateCheckpoint: true
-        jobs: 1
-      tags:
-        environment: "homelab" # pragma: allowlist secret
-        cluster: "homeassistant-postgresql" # pragma: allowlist secret
-        backup-tier: "important" # pragma: allowlist secret
+  # New Plugin-based Backup Configuration
+  plugins:
+    - name: "barman-cloud"
+      enabled: true
+      isWALArchiver: true
+      parameters:
+        # S3 destination with correct bucket
+        destinationPath: "s3://home-assistant-postgres-backup-home-ops/homeassistant-postgresql"
+
+        # Basic plugin configuration (minimal approach)
+        # Using environment variables for credentials - plugin should read from secret
+        AWS_ACCESS_KEY_ID_SECRET: "homeassistant-postgresql-s3-backup"
+        AWS_SECRET_ACCESS_KEY_SECRET: "homeassistant-postgresql-s3-backup" # pragma: allowlist secret
+        AWS_DEFAULT_REGION: "us-west-2"
 
   # Certificates configuration - CloudNativePG manages TLS automatically
   # No explicit certificate configuration needed
 
   # Superuser secret
-  superuserSecret: # pragma: allowlist secret
+  superuserSecret:
     name: homeassistant-postgresql-superuser
   enableSuperuserAccess: true
