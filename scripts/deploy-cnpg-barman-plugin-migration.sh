@@ -98,9 +98,9 @@ check_prerequisites() {
     
     # Check operator version and status
     local operator_version operator_status
-    if kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cnpg-controller-manager &> /dev/null; then
-        operator_version=$(kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cnpg-controller-manager -o jsonpath='{.items[0].spec.containers[0].image}' | grep -o 'v[0-9.]*' || echo "unknown")
-        operator_status=$(kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cnpg-controller-manager -o jsonpath='{.items[0].status.phase}')
+    if kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg &> /dev/null; then
+        operator_version=$(kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg -o jsonpath='{.items[0].spec.containers[0].image}' | grep -o 'v[0-9.]*' || echo "unknown")
+        operator_status=$(kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg -o jsonpath='{.items[0].status.phase}')
         info "CloudNativePG operator version: $operator_version (status: $operator_status)"
         
         if [[ "$operator_status" != "Running" ]]; then
