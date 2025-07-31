@@ -41,8 +41,51 @@ spec:
     name: flux-system
   dependsOn:
     - name: infrastructure-cnpg-operator
-    # Temporarily commented out due to stuck HelmRelease status
-    # - name: infrastructure-longhorn
+    - name: infrastructure-cnpg-barman-plugin
+    - name: infrastructure-longhorn
+    - name: infrastructure-onepassword
   retryInterval: 2m0s
   wait: true
-  # Health checks will be added when PostgreSQL clusters are deployed
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: postgresql-cluster
+      namespace: postgresql-system
+    - apiVersion: barmancloud.cnpg.io/v1
+      kind: ObjectStore
+      name: postgresql-cluster-backup
+      namespace: postgresql-system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-cnpg-monitoring
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 10m0s
+  path: ./infrastructure/cnpg-monitoring
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-cnpg-operator
+    - name: infrastructure-cnpg-barman-plugin
+    - name: infrastructure-monitoring
+    - name: infrastructure-postgresql-cluster
+  retryInterval: 2m0s
+  wait: true
+  healthChecks:
+    - apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      name: cnpg-barman-plugin
+      namespace: monitoring
+    - apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      name: cnpg-barman-plugin-alerts
+      namespace: monitoring
+    - apiVersion: batch/v1
+      kind: CronJob
+      name: cnpg-health-check
+      namespace: monitoring

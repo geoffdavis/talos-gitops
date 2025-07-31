@@ -1,0 +1,28 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: postgresql-cluster-backup
+  namespace: postgresql-system
+spec:
+  configuration:
+    destinationPath: "s3://longhorn-backup/postgresql-cluster"
+    s3Credentials:
+      accessKeyId:
+        name: postgresql-s3-backup-credentials
+        key: AWS_ACCESS_KEY_ID
+      secretAccessKey:
+        name: postgresql-s3-backup-credentials
+        key: AWS_SECRET_ACCESS_KEY
+    wal:
+      retention: "30d"
+      maxParallel: 2
+      compression: gzip
+    data:
+      retention: "7d"
+      immediateCheckpoint: true
+      jobs: 2
+      compression: gzip
+    tags:
+      environment: "homelab"
+      cluster: "postgresql-cluster"
+      backup-tier: "critical"

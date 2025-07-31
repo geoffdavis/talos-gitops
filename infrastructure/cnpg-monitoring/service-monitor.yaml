@@ -1,0 +1,87 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cnpg-barman-plugin
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-barman-plugin
+    app.kubernetes.io/component: backup-monitoring
+    prometheus: kube-prometheus
+    role: service-monitor
+spec:
+  jobLabel: cnpg-cluster
+  namespaceSelector:
+    matchNames:
+      - home-automation
+      - postgresql-system
+      - cnpg-system
+  selector:
+    matchLabels:
+      cnpg.io/cluster: ""  # Matches all CNPG clusters
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scrapeTimeout: 10s
+      relabelings:
+        # Add cluster name as a label
+        - sourceLabels: [__meta_kubernetes_service_label_cnpg_io_cluster]
+          targetLabel: cnpg_cluster
+        # Add namespace as a label
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        # Add plugin type label
+        - targetLabel: plugin_type
+          replacement: barman-cloud
+        # Add backup tier from labels
+        - sourceLabels: [__meta_kubernetes_service_label_backup_tier]
+          targetLabel: backup_tier
+          regex: (.+)
+        # Add application label
+        - sourceLabels: [__meta_kubernetes_service_label_application]
+          targetLabel: application
+          regex: (.+)
+    # Also scrape WAL archiver metrics on alternate port if available
+    - port: wal-metrics
+      interval: 30s
+      path: /wal-metrics
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_label_cnpg_io_cluster]
+          targetLabel: cnpg_cluster
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - targetLabel: metric_type
+          replacement: wal-archiver
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cnpg-objectstore
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-objectstore
+    app.kubernetes.io/component: backup-storage-monitoring
+    prometheus: kube-prometheus
+    role: service-monitor
+spec:
+  jobLabel: objectstore
+  namespaceSelector:
+    matchNames:
+      - home-automation
+      - postgresql-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: objectstore-controller
+  endpoints:
+    - port: metrics
+      interval: 60s  # Less frequent for storage metrics
+      path: /metrics
+      scrapeTimeout: 15s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_service_label_objectstore_name]
+          targetLabel: objectstore
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - targetLabel: component
+          replacement: objectstore

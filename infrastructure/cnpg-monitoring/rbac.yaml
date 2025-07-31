@@ -1,0 +1,115 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cnpg-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: cnpg-barman-plugin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cnpg-monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: cnpg-barman-plugin
+rules:
+  # CNPG Cluster monitoring
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters", "backups", "scheduledbackups", "poolers"]
+    verbs: ["get", "list", "watch"]
+  
+  # Pod and service monitoring across namespaces
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  
+  # Backup and ObjectStore resources
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["objectstores"]
+    verbs: ["get", "list", "watch"]
+  
+  # Metrics and events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  
+  # PVC monitoring for storage usage
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims", "persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  
+  # Job execution for backup restoration tests
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  
+  # Pod execution for health checks
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cnpg-monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: cnpg-barman-plugin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cnpg-monitoring
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-monitoring
+    namespace: monitoring
+---
+# Additional role for accessing monitoring namespace resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cnpg-monitoring-namespace
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: cnpg-barman-plugin
+rules:
+  # ConfigMap access for scripts and configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  
+  # Secret access for credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  
+  # Service access for Prometheus Pushgateway
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cnpg-monitoring-namespace
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-monitoring
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: cnpg-barman-plugin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cnpg-monitoring-namespace
+subjects:
+  - kind: ServiceAccount
+    name: cnpg-monitoring
+    namespace: monitoring

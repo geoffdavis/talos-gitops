@@ -3,7 +3,8 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - cluster-simple.yaml
+  - objectstore.yaml
+  - cluster-plugin.yaml
   - external-secret-superuser.yaml
   - external-secret-s3-backup.yaml
 

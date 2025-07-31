@@ -1,0 +1,230 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cnpg-barman-plugin-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: cnpg-barman-plugin
+    app.kubernetes.io/component: backup-alerts
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: cnpg-backup.rules
+      interval: 30s
+      rules:
+        # Backup failure alerts
+        - alert: CNPGBackupFailed
+          expr: |
+            increase(cnpg_backup_failed_total[10m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            component: cnpg-backup
+            backup_type: database
+          annotations:
+            summary: "CNPG backup failed for cluster {{ $labels.cnpg_cluster }}"
+            description: "Backup has failed for CNPG cluster {{ $labels.cnpg_cluster }} in namespace {{ $labels.namespace }}. Check backup job logs immediately."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-failure"
+
+        # WAL archiving failures
+        - alert: CNPGWALArchivingFailed
+          expr: |
+            increase(cnpg_wal_archive_failed_total[5m]) > 3
+          for: 2m
+          labels:
+            severity: critical
+            component: cnpg-wal
+            backup_type: wal
+          annotations:
+            summary: "CNPG WAL archiving failing for cluster {{ $labels.cnpg_cluster }}"
+            description: "WAL archiving has failed more than 3 times in 5 minutes for cluster {{ $labels.cnpg_cluster }}. This may lead to data loss if not resolved quickly."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-wal-failure"
+
+        # Backup age warning
+        - alert: CNPGBackupTooOld
+          expr: |
+            (time() - cnpg_backup_last_success_timestamp) > (24 * 3600)
+          for: 30m
+          labels:
+            severity: warning
+            component: cnpg-backup
+            backup_type: database
+          annotations:
+            summary: "CNPG backup is too old for cluster {{ $labels.cnpg_cluster }}"
+            description: "Last successful backup for cluster {{ $labels.cnpg_cluster }} was more than 24 hours ago. Current age: {{ $value | humanizeDuration }}"
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-age"
+
+        # Critical backup age alert
+        - alert: CNPGBackupCriticallyOld
+          expr: |
+            (time() - cnpg_backup_last_success_timestamp) > (72 * 3600)
+          for: 15m
+          labels:
+            severity: critical
+            component: cnpg-backup
+            backup_type: database
+          annotations:
+            summary: "CNPG backup is critically old for cluster {{ $labels.cnpg_cluster }}"
+            description: "Last successful backup for cluster {{ $labels.cnpg_cluster }} was more than 72 hours ago. Immediate attention required."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-critical-age"
+
+        # ObjectStore connection issues
+        - alert: CNPGObjectStoreConnectionFailed
+          expr: |
+            cnpg_objectstore_connection_status == 0
+          for: 5m
+          labels:
+            severity: critical
+            component: cnpg-objectstore
+          annotations:
+            summary: "CNPG ObjectStore connection failed for {{ $labels.objectstore }}"
+            description: "Cannot connect to ObjectStore {{ $labels.objectstore }} in namespace {{ $labels.namespace }}. Check S3 credentials and connectivity."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-objectstore-connection"
+
+        # High backup duration
+        - alert: CNPGBackupHighDuration
+          expr: |
+            cnpg_backup_duration_seconds > (30 * 60)
+          for: 1m
+          labels:
+            severity: warning
+            component: cnpg-backup
+          annotations:
+            summary: "CNPG backup taking too long for cluster {{ $labels.cnpg_cluster }}"
+            description: "Backup for cluster {{ $labels.cnpg_cluster }} has been running for {{ $value | humanizeDuration }}. Normal duration is under 30 minutes."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-duration"
+
+        # Plugin health checks
+        - alert: CNPGBarmanPluginDown
+          expr: |
+            up{job="cnpg-barman-plugin"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: cnpg-plugin
+          annotations:
+            summary: "CNPG Barman plugin is down on {{ $labels.instance }}"
+            description: "Barman plugin is not responding on {{ $labels.instance }}. Backups may be affected."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-plugin-down"
+
+        # WAL files accumulation
+        - alert: CNPGWALFilesAccumulating
+          expr: |
+            cnpg_wal_files_pending > 100
+          for: 10m
+          labels:
+            severity: warning
+            component: cnpg-wal
+          annotations:
+            summary: "WAL files accumulating for cluster {{ $labels.cnpg_cluster }}"
+            description: "{{ $value }} WAL files are pending archival for cluster {{ $labels.cnpg_cluster }}. This may indicate archiving issues."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-wal-accumulation"
+
+        # Backup storage space
+        - alert: CNPGBackupStorageSpaceLow
+          expr: |
+            (cnpg_objectstore_free_bytes / cnpg_objectstore_total_bytes) < 0.1
+          for: 5m
+          labels:
+            severity: warning
+            component: cnpg-objectstore
+          annotations:
+            summary: "Backup storage space low for {{ $labels.objectstore }}"
+            description: "ObjectStore {{ $labels.objectstore }} has less than 10% free space remaining. Consider cleanup or expansion."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-storage-space"
+
+        # Critical storage space
+        - alert: CNPGBackupStorageSpaceCritical
+          expr: |
+            (cnpg_objectstore_free_bytes / cnpg_objectstore_total_bytes) < 0.05
+          for: 1m
+          labels:
+            severity: critical
+            component: cnpg-objectstore
+          annotations:
+            summary: "Backup storage space critically low for {{ $labels.objectstore }}"
+            description: "ObjectStore {{ $labels.objectstore }} has less than 5% free space remaining. Immediate action required."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-storage-critical"
+
+    - name: cnpg-performance.rules
+      interval: 60s
+      rules:
+        # Performance monitoring rules
+        - alert: CNPGBackupThroughputLow
+          expr: |
+            rate(cnpg_backup_bytes_transferred[5m]) < (10 * 1024 * 1024)  # Less than 10MB/s
+          for: 10m
+          labels:
+            severity: warning
+            component: cnpg-backup
+          annotations:
+            summary: "CNPG backup throughput is low for cluster {{ $labels.cnpg_cluster }}"
+            description: "Backup throughput for cluster {{ $labels.cnpg_cluster }} is {{ $value | humanizeBytes }}/s, which is below the expected 10MB/s threshold."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-throughput"
+
+        # Restoration time estimates
+        - record: cnpg:backup_restore_time_estimate_seconds
+          expr: |
+            cnpg_backup_size_bytes / avg_over_time(rate(cnpg_backup_bytes_transferred[5m])[1h:5m])
+
+        # Backup efficiency metrics
+        - record: cnpg:backup_compression_ratio
+          expr: |
+            cnpg_backup_original_size_bytes / cnpg_backup_compressed_size_bytes
+
+        # WAL archiving rate
+        - record: cnpg:wal_archiving_rate_per_hour
+          expr: |
+            rate(cnpg_wal_files_archived_total[1h]) * 3600
+
+    - name: cnpg-sli.rules
+      interval: 30s
+      rules:
+        # SLI: Backup success rate (99% target)
+        - record: cnpg:backup_success_rate_5m
+          expr: |
+            (
+              rate(cnpg_backup_success_total[5m]) /
+              (rate(cnpg_backup_success_total[5m]) + rate(cnpg_backup_failed_total[5m]))
+            ) or on() vector(1)
+
+        # SLI: WAL archiving success rate (99.9% target)
+        - record: cnpg:wal_archiving_success_rate_5m
+          expr: |
+            (
+              rate(cnpg_wal_archive_success_total[5m]) /
+              (rate(cnpg_wal_archive_success_total[5m]) + rate(cnpg_wal_archive_failed_total[5m]))
+            ) or on() vector(1)
+
+        # SLI: Backup availability (should be < 24h since last success)
+        - record: cnpg:backup_availability
+          expr: |
+            (time() - cnpg_backup_last_success_timestamp) < (24 * 3600)
+
+        # SLO violations
+        - alert: CNPGBackupSLOViolation
+          expr: |
+            cnpg:backup_success_rate_5m < 0.99
+          for: 15m
+          labels:
+            severity: warning
+            component: cnpg-slo
+            slo_type: backup_success_rate
+          annotations:
+            summary: "CNPG backup SLO violation for cluster {{ $labels.cnpg_cluster }}"
+            description: "Backup success rate for cluster {{ $labels.cnpg_cluster }} is {{ $value | humanizePercentage }}, below the 99% SLO target."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-slo-violation"
+
+        - alert: CNPGWALArchivingSLOViolation
+          expr: |
+            cnpg:wal_archiving_success_rate_5m < 0.999
+          for: 5m
+          labels:
+            severity: warning
+            component: cnpg-slo
+            slo_type: wal_archiving_success_rate
+          annotations:
+            summary: "CNPG WAL archiving SLO violation for cluster {{ $labels.cnpg_cluster }}"
+            description: "WAL archiving success rate for cluster {{ $labels.cnpg_cluster }} is {{ $value | humanizePercentage }}, below the 99.9% SLO target."
+            runbook_url: "https://github.com/your-org/runbooks/cnpg-wal-slo-violation"

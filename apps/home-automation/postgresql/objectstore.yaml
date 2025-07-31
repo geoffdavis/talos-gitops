@@ -1,0 +1,29 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: homeassistant-postgresql-backup
+  namespace: home-automation
+spec:
+  configuration:
+    destinationPath: "s3://home-assistant-postgres-backup-home-ops/homeassistant-postgresql"
+    s3Credentials:
+      accessKeyId:
+        name: homeassistant-postgresql-s3-backup
+        key: username
+      secretAccessKey:
+        name: homeassistant-postgresql-s3-backup
+        key: password
+    wal:
+      retention: "30d"
+      maxParallel: 2
+      compression: gzip
+    data:
+      retention: "7d"
+      immediateCheckpoint: true
+      jobs: 2
+      compression: gzip
+    tags:
+      environment: "homelab"
+      cluster: "homeassistant-postgresql"
+      backup-tier: "important"
+      application: "homeassistant"

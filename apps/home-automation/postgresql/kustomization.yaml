@@ -8,12 +8,12 @@ metadata:
 
 # PostgreSQL database resources for Home Assistant
 resources:
-  - cluster.yaml
+  - objectstore.yaml
+  - cluster-plugin.yaml
   - database-init-job.yaml
   - external-secret-superuser.yaml
   - external-secret-database.yaml
   - external-secret-s3-backup.yaml
-  - postgresql-backup.yaml
 
 labels:
   - pairs:
