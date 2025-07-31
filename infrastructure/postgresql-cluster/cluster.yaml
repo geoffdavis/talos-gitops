@@ -169,4 +169,3 @@ spec:
   # Superuser secret
   superuserSecret:
     name: postgresql-superuser-credentials
-

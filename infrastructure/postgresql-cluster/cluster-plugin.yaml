@@ -95,15 +95,6 @@ spec:
     inProgress: false
     reusePVC: true
 
-  # Pod security context
-  podSecurityContext:
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-    runAsNonRoot: true
-    seccompProfile:
-      type: RuntimeDefault
-
 
   # Certificates configuration
   certificates:
