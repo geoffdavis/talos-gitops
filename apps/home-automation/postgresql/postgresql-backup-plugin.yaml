@@ -24,6 +24,10 @@ spec:
   # Use plugin method (removes barmanObjectStore method)
   method: plugin
 
+  # Plugin configuration referencing the ObjectStore
+  pluginConfiguration:
+    name: homeassistant-postgresql-backup
+
   # Suspend backup if needed
   suspend: false
 ---
@@ -47,3 +51,7 @@ spec:
 
   # Use plugin method (removes barmanObjectStore method)
   method: plugin
+
+  # Plugin configuration referencing the ObjectStore
+  pluginConfiguration:
+    name: homeassistant-postgresql-backup
