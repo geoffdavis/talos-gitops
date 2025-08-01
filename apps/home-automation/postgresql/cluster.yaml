@@ -87,7 +87,7 @@ spec:
       enabled: true
       isWALArchiver: true
       parameters:
-        objectStoreName: "homeassistant-postgresql-backup"
+        barmanObjectName: "homeassistant-postgresql-backup"
 
   # Certificates configuration - CloudNativePG manages TLS automatically
   # No explicit certificate configuration needed
