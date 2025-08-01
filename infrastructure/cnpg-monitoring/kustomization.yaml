@@ -6,6 +6,8 @@ metadata:
   annotations:
     config.kubernetes.io/local-config: "true"
 
+namespace: cnpg-monitoring
+
 resources:
   - namespace.yaml
   - service-monitor.yaml
@@ -14,19 +16,18 @@ resources:
   - health-check-cronjob.yaml
   - rbac.yaml
 
-commonLabels:
-  app.kubernetes.io/name: cnpg-monitoring
-  app.kubernetes.io/component: monitoring
-  app.kubernetes.io/part-of: cnpg-barman-plugin
-
-# Namespace is set correctly in base files, no patches needed
+labels:
+  - pairs:
+      app.kubernetes.io/name: cnpg-monitoring
+      app.kubernetes.io/component: monitoring
+      app.kubernetes.io/part-of: cnpg-barman-plugin
 
 # Configuration for automated health checks
 configMapGenerator:
   - name: cnpg-health-check-config
     files:
-      - scripts/health-check.sh=../../scripts/cnpg-monitoring/health-check.sh
-      - scripts/backup-restore-test.sh=../../scripts/cnpg-monitoring/backup-restore-test.sh
-      - scripts/performance-monitor.sh=../../scripts/cnpg-monitoring/performance-monitor.sh
+      - scripts/health-check.sh
+      - scripts/backup-restore-test.sh
+      - scripts/performance-monitor.sh
     options:
       disableNameSuffixHash: true
