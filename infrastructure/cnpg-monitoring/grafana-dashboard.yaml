@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cnpg-barman-plugin-dashboard
-  namespace: monitoring
+  namespace: cnpg-monitoring
   labels:
     app.kubernetes.io/name: cnpg-monitoring
     app.kubernetes.io/component: grafana-dashboard

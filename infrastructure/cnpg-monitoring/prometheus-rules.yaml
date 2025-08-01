@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: cnpg-barman-plugin-alerts
-  namespace: monitoring
+  namespace: cnpg-monitoring
   labels:
     app.kubernetes.io/name: cnpg-barman-plugin
     app.kubernetes.io/component: backup-alerts

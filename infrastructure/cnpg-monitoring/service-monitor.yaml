@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: cnpg-barman-plugin
-  namespace: monitoring
+  namespace: cnpg-monitoring
   labels:
     app.kubernetes.io/name: cnpg-barman-plugin
     app.kubernetes.io/component: backup-monitoring
@@ -58,7 +58,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: cnpg-objectstore
-  namespace: monitoring
+  namespace: cnpg-monitoring
   labels:
     app.kubernetes.io/name: cnpg-objectstore
     app.kubernetes.io/component: backup-storage-monitoring
