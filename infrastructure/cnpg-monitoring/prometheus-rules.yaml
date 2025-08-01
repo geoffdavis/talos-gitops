@@ -52,7 +52,7 @@ spec:
             backup_type: database
           annotations:
             summary: "CNPG backup is too old for cluster {{ $labels.cnpg_cluster }}"
-            description: "Last successful backup for cluster {{ $labels.cnpg_cluster }} was more than 24 hours ago. Current age: {{ $value | humanizeDuration }}"
+            description: "Last successful backup for cluster {{ $labels.cnpg_cluster }} was more than 24 hours ago. Current age: {{ $value }} seconds"
             runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-age"
 
         # Critical backup age alert
@@ -92,7 +92,7 @@ spec:
             component: cnpg-backup
           annotations:
             summary: "CNPG backup taking too long for cluster {{ $labels.cnpg_cluster }}"
-            description: "Backup for cluster {{ $labels.cnpg_cluster }} has been running for {{ $value | humanizeDuration }}. Normal duration is under 30 minutes."
+            description: "Backup for cluster {{ $labels.cnpg_cluster }} has been running for {{ $value }} seconds. Normal duration is under 30 minutes."
             runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-duration"
 
         # Plugin health checks
@@ -160,7 +160,7 @@ spec:
             component: cnpg-backup
           annotations:
             summary: "CNPG backup throughput is low for cluster {{ $labels.cnpg_cluster }}"
-            description: "Backup throughput for cluster {{ $labels.cnpg_cluster }} is {{ $value | humanizeBytes }}/s, which is below the expected 10MB/s threshold."
+            description: "Backup throughput for cluster {{ $labels.cnpg_cluster }} is {{ $value }} bytes/s, which is below the expected 10MB/s threshold."
             runbook_url: "https://github.com/your-org/runbooks/cnpg-backup-throughput"
 
         # Restoration time estimates
@@ -213,7 +213,7 @@ spec:
             slo_type: backup_success_rate
           annotations:
             summary: "CNPG backup SLO violation for cluster {{ $labels.cnpg_cluster }}"
-            description: "Backup success rate for cluster {{ $labels.cnpg_cluster }} is {{ $value | humanizePercentage }}, below the 99% SLO target."
+            description: "Backup success rate for cluster {{ $labels.cnpg_cluster }} is {{ $value }}, below the 99% SLO target."
             runbook_url: "https://github.com/your-org/runbooks/cnpg-slo-violation"
 
         - alert: CNPGWALArchivingSLOViolation
@@ -226,5 +226,5 @@ spec:
             slo_type: wal_archiving_success_rate
           annotations:
             summary: "CNPG WAL archiving SLO violation for cluster {{ $labels.cnpg_cluster }}"
-            description: "WAL archiving success rate for cluster {{ $labels.cnpg_cluster }} is {{ $value | humanizePercentage }}, below the 99.9% SLO target."
+            description: "WAL archiving success rate for cluster {{ $labels.cnpg_cluster }} is {{ $value }}, below the 99.9% SLO target."
             runbook_url: "https://github.com/your-org/runbooks/cnpg-wal-slo-violation"
