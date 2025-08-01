@@ -81,25 +81,13 @@ spec:
       memory: "1Gi"
       cpu: "500m"
 
-  # Backup configuration (using working barmanObjectStore until plugins are supported)
-  backup:
-    retentionPolicy: "30d"
-    barmanObjectStore:
-      destinationPath: "s3://home-assistant-postgres-backup-home-ops/homeassistant-postgresql"
-      s3Credentials:
-        accessKeyId:
-          name: homeassistant-postgresql-s3-backup
-          key: username
-        secretAccessKey:
-          name: homeassistant-postgresql-s3-backup
-          key: password
-      wal:
-        retention: "30d"
-        maxParallel: 2
-      data:
-        retention: "7d"
-        immediateCheckpoint: true
-        jobs: 2
+  # Plugin configuration for Barman Cloud backup
+  plugins:
+    - name: "barman-cloud.cloudnative-pg.io"
+      enabled: true
+      isWALArchiver: true
+      parameters:
+        objectStoreName: "homeassistant-postgresql-backup"
 
   # Certificates configuration - CloudNativePG manages TLS automatically
   # No explicit certificate configuration needed
