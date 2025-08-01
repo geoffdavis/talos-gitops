@@ -13,6 +13,7 @@ This is a GitOps-driven Kubernetes cluster running on Talos OS, designed to oper
 - **CNI**: Cilium with BGP peering
 - **GitOps**: Flux v2.4.0
 - **Storage**: Longhorn distributed storage on USB SSDs
+- **Backup**: CNPG Barman Plugin for PostgreSQL backup management
 - **Secrets**: 1Password Connect integration
 
 ## Network Configuration

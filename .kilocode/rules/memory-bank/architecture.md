@@ -47,6 +47,7 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 │   ├── longhorn/               # Distributed storage
 │   ├── onepassword-connect/    # Secret management
 │   ├── postgresql-cluster/     # PostgreSQL database clusters
+│   ├── cnpg-monitoring/        # CNPG backup monitoring system
 │   └── monitoring/             # Observability stack
 ├── apps/                       # Application deployments
 │   ├── dashboard/              # Kubernetes Dashboard
@@ -267,6 +268,7 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 
 - **Home Automation Platform**: **PRODUCTION-READY** - Comprehensive home automation infrastructure with full cluster integration and complete troubleshooting recovery
 - **Database Backend**: PostgreSQL cluster with CloudNativePG operator providing high availability, automated backups, and automatic certificate management
+- **Backup Architecture**: CNPG Barman Plugin v0.5.0 providing plugin-based backup system with S3 ObjectStore integration and comprehensive monitoring
 - **MQTT Communication**: Mosquitto broker for IoT device integration with resolved port binding conflicts and simplified listener configuration
 - **Caching Layer**: Redis instance for session storage and performance optimization
 - **Authentication Integration**: Seamless SSO via external Authentik outpost with proper proxy configuration at <https://homeassistant.k8s.home.geoffdavis.com>
@@ -275,6 +277,15 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Deployment Recovery**: Successfully recovered from complete non-functional state through systematic troubleshooting of CloudNativePG schema validation, 1Password credentials, TLS certificates, security policies, and MQTT configuration
 - **Schema Compatibility**: Resolved CloudNativePG v1.26.1 compatibility issues by removing invalid backup resource fields
 - **Security Configuration**: Updated namespace PodSecurity policy from "restricted" to "privileged" for s6-overlay container init system compatibility
+
+#### CNPG Backup Architecture
+
+- **Plugin System**: CNPG Barman Plugin v0.5.0 provides modern plugin-based backup architecture replacing legacy `barmanObjectStore` configuration
+- **Storage Integration**: S3-compatible ObjectStore backend using MinIO for backup storage with configurable retention policies
+- **Configuration Management**: Plugin-based `externalClusters` and `bootstrap` configurations for backup and restore operations
+- **Monitoring Integration**: Comprehensive monitoring with 15+ Prometheus alerts covering backup health, restoration capabilities, and plugin status
+- **Zero Downtime Operations**: Blue-green deployment strategy enables migrations without service interruption
+- **CloudNativePG Compatibility**: Ensures compatibility with CloudNativePG v1.28.0+ which removes legacy backup configuration options
 
 ### Monitoring Stack Architecture
 
@@ -287,6 +298,14 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Deployment Recovery**: Successfully recovered from complete failure caused by duplicate HelmRelease conflicts and LoadBalancer IPAM dysfunction
 - **Renovate Compatibility**: Resolved major version upgrade (v61.3.2 → v75.15.0) with proper dependency management
 - **Service Selector Fix**: Implemented required service labels for LoadBalancer IPAM pool selection (`io.cilium/lb-ipam-pool: "bgp-default"`)
+
+### CNPG Monitoring Architecture
+
+- **Monitoring System**: [`infrastructure/cnpg-monitoring/`](../infrastructure/cnpg-monitoring/) - Dedicated monitoring namespace for CNPG backup operations
+- **Prometheus Integration**: ServiceMonitor resources for metric collection from CloudNativePG clusters and backup operations
+- **Alert Management**: 15+ Prometheus alerting rules covering backup health, restoration capabilities, and plugin operational status
+- **RBAC Configuration**: Proper service accounts and cluster roles for monitoring access to CNPG resources
+- **GitOps Management**: Full integration with Flux GitOps for monitoring system deployment and configuration management
 
 ## Critical Implementation Paths
 

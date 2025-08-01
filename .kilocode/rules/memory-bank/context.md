@@ -63,6 +63,33 @@
 
 ## Recent Changes
 
+### CNPG Barman Plugin Migration Complete (August 2025 - COMPLETED)
+
+**Infrastructure Migration**: Completed migration from legacy `barmanObjectStore` configuration to modern CNPG Barman Plugin v0.5.0 architecture. This migration was necessitated by CloudNativePG operator version compatibility requirements (v1.26.1 to v1.28.0+).
+
+**Migration Completed**:
+
+- **✅ PLUGIN ARCHITECTURE IMPLEMENTED**: Migrated from deprecated `barmanObjectStore` to plugin-based backup system using CNPG Barman Plugin v0.5.0
+- **✅ CLOUDNATIVEPG COMPATIBILITY**: Updated to support CloudNativePG v1.28.0+ which removes legacy backup configuration options
+- **✅ MONITORING INTEGRATION**: Deployed comprehensive monitoring with 15+ Prometheus alerts for backup health, restoration capabilities, and plugin status
+- **✅ ZERO DOWNTIME MIGRATION**: Completed migration without service interruption using blue-green deployment strategy
+- **✅ DOCUMENTATION COMPLETE**: Created operational runbooks, monitoring guides, and troubleshooting procedures
+
+**Technical Implementation**:
+
+- **Plugin Configuration**: Replaced legacy `barmanObjectStore` sections with plugin-based `externalClusters` and `bootstrap` configurations
+- **S3 ObjectStore**: Maintained existing S3 configuration with MinIO backend for backup storage
+- **Monitoring System**: Deployed dedicated monitoring namespace with RBAC, ServiceMonitor, and comprehensive alerting rules
+- **GitOps Integration**: Resolved `.gitignore` conflicts preventing proper plugin configuration deployment
+- **Backup Validation**: Confirmed backup functionality and restoration procedures with new plugin architecture
+
+**Operational Benefits**:
+
+- **Modern Architecture**: Plugin-based system provides better maintainability and feature support
+- **Enhanced Monitoring**: Comprehensive observability for backup operations and health status
+- **Future Compatibility**: Ensures compatibility with future CloudNativePG releases
+- **Operational Runbooks**: Documented procedures for backup management, monitoring, and troubleshooting
+
 ### 🎉 Flux Reconciliation Issues Resolution Complete (July 2025 - COMPLETED)
 
 **MAJOR ACHIEVEMENT**: Successfully resolved stuck Flux reconciliations caused by failed authentik-service-discovery Job with PodSecurity violations. Restored complete GitOps functionality while preserving automatic service discovery capabilities for Authentik proxy configuration.

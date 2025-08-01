@@ -260,6 +260,192 @@ This task represents a comprehensive recovery of a completely non-functional Hom
 - [ ] SSO authentication working properly
 - [ ] All pods running with healthy status
 
+## CNPG Monitoring and Management
+
+### Monitor CNPG Backup Operations
+
+**Last performed:** Ongoing operational requirement
+**Files to modify:** None (monitoring task)
+
+**Steps:**
+
+1. **Daily Backup Health Checks**:
+   - Check PostgreSQL cluster status: `kubectl get cluster -A`
+   - Monitor backup completion: `kubectl get backup -A`
+   - Verify scheduled backup execution: `kubectl get scheduledbackup -A`
+   - Review CNPG plugin logs: `kubectl logs -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg`
+
+2. **Weekly Monitoring Validation**:
+   - Verify monitoring alerts are functional: Check Prometheus alerts in cnpg-monitoring namespace
+   - Review backup retention compliance: Ensure old backups are properly cleaned up
+   - Check S3 ObjectStore connectivity: Validate backup storage accessibility
+   - Monitor backup performance metrics: Review backup duration and success rates
+
+3. **Monthly Backup Restoration Testing**:
+   - Perform test restoration from recent backup
+   - Validate backup integrity and completeness
+   - Document restoration procedures and timings
+   - Update operational runbooks based on test results
+
+4. **Proactive Issue Detection**:
+   - Monitor for failed backup operations
+   - Check for plugin operational status changes
+   - Verify CNPG monitoring ServiceMonitor functionality
+   - Review resource usage and performance trends
+
+**Important notes:**
+
+- **Plugin Architecture**: CNPG Barman Plugin v0.5.0 provides modern backup management
+- **Monitoring Integration**: 15+ Prometheus alerts provide comprehensive backup health visibility
+- **Storage Integration**: S3-compatible ObjectStore backend with MinIO for backup storage
+- **Operational Runbooks**: Follow documented procedures for backup management tasks
+
+**Monitoring Checklist:**
+
+- [ ] All PostgreSQL clusters healthy and operational
+- [ ] Recent backups completed successfully within scheduled windows
+- [ ] No critical Prometheus alerts for backup operations
+- [ ] S3 ObjectStore storage accessible and functioning
+- [ ] CNPG monitoring components running and collecting metrics
+- [ ] Backup retention policies being enforced properly
+
+### Manage CNPG Barman Plugin System
+
+**Last performed:** August 2025 (plugin migration completed)
+**Files to modify:**
+
+- `apps/home-automation/postgresql/cluster.yaml` - Plugin configuration updates
+- `apps/home-automation/postgresql/objectstore.yaml` - S3 ObjectStore configuration
+- `infrastructure/cnpg-monitoring/` - Monitoring system updates
+
+**Steps:**
+
+1. **Plugin Configuration Management**:
+   - Update plugin-based `externalClusters` configurations as needed
+   - Modify `bootstrap` configurations for restore operations
+   - Maintain S3 ObjectStore connection parameters
+   - Validate plugin compatibility with CloudNativePG operator versions
+
+2. **Backup Policy Updates**:
+   - Adjust backup retention policies in cluster configuration
+   - Update scheduled backup frequency and timing
+   - Configure backup compression and encryption settings
+   - Validate backup policy compliance with organizational requirements
+
+3. **Storage Management**:
+   - Monitor S3 ObjectStore capacity and performance
+   - Update MinIO configuration for backup storage backend
+   - Manage backup storage lifecycle and retention
+   - Plan for storage capacity expansion when needed
+
+4. **Monitoring System Maintenance**:
+   - Update Prometheus alerting rules for backup health monitoring
+   - Maintain ServiceMonitor configurations for metric collection
+   - Review and update RBAC permissions for monitoring access
+   - Deploy monitoring system updates via GitOps
+
+5. **Plugin Version Management**:
+   - Monitor for CNPG Barman Plugin updates and security patches
+   - Plan and execute plugin version upgrades
+   - Test plugin functionality after version updates
+   - Maintain compatibility with CloudNativePG operator versions
+
+**Important notes:**
+
+- **Modern Architecture**: Plugin-based system provides better maintainability than legacy configuration
+- **Zero Downtime**: Use blue-green deployment strategy for configuration changes
+- **GitOps Integration**: All changes deployed via Flux GitOps for consistency
+- **Monitoring Coverage**: Comprehensive alerting covers backup health, restoration capabilities, and plugin status
+
+**Success Criteria:**
+
+- ✅ Plugin configuration properly deployed and functional
+- ✅ Backup operations completing successfully within scheduled windows
+- ✅ S3 ObjectStore storage accessible and performing well
+- ✅ Monitoring alerts providing timely notification of issues
+- ✅ Plugin version compatibility maintained with CloudNativePG operator
+- ✅ Operational procedures documented and accessible
+
+### Troubleshoot CNPG Backup Issues
+
+**Last performed:** As needed for backup failures
+**Files to modify:** Various CNPG configuration files as needed
+
+**Steps:**
+
+1. **Backup Failure Diagnosis**:
+   - Check PostgreSQL cluster status: `kubectl describe cluster <cluster-name> -n <namespace>`
+   - Review backup resource status: `kubectl describe backup <backup-name> -n <namespace>`
+   - Examine CNPG operator logs: `kubectl logs -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg`
+   - Analyze plugin-specific error messages and troubleshooting
+
+2. **Storage Connectivity Issues**:
+   - Verify S3 ObjectStore accessibility: Test MinIO connection from cluster
+   - Check ObjectStore credentials: Validate 1Password secret synchronization
+   - Test network connectivity: Ensure cluster can reach backup storage
+   - Review storage capacity: Check available space for backup operations
+
+3. **Plugin Configuration Problems**:
+   - Validate plugin configuration syntax: Check `externalClusters` and `bootstrap` sections
+   - Verify plugin version compatibility: Ensure CNPG Barman Plugin v0.5.0 compatibility
+   - Review CloudNativePG operator version: Check for version compatibility issues
+   - Test plugin functionality: Perform manual backup operations for validation
+
+4. **Performance and Resource Issues**:
+   - Monitor backup operation performance: Check backup duration and resource usage
+   - Review PostgreSQL cluster resource limits: Ensure adequate resources for backup operations
+   - Analyze storage performance: Check S3 ObjectStore performance metrics
+   - Optimize backup scheduling: Adjust timing to avoid resource conflicts
+
+5. **Monitoring and Alerting Problems**:
+   - Verify Prometheus metrics collection: Check ServiceMonitor configuration
+   - Review alerting rule functionality: Test alert triggering and notification
+   - Validate RBAC permissions: Ensure monitoring has proper access to CNPG resources
+   - Update monitoring configuration: Deploy fixes via GitOps
+
+**Important notes:**
+
+- **Plugin Architecture**: Modern plugin-based system requires different troubleshooting approach than legacy configuration
+- **Storage Dependencies**: S3 ObjectStore connectivity is critical for backup operations
+- **Monitoring Integration**: Use comprehensive Prometheus alerts for proactive issue detection
+- **GitOps Deployment**: All configuration changes should be deployed via Flux for consistency
+
+**Common Issues and Solutions:**
+
+- **Backup timeouts**: Check PostgreSQL cluster resources and storage performance
+- **Plugin configuration errors**: Validate syntax and compatibility with CloudNativePG versions
+- **Storage connectivity**: Verify S3 ObjectStore accessibility and credentials
+- **Monitoring gaps**: Ensure ServiceMonitor and alerting rules are properly configured
+- **Version incompatibility**: Check plugin and operator version compatibility matrix
+
+**Success Criteria:**
+
+- ✅ Backup operations resuming normal successful completion
+- ✅ S3 ObjectStore connectivity restored and functioning
+- ✅ Plugin configuration validated and operational
+- ✅ Monitoring alerts providing accurate backup health status
+- ✅ Resource usage optimized for backup operations
+- ✅ Troubleshooting procedures documented for future reference
+
+**Troubleshooting Commands:**
+
+```bash
+# Check cluster status
+kubectl get cluster -A
+kubectl describe cluster homeassistant-postgresql -n home-automation
+
+# Review backup operations
+kubectl get backup,scheduledbackup -A
+kubectl describe backup <backup-name> -n <namespace>
+
+# Monitor CNPG operator
+kubectl logs -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg
+
+# Check monitoring system
+kubectl get servicemonitor,prometheusrule -n cnpg-monitoring
+kubectl logs -n cnpg-monitoring -l app.kubernetes.io/name=prometheus
+```
+
 ## Cluster Operations
 
 ### Complete Cluster Bootstrap

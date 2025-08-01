@@ -33,6 +33,7 @@
 
 - **Home Assistant v2025.7**: Home automation platform
 - **PostgreSQL v16.4**: Database with CloudNativePG operator
+- **CNPG Barman Plugin v0.5.0**: Modern plugin-based backup system for PostgreSQL clusters
 - **Mosquitto MQTT v2.0.18**: IoT device communication broker
 - **Redis**: Caching and session storage
 
@@ -48,6 +49,7 @@
 - **Grafana**: Visualization and dashboards
 - **AlertManager**: Alert routing and management
 - **Hubble**: Cilium network observability
+- **CNPG Monitoring**: Dedicated monitoring for CloudNativePG backup operations with 15+ Prometheus alerts
 
 ### Identity & Security
 
@@ -252,6 +254,11 @@ kubectl get pods -n home-automation # Stack health
 kubectl logs -n home-automation -l app.kubernetes.io/name=home-assistant # Home Assistant logs
 kubectl get cluster homeassistant-postgresql -n home-automation # Database status
 
+# CNPG backup monitoring
+kubectl get backup,scheduledbackup -A # Backup operations status
+kubectl logs -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg # CNPG operator logs
+kubectl get servicemonitor,prometheusrule -n cnpg-monitoring # Monitoring resources
+
 # Storage diagnostics
 task storage:check-longhorn  # Storage health
 task storage:validate-usb-ssd # USB SSD validation
@@ -326,6 +333,7 @@ task storage:validate-usb-ssd # USB SSD validation
 
 - **Platform**: Home Assistant Core v2025.7 running on Kubernetes with comprehensive troubleshooting recovery completed
 - **Database**: PostgreSQL cluster with CloudNativePG for high availability, automatic certificate management, and schema compatibility fixes
+- **Backup System**: CNPG Barman Plugin v0.5.0 provides modern plugin-based backup architecture with S3 ObjectStore integration
 - **Communication**: Mosquitto MQTT broker for IoT device integration with resolved port binding conflicts and simplified listener configuration
 - **Performance**: Redis cache for session storage and optimization
 - **Authentication**: Seamless SSO integration via external Authentik outpost with complete proxy configuration
@@ -342,10 +350,20 @@ task storage:validate-usb-ssd # USB SSD validation
 ### Home Assistant Troubleshooting Recovery
 
 - **Schema Compatibility**: Resolved CloudNativePG v1.26.1 compatibility issues by removing invalid backup resource fields
+- **Backup Architecture Migration**: Migrated from legacy `barmanObjectStore` to CNPG Barman Plugin v0.5.0 for CloudNativePG v1.28.0+ compatibility
 - **Credential Management**: Implemented optimized 1Password entry structure for Home Assistant stack components
 - **Certificate Management**: Enabled CloudNativePG automatic certificate generation removing manual configuration conflicts
 - **Container Security**: Configured proper security contexts for s6-overlay container init system requirements
 - **MQTT Configuration**: Resolved listener configuration conflicts causing service startup failures
 - **End-to-End Validation**: Confirmed complete stack functionality with SSO authentication via external Authentik outpost
+
+### CNPG Backup and Monitoring Architecture
+
+- **Plugin System**: CNPG Barman Plugin v0.5.0 replaces legacy `barmanObjectStore` configuration for modern backup management
+- **Storage Backend**: S3-compatible ObjectStore with MinIO for backup storage and configurable retention policies
+- **Monitoring Integration**: Comprehensive monitoring namespace with ServiceMonitor resources and Prometheus alerting rules
+- **Alert Coverage**: 15+ Prometheus alerts covering backup health, restoration capabilities, and plugin operational status
+- **GitOps Management**: Full integration with Flux GitOps for monitoring system deployment and configuration management
+- **Zero Downtime Operations**: Blue-green deployment strategy enables configuration changes without service interruption
 
 This technology stack provides a robust, secure, and scalable foundation for home lab operations while demonstrating enterprise-grade Kubernetes practices, GitOps workflows, comprehensive code quality standards, and full home automation capabilities with proven troubleshooting and recovery procedures.
