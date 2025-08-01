@@ -17,7 +17,7 @@ spec:
       - cnpg-system
   selector:
     matchLabels:
-      cnpg.io/cluster: ""  # Matches all CNPG clusters
+      cnpg.io/cluster: "" # Matches all CNPG clusters
   endpoints:
     - port: metrics
       interval: 30s
@@ -75,7 +75,7 @@ spec:
       app.kubernetes.io/name: objectstore-controller
   endpoints:
     - port: metrics
-      interval: 60s  # Less frequent for storage metrics
+      interval: 60s # Less frequent for storage metrics
       path: /metrics
       scrapeTimeout: 15s
       relabelings:

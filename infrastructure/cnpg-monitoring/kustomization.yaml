@@ -19,14 +19,14 @@ commonLabels:
   app.kubernetes.io/component: monitoring
   app.kubernetes.io/part-of: cnpg-barman-plugin
 
-# Patch components to use the monitoring namespace
+# Patch components to use the cnpg-monitoring namespace
 patchesStrategicMerge:
   - |-
     apiVersion: monitoring.coreos.com/v1
     kind: ServiceMonitor
     metadata:
       name: cnpg-barman-plugin
-      namespace: monitoring
+      namespace: cnpg-monitoring
     spec:
       selector:
         matchLabels:
@@ -42,7 +42,7 @@ patchesStrategicMerge:
     kind: ServiceMonitor
     metadata:
       name: cnpg-objectstore
-      namespace: monitoring
+      namespace: cnpg-monitoring
     spec:
       selector:
         matchLabels:
@@ -57,7 +57,7 @@ patchesStrategicMerge:
     kind: PrometheusRule
     metadata:
       name: cnpg-barman-plugin-alerts
-      namespace: monitoring
+      namespace: cnpg-monitoring
       labels:
         prometheus: kube-prometheus
         role: alert-rules
@@ -67,7 +67,7 @@ patchesStrategicMerge:
     kind: ConfigMap
     metadata:
       name: cnpg-barman-plugin-dashboard
-      namespace: monitoring
+      namespace: cnpg-monitoring
       labels:
         grafana_dashboard: "1"
 

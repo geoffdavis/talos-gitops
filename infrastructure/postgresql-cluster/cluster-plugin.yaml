@@ -91,14 +91,13 @@ spec:
     inProgress: false
     reusePVC: true
 
-
   # Certificates configuration
   certificates:
-    serverTLSSecret: "postgresql-cluster-server-tls"  # pragma: allowlist secret
-    serverCASecret: "postgresql-cluster-ca"  # pragma: allowlist secret
-    clientCASecret: "postgresql-cluster-ca"  # pragma: allowlist secret
-    replicationTLSSecret: "postgresql-cluster-replication-tls"  # pragma: allowlist secret
+    serverTLSSecret: "postgresql-cluster-server" # pragma: allowlist secret
+    serverCASecret: "postgresql-cluster-ca" # pragma: allowlist secret
+    clientCASecret: "postgresql-cluster-ca" # pragma: allowlist secret
+    replicationTLSSecret: "postgresql-cluster-replication" # pragma: allowlist secret
 
   # Superuser secret
   superuserSecret:
-    name: postgresql-superuser-credentials  # pragma: allowlist secret
+    name: postgresql-superuser-credentials # pragma: allowlist secret

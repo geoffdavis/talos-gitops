@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: cnpg-health-check
-  namespace: monitoring
+  namespace: cnpg-monitoring
   labels:
     app.kubernetes.io/name: cnpg-health-check
     app.kubernetes.io/component: monitoring
@@ -24,7 +24,7 @@ spec:
         app.kubernetes.io/part-of: cnpg-barman-plugin
     spec:
       backoffLimit: 2
-      activeDeadlineSeconds: 900  # 15 minutes timeout
+      activeDeadlineSeconds: 900 # 15 minutes timeout
       template:
         metadata:
           labels:
@@ -54,16 +54,16 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
-                  
+
                   # Source the health check script from ConfigMap
                   source /scripts/health-check.sh
-                  
+
                   # Set environment variables
                   export PUSHGATEWAY_URL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
                   export NAMESPACES="home-automation,postgresql-system,cnpg-system"
                   export ENABLE_PUSHGATEWAY="true"
                   export LOG_LEVEL="INFO"
-                  
+
                   # Run health checks
                   echo "Starting CNPG Barman Plugin health checks..."
                   main
@@ -84,7 +84,7 @@ spec:
                   memory: 256Mi
               env:
                 - name: KUBECONFIG
-                  value: ""  # Use in-cluster config
+                  value: "" # Use in-cluster config
                 - name: HOME
                   value: /tmp
           volumes:
@@ -102,7 +102,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: cnpg-backup-restore-test
-  namespace: monitoring
+  namespace: cnpg-monitoring
   labels:
     app.kubernetes.io/name: cnpg-backup-restore-test
     app.kubernetes.io/component: monitoring
@@ -123,7 +123,7 @@ spec:
         app.kubernetes.io/part-of: cnpg-barman-plugin
     spec:
       backoffLimit: 1
-      activeDeadlineSeconds: 3600  # 1 hour timeout
+      activeDeadlineSeconds: 3600 # 1 hour timeout
       template:
         metadata:
           labels:
@@ -153,17 +153,17 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
-                  
+
                   # Source the backup restore test script from ConfigMap
                   source /scripts/backup-restore-test.sh
-                  
+
                   # Set environment variables
                   export PUSHGATEWAY_URL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
                   export TEST_NAMESPACE="cnpg-test"
                   export ENABLE_PUSHGATEWAY="true"
                   export LOG_LEVEL="INFO"
                   export TEST_MODE="automated"
-                  
+
                   # Run backup restoration tests
                   echo "Starting CNPG Barman Plugin backup restoration tests..."
                   main
@@ -184,7 +184,7 @@ spec:
                   memory: 512Mi
               env:
                 - name: KUBECONFIG
-                  value: ""  # Use in-cluster config
+                  value: "" # Use in-cluster config
                 - name: HOME
                   value: /tmp
           volumes:
@@ -202,7 +202,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: cnpg-performance-monitor
-  namespace: monitoring
+  namespace: cnpg-monitoring
   labels:
     app.kubernetes.io/name: cnpg-performance-monitor
     app.kubernetes.io/component: monitoring
@@ -223,7 +223,7 @@ spec:
         app.kubernetes.io/part-of: cnpg-barman-plugin
     spec:
       backoffLimit: 1
-      activeDeadlineSeconds: 1800  # 30 minutes timeout
+      activeDeadlineSeconds: 1800 # 30 minutes timeout
       template:
         metadata:
           labels:
@@ -253,17 +253,17 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
-                  
+
                   # Source the performance monitor script from ConfigMap
                   source /scripts/performance-monitor.sh
-                  
+
                   # Set environment variables
                   export PUSHGATEWAY_URL="http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"
                   export PROMETHEUS_URL="http://prometheus-operated.monitoring.svc.cluster.local:9090"
                   export ENABLE_PUSHGATEWAY="true"
                   export LOG_LEVEL="INFO"
                   export ANALYSIS_PERIOD="30d"
-                  
+
                   # Run performance monitoring
                   echo "Starting CNPG Barman Plugin performance monitoring..."
                   main
@@ -284,7 +284,7 @@ spec:
                   memory: 256Mi
               env:
                 - name: KUBECONFIG
-                  value: ""  # Use in-cluster config
+                  value: "" # Use in-cluster config
                 - name: HOME
                   value: /tmp
           volumes:

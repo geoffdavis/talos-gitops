@@ -7,9 +7,11 @@ The CloudNativePG Barman Plugin migration has been fully prepared and is ready f
 ## Migration Components Created
 
 ### 1. Comprehensive Deployment Script
+
 **File:** [`scripts/deploy-cnpg-barman-plugin-migration.sh`](../scripts/deploy-cnpg-barman-plugin-migration.sh)
 
 **Features:**
+
 - ✅ Correct deployment order: Plugin → ObjectStores → Clusters
 - ✅ Prerequisites checking and validation
 - ✅ Comprehensive backup creation
@@ -19,6 +21,7 @@ The CloudNativePG Barman Plugin migration has been fully prepared and is ready f
 - ✅ Dry-run support for testing
 
 **Usage:**
+
 ```bash
 # Check current status
 ./scripts/deploy-cnpg-barman-plugin-migration.sh status
@@ -34,9 +37,11 @@ The CloudNativePG Barman Plugin migration has been fully prepared and is ready f
 ```
 
 ### 2. Backup Functionality Validation Script
+
 **File:** [`scripts/validate-cnpg-backup-functionality.sh`](../scripts/validate-cnpg-backup-functionality.sh)
 
 **Features:**
+
 - ✅ Validates cluster configuration and plugin setup
 - ✅ Tests on-demand backup creation and completion
 - ✅ Validates scheduled backup configuration
@@ -44,6 +49,7 @@ The CloudNativePG Barman Plugin migration has been fully prepared and is ready f
 - ✅ Generates comprehensive validation report
 
 **Usage:**
+
 ```bash
 # Full validation after migration
 ./scripts/validate-cnpg-backup-functionality.sh validate
@@ -58,12 +64,14 @@ The CloudNativePG Barman Plugin migration has been fully prepared and is ready f
 ## Migration Architecture
 
 ### Current Status (Pre-Migration)
+
 ✅ **Plugin Infrastructure:** Ready for deployment via GitOps
 ✅ **ObjectStore Resources:** Created for both clusters
 ✅ **Plugin-based Clusters:** Configured and ready
 ✅ **GitOps Integration:** Proper dependency management configured
 
 ### Deployment Order (Automated by Script)
+
 1. **Prerequisites Check** - Validates cluster connectivity and CNPG operator
 2. **Backup Current State** - Creates comprehensive backup before changes
 3. **Deploy Barman Cloud Plugin** - Via Flux GitOps reconciliation
@@ -75,11 +83,13 @@ The CloudNativePG Barman Plugin migration has been fully prepared and is ready f
 ## Files Cleaned Up
 
 ### Obsolete Files Removed
+
 - ✅ `migration-backups-20250730-120418/` - Old failed migration backup
 - ✅ `migration-backups-20250730-214847/` - Old failed migration backup
 - ✅ `scripts/cnpg-barman-plugin-migration.sh` → `scripts/cnpg-barman-plugin-migration.sh.old` - Incomplete previous script
 
 ### Working Configurations Preserved
+
 - ✅ `apps/home-automation/postgresql/cluster.yaml` - Current working barmanObjectStore config (for rollback)
 - ✅ `infrastructure/postgresql-cluster/cluster.yaml` - Current working barmanObjectStore config (for rollback)
 
@@ -88,12 +98,14 @@ The CloudNativePG Barman Plugin migration has been fully prepared and is ready f
 Based on the latest status check:
 
 ### Home Assistant PostgreSQL Cluster
+
 - **Status:** "Cluster cannot proceed to reconciliation due to an unknown plugin being required"
 - **Archiving:** False
 - **Issue:** Already configured for plugin but plugin not yet deployed
 - **Action Needed:** Deploy plugin first
 
-### Infrastructure PostgreSQL Cluster  
+### Infrastructure PostgreSQL Cluster
+
 - **Status:** "Cluster in healthy state"
 - **Archiving:** True
 - **Current Method:** Still using barmanObjectStore (working)
@@ -102,14 +114,16 @@ Based on the latest status check:
 ## Migration Benefits
 
 ### Technical Improvements
+
 - ✅ **Future Compatibility** - Removes dependency on deprecated barmanObjectStore
 - ✅ **Plugin Architecture** - Modular design for better maintenance
 - ✅ **Enhanced Features** - Access to latest backup improvements
 - ✅ **Separation of Concerns** - ObjectStore resources separate from cluster config
 
 ### Operational Improvements
+
 - ✅ **Automated Deployment** - Complete automation with validation
-- ✅ **Safe Migration** - Comprehensive backup and rollback capability  
+- ✅ **Safe Migration** - Comprehensive backup and rollback capability
 - ✅ **Validation** - End-to-end testing of backup functionality
 - ✅ **Documentation** - Complete operational procedures
 
@@ -118,21 +132,25 @@ Based on the latest status check:
 ### When Cluster Access is Restored
 
 1. **Verify Prerequisites**
+
    ```bash
    ./scripts/deploy-cnpg-barman-plugin-migration.sh status
    ```
 
 2. **Run Dry-Run First**
+
    ```bash
    ./scripts/deploy-cnpg-barman-plugin-migration.sh --dry-run deploy
    ```
 
 3. **Execute Migration**
+
    ```bash
    ./scripts/deploy-cnpg-barman-plugin-migration.sh deploy
    ```
 
 4. **Validate Functionality**
+
    ```bash
    ./scripts/validate-cnpg-backup-functionality.sh validate
    ```
@@ -166,7 +184,8 @@ If issues occur during migration:
 
 ## Success Criteria
 
-### Migration Complete When:
+### Migration Complete When
+
 - ✅ Barman Cloud Plugin deployed and running
 - ✅ ObjectStore resources created and accessible
 - ✅ Both clusters using plugin method successfully
@@ -174,7 +193,8 @@ If issues occur during migration:
 - ✅ Test backups complete successfully
 - ✅ No deprecated barmanObjectStore configuration remaining
 
-### Validation Complete When:
+### Validation Complete When
+
 - ✅ On-demand backups work for both clusters
 - ✅ Scheduled backups configured properly
 - ✅ WAL archiving functioning correctly

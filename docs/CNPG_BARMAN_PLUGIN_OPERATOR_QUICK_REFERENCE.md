@@ -3,6 +3,7 @@
 ## 🚀 Migration Deployment Commands
 
 ### Deploy Migration
+
 ```bash
 # Check current status
 ./scripts/deploy-cnpg-barman-plugin-migration.sh status
@@ -21,6 +22,7 @@
 ```
 
 ### Emergency Rollback
+
 ```bash
 # Rollback migration if issues occur
 ./scripts/deploy-cnpg-barman-plugin-migration.sh rollback
@@ -31,6 +33,7 @@
 ## 📊 Daily Operations Commands
 
 ### Health Checks
+
 ```bash
 # Check all cluster status
 kubectl get clusters -A -o custom-columns="NAME:.metadata.name,NAMESPACE:.metadata.namespace,STATUS:.status.phase,ARCHIVING:.status.conditions[?(@.type=='ContinuousArchiving')].status"
@@ -47,6 +50,7 @@ kubectl get backups -A --sort-by='.status.startedAt' | tail -10
 ```
 
 ### Plugin Health
+
 ```bash
 # Plugin pod status
 kubectl get pods -n cnpg-system
@@ -66,6 +70,7 @@ kubectl describe helmrelease cnpg-barman-plugin -n cnpg-system
 ## 🗄️ Backup Operations
 
 ### Manual Backup Creation
+
 ```bash
 # Home Assistant cluster backup
 kubectl create -f - <<EOF
@@ -95,6 +100,7 @@ EOF
 ```
 
 ### Backup Status Monitoring
+
 ```bash
 # Monitor backup progress
 kubectl get backup <backup-name> -n <namespace> -w
@@ -114,6 +120,7 @@ kubectl get backups -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.met
 ## 🔧 Troubleshooting Commands
 
 ### Cluster Issues
+
 ```bash
 # Detailed cluster status
 kubectl describe cluster homeassistant-postgresql -n home-automation
@@ -129,6 +136,7 @@ kubectl get events -n postgresql-system --sort-by='.lastTimestamp' | tail -20
 ```
 
 ### Plugin Connectivity
+
 ```bash
 # Test S3 connectivity from plugin
 kubectl exec -n cnpg-system deployment/cnpg-barman-plugin -- \
@@ -144,6 +152,7 @@ kubectl get secret postgresql-s3-backup-credentials -n postgresql-system
 ```
 
 ### WAL Archiving Issues
+
 ```bash
 # Check WAL archiving status
 kubectl get clusters -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.namespace}{"\t"}{.status.conditions[?(@.type=="ContinuousArchiving")].status}{"\t"}{.status.conditions[?(@.type=="ContinuousArchiving")].message}{"\n"}{end}'
@@ -162,6 +171,7 @@ kubectl exec -n home-automation homeassistant-postgresql-1 -- \
 ## 🔄 Maintenance Operations
 
 ### Plugin Updates
+
 ```bash
 # Check current plugin version
 kubectl get helmrelease cnpg-barman-plugin -n cnpg-system -o jsonpath='{.spec.chart.spec.version}'
@@ -176,6 +186,7 @@ git push
 ```
 
 ### Configuration Updates
+
 ```bash
 # Reconcile plugin infrastructure
 flux reconcile kustomization infrastructure-cnpg-barman-plugin
@@ -193,6 +204,7 @@ flux get kustomizations | grep -E "(cnpg|postgresql)"
 ## 📈 Monitoring & Metrics
 
 ### Performance Metrics
+
 ```bash
 # Backup duration trends
 kubectl get backups -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.startedAt}{"\t"}{.status.stoppedAt}{"\n"}{end}' | grep -v "null"
@@ -208,6 +220,7 @@ kubectl logs -n home-automation -l cnpg.io/cluster=homeassistant-postgresql | gr
 ```
 
 ### Alerting Checks
+
 ```bash
 # Check backup failures in last 24h
 kubectl get backups -A --field-selector status.phase=failed
@@ -224,6 +237,7 @@ kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cnpg-barman-plugin --f
 ## 🚨 Emergency Procedures
 
 ### Plugin Restart
+
 ```bash
 # Restart plugin deployment
 kubectl rollout restart deployment cnpg-barman-plugin -n cnpg-system
@@ -236,6 +250,7 @@ kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cnpg-barman-plugin
 ```
 
 ### Backup Recovery
+
 ```bash
 # List available backups for recovery
 kubectl get backups -n home-automation --sort-by='.status.startedAt'
@@ -250,13 +265,13 @@ metadata:
 spec:
   instances: 1
   imageName: ghcr.io/cloudnative-pg/postgresql:16.4
-  
+
   plugins:
     - name: "barman-cloud.cloudnative-pg.io"
       isWALArchiver: true
       parameters:
         objectStoreName: "homeassistant-postgresql-backup"
-  
+
   bootstrap:
     recovery:
       source: homeassistant-postgresql
@@ -265,17 +280,18 @@ spec:
       objectStore:
         objectStoreName: "homeassistant-postgresql-backup"
         serverName: "homeassistant-postgresql"
-  
+
   storage:
     size: 10Gi
     storageClass: longhorn-ssd
-  
+
   superuserSecret:
     name: homeassistant-postgresql-superuser
 EOF
 ```
 
 ### Critical Failure Response
+
 ```bash
 # 1. Assess situation
 kubectl get all -n cnpg-system
@@ -295,6 +311,7 @@ kubectl create backup emergency-$(date +%Y%m%d-%H%M%S) --cluster=homeassistant-p
 ## 📋 Common Issues & Solutions
 
 ### Issue: Plugin Not Ready
+
 ```bash
 # Check plugin status
 kubectl describe helmrelease cnpg-barman-plugin -n cnpg-system
@@ -310,6 +327,7 @@ kubectl get events -n cnpg-system --sort-by='.lastTimestamp'
 ```
 
 ### Issue: Backup Failures
+
 ```bash
 # Check backup status
 kubectl describe backup <backup-name> -n <namespace>
@@ -325,6 +343,7 @@ kubectl logs -n cnpg-system -l app.kubernetes.io/name=cnpg-barman-plugin
 ```
 
 ### Issue: WAL Archiving Stopped
+
 ```bash
 # Check archiving status
 kubectl get cluster <cluster-name> -n <namespace> -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")]}'
@@ -343,15 +362,18 @@ kubectl exec -n <namespace> <cluster-pod> -- psql -U postgres -c "SELECT pg_swit
 ## 📚 Key File Locations
 
 ### Configuration Files
+
 - **Plugin**: `infrastructure/cnpg-barman-plugin/`
 - **ObjectStores**: `infrastructure/postgresql-cluster/objectstore.yaml`, `apps/home-automation/postgresql/objectstore.yaml`
 - **Clusters**: `infrastructure/postgresql-cluster/cluster-plugin.yaml`, `apps/home-automation/postgresql/cluster-plugin.yaml`
 
 ### Scripts
+
 - **Migration**: `scripts/deploy-cnpg-barman-plugin-migration.sh`
 - **Validation**: `scripts/validate-cnpg-backup-functionality.sh`
 
 ### Documentation
+
 - **Migration Guide**: `docs/CNPG_BARMAN_PLUGIN_MIGRATION_GUIDE.md`
 - **Disaster Recovery**: `docs/CNPG_BARMAN_PLUGIN_DISASTER_RECOVERY_PROCEDURES.md`
 - **Project Summary**: `docs/CNPG_BARMAN_PLUGIN_MIGRATION_PROJECT_SUMMARY.md`
@@ -361,16 +383,19 @@ kubectl exec -n <namespace> <cluster-pod> -- psql -U postgres -c "SELECT pg_swit
 ## 🆘 Emergency Contacts & Resources
 
 ### Escalation Path
+
 1. **Primary Engineer**: [On-call rotation]
 2. **Database Team Lead**: [Contact info]
 3. **Infrastructure Manager**: [Contact info]
 
 ### External Resources
+
 - **CloudNativePG Docs**: https://cloudnative-pg.io/documentation/
 - **Plugin Documentation**: https://cloudnative-pg.io/plugin-barman-cloud/
 - **GitHub Issues**: https://github.com/cloudnative-pg/cloudnative-pg/issues
 
 ### Internal Resources
+
 - **Monitoring**: Grafana dashboards for CNPG metrics
 - **Logs**: Centralized logging system
 - **Documentation**: Internal wiki/confluence pages

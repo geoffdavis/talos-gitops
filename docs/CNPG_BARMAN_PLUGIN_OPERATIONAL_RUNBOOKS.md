@@ -23,22 +23,24 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 #### Steps:
 
 1. **Check Cluster Health**
+
    ```bash
    # Check all CNPG clusters
    kubectl get clusters -A
-   
+
    # Verify cluster status
    kubectl get clusters homeassistant-postgresql -n home-automation -o yaml | grep phase
    kubectl get clusters postgresql-cluster -n postgresql-system -o yaml | grep phase
    ```
-   
+
    **Expected Output:** `phase: Cluster in healthy state`
 
 2. **Verify Backup Operations**
+
    ```bash
    # Check recent backups
    kubectl get backups -A --sort-by='.metadata.creationTimestamp'
-   
+
    # Verify ObjectStore connectivity
    kubectl get objectstores -A
    ```
@@ -56,6 +58,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    ```
 
 #### Success Criteria:
+
 - [ ] All clusters show "healthy state"
 - [ ] No critical alerts firing
 - [ ] Backup success rate > 99%
@@ -72,6 +75,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 #### Steps:
 
 1. **Performance Review**
+
    ```bash
    # Run performance monitoring
    ./scripts/cnpg-monitoring/performance-monitor.sh historical homeassistant-postgresql home-automation 7d
@@ -79,16 +83,18 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    ```
 
 2. **Backup Integrity Test**
+
    ```bash
    # Run restore test (optional - can be monthly)
    RUN_BACKUP_TEST=true ./scripts/cnpg-monitoring/health-check.sh
    ```
 
 3. **Storage Cleanup**
+
    ```bash
    # Check ObjectStore usage
    kubectl get objectstores -A -o yaml | grep -A 5 retention
-   
+
    # Verify retention policies are being enforced
    ```
 
@@ -108,6 +114,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 #### Steps:
 
 1. **Create Immediate Backup**
+
    ```bash
    # Create backup for Home Assistant cluster
    cat <<EOF | kubectl apply -f -
@@ -124,10 +131,11 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    ```
 
 2. **Monitor Backup Progress**
+
    ```bash
    # Check backup status
    kubectl get backups -n home-automation -w
-   
+
    # Check logs if needed
    kubectl logs -n home-automation -l cnpg.io/cluster=homeassistant-postgresql
    ```
@@ -147,6 +155,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 **When to use:** Disaster recovery, data corruption, point-in-time recovery
 
 #### Prerequisites:
+
 - Source cluster backup information
 - Target recovery time (for PITR)
 - Storage class availability
@@ -155,24 +164,27 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 #### Steps:
 
 1. **Identify Recovery Point**
+
    ```bash
    # List available backups
    kubectl get backups -n SOURCE_NAMESPACE --sort-by='.metadata.creationTimestamp'
-   
+
    # Get backup details
    kubectl describe backup BACKUP_NAME -n SOURCE_NAMESPACE
    ```
 
 2. **Prepare Recovery Environment**
+
    ```bash
    # Ensure ObjectStore access
    kubectl get objectstore OBJECTSTORE_NAME -n SOURCE_NAMESPACE
-   
+
    # Verify secrets are available
    kubectl get secrets -n TARGET_NAMESPACE | grep postgresql
    ```
 
 3. **Create Recovery Cluster**
+
    ```yaml
    apiVersion: postgresql.cnpg.io/v1
    kind: Cluster
@@ -182,13 +194,13 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    spec:
      instances: 1
      imageName: ghcr.io/cloudnative-pg/postgresql:16.4
-     
+
      plugins:
        - name: "barman-cloud.cloudnative-pg.io"
          isWALArchiver: true
          parameters:
            objectStoreName: "OBJECTSTORE_NAME"
-     
+
      bootstrap:
        recovery:
          source: SOURCE_CLUSTER_NAME
@@ -200,29 +212,31 @@ This document provides comprehensive operational runbooks for maintaining CloudN
          objectStore:
            objectStoreName: "OBJECTSTORE_NAME"
            serverName: "SOURCE_CLUSTER_NAME"
-     
+
      storage:
        size: 10Gi
        storageClass: longhorn-ssd
-     
+
      superuserSecret:
        name: postgresql-superuser-credentials
    ```
 
 4. **Monitor Recovery Process**
+
    ```bash
    # Watch cluster status
    kubectl get cluster recovered-cluster-TIMESTAMP -n TARGET_NAMESPACE -w
-   
+
    # Check recovery logs
    kubectl logs -n TARGET_NAMESPACE -l cnpg.io/cluster=recovered-cluster-TIMESTAMP -f
    ```
 
 5. **Verify Data Integrity**
+
    ```bash
    # Connect to recovered cluster
    kubectl exec -it -n TARGET_NAMESPACE recovered-cluster-TIMESTAMP-1 -- psql
-   
+
    # Verify data
    \dt
    SELECT count(*) FROM your_important_table;
@@ -240,13 +254,16 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 **Response Time:** Immediate (< 15 minutes)
 
 **Investigation Steps:**
+
 1. **Check Backup Status**
+
    ```bash
    kubectl get backups -A | grep -i failed
    kubectl describe backup FAILED_BACKUP_NAME -n NAMESPACE
    ```
 
 2. **Verify ObjectStore Connectivity**
+
    ```bash
    kubectl get objectstore -A
    kubectl describe objectstore OBJECTSTORE_NAME -n NAMESPACE
@@ -259,6 +276,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    ```
 
 **Resolution Actions:**
+
 - Verify S3 credentials are valid
 - Check network connectivity to ObjectStore
 - Restart failed backup if transient issue
@@ -272,7 +290,9 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 **Response Time:** 1 hour
 
 **Investigation Steps:**
+
 1. **Check Last Successful Backup**
+
    ```bash
    kubectl get backups -A --sort-by='.status.startedAt' | tail -5
    ```
@@ -283,6 +303,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    ```
 
 **Resolution Actions:**
+
 - Trigger immediate manual backup
 - Review backup scheduling configuration
 - Check for resource constraints preventing backups
@@ -295,11 +316,13 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 **Response Time:** Immediate (< 10 minutes)
 
 **Investigation Steps:**
+
 1. **Check WAL Archiving Status**
+
    ```bash
    # Get primary pod
    kubectl get pods -n NAMESPACE -l role=primary
-   
+
    # Check WAL status
    kubectl exec -n NAMESPACE PRIMARY_POD -- psql -c "SELECT * FROM pg_stat_archiver;"
    ```
@@ -310,6 +333,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    ```
 
 **Resolution Actions:**
+
 - Check ObjectStore connectivity
 - Verify WAL archiving configuration
 - Monitor disk space on PostgreSQL pods
@@ -324,11 +348,13 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 #### Issue: Plugin Not Starting
 
 **Symptoms:**
+
 - Plugin pods in CrashLoopBackOff
 - Backup operations failing
 - Missing metrics
 
 **Diagnosis:**
+
 ```bash
 # Check plugin pods
 kubectl get pods -n cnpg-system -l app=cnpg-barman-plugin
@@ -341,7 +367,9 @@ kubectl get helmrelease cnpg-barman-plugin -n cnpg-system -o yaml
 ```
 
 **Solutions:**
+
 1. **Resource Issues:**
+
    ```bash
    # Increase resource limits
    kubectl patch helmrelease cnpg-barman-plugin -n cnpg-system --type='merge' -p='{
@@ -370,11 +398,13 @@ kubectl get helmrelease cnpg-barman-plugin -n cnpg-system -o yaml
 #### Issue: Slow Backup Performance
 
 **Symptoms:**
+
 - Backup duration > 30 minutes
 - Low backup throughput
 - High resource usage during backups
 
 **Diagnosis:**
+
 ```bash
 # Run performance monitoring
 ./scripts/cnpg-monitoring/performance-monitor.sh benchmark CLUSTER_NAME NAMESPACE 3600
@@ -385,17 +415,20 @@ kubectl describe nodes
 ```
 
 **Solutions:**
+
 1. **Increase Parallelism:**
+
    ```yaml
    # Update ObjectStore configuration
    spec:
      configuration:
        data:
-         jobs: 4  # Increase from 2
+         jobs: 4 # Increase from 2
          compression: gzip
    ```
 
 2. **Optimize Storage:**
+
    ```bash
    # Check storage performance
    kubectl get storageclass
@@ -414,11 +447,13 @@ kubectl describe nodes
 #### Issue: ObjectStore Connection Failures
 
 **Symptoms:**
+
 - Backup failures with connection errors
 - WAL archiving failures
 - ObjectStore connection status = 0
 
 **Diagnosis:**
+
 ```bash
 # Test S3 connectivity
 kubectl run s3-test --rm -i --restart=Never \
@@ -429,7 +464,9 @@ kubectl run s3-test --rm -i --restart=Never \
 ```
 
 **Solutions:**
+
 1. **Credential Issues:**
+
    ```bash
    # Update S3 credentials
    kubectl delete secret S3_SECRET_NAME -n NAMESPACE
@@ -455,6 +492,7 @@ kubectl run s3-test --rm -i --restart=Never \
 **When to use:** Primary cluster completely unavailable, data center failure
 
 #### Prerequisites:
+
 - Valid backups in ObjectStore
 - Alternative infrastructure available
 - Recovery point objective (RPO) determined
@@ -462,6 +500,7 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Steps:
 
 1. **Assess Damage and Recovery Point**
+
    ```bash
    # List available backups
    aws s3 ls s3://BACKUP_BUCKET/CLUSTER_NAME/ --recursive
@@ -471,6 +510,7 @@ kubectl run s3-test --rm -i --restart=Never \
    ```
 
 2. **Prepare Recovery Environment**
+
    ```bash
    # Ensure target cluster/namespace exists
    kubectl create namespace recovery-CLUSTER_NAME
@@ -487,6 +527,7 @@ kubectl run s3-test --rm -i --restart=Never \
    ```
 
 3. **Create Recovery Cluster**
+
    ```yaml
    apiVersion: postgresql.cnpg.io/v1
    kind: Cluster
@@ -494,28 +535,28 @@ kubectl run s3-test --rm -i --restart=Never \
      name: emergency-recovery-cluster
      namespace: recovery-CLUSTER_NAME
    spec:
-     instances: 3  # Start with HA setup
+     instances: 3 # Start with HA setup
      imageName: ghcr.io/cloudnative-pg/postgresql:16.4
-     
+
      plugins:
        - name: "barman-cloud.cloudnative-pg.io"
          isWALArchiver: true
          parameters:
            objectStoreName: "OBJECTSTORE_NAME"
-     
+
      bootstrap:
        recovery:
          source: ORIGINAL_CLUSTER_NAME
          recoveryTarget:
-           targetTime: "LATEST_SAFE_TIME"  # or backupID
+           targetTime: "LATEST_SAFE_TIME" # or backupID
          objectStore:
            objectStoreName: "OBJECTSTORE_NAME"
            serverName: "ORIGINAL_CLUSTER_NAME"
-     
+
      storage:
        size: 20Gi
        storageClass: longhorn-ssd
-     
+
      resources:
        requests:
          memory: "512Mi"
@@ -526,6 +567,7 @@ kubectl run s3-test --rm -i --restart=Never \
    ```
 
 4. **Monitor Recovery Progress**
+
    ```bash
    # Watch recovery
    kubectl get cluster emergency-recovery-cluster -n recovery-CLUSTER_NAME -w
@@ -535,6 +577,7 @@ kubectl run s3-test --rm -i --restart=Never \
    ```
 
 5. **Validate Data Integrity**
+
    ```bash
    # Connect and verify data
    kubectl exec -it -n recovery-CLUSTER_NAME emergency-recovery-cluster-1 -- psql
@@ -559,14 +602,16 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Immediate Actions (< 5 minutes):
 
 1. **Assess Disk Space**
+
    ```bash
    kubectl exec -n NAMESPACE PRIMARY_POD -- df -h /var/lib/postgresql/data
    ```
 
 2. **Check WAL Archiving Status**
+
    ```bash
    kubectl exec -n NAMESPACE PRIMARY_POD -- psql -c "
-   SELECT 
+   SELECT
      archived_count,
      failed_count,
      last_archived_wal,
@@ -576,10 +621,11 @@ kubectl run s3-test --rm -i --restart=Never \
    ```
 
 3. **Emergency WAL Cleanup (if disk critical)**
+
    ```bash
    # DANGER: Only if disk is > 90% full
    kubectl exec -n NAMESPACE PRIMARY_POD -- psql -c "SELECT pg_switch_wal();"
-   
+
    # Monitor space
    kubectl exec -n NAMESPACE PRIMARY_POD -- du -sh /var/lib/postgresql/data/pg_wal/
    ```
@@ -587,6 +633,7 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Resolution Actions:
 
 1. **Fix ObjectStore Connectivity**
+
    ```bash
    # Test and fix S3 connection
    # Restart plugin if necessary
@@ -594,6 +641,7 @@ kubectl run s3-test --rm -i --restart=Never \
    ```
 
 2. **Increase Archive Timeout** (temporary)
+
    ```bash
    kubectl exec -n NAMESPACE PRIMARY_POD -- psql -c "
    ALTER SYSTEM SET archive_timeout = '1min';
@@ -616,6 +664,7 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Identify Performance Bottlenecks
 
 1. **Analyze Current Performance**
+
    ```bash
    # Run comprehensive performance analysis
    ./scripts/cnpg-monitoring/performance-monitor.sh benchmark CLUSTER_NAME NAMESPACE 3600
@@ -630,21 +679,23 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Optimization Strategies
 
 1. **Increase Backup Parallelism**
+
    ```yaml
    # Optimize ObjectStore configuration
    spec:
      configuration:
        data:
-         jobs: 4              # Increase parallel backup jobs
+         jobs: 4 # Increase parallel backup jobs
          immediateCheckpoint: true
-         compression: gzip    # Balance between speed and space
+         compression: gzip # Balance between speed and space
        wal:
-         maxParallel: 4       # Increase WAL parallel uploads
+         maxParallel: 4 # Increase WAL parallel uploads
          compression: gzip
          retention: "30d"
    ```
 
 2. **Storage Optimization**
+
    ```bash
    # Use high-performance storage class
    kubectl patch cluster CLUSTER_NAME -n NAMESPACE --type='merge' -p='{
@@ -693,6 +744,7 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Regular Performance Reviews
 
 **Monthly Performance Review Checklist:**
+
 - [ ] Analyze backup duration trends
 - [ ] Review storage utilization and growth
 - [ ] Assess network performance to ObjectStore
@@ -709,6 +761,7 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Monthly Security Review
 
 1. **Certificate Management**
+
    ```bash
    # Check TLS certificate expiration
    kubectl get certificates -A
@@ -716,10 +769,11 @@ kubectl run s3-test --rm -i --restart=Never \
    ```
 
 2. **Secret Rotation**
+
    ```bash
    # List secrets and check age
    kubectl get secrets -A --sort-by='.metadata.creationTimestamp'
-   
+
    # Rotate PostgreSQL passwords (quarterly)
    kubectl delete secret postgresql-superuser-credentials -n NAMESPACE
    # Recreate with new credentials
@@ -735,6 +789,7 @@ kubectl run s3-test --rm -i --restart=Never \
 #### Security Hardening
 
 1. **Network Policies**
+
    ```yaml
    # Restrict PostgreSQL cluster network access
    apiVersion: networking.k8s.io/v1
@@ -747,24 +802,24 @@ kubectl run s3-test --rm -i --restart=Never \
        matchLabels:
          cnpg.io/cluster: CLUSTER_NAME
      policyTypes:
-     - Ingress
-     - Egress
+       - Ingress
+       - Egress
      ingress:
-     - from:
-       - namespaceSelector:
-           matchLabels:
-             name: application-namespace
-       ports:
-       - protocol: TCP
-         port: 5432
+       - from:
+           - namespaceSelector:
+               matchLabels:
+                 name: application-namespace
+         ports:
+           - protocol: TCP
+             port: 5432
      egress:
-     - to:
-       - namespaceSelector:
-           matchLabels:
-             name: cnpg-system
-       ports:
-       - protocol: TCP
-         port: 443  # ObjectStore access
+       - to:
+           - namespaceSelector:
+               matchLabels:
+                 name: cnpg-system
+         ports:
+           - protocol: TCP
+             port: 443 # ObjectStore access
    ```
 
 2. **Pod Security Standards**
@@ -782,6 +837,7 @@ kubectl run s3-test --rm -i --restart=Never \
 ### A. Useful Commands Reference
 
 #### Cluster Management
+
 ```bash
 # Get cluster status
 kubectl get clusters -A
@@ -797,6 +853,7 @@ kubectl get pods -n NAMESPACE -l cnpg.io/cluster=CLUSTER_NAME
 ```
 
 #### Backup Operations
+
 ```bash
 # List backups
 kubectl get backups -A
@@ -812,6 +869,7 @@ kubectl delete backup BACKUP_NAME -n NAMESPACE
 ```
 
 #### Monitoring
+
 ```bash
 # Check ServiceMonitors
 kubectl get servicemonitors -n monitoring
@@ -854,4 +912,4 @@ Backup Failure?
 
 ---
 
-*This runbook should be reviewed quarterly and updated based on operational experience and system changes.*
+_This runbook should be reviewed quarterly and updated based on operational experience and system changes._

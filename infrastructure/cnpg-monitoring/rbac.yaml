@@ -22,32 +22,32 @@ rules:
   - apiGroups: ["postgresql.cnpg.io"]
     resources: ["clusters", "backups", "scheduledbackups", "poolers"]
     verbs: ["get", "list", "watch"]
-  
+
   # Pod and service monitoring across namespaces
   - apiGroups: [""]
     resources: ["pods", "services", "endpoints", "configmaps", "secrets"]
     verbs: ["get", "list", "watch"]
-  
+
   # Backup and ObjectStore resources
   - apiGroups: ["postgresql.cnpg.io"]
     resources: ["objectstores"]
     verbs: ["get", "list", "watch"]
-  
+
   # Metrics and events
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["get", "list", "watch"]
-  
+
   # PVC monitoring for storage usage
   - apiGroups: [""]
     resources: ["persistentvolumeclaims", "persistentvolumes"]
     verbs: ["get", "list", "watch"]
-  
+
   # Job execution for backup restoration tests
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["get", "list", "watch", "create", "delete"]
-  
+
   # Pod execution for health checks
   - apiGroups: [""]
     resources: ["pods/exec"]
@@ -85,12 +85,12 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
-  
+
   # Secret access for credentials
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]
-  
+
   # Service access for Prometheus Pushgateway
   - apiGroups: [""]
     resources: ["services"]
