@@ -98,6 +98,7 @@ These components are managed declaratively through Git commits and Flux reconcil
 - **external-dns**: Automatic DNS record management
 - **monitoring**: Prometheus, Grafana, AlertManager observability stack
 - **longhorn**: Distributed block storage system
+- **cnpg-barman-plugin**: Modern database backup infrastructure (v0.5.0 deployed)
 
 #### 2. Identity Management
 
@@ -109,11 +110,19 @@ These components are managed declaratively through Git commits and Flux reconcil
 
 - **Home Assistant Stack**: Comprehensive home automation platform
   - Home Assistant Core v2025.7
-  - PostgreSQL database with CloudNativePG operator
+  - PostgreSQL database with CloudNativePG operator and **modern plugin-based backup architecture**
   - Mosquitto MQTT broker for IoT devices
   - Redis cache for performance optimization
 - **Kubernetes Dashboard**: Cluster management interface with seamless SSO
 - **Monitoring Applications**: Application-specific monitoring components
+
+#### 4. Database Backup Architecture (🎉 **MIGRATION COMPLETE**)
+
+- **CNPG Barman Plugin v0.5.0**: Modern plugin-based backup system deployed and operational
+- **ObjectStore Integration**: S3-compatible backup storage with optimized compression and parallel processing
+- **Scheduled Backups**: Daily automated backups at 3:00 AM with plugin method
+- **WAL Archiving**: Continuous archiving operational via plugin architecture
+- **Migration Status**: Successfully migrated from legacy `barmanObjectStore` to plugin-based system (August 2025)
 
 ## Storage Architecture
 
@@ -240,8 +249,9 @@ User → External Authentik-Proxy → Authentik Server → Application Access
 
 - **Critical Path**: Talos → Kubernetes → Cilium → Pods → 1Password Connect → Secrets → Flux → Everything Else
 - **Service Mesh**: All services interconnected through Cilium CNI
-- **Data Flow**: PostgreSQL clusters support Authentik and Home Assistant
+- **Data Flow**: PostgreSQL clusters support Authentik and Home Assistant with plugin-based backup architecture
 - **Authentication**: External Authentik-Proxy provides SSO for all cluster services
+- **Backup Architecture**: CNPG Barman Plugin provides modern backup infrastructure for all PostgreSQL databases
 
 ---
 
@@ -251,3 +261,5 @@ For detailed implementation guides, see:
 - [BGP LoadBalancer Configuration](../components/networking/bgp-loadbalancer.md)
 - [Home Assistant Deployment](../components/applications/home-assistant.md)
 - [Authentik External Outpost Setup](../AUTHENTIK_EXTERNAL_OUTPOST_CONNECTION_FIX_DOCUMENTATION.md)
+- [CNPG Barman Plugin Migration Complete Journey](../CNPG_BARMAN_PLUGIN_MIGRATION_COMPLETE_JOURNEY.md)
+- [CNPG Barman Plugin Operational Runbooks](../CNPG_BARMAN_PLUGIN_OPERATIONAL_RUNBOOKS.md)

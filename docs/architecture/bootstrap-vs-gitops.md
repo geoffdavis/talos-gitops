@@ -198,6 +198,7 @@ GitOps phase changes are managed through Git commits that trigger automated depl
   - ingress-nginx deployments
   - external-dns configuration
   - monitoring stack deployment
+  - **cnpg-barman-plugin**: Modern database backup infrastructure (🎉 **MIGRATION COMPLETE**)
 
 #### 2. Network Services (Advanced Configuration)
 
@@ -234,10 +235,21 @@ GitOps phase changes are managed through Git commits that trigger automated depl
 - **Location**: [`apps/`](../../apps/) directory
 - **Management**: GitOps deployment
 - **Examples**:
-  - Home Assistant stack deployment
+  - Home Assistant stack deployment with **plugin-based PostgreSQL backup architecture**
   - Kubernetes Dashboard configuration
   - Monitoring applications
   - Custom application deployments
+
+#### 6. Database Backup Services (🎉 **PRODUCTION READY**)
+
+- **Location**: [`infrastructure/cnpg-barman-plugin/`](../../infrastructure/cnpg-barman-plugin/), [`apps/home-automation/postgresql/`](../../apps/home-automation/postgresql/)
+- **Management**: GitOps deployment with plugin architecture
+- **Examples**:
+  - CNPG Barman Plugin v0.5.0 deployment
+  - ObjectStore configuration for S3-compatible backup storage
+  - ScheduledBackup resources for automated daily backups
+  - Plugin-based cluster configurations replacing legacy `barmanObjectStore`
+- **Migration Status**: Successfully completed August 2025 with zero downtime
 
 ### GitOps Change Procedure
 
@@ -590,6 +602,45 @@ git add infrastructure/authentik-proxy/
 git commit -m "auth: update external outpost Redis configuration"
 git push
 ```
+
+#### Example 3: CNPG Barman Plugin Migration (🎉 **COMPLETED**)
+
+**Scenario**: Migrating from legacy `barmanObjectStore` to modern plugin-based backup architecture
+
+**Bootstrap Component**: None (plugin architecture is GitOps-managed)
+**GitOps Component**: Plugin deployment, ObjectStore configuration, cluster migration
+
+**Procedure** (**COMPLETED** - August 2025):
+
+```bash
+# 1. Deploy plugin infrastructure (GitOps)
+git add infrastructure/cnpg-barman-plugin/
+git commit -m "cnpg: deploy Barman Cloud Plugin v0.5.0"
+
+# 2. Configure ObjectStore resources (GitOps)
+git add apps/home-automation/postgresql/objectstore.yaml
+git commit -m "cnpg: add S3 ObjectStore configuration"
+
+# 3. Migrate cluster to plugin method (GitOps)
+git add apps/home-automation/postgresql/cluster-plugin.yaml
+git commit -m "cnpg: migrate to plugin-based backup architecture"
+
+# 4. Deploy monitoring (GitOps)
+git add infrastructure/cnpg-monitoring/
+git commit -m "cnpg: deploy comprehensive backup monitoring"
+
+# All changes deployed via GitOps with zero downtime
+git push
+flux get kustomizations --watch
+```
+
+**Results Achieved**:
+- ✅ Zero downtime migration completed
+- ✅ Plugin v0.5.0 operational in production
+- ✅ Daily scheduled backups functional (3:00 AM)
+- ✅ S3 ObjectStore integration working
+- ✅ Comprehensive monitoring deployed (15+ alerts)
+- ✅ Legacy `barmanObjectStore` configuration removed
 
 ## Best Practices
 
