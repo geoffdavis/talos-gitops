@@ -33,6 +33,9 @@ resources:
   # Option 2: Label-based service discovery (automatic)
   - service-discovery-job.yaml
 
+  # Authentication flow testing
+  - test-authentication-flow.yaml
+
   # Legacy configuration jobs (removed after migration to static ConfigMaps)
   # - proxy-config-job-simple.yaml (converted to outpost-id-static.yaml)
   # - fix-dashboard-kong-service-job.yaml

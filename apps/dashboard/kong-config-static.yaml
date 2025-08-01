@@ -19,10 +19,15 @@ data:
         config:
           add:
             headers:
-            - "X-Auth-Request-User:${headers.x-authentik-username}"
-            - "X-Auth-Request-Email:${headers.x-authentik-email}"
-            - "X-Auth-Request-Groups:${headers.x-authentik-groups}"
-            - "Authorization:Bearer ${SA_TOKEN}"
+            - "X-Auth-Request-User:$(headers.x-authentik-username)"
+            - "X-Auth-Request-Email:$(headers.x-authentik-email)"
+            - "X-Auth-Request-Groups:$(headers.x-authentik-groups)"
+            - "X-Forwarded-User:$(headers.x-authentik-username)"
+            - "X-Forwarded-Email:$(headers.x-authentik-email)"
+            - "X-Forwarded-Groups:$(headers.x-authentik-groups)"
+            - "X-Remote-User:$(headers.x-authentik-username)"
+            - "X-Remote-Email:$(headers.x-authentik-email)"
+            - "Authorization:Bearer $(SA_TOKEN)"
           remove:
             headers:
             - "x-authentik-token"
@@ -61,9 +66,14 @@ data:
         config:
           add:
             headers:
-            - "X-Auth-Request-User:${headers.x-authentik-username}"
-            - "X-Auth-Request-Email:${headers.x-authentik-email}"
-            - "X-Auth-Request-Groups:${headers.x-authentik-groups}"
+            - "X-Auth-Request-User:$(headers.x-authentik-username)"
+            - "X-Auth-Request-Email:$(headers.x-authentik-email)"
+            - "X-Auth-Request-Groups:$(headers.x-authentik-groups)"
+            - "X-Forwarded-User:$(headers.x-authentik-username)"
+            - "X-Forwarded-Email:$(headers.x-authentik-email)"
+            - "X-Forwarded-Groups:$(headers.x-authentik-groups)"
+            - "X-Remote-User:$(headers.x-authentik-username)"
+            - "X-Remote-Email:$(headers.x-authentik-email)"
       - name: cors
         config:
           origins:
@@ -97,7 +107,9 @@ data:
         config:
           add:
             headers:
-            - "Authorization:Bearer ${SA_TOKEN}"
+            - "Authorization:Bearer $(SA_TOKEN)"
+            - "X-Forwarded-User:$(headers.x-authentik-username)"
+            - "X-Forwarded-Email:$(headers.x-authentik-email)"
 
     routes:
     - name: dashboard-api-route

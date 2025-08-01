@@ -29,12 +29,14 @@ This document captures critical lessons learned during the CNPG Barman Plugin mi
 **The Issue**: The most significant challenge encountered was GitOps reconciliation failing silently due to `.gitignore` patterns excluding legitimate infrastructure configuration files.
 
 #### What Happened
+
 - **Pattern**: `*backup*.yaml` in `.gitignore` was too broad
 - **Impact**: Files like `postgresql-backup-plugin.yaml` were excluded from Git commits
 - **Symptoms**: Flux reconciliation appeared successful but resources weren't created
 - **Detection**: Manual verification revealed missing files in Git repository
 
 #### Root Cause Analysis
+
 ```bash
 # The problematic pattern:
 *backup*.yaml
@@ -46,18 +48,21 @@ This document captures critical lessons learned during the CNPG Barman Plugin mi
 ```
 
 #### Solution Applied
+
 1. **Pattern Analysis**: Reviewed all backup-related `.gitignore` patterns
 2. **Specific Exclusions**: Updated patterns to exclude only actual backup data files
 3. **Validation**: Confirmed all infrastructure files properly tracked in Git
 4. **Testing**: Verified GitOps reconciliation immediately resumed functionality
 
 #### Key Learning
+
 - `.gitignore` patterns need careful consideration in GitOps environments
 - Broad pattern matching (`*backup*`) can have unintended consequences
 - Regular validation that all infrastructure files are tracked is essential
 - Test `.gitignore` patterns against known infrastructure file names
 
 #### Prevention Strategy
+
 ```bash
 # Better approach - specific patterns:
 # Exclude backup data files but not configuration
@@ -77,6 +82,7 @@ git ls-files | grep -E "(backup|postgresql)" | head -10
 #### Architectural Comparison
 
 **Legacy `barmanObjectStore` Architecture**:
+
 ```yaml
 # Tightly coupled configuration
 spec:
@@ -87,6 +93,7 @@ spec:
 ```
 
 **Modern Plugin Architecture**:
+
 ```yaml
 # Separation of concerns
 apiVersion: barmancloud.cnpg.io/v1
@@ -104,6 +111,7 @@ spec:
 ```
 
 #### Benefits Realized
+
 1. **Reusability**: ObjectStore configurations can be shared across multiple clusters
 2. **Maintainability**: Plugin updates independent of cluster configuration
 3. **Monitoring**: Better metrics and observability integration
@@ -115,12 +123,14 @@ spec:
 **The Discovery**: The 15+ monitoring alerts implemented proved essential for operational confidence and proactive issue detection.
 
 #### Monitoring Coverage Matrix
+
 - **Critical Path Coverage**: Every failure scenario has corresponding alert
 - **Performance Monitoring**: SLO tracking with violation detection
 - **Proactive Alerts**: Early warning before issues become critical
 - **Operational Metrics**: Real-time visibility into backup system health
 
 #### Key Monitoring Insights
+
 1. **Layered Alerting**: Critical (immediate), Warning (1-4 hours), SLO (trending)
 2. **Performance Baselines**: Establish normal operating parameters early
 3. **Storage Monitoring**: Proactive capacity planning prevents outages
@@ -131,6 +141,7 @@ spec:
 **The Discovery**: Proper dependency ordering in Flux Kustomizations is critical for reliable deployments.
 
 #### Dependency Chain Implemented
+
 ```yaml
 # Successful dependency structure:
 infrastructure-cnpg-barman-plugin:
@@ -144,6 +155,7 @@ infrastructure-cnpg-barman-plugin:
 ```
 
 #### Key Insights
+
 1. **Health Checks**: Essential for validation deployment success
 2. **Dependency Ordering**: Plugin must wait for CNPG operator
 3. **Timeout Management**: Appropriate timeouts prevent stuck deployments
@@ -156,18 +168,21 @@ infrastructure-cnpg-barman-plugin:
 ### Issue Classification
 
 #### Category 1: Configuration Management Issues (75% of issues)
+
 - **Root Cause**: `.gitignore` pattern blocking legitimate files
 - **Impact**: High - prevented GitOps reconciliation
 - **Resolution Time**: 2 hours (once identified)
 - **Prevention**: Better pattern specificity and validation procedures
 
-#### Category 2: Architecture Complexity (20% of issues)  
+#### Category 2: Architecture Complexity (20% of issues)
+
 - **Root Cause**: Understanding plugin vs legacy architecture differences
 - **Impact**: Medium - learning curve for new architecture
 - **Resolution Time**: Knowledge building and documentation
 - **Prevention**: Comprehensive architecture documentation and training
 
 #### Category 3: Monitoring Integration (5% of issues)
+
 - **Root Cause**: Complex monitoring rule creation and validation
 - **Impact**: Low - monitoring enhancement, not blocking
 - **Resolution Time**: Iterative improvement over time
@@ -252,11 +267,13 @@ Backup Operation Failing
 ### Issue 1: Plugin Pods Not Starting
 
 **Symptoms**:
+
 - Plugin pods in CrashLoopBackOff state
 - Backup operations failing with connection errors
 - Missing metrics from plugin
 
 **Diagnosis**:
+
 ```bash
 # Check plugin pod status
 kubectl get pods -n cnpg-system -l app.kubernetes.io/name=barman-cloud
@@ -269,12 +286,14 @@ kubectl get kustomization infrastructure-cnpg-barman-plugin -n flux-system
 ```
 
 **Common Root Causes**:
+
 1. **Resource Constraints**: Insufficient CPU/memory limits
 2. **Image Pull Issues**: Network connectivity or registry access
 3. **Configuration Errors**: Invalid manifest or missing dependencies
 4. **RBAC Issues**: Insufficient permissions for plugin operation
 
 **Solutions**:
+
 ```bash
 # 1. Increase resource limits
 kubectl patch deployment barman-cloud -n cnpg-system --type='merge' -p='{
@@ -305,11 +324,13 @@ flux reconcile kustomization infrastructure-cnpg-barman-plugin
 ### Issue 2: ObjectStore Connection Failures
 
 **Symptoms**:
+
 - Backup failures with S3 connection errors
 - ObjectStore status showing connection issues
 - WAL archiving failures
 
 **Diagnosis**:
+
 ```bash
 # Test S3 connectivity manually
 kubectl run s3-test --rm -i --restart=Never \
@@ -320,12 +341,14 @@ kubectl run s3-test --rm -i --restart=Never \
 ```
 
 **Common Root Causes**:
+
 1. **Invalid Credentials**: S3 access key or secret key incorrect
 2. **Network Issues**: DNS resolution or firewall blocking S3 access
 3. **Bucket Permissions**: Insufficient permissions on S3 bucket
 4. **Regional Issues**: S3 region mismatch or availability problems
 
 **Solutions**:
+
 ```bash
 # 1. Update S3 credentials
 kubectl delete secret <s3-secret-name> -n <namespace>
@@ -345,11 +368,13 @@ kubectl rollout restart deployment <cluster-deployment> -n <namespace>
 ### Issue 3: Backup Performance Issues
 
 **Symptoms**:
+
 - Backup duration exceeding 30 minutes
 - Low backup throughput (< 10 MB/s)
 - High resource usage during backups
 
 **Diagnosis**:
+
 ```bash
 # Monitor backup performance
 kubectl describe backup <backup-name> -n <namespace>
@@ -363,12 +388,14 @@ kubectl get objectstore <objectstore-name> -n <namespace> -o yaml
 ```
 
 **Common Root Causes**:
+
 1. **Storage Performance**: Slow disk I/O on source or destination
 2. **Network Bandwidth**: Limited network throughput to S3
 3. **Configuration**: Suboptimal parallel job settings
 4. **Resource Limits**: CPU/memory constraints during backup
 
 **Solutions**:
+
 ```bash
 # 1. Optimize ObjectStore configuration
 kubectl patch objectstore <objectstore-name> -n <namespace> --type='merge' -p='{
@@ -401,11 +428,13 @@ kubectl patch cluster <cluster-name> -n <namespace> --type='merge' -p='{
 ### Issue 4: Flux Reconciliation Stuck
 
 **Symptoms**:
+
 - Kustomization showing "reconciling" status indefinitely
 - Resources not being created despite successful Git commits
 - Timeout errors in Flux logs
 
 **Diagnosis**:
+
 ```bash
 # Check Flux kustomization status
 flux get kustomizations infrastructure-cnpg-barman-plugin
@@ -418,12 +447,14 @@ kubectl logs -n flux-system -l app=kustomize-controller
 ```
 
 **Common Root Causes**:
+
 1. **Dependency Issues**: Dependencies not ready or healthy
 2. **Resource Validation**: Invalid Kubernetes manifests
 3. **Network Issues**: Unable to reach Git repository
 4. **Resource Conflicts**: Conflicting resource definitions
 
 **Solutions**:
+
 ```bash
 # 1. Force reconciliation
 flux reconcile kustomization infrastructure-cnpg-barman-plugin
@@ -468,6 +499,7 @@ kubectl get cluster <cluster-name> -n <namespace> -o yaml > pre-migration-backup
 ### 2. GitOps Best Practices
 
 #### File Tracking Validation
+
 ```bash
 # Regular validation of tracked files
 echo "Checking infrastructure file tracking..."
@@ -479,6 +511,7 @@ done
 ```
 
 #### Dependency Management
+
 ```yaml
 # Template for proper dependency configuration
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -500,6 +533,7 @@ spec:
 ### 3. Monitoring Integration Best Practices
 
 #### Alert Rule Template
+
 ```yaml
 # Template for comprehensive backup monitoring
 groups:
@@ -516,6 +550,7 @@ groups:
 ```
 
 #### Performance Monitoring
+
 ```bash
 # Regular performance validation
 kubectl get backups -A --sort-by='.status.startedAt' | tail -10
@@ -525,23 +560,29 @@ kubectl describe backup <latest-backup> -n <namespace> | grep -E "Duration|Phase
 ### 4. Documentation Standards
 
 #### Change Documentation Template
+
 ```markdown
 ## Change Summary
+
 - **Date**: YYYY-MM-DD
 - **Component**: CNPG Barman Plugin
 - **Type**: Configuration/Architecture/Performance
 - **Impact**: Low/Medium/High
 
 ## Root Cause
+
 [Detailed analysis of what caused the need for this change]
 
 ## Solution Applied
+
 [Step-by-step description of the solution]
 
 ## Validation
+
 [How the solution was tested and validated]
 
 ## Prevention
+
 [What measures prevent this issue from recurring]
 ```
 
@@ -552,12 +593,14 @@ kubectl describe backup <latest-backup> -n <namespace> | grep -E "Duration|Phase
 ### Emergency Rollback Procedure
 
 #### When to Use
+
 - Plugin deployment causing cluster instability
 - Backup operations completely failing
 - Performance degradation affecting applications
 - Data integrity concerns
 
 #### Rollback Steps
+
 ```bash
 # 1. Immediate suspension
 flux suspend kustomization infrastructure-cnpg-barman-plugin
@@ -589,6 +632,7 @@ kubectl get backup emergency-test-backup -n <namespace> -w
 ### Emergency Backup Creation
 
 #### When Plugin System is Down
+
 ```bash
 # Create manual backup bypassing plugin
 kubectl exec -it <cluster-pod> -n <namespace> -- pg_basebackup -D /tmp/emergency-backup -Ft -z -P
@@ -603,6 +647,7 @@ kubectl exec -it <cluster-pod> -n <namespace> -- pg_verifybackup /tmp/emergency-
 ### Emergency Recovery Procedure
 
 #### Complete Plugin System Recovery
+
 ```bash
 # 1. Assessment
 kubectl get pods -n cnpg-system
@@ -631,6 +676,7 @@ kubectl get objectstores -A
 ### Team Training Checklist
 
 #### For New Team Members
+
 - [ ] Review complete migration journey documentation
 - [ ] Understand Bootstrap vs GitOps decision framework
 - [ ] Practice common troubleshooting scenarios
@@ -638,6 +684,7 @@ kubectl get objectstores -A
 - [ ] Validate understanding with guided exercises
 
 #### For Existing Team Members
+
 - [ ] Review lessons learned from migration
 - [ ] Update knowledge of new plugin architecture
 - [ ] Practice new troubleshooting procedures
@@ -647,18 +694,21 @@ kubectl get objectstores -A
 ### Key Knowledge Areas
 
 #### 1. Architecture Understanding
+
 - Plugin vs legacy `barmanObjectStore` differences
 - ObjectStore resource configuration and reusability
 - Flux dependency management and health checks
 - Monitoring integration and alert management
 
 #### 2. Operational Procedures
+
 - Daily health check procedures (10-15 minutes)
 - Weekly maintenance and performance reviews
 - Monthly optimization and capacity planning
 - Emergency response and recovery procedures
 
 #### 3. Troubleshooting Skills
+
 - Systematic issue diagnosis using decision trees
 - Common issue patterns and rapid resolution
 - Escalation procedures for complex issues
@@ -667,12 +717,14 @@ kubectl get objectstores -A
 ### Continuous Learning Framework
 
 #### Monthly Team Sessions
+
 - Review any issues encountered and resolutions applied
 - Share new techniques or tools discovered
 - Update procedures based on operational experience
 - Plan improvements to monitoring and automation
 
 #### Quarterly Architecture Reviews
+
 - Assess plugin performance and optimization opportunities
 - Review monitoring effectiveness and alert tuning
 - Plan capacity expansion and technology evolution
@@ -687,12 +739,14 @@ kubectl get objectstores -A
 🎉 **MIGRATION COMPLETED SUCCESSFULLY**: The CNPG Barman Plugin migration achieved all objectives with zero downtime and comprehensive operational readiness.
 
 #### Key Success Factors
+
 1. **Systematic Approach**: Thorough planning and phased execution
 2. **Comprehensive Documentation**: Complete capture of all procedures and learnings
 3. **Proactive Monitoring**: Extensive alerting and performance tracking
 4. **Team Collaboration**: Effective knowledge sharing and problem-solving
 
 #### Critical Learnings Applied
+
 1. **GitOps Hygiene**: Careful `.gitignore` pattern management
 2. **Architecture Benefits**: Modern plugin approach superior to legacy methods
 3. **Monitoring Excellence**: Comprehensive observability essential for production
@@ -701,6 +755,7 @@ kubectl get objectstores -A
 ### Operational Readiness Achievement
 
 The migration has delivered a production-ready system with:
+
 - ✅ Zero downtime migration execution
 - ✅ Comprehensive monitoring and alerting (15+ alerts)
 - ✅ Complete operational documentation and procedures
@@ -710,6 +765,7 @@ The migration has delivered a production-ready system with:
 ### Future Migration Guidance
 
 This documentation serves as a template and reference for future similar migrations:
+
 - Use systematic approach with clear phase separation
 - Implement comprehensive monitoring from day one
 - Document all issues and resolutions for organizational learning
@@ -724,4 +780,4 @@ This documentation serves as a template and reference for future similar migrati
 
 ---
 
-*This guide captures the complete lessons learned and troubleshooting knowledge from the successful CNPG Barman Plugin migration. All procedures have been tested and validated in production.*
+_This guide captures the complete lessons learned and troubleshooting knowledge from the successful CNPG Barman Plugin migration. All procedures have been tested and validated in production._

@@ -9,6 +9,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 ## Migration Completion Status
 
 ### ✅ Production Deployment Confirmed
+
 - **Plugin Version**: v0.5.0 deployed and operational
 - **Cluster Status**: Home Assistant PostgreSQL cluster using plugin architecture
 - **Backup Operations**: ScheduledBackup running daily at 3:00 AM
@@ -16,6 +17,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 - **GitOps**: All Flux kustomizations reconciling successfully
 
 ### Current System Configuration
+
 - **Plugin Deployment**: `cnpg-system` namespace with barman-cloud deployment
 - **ObjectStore**: `homeassistant-postgresql-backup` in `home-automation` namespace
 - **Backup Schedule**: Daily at 3:00 AM UTC (11:00 PM ET)
@@ -50,7 +52,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 
    # Verify Home Assistant cluster status (primary cluster with plugin)
    kubectl get cluster homeassistant-postgresql -n home-automation -o yaml | grep phase
-   
+
    # Check plugin configuration
    kubectl get cluster homeassistant-postgresql -n home-automation -o yaml | grep -A 5 plugins
    ```
@@ -90,18 +92,19 @@ This document provides comprehensive operational runbooks for maintaining CloudN
    ```bash
    # Check cluster continuous archiving status
    kubectl get cluster homeassistant-postgresql -n home-automation -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].status}'
-   
+
    # Expected: "True"
    ```
 
 4. **Review Alerts**
+
    ```bash
    # Check CNPG monitoring alerts (deployed in cnpg-monitoring namespace)
    kubectl get prometheusrules -n cnpg-monitoring cnpg-barman-plugin-alerts
-   
+
    # Check if monitoring namespace exists
    kubectl get namespace cnpg-monitoring
-   
+
    # View alert rules
    kubectl describe prometheusrules cnpg-barman-plugin-alerts -n cnpg-monitoring
    ```

@@ -49,6 +49,11 @@ spec:
                     secretKeyRef:
                       name: authentik-admin-token
                       key: token
+                - name: EXTERNAL_OUTPOST_ID
+                  valueFrom:
+                    configMapKeyRef:
+                      name: authentik-service-discovery-config
+                      key: external_outpost_id
               volumeMounts:
                 - name: tmp-volume
                   mountPath: /tmp
@@ -57,33 +62,72 @@ spec:
                 - -c
                 - |
                   set -e
-                  echo "=== Discovering Services with Authentik Proxy Labels ==="
+                  echo "=== Creating Authentik Proxy Providers for External Outpost ==="
 
-                  # Find all services with authentik proxy labels
-                  kubectl get services --all-namespaces \
-                    -l "authentik.io/proxy=enabled" \
-                    -o jsonpath='{range .items[*]}{.metadata.namespace}{"|"}{.metadata.name}{"|"}{.metadata.annotations.authentik\.io/external-host}{"|"}{.metadata.annotations.authentik\.io/service-name}{"|"}{.spec.ports[0].port}{"\n"}{end}' \
-                    > /tmp/discovered_services.txt
+                  # Get default configuration from ConfigMap
+                  AUTHORIZATION_FLOW="be0ee023-11fe-4a43-b453-bc67957cafbf"
+                  INVALIDATION_FLOW="be0ee023-11fe-4a43-b453-bc67957cafbf"
+                  COOKIE_DOMAIN="k8s.home.geoffdavis.com"
 
-                  echo "Discovered services:"
-                  cat /tmp/discovered_services.txt
+                  # Function to create proxy provider
+                  create_proxy_provider() {
+                    local name="$1"
+                    local external_host="$2"
+                    local internal_host="$3"
+                    local slug="$4"
 
-                  # Process each discovered service
-                  while IFS='|' read -r namespace service_name external_host display_name port; do
-                    if [ -n "$namespace" ] && [ -n "$service_name" ] && [ -n "$external_host" ]; then
-                      echo "Processing: $display_name ($namespace/$service_name)"
+                    echo "Creating proxy provider: $name"
 
-                      # Create proxy provider configuration
-                      internal_host="http://${service_name}.${namespace}.svc.cluster.local:${port}"
+                    # Create proxy provider
+                    curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/proxy/" \
+                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "{
+                        \"name\": \"${name}\",
+                        \"external_host\": \"https://${external_host}\",
+                        \"internal_host\": \"${internal_host}\",
+                        \"authorization_flow\": \"${AUTHORIZATION_FLOW}\",
+                        \"invalidation_flow\": \"${INVALIDATION_FLOW}\",
+                        \"cookie_domain\": \"${COOKIE_DOMAIN}\",
+                        \"mode\": \"forward_single\",
+                        \"skip_path_regex\": \"^/api/.*$\",
+                        \"basic_auth_enabled\": false,
+                        \"internal_host_ssl_validation\": false
+                      }" > /tmp/provider_${slug}.json
 
-                      # Call Authentik API to create provider (simplified example)
-                      echo "Would create proxy provider for $display_name"
-                      echo "  External: $external_host"
-                      echo "  Internal: $internal_host"
+                    PROVIDER_ID=$(cat /tmp/provider_${slug}.json | grep -o '\"pk\":[0-9]*' | cut -d':' -f2)
+                    echo "Created provider ID: $PROVIDER_ID"
+
+                    # Assign provider to external outpost
+                    if [ -n "$PROVIDER_ID" ] && [ "$PROVIDER_ID" != "" ]; then
+                      echo "Assigning provider $PROVIDER_ID to outpost $EXTERNAL_OUTPOST_ID"
+                      curl -s -X PATCH "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" \
+                        -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                        -H "Content-Type: application/json" \
+                        -d "{
+                          \"providers\": [${PROVIDER_ID}]
+                        }"
+                      echo "Provider assigned to outpost"
                     fi
-                  done < /tmp/discovered_services.txt
+                  }
 
-                  echo "=== Service Discovery Complete ==="
+                  # Create proxy providers for all services
+                  create_proxy_provider "Longhorn Storage" "longhorn.k8s.home.geoffdavis.com" \
+                    "http://longhorn-frontend.longhorn-system.svc.cluster.local:80" "longhorn"
+                  create_proxy_provider "Grafana Dashboard" "grafana.k8s.home.geoffdavis.com" \
+                    "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80" "grafana"
+                  create_proxy_provider "Prometheus Metrics" "prometheus.k8s.home.geoffdavis.com" \
+                    "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" "prometheus"
+                  create_proxy_provider "AlertManager" "alertmanager.k8s.home.geoffdavis.com" \
+                    "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093" "alertmanager"
+                  create_proxy_provider "Kubernetes Dashboard" "dashboard.k8s.home.geoffdavis.com" \
+                    "http://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:8000" "dashboard"
+                  create_proxy_provider "Hubble UI" "hubble.k8s.home.geoffdavis.com" \
+                    "http://hubble-ui.kube-system.svc.cluster.local:80" "hubble"
+                  create_proxy_provider "Home Assistant" "homeassistant.k8s.home.geoffdavis.com" \
+                    "http://home-assistant.home-automation.svc.cluster.local:8123" "homeassistant"
+
+                  echo "=== Proxy Provider Creation Complete ==="
           volumes:
             - name: tmp-volume
               emptyDir: {}
