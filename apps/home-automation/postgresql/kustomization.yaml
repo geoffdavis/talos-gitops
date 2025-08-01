@@ -14,8 +14,7 @@ resources:
   - external-secret-superuser.yaml
   - external-secret-database.yaml
   - external-secret-s3-backup.yaml
-  # Temporarily removed to force Flux cache refresh
-  # - postgresql-backup-plugin.yaml
+  - postgresql-backup-plugin.yaml
 
 labels:
   - pairs:
