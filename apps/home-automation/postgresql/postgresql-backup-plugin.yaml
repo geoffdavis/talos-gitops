@@ -1,0 +1,49 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: homeassistant-postgresql-backup
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: homeassistant-postgresql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: home-automation-stack
+    backup-tier: "important"
+    backup-type: "database"
+    application: "homeassistant"
+spec:
+  # Schedule backups daily at 3:00 AM to avoid peak usage
+  schedule: "0 3 * * *"
+
+  # Backup retention policy
+  backupOwnerReference: self
+
+  # Target cluster
+  cluster:
+    name: homeassistant-postgresql
+
+  # Use plugin method (removes barmanObjectStore method)
+  method: plugin
+
+  # Suspend backup if needed
+  suspend: false
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: homeassistant-postgresql-bootstrap-backup
+  namespace: home-automation
+  labels:
+    app.kubernetes.io/name: homeassistant-postgresql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: home-automation-stack
+    backup-tier: "important"
+    backup-type: "database"
+    backup-purpose: "bootstrap"
+    application: "homeassistant"
+spec:
+  # Target cluster
+  cluster:
+    name: homeassistant-postgresql
+
+  # Use plugin method (removes barmanObjectStore method)
+  method: plugin
