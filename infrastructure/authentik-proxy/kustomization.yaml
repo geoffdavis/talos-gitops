@@ -33,8 +33,8 @@ resources:
   # Option 2: Label-based service discovery (automatic)
   - service-discovery-job.yaml
 
-  # Authentication flow testing
-  - test-authentication-flow.yaml
+  # Authentication flow testing (temporarily disabled)
+  # - test-authentication-flow.yaml
 
   # Legacy configuration jobs (removed after migration to static ConfigMaps)
   # - proxy-config-job-simple.yaml (converted to outpost-id-static.yaml)
