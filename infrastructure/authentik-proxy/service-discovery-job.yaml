@@ -29,7 +29,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: discover-services
-              image: registry.k8s.io/kubectl:v1.31.1
+              image: curlimages/curl:8.5.0
               securityContext:
                 allowPrivilegeEscalation: false
                 runAsNonRoot: true
@@ -58,11 +58,36 @@ spec:
                 - name: tmp-volume
                   mountPath: /tmp
               command:
-                - /bin/bash
+                - /bin/sh
                 - -c
                 - |
                   set -e
                   echo "=== Creating Authentik Proxy Providers for External Outpost ==="
+
+                  # Debug environment variables
+                  echo "AUTHENTIK_HOST: ${AUTHENTIK_HOST}"
+                  echo "EXTERNAL_OUTPOST_ID: ${EXTERNAL_OUTPOST_ID}"
+                  echo "AUTHENTIK_TOKEN: [REDACTED - length: $(echo -n "${AUTHENTIK_TOKEN}" | wc -c)]"
+
+                  # Validate required environment variables
+                  if [ -z "${AUTHENTIK_HOST}" ] || [ -z "${AUTHENTIK_TOKEN}" ] || [ -z "${EXTERNAL_OUTPOST_ID}" ]; then
+                    echo "ERROR: Missing required environment variables"
+                    echo "AUTHENTIK_HOST: ${AUTHENTIK_HOST:-MISSING}"
+                    echo "EXTERNAL_OUTPOST_ID: ${EXTERNAL_OUTPOST_ID:-MISSING}"
+                    echo "AUTHENTIK_TOKEN: $([ -n "${AUTHENTIK_TOKEN}" ] && echo "SET" || echo "MISSING")"
+                    exit 1
+                  fi
+
+                  # Test Authentik API connectivity
+                  echo "Testing Authentik API connectivity..."
+                  if ! curl -s -f "${AUTHENTIK_HOST}/api/v3/core/users/me/" \
+                    -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/api_test.json; then
+                    echo "ERROR: Failed to connect to Authentik API"
+                    echo "Response:"
+                    cat /tmp/api_test.json 2>/dev/null || echo "No response received"
+                    exit 1
+                  fi
+                  echo "API connectivity test successful"
 
                   # Get default configuration from ConfigMap
                   AUTHORIZATION_FLOW="be0ee023-11fe-4a43-b453-bc67957cafbf"
@@ -79,7 +104,7 @@ spec:
                     echo "Creating proxy provider: $name"
 
                     # Create proxy provider
-                    curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/proxy/" \
+                    if curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/proxy/" \
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                       -H "Content-Type: application/json" \
                       -d "{
@@ -93,22 +118,50 @@ spec:
                         \"skip_path_regex\": \"^/api/.*$\",
                         \"basic_auth_enabled\": false,
                         \"internal_host_ssl_validation\": false
-                      }" > /tmp/provider_${slug}.json
+                      }" > /tmp/provider_${slug}.json; then
 
-                    PROVIDER_ID=$(cat /tmp/provider_${slug}.json | grep -o '\"pk\":[0-9]*' | cut -d':' -f2)
-                    echo "Created provider ID: $PROVIDER_ID"
+                      echo "Provider creation response:"
+                      cat /tmp/provider_${slug}.json
 
-                    # Assign provider to external outpost
-                    if [ -n "$PROVIDER_ID" ] && [ "$PROVIDER_ID" != "" ]; then
-                      echo "Assigning provider $PROVIDER_ID to outpost $EXTERNAL_OUTPOST_ID"
-                      curl -s -X PATCH "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" \
-                        -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
-                        -H "Content-Type: application/json" \
-                        -d "{
-                          \"providers\": [${PROVIDER_ID}]
-                        }"
-                      echo "Provider assigned to outpost"
+                      PROVIDER_ID=$(cat /tmp/provider_${slug}.json | grep -o '\"pk\":[0-9]*' | cut -d':' -f2)
+                      if [ -n "$PROVIDER_ID" ] && [ "$PROVIDER_ID" != "" ]; then
+                        echo "Created provider ID: $PROVIDER_ID"
+
+                        # Get current outpost providers
+                        echo "Getting current outpost providers..."
+                        curl -s "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" \
+                          -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/outpost_current.json
+
+                        # Extract current provider IDs and add new one
+                        CURRENT_PROVIDERS=$(cat /tmp/outpost_current.json | \
+                          grep -o '\"providers\":\[[^]]*\]' | grep -o '[0-9]\+' | \
+                          tr '\n' ',' | sed 's/,$//')
+                        if [ -n "$CURRENT_PROVIDERS" ]; then
+                          NEW_PROVIDERS="${CURRENT_PROVIDERS},${PROVIDER_ID}"
+                        else
+                          NEW_PROVIDERS="${PROVIDER_ID}"
+                        fi
+
+                        echo "Assigning provider $PROVIDER_ID to outpost $EXTERNAL_OUTPOST_ID"
+                        echo "Current providers: $CURRENT_PROVIDERS"
+                        if curl -s -X PATCH "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" \
+                          -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                          -H "Content-Type: application/json" \
+                          -d "{\"providers\": [${NEW_PROVIDERS}]}" > /tmp/outpost_update.json; then
+                          echo "Provider assigned to outpost successfully"
+                          cat /tmp/outpost_update.json
+                        else
+                          echo "ERROR: Failed to assign provider to outpost"
+                          cat /tmp/outpost_update.json
+                        fi
+                      else
+                        echo "ERROR: Failed to extract provider ID from response"
+                      fi
+                    else
+                      echo "ERROR: Failed to create proxy provider for $name"
+                      cat /tmp/provider_${slug}.json
                     fi
+                    echo "---"
                   }
 
                   # Create proxy providers for all services
