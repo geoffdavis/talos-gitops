@@ -133,3 +133,29 @@ spec:
       alertmanager_backend: "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
       dashboard_backend: "https://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:443"
       hubble_backend: "http://hubble-ui.kube-system.svc.cluster.local:80"
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-authentik-outpost-config
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 15m0s
+  path: ./infrastructure/authentik-outpost-config
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-sources
+    - name: infrastructure-external-secrets
+    - name: infrastructure-authentik
+  retryInterval: 2m0s
+  wait: true
+  postBuild:
+    substitute:
+      # Environment-specific substitutions
+      cluster_name: "homelab"
+      domain_name: "k8s.home.geoffdavis.com"
+      authentik_domain: "authentik.k8s.home.geoffdavis.com"
