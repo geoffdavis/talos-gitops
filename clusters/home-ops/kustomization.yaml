@@ -9,5 +9,4 @@ resources:
   - infrastructure/database.yaml
   - infrastructure/identity.yaml
   - infrastructure/outpost-config.yaml
-  - infrastructure/monitoring.yaml
   - infrastructure/apps.yaml
