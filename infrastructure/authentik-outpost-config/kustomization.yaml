@@ -6,6 +6,8 @@ metadata:
   namespace: authentik
 
 resources:
+  # RBAC configuration (must be first)
+  - rbac.yaml
   # Enhanced admin token setup with 1-year expiry (runs first)
   - enhanced-token-setup-job.yaml
   # OIDC application setup for native authentication

@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: authentik-service-account
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-outpost-config
+    app.kubernetes.io/component: rbac
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: authentik-outpost-config
+  labels:
+    app.kubernetes.io/name: authentik-outpost-config
+    app.kubernetes.io/component: rbac
+rules:
+  # External Secrets management
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets"]
+    verbs: ["get", "list", "patch", "update"]
+  # Secret management for token updates
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  # ConfigMap access for configuration
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: authentik-outpost-config
+  labels:
+    app.kubernetes.io/name: authentik-outpost-config
+    app.kubernetes.io/component: rbac
+subjects:
+  - kind: ServiceAccount
+    name: authentik-service-account
+    namespace: authentik
+roleRef:
+  kind: ClusterRole
+  name: authentik-outpost-config
+  apiGroup: rbac.authorization.k8s.io

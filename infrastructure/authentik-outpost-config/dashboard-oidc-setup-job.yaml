@@ -119,11 +119,11 @@ spec:
               if [ $? -eq 0 ]; then
                 echo "OAuth2 provider created successfully:"
                 cat /tmp/provider_response.json
-                
+
                 # Extract provider ID and client secret
                 PROVIDER_ID=$(cat /tmp/provider_response.json | grep -o '"pk":[0-9]*' | cut -d':' -f2)
                 CLIENT_SECRET=$(cat /tmp/provider_response.json | grep -o '"client_secret":"[^"]*"' | cut -d'"' -f4)
-                
+
                 echo "Provider ID: $PROVIDER_ID"
                 echo "Client Secret: [REDACTED - length: $(echo -n "$CLIENT_SECRET" | wc -c)]"
 
@@ -146,16 +146,26 @@ spec:
                 if [ $? -eq 0 ]; then
                   echo "Application created successfully:"
                   cat /tmp/application_response.json
-                  
+
                   # Create 1Password entry with cluster-specific naming
                   echo "Creating 1Password entry for client secret..."
-                  op item create \
-                    --category=password \
-                    --title="home-ops-dashboard-oidc-client-secret" \
-                    --vault="Kubernetes" \
-                    credential="$CLIENT_SECRET" \
-                    --tags="kubernetes,home-ops,dashboard,oidc" || echo "1Password entry may already exist"
-                  
+
+                  # Check if 1Password entry already exists to make this idempotent
+                  if op item get "home-ops-dashboard-oidc-client-secret" --vault="Automation" >/dev/null 2>&1; then
+                    echo "1Password entry already exists, updating it..."
+                    op item edit "home-ops-dashboard-oidc-client-secret" \
+                      --vault="Automation" \
+                      credential="$CLIENT_SECRET" || echo "Failed to update 1Password entry"
+                  else
+                    echo "Creating new 1Password entry..."
+                    op item create \
+                      --category=password \
+                      --title="home-ops-dashboard-oidc-client-secret" \
+                      --vault="Automation" \
+                      credential="$CLIENT_SECRET" \
+                      --tags="kubernetes,home-ops,dashboard,oidc" || echo "Failed to create 1Password entry"
+                  fi
+
                   echo ""
                   echo "=== Dashboard OIDC Setup Complete ==="
                   echo "Client ID: kubernetes-dashboard"

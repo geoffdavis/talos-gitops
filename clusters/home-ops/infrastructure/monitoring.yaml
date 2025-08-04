@@ -1,0 +1,52 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-monitoring
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 15m0s
+  path: ./infrastructure/monitoring
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: infrastructure-sources
+    - name: infrastructure-external-secrets
+    - name: infrastructure-onepassword
+    - name: infrastructure-cert-manager
+    - name: infrastructure-ingress-nginx-internal
+    - name: infrastructure-authentik-outpost-config
+  retryInterval: 2m0s
+  wait: true
+  healthChecks:
+    # Check monitoring namespace
+    - apiVersion: v1
+      kind: Namespace
+      name: monitoring
+    # Check Grafana OIDC secret is synced
+    - apiVersion: v1
+      kind: Secret
+      name: grafana-oidc-secret
+      namespace: monitoring
+  postBuild:
+    substitute:
+      # Environment-specific substitutions
+      cluster_name: "homelab"
+      domain_name: "k8s.home.geoffdavis.com"
+
+      # Network configuration
+      internal_ingress_ip: "172.29.52.200"
+
+      # Resource configuration for homelab
+      prometheus_cpu_request: "200m"
+      prometheus_memory_request: "1Gi"
+      prometheus_cpu_limit: "1000m"
+      prometheus_memory_limit: "2Gi"
+
+      grafana_cpu_request: "100m"
+      grafana_memory_request: "256Mi"
+      grafana_cpu_limit: "500m"
+      grafana_memory_limit: "512Mi"
