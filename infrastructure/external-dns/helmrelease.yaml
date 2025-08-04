@@ -55,14 +55,14 @@ spec:
     # Deployment configuration
     replicas: 1
 
-    # Resource limits
+    # Resource limits - Increased to handle EndpointSlice sync timeouts
     resources:
       limits:
-        cpu: 50m
-        memory: 50Mi
+        cpu: 200m
+        memory: 128Mi
       requests:
-        cpu: 10m
-        memory: 25Mi
+        cpu: 50m
+        memory: 64Mi
 
     # Node selector and tolerations
     nodeSelector:
