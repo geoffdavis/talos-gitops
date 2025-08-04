@@ -16,7 +16,7 @@ images:
   - name: kubernetesui/dashboard
     newTag: "v2.7.0"
   - name: kubernetesui/metrics-scraper
-    newTag: "v1.0.8"
+    newTag: "v1.0.9"
 
 generatorOptions:
   disableNameSuffixHash: true
