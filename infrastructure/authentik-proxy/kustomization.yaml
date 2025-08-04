@@ -28,11 +28,11 @@ resources:
 
   # Configuration approaches (choose one):
 
-  # Option 1: Helm-based configuration (centralized)
-  # - helmrelease-config.yaml
+  # Option 1: Helm-based configuration (centralized) - PREFERRED for GitOps reliability
+  - helmrelease-config.yaml
 
-  # Option 2: Simplified static configuration (replaces complex CronJob)
-  - static-proxy-config.yaml
+  # Option 2: Simplified static configuration (replaces complex CronJob) - DISABLED: Jobs can fail and block GitOps
+  # - static-proxy-config.yaml
 
   # Authentication flow testing (temporarily disabled)
   # - test-authentication-flow.yaml
