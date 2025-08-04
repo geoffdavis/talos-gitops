@@ -8,6 +8,6 @@ resources:
   - infrastructure/networking.yaml
   - infrastructure/database.yaml
   - infrastructure/identity.yaml
-  # NOTE: outpost-config.yaml disabled for external outpost architecture
-  # - infrastructure/outpost-config.yaml
+  - infrastructure/outpost-config.yaml
+  - infrastructure/monitoring.yaml
   - infrastructure/apps.yaml

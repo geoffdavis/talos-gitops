@@ -18,7 +18,6 @@ spec:
     - name: infrastructure-onepassword
     - name: infrastructure-cert-manager
     - name: infrastructure-ingress-nginx-internal
-    - name: infrastructure-authentik-outpost-config
   retryInterval: 2m0s
   wait: true
   healthChecks:
