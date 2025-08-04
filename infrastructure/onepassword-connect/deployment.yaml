@@ -23,7 +23,7 @@ spec:
         fsGroup: 999
       containers:
         - name: connect-api
-          image: 1password/connect-api:1.7.3
+          image: 1password/connect-api:1.7.4
           ports:
             - containerPort: 8080
               name: http
