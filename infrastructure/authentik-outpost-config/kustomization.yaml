@@ -8,6 +8,9 @@ metadata:
 resources:
   # Enhanced admin token setup with 1-year expiry (runs first)
   - enhanced-token-setup-job.yaml
+  # OIDC application setup for native authentication
+  - grafana-oidc-setup-job.yaml
+  - dashboard-oidc-setup-job.yaml
   # Outpost configuration jobs (run after token setup)
   # NOTE: ALL embedded outpost jobs disabled for external outpost architecture
   # The external outpost handles all proxy providers via authentik-proxy namespace

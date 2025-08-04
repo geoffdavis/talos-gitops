@@ -16,108 +16,53 @@ spec:
       interval: 12h
   values:
     app:
+      # Enable direct ingress access (bypassing Kong proxy)
       ingress:
-        enabled: false # We'll create our own ingress
+        enabled: true
+        ingressClassName: nginx-internal
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-prod
+          nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+          # Enable OIDC authentication via nginx-ingress
+          nginx.ingress.kubernetes.io/auth-url: "https://authentik.k8s.home.geoffdavis.com/outpost.goauthentik.io/auth/nginx" # pragma: allowlist secret
+          nginx.ingress.kubernetes.io/auth-signin: "https://authentik.k8s.home.geoffdavis.com/outpost.goauthentik.io/start?rd=$escaped_request_uri" # pragma: allowlist secret
+          nginx.ingress.kubernetes.io/auth-response-headers: "X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid" # pragma: allowlist secret
+          nginx.ingress.kubernetes.io/auth-snippet: |
+            proxy_set_header X-Forwarded-Host $http_host;
+        hosts:
+          - host: dashboard.k8s.home.geoffdavis.com
+            paths:
+              - path: /
+                pathType: Prefix
+        tls:
+          - secretName: dashboard-tls # pragma: allowlist secret
+            hosts:
+              - dashboard.k8s.home.geoffdavis.com
 
+    # Disable nginx (we're using ingress-nginx instead)
     nginx:
       enabled: false
 
+    # Disable cert-manager (handled by ingress)
     cert-manager:
       enabled: false
 
+    # Disable metrics-server (already deployed separately)
     metrics-server:
       enabled: false
 
+    # Completely disable Kong to eliminate token prompting
     kong:
-      enabled: true
+      enabled: false
 
-      # Disable auto-generated configuration
-      autogenerate: false
-
-      # Kong proxy configuration
-      proxy:
-        enabled: true
-        type: ClusterIP
-        http:
-          enabled: true
-          servicePort: 8000
-          containerPort: 8000
-        tls:
-          enabled: false
-        # Add service annotations and labels for Authentik service discovery
-        service:
-          annotations:
-            authentik.io/external-host: "dashboard.k8s.home.geoffdavis.com"
-            authentik.io/service-name: "Kubernetes Dashboard"
-            authentik.io/description: "Kubernetes cluster management dashboard"
-            authentik.io/publisher: "Kubernetes"
-            authentik.io/slug: "dashboard"
-          labels:
-            authentik.io/proxy: "enabled"
-
-      # Disable admin API for security
-      admin:
-        enabled: false
-
-      # Environment variables for Kong
-      env:
-        # Trust all IPs for header forwarding (since we're behind Authentik proxy)
-        trusted_ips: "0.0.0.0/0,::/0"
-        real_ip_header: "X-Forwarded-For"
-        real_ip_recursive: "on"
-        # Disable Kong's built-in authentication since Authentik handles it
-        anonymous: ""
-        # Enable required plugins
-        plugins: "bundled"
-        # DNS resolver configuration
-        dns_resolver: "10.96.0.10:53"
-        dns_hostsfile: "/etc/hosts"
-        dns_order: "LAST,A,CNAME,AAAA,SRV"
-
-      # Kong configuration for Dashboard integration
-      ingressController:
-        enabled: false
-
-      # Configure Kong to work with Authentik headers
-      # This will be handled via Kong's declarative configuration
-      dblessConfig:
-        configMap: kubernetes-dashboard-kong-config
-
-      # Disable auto-generated configuration
-      enterprise:
-        enabled: false
-      manager:
-        enabled: false
-      portal:
-        enabled: false
-
-      # Resource limits for Kong
-      resources:
-        requests:
-          cpu: 100m
-          memory: 128Mi
-        limits:
-          cpu: 200m
-          memory: 256Mi
-
-      # Node selector and tolerations
-      nodeSelector:
-        kubernetes.io/os: linux
-
-      tolerations:
-        - key: node-role.kubernetes.io/control-plane
-          operator: Exists
-          effect: NoSchedule
-        - key: node-role.kubernetes.io/master
-          operator: Exists
-          effect: NoSchedule
-
-    # Configure the dashboard API to disable authentication
+    # Configure the dashboard API for header-based authentication
     api:
       containers:
         args:
-          - --disable-csrf-protection
-          - --act-as-proxy
+          - --enable-insecure-login
+          - --enable-skip-login
+          - --disable-settings-authorizer
           - --namespace=kubernetes-dashboard
           - --metrics-scraper-service-name=kubernetes-dashboard-metrics-scraper
         resources:
@@ -139,9 +84,9 @@ spec:
           operator: Exists
           effect: NoSchedule
 
+    # Configure web frontend for header-based authentication
     web:
       containers:
-        # Configure web frontend to completely disable authentication
         env:
           - name: KUBERNETES_DASHBOARD_API_URL
             value: "/api"

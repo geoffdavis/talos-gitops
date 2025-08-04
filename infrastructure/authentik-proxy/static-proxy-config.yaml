@@ -1,0 +1,170 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: static-proxy-config
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/component: static-config
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik-proxy
+        app.kubernetes.io/component: static-config
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: authentik-proxy
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: configure-proxy-providers
+          image: curlimages/curl:8.5.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+            readOnlyRootFilesystem: true
+          env:
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.authentik.svc.cluster.local:80"
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-admin-token-enhanced
+                  key: token
+            - name: EXTERNAL_OUTPOST_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: authentik-service-discovery-config
+                  key: external_outpost_id
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Configuring Static Proxy Providers for Simplified Architecture ==="
+
+              # Validate required environment variables
+              if [ -z "${AUTHENTIK_HOST}" ] || [ -z "${AUTHENTIK_TOKEN}" ] || [ -z "${EXTERNAL_OUTPOST_ID}" ]; then
+                echo "ERROR: Missing required environment variables"
+                exit 1
+              fi
+
+              # Test Authentik API connectivity
+              echo "Testing Authentik API connectivity..."
+              if ! curl -s -f "${AUTHENTIK_HOST}/api/v3/core/users/me/" \
+                -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/api_test.json; then
+                echo "ERROR: Failed to connect to Authentik API"
+                exit 1
+              fi
+              echo "API connectivity test successful"
+
+              # Get default configuration
+              AUTHORIZATION_FLOW="be0ee023-11fe-4a43-b453-bc67957cafbf"
+              INVALIDATION_FLOW="be0ee023-11fe-4a43-b453-bc67957cafbf"
+              COOKIE_DOMAIN="k8s.home.geoffdavis.com"
+
+              # Function to create or update proxy provider
+              configure_proxy_provider() {
+                local name="$1"
+                local external_host="$2"
+                local internal_host="$3"
+                local slug="$4"
+
+                echo "Configuring proxy provider: $name"
+
+                # Check if provider already exists
+                curl -s "${AUTHENTIK_HOST}/api/v3/providers/proxy/?name=${name}" \
+                  -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/existing_${slug}.json
+
+                EXISTING_COUNT=$(cat /tmp/existing_${slug}.json | grep -o '"count":[0-9]*' | cut -d':' -f2)
+                
+                if [ "$EXISTING_COUNT" != "0" ]; then
+                  echo "Provider '$name' already exists, skipping creation"
+                  return 0
+                fi
+
+                # Create proxy provider
+                if curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/proxy/" \
+                  -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"name\": \"${name}\",
+                    \"external_host\": \"https://${external_host}\",
+                    \"internal_host\": \"${internal_host}\",
+                    \"authorization_flow\": \"${AUTHORIZATION_FLOW}\",
+                    \"invalidation_flow\": \"${INVALIDATION_FLOW}\",
+                    \"cookie_domain\": \"${COOKIE_DOMAIN}\",
+                    \"mode\": \"forward_single\",
+                    \"skip_path_regex\": \"^/api/.*$\",
+                    \"basic_auth_enabled\": false,
+                    \"internal_host_ssl_validation\": false
+                  }" > /tmp/provider_${slug}.json; then
+
+                  PROVIDER_ID=$(cat /tmp/provider_${slug}.json | grep -o '\"pk\":[0-9]*' | cut -d':' -f2)
+                  if [ -n "$PROVIDER_ID" ]; then
+                    echo "Created provider ID: $PROVIDER_ID"
+                    
+                    # Assign to external outpost
+                    curl -s "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" \
+                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/outpost_current.json
+
+                    CURRENT_PROVIDERS=$(cat /tmp/outpost_current.json | \
+                      grep -o '\"providers\":\[[^]]*\]' | grep -o '[0-9]\+' | \
+                      tr '\n' ',' | sed 's/,$//')
+                    
+                    if [ -n "$CURRENT_PROVIDERS" ]; then
+                      NEW_PROVIDERS="${CURRENT_PROVIDERS},${PROVIDER_ID}"
+                    else
+                      NEW_PROVIDERS="${PROVIDER_ID}"
+                    fi
+
+                    curl -s -X PATCH "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" \
+                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "{\"providers\": [${NEW_PROVIDERS}]}" > /tmp/outpost_update.json
+                    
+                    echo "Provider assigned to outpost successfully"
+                  fi
+                else
+                  echo "ERROR: Failed to create proxy provider for $name"
+                fi
+              }
+
+              # Configure static proxy providers (simplified list)
+              echo "Configuring simplified proxy provider set..."
+
+              configure_proxy_provider "Longhorn Storage" "longhorn.k8s.home.geoffdavis.com" \
+                "http://longhorn-frontend.longhorn-system.svc.cluster.local:80" "longhorn"
+
+              configure_proxy_provider "AlertManager" "alertmanager.k8s.home.geoffdavis.com" \
+                "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093" "alertmanager"
+
+              configure_proxy_provider "Hubble UI" "hubble.k8s.home.geoffdavis.com" \
+                "http://hubble-ui.kube-system.svc.cluster.local:80" "hubble"
+
+              configure_proxy_provider "Home Assistant" "homeassistant.k8s.home.geoffdavis.com" \
+                "http://home-assistant.home-automation.svc.cluster.local:8123" "homeassistant"
+
+              echo "=== Static Proxy Configuration Complete ==="
+              echo "Configured providers for: Longhorn, AlertManager, Hubble, Home Assistant"
+              echo "Removed from proxy: Grafana (native OIDC), Dashboard (ingress auth), Prometheus (kubectl only)"
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}

@@ -5,33 +5,23 @@ resources:
   - namespace.yaml
   - kubernetes-dashboard.yaml
   - dashboard-service-account.yaml
-  - kong-config-service-account.yaml
-  - kong-config-static.yaml
   - dashboard-settings-static.yaml
+  - dashboard-oidc-secret.yaml
 
-patches:
-  - target:
-      group: ""
-      version: v1
-      kind: Service
-      name: kubernetes-dashboard-kong-proxy
-      namespace: kubernetes-dashboard
-    patch: |-
-      - op: add
-        path: /metadata/labels/authentik.io~1proxy
-        value: enabled
-      - op: add
-        path: /metadata/annotations/authentik.io~1external-host
-        value: dashboard.k8s.home.geoffdavis.com
-      - op: add
-        path: /metadata/annotations/authentik.io~1service-name
-        value: Kubernetes Dashboard
-      - op: add
-        path: /metadata/annotations/authentik.io~1description
-        value: Kubernetes cluster management dashboard
-      - op: add
-        path: /metadata/annotations/authentik.io~1publisher
-        value: Kubernetes
-      - op: add
-        path: /metadata/annotations/authentik.io~1slug
-        value: dashboard
+commonLabels:
+  app.kubernetes.io/name: kubernetes-dashboard
+  app.kubernetes.io/part-of: cluster-management
+
+images:
+  - name: kubernetesui/dashboard
+    newTag: "v2.7.0"
+  - name: kubernetesui/metrics-scraper
+    newTag: "v1.0.8"
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/component: dashboard
+  annotations:
+    config.kubernetes.io/local-config: "true"

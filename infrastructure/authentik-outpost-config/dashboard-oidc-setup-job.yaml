@@ -1,0 +1,185 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dashboard-oidc-setup
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik
+    app.kubernetes.io/component: oidc-setup
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: authentik
+        app.kubernetes.io/component: oidc-setup
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: authentik-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: setup-dashboard-oidc
+          image: 1password/op:2
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+            readOnlyRootFilesystem: true
+          env:
+            - name: AUTHENTIK_HOST
+              value: "http://authentik-server.authentik.svc.cluster.local:80"
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-admin-token-enhanced
+                  key: token
+            - name: OP_CONNECT_HOST
+              value: "http://onepassword-connect.external-secrets.svc.cluster.local:8080"
+            - name: OP_CONNECT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: onepassword-connect-token
+                  key: token
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Setting up Kubernetes Dashboard OIDC Application in Authentik ==="
+
+              # Install curl for API calls
+              apk add --no-cache curl
+
+              # Test Authentik API connectivity
+              echo "Testing Authentik API connectivity..."
+              if ! curl -s -f "${AUTHENTIK_HOST}/api/v3/core/users/me/" \
+                -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/api_test.json; then
+                echo "ERROR: Failed to connect to Authentik API"
+                cat /tmp/api_test.json 2>/dev/null || echo "No response received"
+                exit 1
+              fi
+              echo "API connectivity test successful"
+
+              # Get default authorization flow
+              echo "Getting default authorization flow..."
+              curl -s "${AUTHENTIK_HOST}/api/v3/flows/instances/?slug=default-authentication-flow" \
+                -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/auth_flow.json
+
+              AUTH_FLOW_UUID=$(cat /tmp/auth_flow.json | grep -o '"pk":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ -z "$AUTH_FLOW_UUID" ]; then
+                echo "ERROR: Could not find default authorization flow"
+                cat /tmp/auth_flow.json
+                exit 1
+              fi
+              echo "Found authorization flow: $AUTH_FLOW_UUID"
+
+              # Check if Dashboard OIDC application already exists
+              echo "Checking for existing Dashboard OIDC application..."
+              curl -s "${AUTHENTIK_HOST}/api/v3/providers/oauth2/?name=Kubernetes%20Dashboard%20OIDC" \
+                -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/existing_provider.json
+
+              EXISTING_COUNT=$(cat /tmp/existing_provider.json | grep -o '"count":[0-9]*' | cut -d':' -f2)
+              if [ "$EXISTING_COUNT" != "0" ]; then
+                echo "Dashboard OIDC application already exists, skipping creation"
+                exit 0
+              fi
+
+              # Create OAuth2/OIDC provider for Dashboard
+              echo "Creating Dashboard OAuth2/OIDC provider..."
+              curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/oauth2/" \
+                -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "name": "Kubernetes Dashboard OIDC",
+                  "authorization_flow": "'$AUTH_FLOW_UUID'",
+                  "client_type": "confidential",
+                  "client_id": "kubernetes-dashboard",
+                  "redirect_uris": "https://dashboard.k8s.home.geoffdavis.com/oauth/callback",
+                  "sub_mode": "hashed_user_id",
+                  "include_claims_in_id_token": true,
+                  "issuer_mode": "per_provider",
+                  "signing_key": null
+                }' > /tmp/provider_response.json
+
+              if [ $? -eq 0 ]; then
+                echo "OAuth2 provider created successfully:"
+                cat /tmp/provider_response.json
+                
+                # Extract provider ID and client secret
+                PROVIDER_ID=$(cat /tmp/provider_response.json | grep -o '"pk":[0-9]*' | cut -d':' -f2)
+                CLIENT_SECRET=$(cat /tmp/provider_response.json | grep -o '"client_secret":"[^"]*"' | cut -d'"' -f4)
+                
+                echo "Provider ID: $PROVIDER_ID"
+                echo "Client Secret: [REDACTED - length: $(echo -n "$CLIENT_SECRET" | wc -c)]"
+
+                # Create application
+                echo "Creating Dashboard application..."
+                curl -s -X POST "${AUTHENTIK_HOST}/api/v3/core/applications/" \
+                  -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                    "name": "Kubernetes Dashboard",
+                    "slug": "kubernetes-dashboard",
+                    "provider": '$PROVIDER_ID',
+                    "meta_launch_url": "https://dashboard.k8s.home.geoffdavis.com",
+                    "meta_description": "Kubernetes cluster management dashboard with native OIDC authentication",
+                    "meta_publisher": "Kubernetes",
+                    "policy_engine_mode": "any",
+                    "open_in_new_tab": false
+                  }' > /tmp/application_response.json
+
+                if [ $? -eq 0 ]; then
+                  echo "Application created successfully:"
+                  cat /tmp/application_response.json
+                  
+                  # Create 1Password entry with cluster-specific naming
+                  echo "Creating 1Password entry for client secret..."
+                  op item create \
+                    --category=password \
+                    --title="home-ops-dashboard-oidc-client-secret" \
+                    --vault="Kubernetes" \
+                    credential="$CLIENT_SECRET" \
+                    --tags="kubernetes,home-ops,dashboard,oidc" || echo "1Password entry may already exist"
+                  
+                  echo ""
+                  echo "=== Dashboard OIDC Setup Complete ==="
+                  echo "Client ID: kubernetes-dashboard"
+                  echo "Client Secret: [STORED IN 1PASSWORD]"
+                  echo "1Password Item: home-ops-dashboard-oidc-client-secret"
+                  echo "Redirect URI: https://dashboard.k8s.home.geoffdavis.com/oauth/callback"
+                  echo "Auth URL: https://authentik.k8s.home.geoffdavis.com/application/o/authorize/"
+                  echo "Token URL: https://authentik.k8s.home.geoffdavis.com/application/o/token/"
+                  echo "API URL: https://authentik.k8s.home.geoffdavis.com/application/o/userinfo/"
+                  echo ""
+                  echo "Next steps:"
+                  echo "1. External secret will sync client secret from 1Password"
+                  echo "2. Update Dashboard HelmRelease configuration"
+                  echo "3. Remove Dashboard from proxy configuration"
+                else
+                  echo "ERROR: Failed to create application"
+                  cat /tmp/application_response.json
+                  exit 1
+                fi
+              else
+                echo "ERROR: Failed to create OAuth2 provider"
+                cat /tmp/provider_response.json
+                exit 1
+              fi
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}

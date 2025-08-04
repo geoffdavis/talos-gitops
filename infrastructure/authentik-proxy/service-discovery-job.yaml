@@ -167,14 +167,8 @@ spec:
                   # Create proxy providers for all services
                   create_proxy_provider "Longhorn Storage" "longhorn.k8s.home.geoffdavis.com" \
                     "http://longhorn-frontend.longhorn-system.svc.cluster.local:80" "longhorn"
-                  create_proxy_provider "Grafana Dashboard" "grafana.k8s.home.geoffdavis.com" \
-                    "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80" "grafana"
-                  create_proxy_provider "Prometheus Metrics" "prometheus.k8s.home.geoffdavis.com" \
-                    "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090" "prometheus"
                   create_proxy_provider "AlertManager" "alertmanager.k8s.home.geoffdavis.com" \
                     "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093" "alertmanager"
-                  create_proxy_provider "Kubernetes Dashboard" "dashboard.k8s.home.geoffdavis.com" \
-                    "http://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:8000" "dashboard"
                   create_proxy_provider "Hubble UI" "hubble.k8s.home.geoffdavis.com" \
                     "http://hubble-ui.kube-system.svc.cluster.local:80" "hubble"
                   create_proxy_provider "Home Assistant" "homeassistant.k8s.home.geoffdavis.com" \

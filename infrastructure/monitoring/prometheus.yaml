@@ -40,11 +40,12 @@ spec:
 
     prometheus:
       service:
-        type: LoadBalancer
-        annotations:
-          io.cilium/lb-ipam-pool: "bgp-default"
-        labels:
-          io.cilium/lb-ipam-pool: "bgp-default"
+        type: ClusterIP
+        # Removed LoadBalancer configuration - access via kubectl port-forward only
+        # annotations:
+        #   io.cilium/lb-ipam-pool: "bgp-default"
+        # labels:
+        #   io.cilium/lb-ipam-pool: "bgp-default"
 
       prometheusSpec:
         storageSpec:
@@ -88,6 +89,48 @@ spec:
           backup-tier: "critical"
           backup-group: "monitoring"
           app: "grafana"
+
+      # Native OIDC Authentication Configuration
+      env:
+        GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+        GF_AUTH_GENERIC_OAUTH_NAME: "Authentik"
+        GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "grafana"
+        GF_AUTH_GENERIC_OAUTH_SCOPES: "openid profile email"
+        GF_AUTH_GENERIC_OAUTH_AUTH_URL: "https://authentik.k8s.home.geoffdavis.com/application/o/authorize/"
+        GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "https://authentik.k8s.home.geoffdavis.com/application/o/token/"
+        GF_AUTH_GENERIC_OAUTH_API_URL: "https://authentik.k8s.home.geoffdavis.com/application/o/userinfo/"
+        GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
+        GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN: "false"
+        GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(groups[*], 'Grafana Admins') && 'Admin' || contains(groups[*], 'Grafana Editors') && 'Editor' || 'Viewer'"
+        GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT: "false"
+        GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: "true"
+        GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC: "false"
+        # Disable anonymous access when OIDC is enabled
+        GF_AUTH_ANONYMOUS_ENABLED: "false"
+        # Security settings
+        GF_AUTH_GENERIC_OAUTH_TLS_SKIP_VERIFY_INSECURE: "false"
+        GF_AUTH_GENERIC_OAUTH_USE_PKCE: "true"
+
+      envFromSecrets:
+        - name: grafana-oidc-secret
+          keys:
+            - key: client-secret
+              name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+
+      # Ingress configuration for direct access (bypassing proxy)
+      ingress:
+        enabled: true
+        ingressClassName: nginx-internal
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-prod
+          nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        hosts:
+          - grafana.k8s.home.geoffdavis.com
+        tls:
+          - secretName: grafana-tls # pragma: allowlist secret
+            hosts:
+              - grafana.k8s.home.geoffdavis.com
 
       # Fix pod security policy violations
       securityContext:

@@ -31,8 +31,8 @@ resources:
   # Option 1: Helm-based configuration (centralized)
   # - helmrelease-config.yaml
 
-  # Option 2: Label-based service discovery (automatic)
-  - service-discovery-job.yaml
+  # Option 2: Simplified static configuration (replaces complex CronJob)
+  - static-proxy-config.yaml
 
   # Authentication flow testing (temporarily disabled)
   # - test-authentication-flow.yaml
