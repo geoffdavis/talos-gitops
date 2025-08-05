@@ -61,6 +61,10 @@ spec:
     # Completely disable Kong to eliminate token prompting
     kong:
       enabled: false
+      # Provide required values even when disabled to prevent template errors
+      proxy:
+        tls:
+          servicePort: 8443
 
     # Configure the dashboard API for header-based authentication
     api:
