@@ -16,42 +16,15 @@ spec:
       interval: 12h
   values:
     app:
-      # Enable direct ingress access (bypassing Kong proxy)
+      # Disable direct ingress access (use Kong proxy instead)
       ingress:
-        enabled: true
-        ingressClassName: nginx-internal
-        annotations:
-          cert-manager.io/cluster-issuer: letsencrypt-prod
-          nginx.ingress.kubernetes.io/ssl-redirect: "true"
-          nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-          # External DNS annotations for DNS record creation
-          external-dns.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
-          external-dns.alpha.kubernetes.io/ttl: "300"
-          # Enable OIDC authentication via nginx-ingress
-          nginx.ingress.kubernetes.io/auth-url: >-
-            https://authentik.k8s.home.geoffdavis.com/outpost.goauthentik.io/auth/nginx
-          nginx.ingress.kubernetes.io/auth-signin: >-
-            https://authentik.k8s.home.geoffdavis.com/outpost.goauthentik.io/start?rd=$escaped_request_uri
-          nginx.ingress.kubernetes.io/auth-response-headers: >-
-            X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid
-          nginx.ingress.kubernetes.io/auth-snippet: |
-            proxy_set_header X-Forwarded-Host $http_host;
-        hosts:
-          - host: dashboard.k8s.home.geoffdavis.com
-            paths:
-              - path: /
-                pathType: Prefix
-        tls:
-          enabled: true
-          secretName: dashboard-tls # pragma: allowlist secret
-          hosts:
-            - dashboard.k8s.home.geoffdavis.com
+        enabled: false
 
-    # Disable nginx (we're using ingress-nginx instead)
+    # Disable nginx (Kong will handle routing)
     nginx:
       enabled: false
 
-    # Disable cert-manager (handled by ingress)
+    # Disable cert-manager (handled by Kong ingress)
     cert-manager:
       enabled: false
 
@@ -59,15 +32,42 @@ spec:
     metrics-server:
       enabled: false
 
-    # Completely disable Kong to eliminate token prompting
+    # Enable Kong as required proxy with authentication
     kong:
-      enabled: false
-      # Provide required values even when disabled to prevent template errors
+      enabled: true
+      # Kong proxy configuration
       proxy:
         tls:
           servicePort: 8443
-      # Add fullname template to prevent template errors
-      fullnameOverride: "kubernetes-dashboard-kong"
+        # Enable Kong ingress for external access
+        ingress:
+          enabled: true
+          ingressClassName: nginx-internal
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+            # External DNS annotations for DNS record creation
+            external-dns.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
+            external-dns.alpha.kubernetes.io/ttl: "300"
+            # Enable OIDC authentication via nginx-ingress
+            nginx.ingress.kubernetes.io/auth-url: >-
+              https://authentik.k8s.home.geoffdavis.com/outpost.goauthentik.io/auth/nginx
+            nginx.ingress.kubernetes.io/auth-signin: >-
+              https://authentik.k8s.home.geoffdavis.com/outpost.goauthentik.io/start?rd=$escaped_request_uri
+            nginx.ingress.kubernetes.io/auth-response-headers: >-
+              X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid
+            nginx.ingress.kubernetes.io/auth-snippet: |
+              proxy_set_header X-Forwarded-Host $http_host;
+          hosts:
+            - host: dashboard.k8s.home.geoffdavis.com
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - secretName: dashboard-tls # pragma: allowlist secret
+              hosts:
+                - dashboard.k8s.home.geoffdavis.com
 
     # Configure the dashboard API for header-based authentication
     api:
