@@ -42,9 +42,10 @@ spec:
               - path: /
                 pathType: Prefix
         tls:
-          - secretName: dashboard-tls # pragma: allowlist secret
-            hosts:
-              - dashboard.k8s.home.geoffdavis.com
+          enabled: true
+          secretName: dashboard-tls # pragma: allowlist secret
+          hosts:
+            - dashboard.k8s.home.geoffdavis.com
 
     # Disable nginx (we're using ingress-nginx instead)
     nginx:
