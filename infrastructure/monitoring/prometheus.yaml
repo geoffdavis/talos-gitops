@@ -78,6 +78,8 @@ spec:
         type: LoadBalancer
         annotations:
           io.cilium/lb-ipam-pool: "bgp-default"
+          external-dns.alpha.kubernetes.io/hostname: "grafana.k8s.home.geoffdavis.com"
+          external-dns.alpha.kubernetes.io/ttl: "300"
         labels:
           io.cilium/lb-ipam-pool: "bgp-default"
 
@@ -101,7 +103,9 @@ spec:
         GF_AUTH_GENERIC_OAUTH_API_URL: "https://authentik.k8s.home.geoffdavis.com/application/o/userinfo/"
         GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
         GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN: "false"
-        GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(groups[*], 'Grafana Admins') && 'Admin' || contains(groups[*], 'Grafana Editors') && 'Editor' || 'Viewer'"
+        GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: >-
+          contains(groups[*], 'Grafana Admins') && 'Admin' ||
+          contains(groups[*], 'Grafana Editors') && 'Editor' || 'Viewer'
         GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT: "false"
         GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: "true"
         GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC: "false"
@@ -117,7 +121,7 @@ spec:
             - key: client-secret
               name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
 
-      # Ingress configuration for direct access (bypassing proxy)
+      # Ingress configuration for direct OIDC access
       ingress:
         enabled: true
         ingressClassName: nginx-internal
