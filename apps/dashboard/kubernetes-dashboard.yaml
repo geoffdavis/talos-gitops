@@ -66,6 +66,8 @@ spec:
       proxy:
         tls:
           servicePort: 8443
+      # Add fullname template to prevent template errors
+      fullnameOverride: "kubernetes-dashboard-kong"
 
     # Configure the dashboard API for header-based authentication
     api:
