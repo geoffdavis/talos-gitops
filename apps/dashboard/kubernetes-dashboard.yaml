@@ -71,9 +71,6 @@ spec:
     api:
       containers:
         args:
-          - --enable-insecure-login
-          - --enable-skip-login
-          - --disable-settings-authorizer
           - --namespace=kubernetes-dashboard
           - --metrics-scraper-service-name=kubernetes-dashboard-metrics-scraper
         resources:
@@ -101,16 +98,6 @@ spec:
         env:
           - name: KUBERNETES_DASHBOARD_API_URL
             value: "/api"
-          - name: KUBERNETES_DASHBOARD_SKIP_LOGIN_PAGE
-            value: "true"
-          - name: KUBERNETES_DASHBOARD_ENABLE_SKIP_LOGIN
-            value: "true"
-          - name: KUBERNETES_DASHBOARD_ENABLE_INSECURE_LOGIN
-            value: "true"
-          - name: KUBERNETES_DASHBOARD_AUTH_MODE
-            value: "header"
-          - name: KUBERNETES_DASHBOARD_DISABLE_AUTH
-            value: "true"
         args:
           - --settings-config-map-name=kubernetes-dashboard-settings
         resources:
