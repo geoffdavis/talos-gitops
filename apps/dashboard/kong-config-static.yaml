@@ -19,18 +19,7 @@ data:
         config:
           add:
             headers:
-            - "X-Auth-Request-User:$(headers.x-authentik-username)"
-            - "X-Auth-Request-Email:$(headers.x-authentik-email)"
-            - "X-Auth-Request-Groups:$(headers.x-authentik-groups)"
-            - "X-Forwarded-User:$(headers.x-authentik-username)"
-            - "X-Forwarded-Email:$(headers.x-authentik-email)"
-            - "X-Forwarded-Groups:$(headers.x-authentik-groups)"
-            - "X-Remote-User:$(headers.x-authentik-username)"
-            - "X-Remote-Email:$(headers.x-authentik-email)"
             - "Authorization:Bearer $(SA_TOKEN)"
-          remove:
-            headers:
-            - "x-authentik-token"
       - name: cors
         config:
           origins:
@@ -62,18 +51,7 @@ data:
     - name: dashboard-web
       url: http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000
       plugins:
-      - name: request-transformer
-        config:
-          add:
-            headers:
-            - "X-Auth-Request-User:$(headers.x-authentik-username)"
-            - "X-Auth-Request-Email:$(headers.x-authentik-email)"
-            - "X-Auth-Request-Groups:$(headers.x-authentik-groups)"
-            - "X-Forwarded-User:$(headers.x-authentik-username)"
-            - "X-Forwarded-Email:$(headers.x-authentik-email)"
-            - "X-Forwarded-Groups:$(headers.x-authentik-groups)"
-            - "X-Remote-User:$(headers.x-authentik-username)"
-            - "X-Remote-Email:$(headers.x-authentik-email)"
+      # No authentication headers needed for web frontend
       - name: cors
         config:
           origins:
@@ -108,8 +86,6 @@ data:
           add:
             headers:
             - "Authorization:Bearer $(SA_TOKEN)"
-            - "X-Forwarded-User:$(headers.x-authentik-username)"
-            - "X-Forwarded-Email:$(headers.x-authentik-email)"
 
     routes:
     - name: dashboard-api-route
