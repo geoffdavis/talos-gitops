@@ -35,6 +35,41 @@ spec:
     # Enable Kong as required proxy with authentication
     kong:
       enabled: true
+      # Use custom Kong configuration with proper service discovery and authentication
+      env:
+        database: "off"
+        declarative_config: "/kong-config/kong.yml"
+        log_level: "info"
+        plugins: "bundled,request-transformer,response-transformer,cors"
+      # Mount custom configuration
+      extraConfigMaps:
+        - name: kubernetes-dashboard-kong-config
+          mountPath: /tmp/kong-config
+        - name: kong-token-substitution-script
+          mountPath: /scripts
+      # Init container to substitute service account token
+      extraInitContainers:
+        - name: token-substitution
+          image: busybox:1.36
+          command: ["/bin/sh"]
+          args: ["/scripts/substitute-token.sh"]
+          volumeMounts:
+            - name: kubernetes-dashboard-kong-config
+              mountPath: /tmp/kong-config
+            - name: kong-token-substitution-script
+              mountPath: /scripts
+            - name: kong-config-volume
+              mountPath: /kong-config
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      # Additional volume for processed config
+      extraVolumes:
+        - name: kong-config-volume
+          emptyDir: {}
       # Kong proxy configuration
       proxy:
         tls:
