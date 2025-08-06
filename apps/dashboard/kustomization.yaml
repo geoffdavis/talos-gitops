@@ -9,6 +9,7 @@ resources:
   - dashboard-oidc-secret.yaml
   - kong-config-static.yaml
   - kong-config-service-account.yaml
+  - kong-token-fix-job.yaml
 
 commonLabels:
   app.kubernetes.io/name: kubernetes-dashboard
