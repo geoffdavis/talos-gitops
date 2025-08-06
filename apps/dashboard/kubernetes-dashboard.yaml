@@ -43,12 +43,10 @@ spec:
         plugins: "bundled,request-transformer,response-transformer,cors"
         dns_resolver: "10.96.0.10"  # Kubernetes cluster DNS
         dns_order: "LAST,A,CNAME"
-      # Mount custom configuration template
+      # Mount processed Kong configuration
       extraConfigMaps:
-        - name: kubernetes-dashboard-kong-config-template
-          mountPath: /tmp/kong-config
-        - name: kong-token-substitution-script
-          mountPath: /scripts
+        - name: kubernetes-dashboard-kong-config
+          mountPath: /kong-config
       # Kong proxy configuration
       proxy:
         tls:
@@ -61,6 +59,7 @@ spec:
             cert-manager.io/cluster-issuer: letsencrypt-prod
             nginx.ingress.kubernetes.io/ssl-redirect: "true"
             nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
             # External DNS annotations for DNS record creation
             external-dns.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
             external-dns.alpha.kubernetes.io/ttl: "300"
