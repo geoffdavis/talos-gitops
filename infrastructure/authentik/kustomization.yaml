@@ -21,6 +21,7 @@ resources:
 
   # Enhanced token management for outpost authentication
   - external-secret-admin-token-enhanced.yaml
+  - external-secret-radius-token.yaml
 
   # Main authentik ingress (now that we have tokens)
   - ingress.yaml
