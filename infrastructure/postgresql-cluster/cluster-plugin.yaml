@@ -22,6 +22,7 @@ spec:
   # Plugin configuration for Barman Cloud
   plugins:
     - name: "barman-cloud.cloudnative-pg.io"
+      enabled: true
       isWALArchiver: true
       parameters:
         objectStoreName: "postgresql-cluster-backup"
