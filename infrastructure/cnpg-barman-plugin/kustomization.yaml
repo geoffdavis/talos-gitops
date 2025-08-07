@@ -6,8 +6,9 @@ metadata:
   namespace: cnpg-system
 
 resources:
-  # Use the official barman-cloud plugin manifest directly
-  - https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.5.0/manifest.yaml
+  - namespace.yaml
+  - helmrepository.yaml
+  - helmrelease.yaml
 
 commonLabels:
   app.kubernetes.io/name: cnpg-barman-plugin
