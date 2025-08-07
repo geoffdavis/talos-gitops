@@ -178,6 +178,40 @@ spec:
           cpu: 500m
           memory: 1Gi
 
+      # Health check configuration - increased timeouts for worker stability
+      livenessProbe:
+        exec:
+          command:
+            - ak
+            - healthcheck
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 3
+
+      readinessProbe:
+        exec:
+          command:
+            - ak
+            - healthcheck
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 3
+
+      startupProbe:
+        exec:
+          command:
+            - ak
+            - healthcheck
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 60
+
       # Security context
       securityContext:
         runAsNonRoot: true
