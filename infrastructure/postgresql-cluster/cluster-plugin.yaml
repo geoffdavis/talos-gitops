@@ -21,7 +21,7 @@ spec:
 
   # Plugin configuration for Barman Cloud - enabled
   plugins:
-    - name: "barman-cloud.cloudnative-pg.io"
+    - name: "barman-cloud"
       enabled: true
       isWALArchiver: true
       parameters:
