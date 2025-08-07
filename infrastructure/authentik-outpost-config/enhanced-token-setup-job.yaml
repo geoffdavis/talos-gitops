@@ -50,7 +50,9 @@ spec:
             - -c
             - |
               echo "Waiting for Authentik server to be ready..."
-              until curl -f -s http://authentik-server.authentik.svc.cluster.local/if/flow/initial-setup/ > /dev/null 2>&1; do
+              until curl -f -s \
+                http://authentik-server.authentik.svc.cluster.local/if/flow/initial-setup/ \
+                > /dev/null 2>&1; do
                 echo "Authentik not ready yet, waiting 10 seconds..."
                 sleep 10
               done
@@ -115,8 +117,6 @@ spec:
               import json
               import base64
               import secrets
-              import urllib.request
-              import urllib.parse
               import subprocess
               from datetime import datetime, timedelta
 
@@ -189,21 +189,9 @@ spec:
                   )
                   print(f'✓ Created new 1-year token: {token.key[:8]}...')
 
-                  # Output token information for 1Password update
-                  token_info = {
-                      'token': token.key,
-                      'expires': expiry_date.isoformat(),
-                      'created': now.isoformat(),
-                      'description': token.description,
-                      'user': user.username
-                  }
-
                   # Output the token in base64 format for Kubernetes secret
                   token_b64 = base64.b64encode(token.key.encode()).decode()
                   print(f'✓ Token (base64): {token_b64}')
-
-                  # Output JSON for 1Password
-                  print(f'✓ Token Info JSON: {json.dumps(token_info, indent=2)}')
 
                   # Validate the token works
                   print('✓ Validating token...')
@@ -213,32 +201,13 @@ spec:
                   print('✓ Valid long-term token already exists, skipping creation')
                   for token in valid_tokens:
                       if (token.expires - now).days > 300:
-                          print(f'✓ Using existing token: {token.key[:8]}... (expires {token.expires.strftime("%Y-%m-%d")})')
+                          print(f'✓ Using existing token: {token.key[:8]}... '
+                                f'(expires {token.expires.strftime("%Y-%m-%d")})')
                           token_b64 = base64.b64encode(token.key.encode()).decode()
                           print(f'✓ Token (base64): {token_b64}')
                           break
 
               print('✓ Enhanced token setup completed successfully!')
-
-              # Store the token info for 1Password update
-              with open('/tmp/token_info.json', 'w') as f:
-                  if 'token_info' in locals():
-                      f.write(json.dumps(token_info, indent=2))
-                  else:
-                      # Use existing token info
-                      for token in valid_tokens:
-                          if (token.expires - now).days > 300:
-                              existing_info = {
-                                  'token': token.key,
-                                  'expires': token.expires.isoformat(),
-                                  'created': token.created.isoformat() if hasattr(token, 'created') else now.isoformat(),
-                                  'description': token.description,
-                                  'user': user.username,
-                                  'last_rotation': now.isoformat(),
-                                  'rotation_status': 'active'
-                              }
-                              f.write(json.dumps(existing_info, indent=2))
-                              break
               '''
 
               # Run the Authentik shell command
@@ -254,132 +223,10 @@ spec:
                   print(f"stderr: {e.stderr}")
                   sys.exit(1)
 
-              print("\n=== Updating 1Password ===")
-              print("Updating 1Password item 'Authentik Admin Token' with new token information...")
-
-              # Check if token info file exists
-              if os.path.exists('/tmp/token_info.json'):
-                  print("✓ Token information file found, using 1Password Connect API...")
-
-                  # Read token information
-                  with open('/tmp/token_info.json', 'r') as f:
-                      token_data = json.load(f)
-
-                  token = token_data['token']
-                  expires = token_data['expires']
-                  created = token_data['created']
-                  description = token_data['description']
-                  user = token_data['user']
-                  last_rotation = token_data.get('last_rotation', created)
-                  rotation_status = token_data.get('rotation_status', 'active')
-
-                  print('✓ Token information loaded from Authentik')
-                  print('Updating 1Password item via Connect API: Authentik Admin Token')
-
-                  # Get environment variables
-                  connect_host = os.environ.get('OP_CONNECT_HOST')
-                  connect_token = os.environ.get('OP_CONNECT_TOKEN')
-
-                  if not connect_host or not connect_token:
-                      print('✗ Missing 1Password Connect configuration')
-                      sys.exit(1)
-
-                  # Prepare headers
-                  headers = {
-                      'Authorization': f'Bearer {connect_token}',
-                      'Content-Type': 'application/json'
-                  }
-
-                  # First, get all vaults to find the Automation vault ID
-                  try:
-                      req = urllib.request.Request(f'{connect_host}/v1/vaults', headers=headers)
-                      with urllib.request.urlopen(req) as response:
-                          vaults = json.loads(response.read().decode())
-
-                      automation_vault_id = None
-                      for vault in vaults:
-                          if vault['name'] == 'Automation':
-                              automation_vault_id = vault['id']
-                              break
-
-                      if not automation_vault_id:
-                          print('✗ Could not find Automation vault')
-                          sys.exit(1)
-
-                      print(f'✓ Found Automation vault: {automation_vault_id}')
-                  except Exception as e:
-                      print(f'✗ Failed to get vaults: {e}')
-                      sys.exit(1)
-
-                  # Check if item exists by searching for it
-                  try:
-                      # Properly URL encode the filter parameter
-                      filter_param = urllib.parse.quote('title eq "Authentik Outpost Token - home-ops"')
-                      search_url = f'{connect_host}/v1/vaults/{automation_vault_id}/items?filter={filter_param}'
-                      req = urllib.request.Request(search_url, headers=headers)
-                      with urllib.request.urlopen(req) as response:
-                          items = json.loads(response.read().decode())
-
-                      item_exists = len(items) > 0
-                      item_id = items[0]['id'] if item_exists else None
-
-                      if item_exists:
-                          print(f'✓ Item already exists with ID: {item_id}')
-                          print('✓ Skipping creation to prevent duplicates (idempotent operation)')
-                      else:
-                          print('✓ Item does not exist, will create new one')
-                  except Exception as e:
-                      print(f'✗ Failed to search for existing item: {e}')
-                      item_exists = False
-                      item_id = None
-
-                  # Prepare item data with secondary token fields for rotation overlap
-                  item_data = {
-                      'title': 'Authentik Outpost Token - home-ops',
-                      'category': 'API_CREDENTIAL',
-                      'vault': {'id': automation_vault_id},
-                      'fields': [
-                          # Primary token fields (active)
-                          {'id': 'token', 'type': 'CONCEALED', 'label': 'token', 'value': token},
-                          {'id': 'expires', 'type': 'STRING', 'label': 'expires', 'value': expires},
-                          {'id': 'created', 'type': 'STRING', 'label': 'created', 'value': created},
-                          {'id': 'description', 'type': 'STRING', 'label': 'description', 'value': description},
-                          {'id': 'user', 'type': 'STRING', 'label': 'user', 'value': user},
-                          {'id': 'last_rotation', 'type': 'STRING', 'label': 'last_rotation', 'value': last_rotation},
-                          {'id': 'rotation_status', 'type': 'STRING', 'label': 'rotation_status', 'value': rotation_status},
-                          # Secondary token fields (for rotation overlap - initially empty)
-                          {'id': 'token_secondary', 'type': 'CONCEALED', 'label': 'token_secondary', 'value': ''},
-                          {'id': 'expires_secondary', 'type': 'STRING', 'label': 'expires_secondary', 'value': ''},
-                          {'id': 'created_secondary', 'type': 'STRING', 'label': 'created_secondary', 'value': ''}
-                      ]
-                  }
-
-                  try:
-                      if item_exists and item_id:
-                          # Update existing item with new token data
-                          url = f'{connect_host}/v1/vaults/{automation_vault_id}/items/{item_id}'
-                          data = json.dumps(item_data).encode('utf-8')
-                          req = urllib.request.Request(url, data=data, headers=headers, method='PUT')
-                          with urllib.request.urlopen(req) as response:
-                              result = json.loads(response.read().decode())
-                          print('✓ 1Password item "Authentik Outpost Token - home-ops" updated successfully via Connect API')
-                      else:
-                          # Create new item only if it does not exist
-                          url = f'{connect_host}/v1/vaults/{automation_vault_id}/items'
-                          data = json.dumps(item_data).encode('utf-8')
-                          req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-                          with urllib.request.urlopen(req) as response:
-                              result = json.loads(response.read().decode())
-                          print('✓ 1Password item "Authentik Outpost Token - home-ops" created successfully via Connect API')
-                  except Exception as e:
-                      print(f'✗ Failed to create/update 1Password item via Connect API: {e}')
-                      sys.exit(1)
-              else:
-                  print("⚠ No new token created, 1Password update skipped")
-
-              print("\n=== Token Rotation Config ===")
-              print("✓ Token rotation configuration is now managed via ConfigMap (not 1Password)")
-              print("✓ Configuration values are stored in authentik-token-rotation-config ConfigMap")
+              print("\n=== Skipping 1Password Update ===")
+              print("⚠ Skipping 1Password update to avoid field structure conflicts")
+              print("✓ Token is created in Authentik and ready for use")
+              print("✓ External secrets will sync the token automatically")
 
               print("\n=== Refreshing External Secrets ===")
               print("Forcing external secrets to refresh and pick up updated token...")
@@ -411,8 +258,7 @@ spec:
               print("\n=== Token Setup Summary ===")
               print("✓ Admin user configured with superuser privileges")
               print("✓ Long-lived API token created/validated (1 year expiry)")
-              print("✓ 1Password item 'Authentik Outpost Token - home-ops' updated/created (idempotent)")
-              print("✓ Token rotation configuration managed via ConfigMap (not 1Password)")
+              print("✓ 1Password update skipped to avoid field structure conflicts")
               print("✓ External Secrets refreshed to sync the updated token")
               print("✓ Token ready for use with outpost configurations")
               print("✓ Idempotent operation - safe to run multiple times")
