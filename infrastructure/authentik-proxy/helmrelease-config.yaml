@@ -11,11 +11,10 @@ spec:
   timeout: 5m
   chart:
     spec:
-      chart: raw
-      version: "0.3.2"
+      chart: ./charts/authentik-proxy-config
       sourceRef:
-        kind: HelmRepository
-        name: dysnix
+        kind: GitRepository
+        name: flux-system
         namespace: flux-system
   values:
     resources:
