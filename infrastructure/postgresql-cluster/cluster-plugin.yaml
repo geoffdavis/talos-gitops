@@ -19,13 +19,14 @@ spec:
   # Primary update strategy
   primaryUpdateStrategy: unsupervised
 
-  # Plugin configuration for Barman Cloud
+  # Plugin configuration for Barman Cloud - enabled
   plugins:
     - name: "barman-cloud.cloudnative-pg.io"
       enabled: true
       isWALArchiver: true
       parameters:
         objectStoreName: "postgresql-cluster-backup"
+        pluginAddress: "barman-cloud.cnpg-system.svc.cluster.local:9090"
 
   # PostgreSQL configuration
   postgresql:
@@ -58,9 +59,9 @@ spec:
       wal_level: "replica"
       # hot_standby managed by CNPG
 
-      # Archive settings for backup
+      # Archive settings for backup - enabled
       archive_mode: "on"
-      archive_timeout: "5min"
+      # archive_timeout: "5min"
 
   # Bootstrap configuration
   bootstrap:
