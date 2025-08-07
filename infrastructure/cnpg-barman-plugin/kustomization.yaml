@@ -7,8 +7,7 @@ metadata:
 
 resources:
   - namespace.yaml
-  - helmrepository.yaml
-  - helmrelease.yaml
+  - https://github.com/cloudnative-pg/barman-cloud/releases/download/v0.5.0/barman-cloud.yaml
 
 commonLabels:
   app.kubernetes.io/name: cnpg-barman-plugin
