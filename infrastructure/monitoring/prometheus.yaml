@@ -74,6 +74,10 @@ spec:
             effect: NoSchedule
 
     grafana:
+      # Fix Multi-Attach error by using Recreate strategy for RWO volumes
+      deploymentStrategy:
+        type: Recreate
+
       service:
         type: LoadBalancer
         annotations:
@@ -161,10 +165,10 @@ spec:
             - |
               set -e
               echo "=== Setting up Grafana OIDC Application in Authentik ==="
-              
+
               # Install curl for API calls
               apk add --no-cache curl
-              
+
               # Test Authentik API connectivity
               echo "Testing Authentik API connectivity..."
               if ! curl -s -f "${AUTHENTIK_HOST}/api/v3/core/users/me/" \
@@ -174,29 +178,29 @@ spec:
                 exit 0
               fi
               echo "API connectivity test successful"
-              
+
               # Check if Grafana OIDC provider already exists
               echo "Checking for existing Grafana OIDC application..."
               curl -s "${AUTHENTIK_HOST}/api/v3/providers/oauth2/?name=Grafana%20OIDC" \
                 -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/existing_provider.json
-              
+
               EXISTING_COUNT=$(cat /tmp/existing_provider.json | grep -o '"count":[0-9]*' | cut -d':' -f2)
               if [ "$EXISTING_COUNT" != "0" ]; then
                 echo "Grafana OIDC provider already exists, skipping setup"
                 exit 0
               fi
-              
+
               # Get default authorization flow
               echo "Getting default authorization flow..."
               curl -s "${AUTHENTIK_HOST}/api/v3/flows/instances/?slug=default-authentication-flow" \
                 -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/auth_flow.json
-              
+
               AUTH_FLOW_UUID=$(cat /tmp/auth_flow.json | grep -o '"pk":"[^"]*"' | head -1 | cut -d'"' -f4)
               if [ -z "$AUTH_FLOW_UUID" ]; then
                 echo "WARNING: Could not find default authorization flow, skipping OIDC setup"
                 exit 0
               fi
-              
+
               # Create OAuth2/OIDC provider for Grafana
               echo "Creating Grafana OAuth2/OIDC provider..."
               curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/oauth2/" \
@@ -212,11 +216,11 @@ spec:
                   "include_claims_in_id_token": true,
                   "issuer_mode": "per_provider"
                 }' > /tmp/provider_response.json
-              
+
               if [ $? -eq 0 ]; then
                 CLIENT_SECRET=$(cat /tmp/provider_response.json | grep -o '"client_secret":"[^"]*"' | cut -d'"' -f4)
                 PROVIDER_ID=$(cat /tmp/provider_response.json | grep -o '"pk":[0-9]*' | cut -d':' -f2)
-                
+
                 # Create application
                 curl -s -X POST "${AUTHENTIK_HOST}/api/v3/core/applications/" \
                   -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
@@ -227,7 +231,7 @@ spec:
                     "provider": '$PROVIDER_ID',
                     "meta_launch_url": "https://grafana.k8s.home.geoffdavis.com"
                   }' > /tmp/application_response.json
-                
+
                 # Store client secret in 1Password
                 if [ -n "$CLIENT_SECRET" ]; then
                   echo "Storing client secret in 1Password..."
@@ -237,7 +241,7 @@ spec:
                     credential="$CLIENT_SECRET" \
                     --tags="kubernetes,home-ops,grafana,oidc" || echo "Failed to create 1Password entry"
                 fi
-                
+
                 echo "Grafana OIDC setup completed successfully"
               else
                 echo "WARNING: Failed to create OAuth2 provider, Grafana will start without OIDC"
