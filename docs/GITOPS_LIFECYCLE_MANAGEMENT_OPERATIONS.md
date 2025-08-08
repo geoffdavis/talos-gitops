@@ -54,6 +54,7 @@ Comprehensive monitoring includes:
 ### Installation
 
 1. **Deploy via Helm**:
+
    ```bash
    helm install gitops-lifecycle-management ./charts/gitops-lifecycle-management \
      --namespace gitops-system \
@@ -133,11 +134,13 @@ monitoring:
 #### Health Checks
 
 1. **Check Controller Status**:
+
    ```bash
    kubectl get pods -n gitops-system -l app.kubernetes.io/name=gitops-lifecycle-management
    ```
 
 2. **Monitor Cleanup Operations**:
+
    ```bash
    kubectl logs -n gitops-system -l app.kubernetes.io/component=cleanup-controller --tail=100
    ```
@@ -162,29 +165,32 @@ Monitor these key alerts in Prometheus/AlertManager:
 #### Cleanup Controller Issues
 
 1. **Controller Not Starting**:
+
    ```bash
    # Check pod status
    kubectl describe pod -n gitops-system -l app.kubernetes.io/component=cleanup-controller
-   
+
    # Check RBAC permissions
    kubectl auth can-i delete jobs --as=system:serviceaccount:gitops-system:gitops-lifecycle-management
    ```
 
 2. **High Cleanup Failure Rate**:
+
    ```bash
    # Check cleanup logs
    kubectl logs -n gitops-system -l app.kubernetes.io/component=cleanup-controller | grep ERROR
-   
+
    # Check Authentik connectivity
    kubectl exec -n gitops-system deployment/gitops-lifecycle-management-cleanup -- \
      curl -s http://authentik-server.authentik.svc.cluster.local:80/api/v3/core/users/me/
    ```
 
 3. **Stuck Resources Not Being Cleaned**:
+
    ```bash
    # Check for stuck pods manually
    kubectl get pods --all-namespaces --field-selector=status.phase=Terminating
-   
+
    # Check cleanup policy configuration
    kubectl get configmap -n gitops-system gitops-lifecycle-management-cleanup-scripts -o yaml
    ```
@@ -192,20 +198,22 @@ Monitor these key alerts in Prometheus/AlertManager:
 #### Retry Mechanism Issues
 
 1. **Init Containers Failing**:
+
    ```bash
    # Check init container logs
    kubectl logs <pod-name> -c <init-container-name>
-   
+
    # Check retry function availability
    kubectl exec <pod-name> -c <init-container-name> -- ls -la /scripts/
    ```
 
 2. **Excessive Retry Attempts**:
+
    ```bash
    # Check retry metrics
    kubectl port-forward svc/gitops-lifecycle-management-retry-metrics 8082:8082
    curl http://localhost:8082/retry-metrics | grep gitops_retry_attempts_total
-   
+
    # Check service availability
    kubectl get endpoints -A | grep -E "(postgres|redis|mosquitto)"
    ```
@@ -213,10 +221,11 @@ Monitor these key alerts in Prometheus/AlertManager:
 #### Service Discovery Issues
 
 1. **ProxyConfig Resources Stuck**:
+
    ```bash
    # Check ProxyConfig status
    kubectl get proxyconfigs --all-namespaces
-   
+
    # Check service discovery controller logs
    kubectl logs -n gitops-system -l app.kubernetes.io/component=service-discovery-controller
    ```
@@ -234,6 +243,7 @@ Monitor these key alerts in Prometheus/AlertManager:
 #### Updating Configuration
 
 1. **Update Cleanup Policies**:
+
    ```bash
    # Edit values and upgrade
    helm upgrade gitops-lifecycle-management ./charts/gitops-lifecycle-management \
@@ -247,24 +257,25 @@ Monitor these key alerts in Prometheus/AlertManager:
    retry:
      services:
        database:
-         maxAttempts: 50  # Increase for problematic services
+         maxAttempts: 50 # Increase for problematic services
          timeout: 900
    ```
 
 #### Scaling Operations
 
 1. **Scale Cleanup Controller**:
+
    ```yaml
    cleanup:
      controller:
-       replicas: 2  # For high-load environments
+       replicas: 2 # For high-load environments
    ```
 
 2. **Adjust Cleanup Intervals**:
    ```yaml
    cleanup:
      controller:
-       interval: "30m"  # More frequent cleanup
+       interval: "30m" # More frequent cleanup
    ```
 
 ### Metrics and Monitoring
@@ -318,7 +329,8 @@ The system requires these permissions:
 ```yaml
 rules:
   - apiGroups: [""]
-    resources: ["services", "endpoints", "configmaps", "secrets", "pods", "events"]
+    resources:
+      ["services", "endpoints", "configmaps", "secrets", "pods", "events"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
@@ -340,6 +352,7 @@ rules:
 #### Configuration Backup
 
 1. **Backup Helm Values**:
+
    ```bash
    helm get values gitops-lifecycle-management -n gitops-system > backup-values.yaml
    ```
@@ -352,10 +365,11 @@ rules:
 #### Recovery Procedures
 
 1. **Controller Recovery**:
+
    ```bash
    # Restart controllers
    kubectl rollout restart deployment -n gitops-system -l app.kubernetes.io/name=gitops-lifecycle-management
-   
+
    # Check recovery
    kubectl get pods -n gitops-system -l app.kubernetes.io/name=gitops-lifecycle-management
    ```
@@ -372,10 +386,11 @@ rules:
 #### Cleanup Controller Optimization
 
 1. **Adjust Cleanup Intervals**:
+
    ```yaml
    cleanup:
      controller:
-       interval: "30m"  # More frequent for busy clusters
+       interval: "30m" # More frequent for busy clusters
    ```
 
 2. **Optimize Resource Limits**:
@@ -384,13 +399,14 @@ rules:
      controller:
        resources:
          limits:
-           cpu: 200m      # Increase for large clusters
+           cpu: 200m # Increase for large clusters
            memory: 256Mi
    ```
 
 #### Retry Mechanism Optimization
 
 1. **Service-Specific Tuning**:
+
    ```yaml
    retry:
      services:
@@ -404,7 +420,7 @@ rules:
    ```yaml
    retry:
      circuitBreaker:
-       failureThreshold: 3  # Lower for faster failure detection
+       failureThreshold: 3 # Lower for faster failure detection
        recoveryTimeout: 30
    ```
 
@@ -438,22 +454,24 @@ rules:
 
 ### Common Issues
 
-| Issue | Symptoms | Solution |
-|-------|----------|----------|
-| Controller not starting | Pod in CrashLoopBackOff | Check RBAC permissions and secrets |
-| High cleanup failure rate | Alert firing | Check Authentik connectivity and API tokens |
-| Stuck resources accumulating | Resources not being cleaned | Verify cleanup policies and permissions |
-| Retry failures | Init containers failing | Check service availability and network connectivity |
-| Missing metrics | No data in Prometheus | Verify ServiceMonitor configuration |
+| Issue                        | Symptoms                    | Solution                                            |
+| ---------------------------- | --------------------------- | --------------------------------------------------- |
+| Controller not starting      | Pod in CrashLoopBackOff     | Check RBAC permissions and secrets                  |
+| High cleanup failure rate    | Alert firing                | Check Authentik connectivity and API tokens         |
+| Stuck resources accumulating | Resources not being cleaned | Verify cleanup policies and permissions             |
+| Retry failures               | Init containers failing     | Check service availability and network connectivity |
+| Missing metrics              | No data in Prometheus       | Verify ServiceMonitor configuration                 |
 
 ### Emergency Procedures
 
 1. **Disable Cleanup Controller**:
+
    ```bash
    kubectl scale deployment gitops-lifecycle-management-cleanup --replicas=0 -n gitops-system
    ```
 
 2. **Manual Cleanup**:
+
    ```bash
    # Clean up stuck jobs manually
    kubectl delete jobs --all-namespaces --field-selector=status.conditions[0].type=Failed

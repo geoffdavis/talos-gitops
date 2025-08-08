@@ -39,6 +39,7 @@ This document describes the successful conversion from problematic job patterns 
 ## Architecture Benefits
 
 ### Replaced Job Patterns
+
 The GitOps Lifecycle Management chart replaces problematic job patterns with:
 
 1. **Helm Lifecycle Hooks**
@@ -74,7 +75,7 @@ global:
 authentication:
   enabled: true
   hooks:
-    ttlSecondsAfterFinished: 300  # 5-minute cleanup
+    ttlSecondsAfterFinished: 300 # 5-minute cleanup
 
 serviceDiscovery:
   enabled: true
@@ -98,6 +99,7 @@ externalSecrets:
 ### 1Password Integration
 
 The chart integrates with the following 1Password entries:
+
 - `home-ops-authentik-admin-token` → `authentik-admin-token` secret
 - `home-ops-authentik-external-outpost-config` → `authentik-outpost-config` secret
 - `home-ops-grafana-oidc-client-secret` → `grafana-oidc-secret` secret
@@ -109,20 +111,22 @@ The chart integrates with the following 1Password entries:
 ### Pre-Deployment Validation
 
 1. **Verify Prerequisites**
+
    ```bash
    # Check that dependencies are ready
    flux get kustomizations | grep -E "(sources|external-secrets|onepassword|authentik)"
-   
+
    # Verify 1Password Connect is operational
    kubectl get pods -n onepassword-connect
    kubectl logs -n onepassword-connect -l app.kubernetes.io/name=onepassword-connect
    ```
 
 2. **Check Existing Jobs Status**
+
    ```bash
    # Verify old jobs are not running
    kubectl get jobs -n authentik
-   
+
    # Check for any stuck resources
    kubectl get pods -n authentik --field-selector=status.phase=Failed
    ```
@@ -130,34 +134,37 @@ The chart integrates with the following 1Password entries:
 ### Deployment Validation
 
 1. **Monitor Flux Deployment**
+
    ```bash
    # Watch the GitOps Lifecycle Management deployment
    flux get kustomizations infrastructure-gitops-lifecycle-management --watch
-   
+
    # Check HelmRelease status
    flux get helmreleases -n flux-system gitops-lifecycle-management
    ```
 
 2. **Verify Chart Components**
+
    ```bash
    # Check that the chart deployed successfully
    helm list -n flux-system | grep gitops-lifecycle-management
-   
+
    # Verify external secrets are syncing
    kubectl get externalsecrets -A | grep -E "(authentik|gitops)"
-   
+
    # Check service discovery controller
    kubectl get pods -l app.kubernetes.io/name=gitops-lifecycle-management
    ```
 
 3. **Validate Functionality**
+
    ```bash
    # Check authentication hooks completed
    kubectl get jobs -l app.kubernetes.io/name=gitops-lifecycle-management
-   
+
    # Verify database initialization
    kubectl logs -l app.kubernetes.io/component=database-init
-   
+
    # Check service discovery
    kubectl logs -l app.kubernetes.io/component=service-discovery
    ```
@@ -184,29 +191,32 @@ The chart integrates with the following 1Password entries:
 ### Common Issues
 
 1. **HelmRelease Fails to Deploy**
+
    ```bash
    # Check HelmRelease events
    kubectl describe helmrelease gitops-lifecycle-management -n flux-system
-   
+
    # Check Helm controller logs
    kubectl logs -n flux-system -l app=helm-controller
    ```
 
 2. **External Secrets Not Syncing**
+
    ```bash
    # Check external secrets status
    kubectl get externalsecrets -A
    kubectl describe externalsecret <secret-name> -n <namespace>
-   
+
    # Verify 1Password Connect connectivity
    kubectl logs -n onepassword-connect -l app.kubernetes.io/name=onepassword-connect
    ```
 
 3. **Service Discovery Issues**
+
    ```bash
    # Check service discovery controller logs
    kubectl logs -l app.kubernetes.io/component=service-discovery
-   
+
    # Verify RBAC permissions
    kubectl auth can-i list services --as=system:serviceaccount:flux-system:gitops-lifecycle-management
    ```
@@ -214,22 +224,24 @@ The chart integrates with the following 1Password entries:
 ### Recovery Procedures
 
 1. **Rollback to Previous State**
+
    ```bash
    # Suspend the GitOps Lifecycle Management kustomization
    flux suspend kustomization infrastructure-gitops-lifecycle-management
-   
+
    # Re-enable old jobs if needed (temporary)
    # Edit infrastructure/authentik-outpost-config/kustomization.yaml
    ```
 
 2. **Clean Deployment**
+
    ```bash
    # Delete the HelmRelease
    kubectl delete helmrelease gitops-lifecycle-management -n flux-system
-   
+
    # Clean up any stuck resources
    kubectl delete jobs -l app.kubernetes.io/name=gitops-lifecycle-management -A
-   
+
    # Redeploy
    flux reconcile kustomization infrastructure-gitops-lifecycle-management
    ```
@@ -265,6 +277,7 @@ The chart integrates with the following 1Password entries:
 ## Integration with Existing Systems
 
 The GitOps Lifecycle Management chart integrates seamlessly with:
+
 - **External Authentik Outpost System**: Maintains compatibility with existing external outpost architecture
 - **Home Assistant Stack**: Database initialization hooks replace the removed database-init-job
 - **Monitoring Stack**: OIDC setup hooks replace individual OIDC setup jobs

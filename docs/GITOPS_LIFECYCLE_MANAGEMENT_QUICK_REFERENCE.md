@@ -7,6 +7,7 @@ This quick reference guide provides essential commands and procedures for daily 
 ## Quick Status Checks
 
 ### System Health
+
 ```bash
 # Overall system status
 kubectl get helmrelease gitops-lifecycle-management -n flux-system
@@ -20,6 +21,7 @@ kubectl get proxyconfigs --all-namespaces
 ```
 
 ### Component Status
+
 ```bash
 # Check all components at once
 kubectl get pods,svc,deployments -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
@@ -36,6 +38,7 @@ kubectl get servicemonitor,prometheusrule -n flux-system -l app.kubernetes.io/na
 ### Adding a New Service
 
 #### 1. Create ProxyConfig Resource
+
 ```yaml
 apiVersion: gitops.io/v1
 kind: ProxyConfig
@@ -53,6 +56,7 @@ spec:
 ```
 
 #### 2. Apply and Monitor
+
 ```bash
 # Apply the configuration
 kubectl apply -f my-service-proxy-config.yaml
@@ -309,6 +313,7 @@ alias glm-health='kubectl get helmrelease gitops-lifecycle-management -n flux-sy
 ## Common Error Messages and Solutions
 
 ### "ProxyConfig stuck in Pending phase"
+
 ```bash
 # Check controller logs
 kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-controller | grep <proxyconfig-name>
@@ -321,6 +326,7 @@ kubectl rollout restart deployment gitops-lifecycle-management-service-discovery
 ```
 
 ### "Authentication failed with status: 401"
+
 ```bash
 # Check token secret
 kubectl get secret authentik-admin-token -n flux-system -o jsonpath='{.data.token}' | base64 -d
@@ -333,6 +339,7 @@ kubectl delete job authentik-enhanced-token-setup -n authentik
 ```
 
 ### "Helm hook job failed"
+
 ```bash
 # Check hook job status
 kubectl get jobs -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
@@ -346,6 +353,7 @@ helm upgrade gitops-lifecycle-management ./charts/gitops-lifecycle-management -n
 ```
 
 ### "Controller pod restarting"
+
 ```bash
 # Check pod events
 kubectl describe pod -n flux-system -l app.kubernetes.io/component=service-discovery-controller
@@ -360,6 +368,7 @@ kubectl patch deployment gitops-lifecycle-management-service-discovery -n flux-s
 ## Integration Points
 
 ### Flux GitOps
+
 ```bash
 # Force Flux reconciliation
 flux reconcile kustomization infrastructure-gitops-lifecycle-management -n flux-system
@@ -369,6 +378,7 @@ flux get kustomizations -n flux-system | grep gitops-lifecycle-management
 ```
 
 ### Authentik Integration
+
 ```bash
 # Check Authentik providers
 curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
@@ -381,6 +391,7 @@ kubectl port-forward -n authentik svc/authentik-server 9000:9000
 ```
 
 ### 1Password Integration
+
 ```bash
 # Check 1Password Connect
 kubectl get pods -n onepassword-connect
@@ -392,24 +403,28 @@ kubectl get externalsecrets -n flux-system -l app.kubernetes.io/name=gitops-life
 ## Best Practices
 
 ### Service Configuration
+
 - Always use descriptive names for ProxyConfig resources
 - Include proper labels and annotations for organization
 - Test configuration in development environment first
 - Document service-specific requirements
 
 ### Monitoring
+
 - Set up alerts for critical components
 - Monitor ProxyConfig resource status regularly
 - Review controller logs for patterns
 - Track performance metrics over time
 
 ### Maintenance
+
 - Perform regular backups of configuration
 - Keep Helm chart and dependencies updated
 - Review and optimize resource usage
 - Document any customizations or workarounds
 
 ### Security
+
 - Rotate authentication tokens regularly
 - Review RBAC permissions periodically
 - Keep security contexts properly configured
@@ -418,16 +433,19 @@ kubectl get externalsecrets -n flux-system -l app.kubernetes.io/name=gitops-life
 ## Support Resources
 
 ### Documentation
+
 - [Migration Summary](./GITOPS_LIFECYCLE_MANAGEMENT_MIGRATION_SUMMARY.md)
 - [Troubleshooting Guide](./GITOPS_LIFECYCLE_MANAGEMENT_TROUBLESHOOTING.md)
 - [Operational Procedures](./OPERATIONAL_PROCEDURES_UPDATE.md)
 
 ### Monitoring Dashboards
+
 - Grafana: http://grafana.k8s.home.geoffdavis.com
 - Prometheus: http://prometheus.k8s.home.geoffdavis.com
 - AlertManager: http://alertmanager.k8s.home.geoffdavis.com
 
 ### Key Contacts
+
 - Platform Team: For system-level issues
 - Security Team: For authentication and security issues
 - Development Teams: For service-specific configuration

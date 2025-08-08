@@ -7,6 +7,7 @@ This guide provides comprehensive troubleshooting procedures for the GitOps life
 ## Quick Diagnostic Commands
 
 ### System Health Check
+
 ```bash
 # Check overall system status
 kubectl get helmrelease gitops-lifecycle-management -n flux-system
@@ -22,6 +23,7 @@ kubectl get proxyconfigs --all-namespaces -o wide
 ```
 
 ### Monitoring and Alerts
+
 ```bash
 # Check Prometheus alerts
 kubectl get prometheusrule gitops-lifecycle-management-alerts -n flux-system
@@ -38,11 +40,13 @@ kubectl get servicemonitor -n flux-system -l app.kubernetes.io/name=gitops-lifec
 ### 1. Service Discovery Controller Issues
 
 #### Symptoms
+
 - ProxyConfig resources stuck in "Pending" phase
 - Services not getting Authentik proxy providers created
 - Controller pod restarting frequently
 
 #### Diagnostic Steps
+
 ```bash
 # Check controller status
 kubectl get deployment gitops-lifecycle-management-service-discovery -n flux-system
@@ -63,9 +67,11 @@ kubectl exec -n flux-system deployment/gitops-lifecycle-management-service-disco
 #### Common Issues and Solutions
 
 ##### Issue: Controller Cannot Connect to Authentik
+
 **Symptoms**: Logs show "connection refused" or "timeout" errors
 
 **Diagnosis**:
+
 ```bash
 # Check Authentik service status
 kubectl get svc -n authentik authentik-server
@@ -77,12 +83,15 @@ kubectl run debug-pod --rm -i --tty --image=curlimages/curl -- \
 ```
 
 **Solutions**:
+
 1. **Authentik Service Down**: Restart Authentik deployment
+
    ```bash
    kubectl rollout restart deployment authentik-server -n authentik
    ```
 
 2. **Network Policy Issues**: Check network policies
+
    ```bash
    kubectl get networkpolicies -n authentik
    kubectl get networkpolicies -n flux-system
@@ -95,9 +104,11 @@ kubectl run debug-pod --rm -i --tty --image=curlimages/curl -- \
    ```
 
 ##### Issue: Authentication Token Invalid
+
 **Symptoms**: Logs show "401 Unauthorized" or "403 Forbidden" errors
 
 **Diagnosis**:
+
 ```bash
 # Check token secret
 kubectl get secret authentik-admin-token -n flux-system -o yaml
@@ -108,7 +119,9 @@ kubectl exec -n authentik deployment/authentik-server -- \
 ```
 
 **Solutions**:
+
 1. **Token Expired**: Regenerate token using enhanced token setup
+
    ```bash
    kubectl delete job authentik-enhanced-token-setup -n authentik
    flux reconcile kustomization infrastructure-authentik-outpost-config -n flux-system
@@ -121,9 +134,11 @@ kubectl exec -n authentik deployment/authentik-server -- \
    ```
 
 ##### Issue: ProxyConfig Resources Stuck
+
 **Symptoms**: ProxyConfig shows "Pending" phase for extended periods
 
 **Diagnosis**:
+
 ```bash
 # Check specific ProxyConfig
 kubectl describe proxyconfig <name> -n <namespace>
@@ -134,12 +149,15 @@ kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-con
 ```
 
 **Solutions**:
+
 1. **Invalid Configuration**: Fix ProxyConfig spec
+
    ```bash
    kubectl edit proxyconfig <name> -n <namespace>
    ```
 
 2. **Controller Stuck**: Restart controller
+
    ```bash
    kubectl rollout restart deployment gitops-lifecycle-management-service-discovery -n flux-system
    ```
@@ -149,11 +167,13 @@ kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-con
 ### 2. Helm Hook Issues
 
 #### Symptoms
+
 - Helm deployment stuck in pending state
 - Hook jobs failing repeatedly
 - Post-install validation failures
 
 #### Diagnostic Steps
+
 ```bash
 # Check Helm release status
 helm status gitops-lifecycle-management -n flux-system
@@ -170,16 +190,20 @@ kubectl logs -n flux-system job/gitops-lifecycle-management-validation
 #### Common Issues and Solutions
 
 ##### Issue: Pre-Install Authentication Setup Fails
+
 **Symptoms**: `gitops-lifecycle-management-auth-setup` job fails
 
 **Diagnosis**:
+
 ```bash
 kubectl logs -n flux-system job/gitops-lifecycle-management-auth-setup
 kubectl describe job gitops-lifecycle-management-auth-setup -n flux-system
 ```
 
 **Solutions**:
+
 1. **Authentik Not Ready**: Wait for Authentik to be fully operational
+
    ```bash
    kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=server -n authentik --timeout=300s
    ```
@@ -193,22 +217,27 @@ kubectl describe job gitops-lifecycle-management-auth-setup -n flux-system
    ```
 
 ##### Issue: Database Initialization Hook Fails
+
 **Symptoms**: `gitops-lifecycle-management-db-init` job fails
 
 **Diagnosis**:
+
 ```bash
 kubectl logs -n flux-system job/gitops-lifecycle-management-db-init
 kubectl get secret postgresql-admin-credentials -n flux-system -o yaml
 ```
 
 **Solutions**:
+
 1. **Database Not Ready**: Check PostgreSQL cluster status
+
    ```bash
    kubectl get cluster -A
    kubectl describe cluster homeassistant-postgresql -n home-automation
    ```
 
 2. **Credentials Issues**: Verify database credentials
+
    ```bash
    kubectl get externalsecret postgresql-admin-credentials -n flux-system
    ```
@@ -220,15 +249,19 @@ kubectl get secret postgresql-admin-credentials -n flux-system -o yaml
    ```
 
 ##### Issue: Post-Install Validation Fails
+
 **Symptoms**: `gitops-lifecycle-management-validation` job fails
 
 **Diagnosis**:
+
 ```bash
 kubectl logs -n flux-system job/gitops-lifecycle-management-validation
 ```
 
 **Solutions**:
+
 1. **Component Not Ready**: Check individual component status
+
    ```bash
    kubectl get deployment gitops-lifecycle-management-service-discovery -n flux-system
    kubectl get crd proxyconfigs.gitops.io
@@ -238,17 +271,19 @@ kubectl logs -n flux-system job/gitops-lifecycle-management-validation
    ```yaml
    validation:
      hooks:
-       activeDeadlineSeconds: 300  # Increase from 180
+       activeDeadlineSeconds: 300 # Increase from 180
    ```
 
 ### 3. ProxyConfig CRD Issues
 
 #### Symptoms
+
 - ProxyConfig resources not being created
 - CRD validation errors
 - Status not updating properly
 
 #### Diagnostic Steps
+
 ```bash
 # Check CRD installation
 kubectl get crd proxyconfigs.gitops.io
@@ -265,9 +300,11 @@ kubectl apply --dry-run=client -f <proxyconfig-file>
 #### Common Issues and Solutions
 
 ##### Issue: CRD Not Installed
+
 **Symptoms**: "no matches for kind ProxyConfig" errors
 
 **Solutions**:
+
 ```bash
 # Reinstall CRD
 kubectl apply -f charts/gitops-lifecycle-management/templates/crds/proxyconfig-crd.yaml
@@ -277,10 +314,13 @@ helm upgrade gitops-lifecycle-management ./charts/gitops-lifecycle-management -n
 ```
 
 ##### Issue: ProxyConfig Validation Errors
+
 **Symptoms**: "validation failed" errors when creating ProxyConfig
 
 **Solutions**:
+
 1. **Check Required Fields**: Ensure all required fields are present
+
    ```yaml
    spec:
      serviceName: "required"
@@ -294,18 +334,20 @@ helm upgrade gitops-lifecycle-management ./charts/gitops-lifecycle-management -n
 2. **Validate Field Types**: Ensure correct data types
    ```yaml
    spec:
-     port: 80  # integer, not string
-     protocol: "http"  # must be "http" or "https"
+     port: 80 # integer, not string
+     protocol: "http" # must be "http" or "https"
    ```
 
 ### 4. Monitoring and Alerting Issues
 
 #### Symptoms
+
 - Prometheus alerts not firing
 - Metrics not being collected
 - ServiceMonitor not working
 
 #### Diagnostic Steps
+
 ```bash
 # Check ServiceMonitor
 kubectl get servicemonitor -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
@@ -323,15 +365,19 @@ curl http://localhost:8080/metrics
 #### Common Issues and Solutions
 
 ##### Issue: Metrics Not Being Scraped
+
 **Symptoms**: No metrics visible in Prometheus
 
 **Solutions**:
+
 1. **ServiceMonitor Labels**: Check ServiceMonitor selector labels
+
    ```bash
    kubectl get servicemonitor gitops-lifecycle-management -n flux-system -o yaml
    ```
 
 2. **Service Labels**: Ensure service has correct labels
+
    ```bash
    kubectl get svc gitops-lifecycle-management-service-discovery -n flux-system -o yaml
    ```
@@ -342,16 +388,20 @@ curl http://localhost:8080/metrics
    ```
 
 ##### Issue: Alerts Not Firing
+
 **Symptoms**: Expected alerts not appearing in AlertManager
 
 **Solutions**:
+
 1. **PrometheusRule Installation**: Check PrometheusRule resource
+
    ```bash
    kubectl get prometheusrule gitops-lifecycle-management-alerts -n flux-system
    kubectl describe prometheusrule gitops-lifecycle-management-alerts -n flux-system
    ```
 
 2. **Alert Rule Syntax**: Validate alert rule syntax
+
    ```bash
    # Check Prometheus rules page for syntax errors
    curl -s http://prometheus.k8s.home.geoffdavis.com/api/v1/rules
@@ -369,6 +419,7 @@ curl http://localhost:8080/metrics
 If the entire GitOps lifecycle management system is non-functional:
 
 #### 1. Emergency Rollback
+
 ```bash
 # Rollback to previous Helm release
 helm rollback gitops-lifecycle-management -n flux-system
@@ -378,6 +429,7 @@ kubectl scale deployment gitops-lifecycle-management-service-discovery --replica
 ```
 
 #### 2. Manual Service Configuration
+
 If automatic service discovery is broken, configure services manually:
 
 ```bash
@@ -389,6 +441,7 @@ kubectl port-forward -n authentik svc/authentik-server 9000:9000
 ```
 
 #### 3. Bypass GitOps Lifecycle Management
+
 For critical services, temporarily bypass the system:
 
 ```bash
@@ -400,6 +453,7 @@ kubectl apply -f infrastructure/authentik-outpost-config/monitoring-proxy-config
 ### Data Recovery
 
 #### ProxyConfig Resource Recovery
+
 ```bash
 # Backup existing ProxyConfig resources
 kubectl get proxyconfigs --all-namespaces -o yaml > proxyconfigs-backup.yaml
@@ -409,6 +463,7 @@ kubectl apply -f proxyconfigs-backup.yaml
 ```
 
 #### Authentik Configuration Recovery
+
 ```bash
 # Export Authentik configuration
 kubectl exec -n authentik deployment/authentik-server -- \
@@ -422,6 +477,7 @@ kubectl cp authentik/authentik-server-pod:/tmp/authentik-backup.json ./authentik
 ### High Resource Usage
 
 #### CPU Usage Issues
+
 ```bash
 # Check CPU usage
 kubectl top pods -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
@@ -431,24 +487,27 @@ kubectl describe deployment gitops-lifecycle-management-service-discovery -n flu
 ```
 
 **Solutions**:
+
 1. **Increase Resource Limits**:
+
    ```yaml
    serviceDiscovery:
      controller:
        resources:
          limits:
-           cpu: 200m  # Increase from 100m
-           memory: 256Mi  # Increase from 128Mi
+           cpu: 200m # Increase from 100m
+           memory: 256Mi # Increase from 128Mi
    ```
 
 2. **Optimize Reconcile Interval**:
    ```yaml
    serviceDiscovery:
      discovery:
-       reconcileInterval: "10m"  # Increase from 5m
+       reconcileInterval: "10m" # Increase from 5m
    ```
 
 #### Memory Usage Issues
+
 ```bash
 # Check memory usage
 kubectl top pods -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
@@ -458,18 +517,21 @@ kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-con
 ```
 
 **Solutions**:
+
 1. **Increase Memory Limits**: See CPU usage solutions above
 2. **Restart Controller**: `kubectl rollout restart deployment gitops-lifecycle-management-service-discovery -n flux-system`
 
 ### Slow Performance
 
 #### Long Reconciliation Times
+
 ```bash
 # Check reconciliation metrics
 curl -s http://prometheus.k8s.home.geoffdavis.com/api/v1/query?query=gitops_proxyconfig_reconcile_duration_seconds
 ```
 
 **Solutions**:
+
 1. **Reduce API Call Frequency**: Optimize controller logic
 2. **Increase Timeout Values**: Adjust timeout configurations
 3. **Parallel Processing**: Enable parallel processing if available
@@ -477,6 +539,7 @@ curl -s http://prometheus.k8s.home.geoffdavis.com/api/v1/query?query=gitops_prox
 ## Preventive Measures
 
 ### Regular Health Checks
+
 ```bash
 #!/bin/bash
 # Daily health check script
@@ -498,11 +561,13 @@ curl -s http://prometheus.k8s.home.geoffdavis.com/api/v1/alerts | \
 ```
 
 ### Monitoring Setup
+
 1. **Set up Grafana Dashboard**: Create dashboard for GitOps lifecycle management metrics
 2. **Configure AlertManager**: Ensure alerts are routed to appropriate channels
 3. **Log Aggregation**: Set up centralized logging for all components
 
 ### Backup Procedures
+
 ```bash
 #!/bin/bash
 # Weekly backup script
@@ -521,6 +586,7 @@ kubectl exec -n authentik deployment/authentik-server -- \
 ## Getting Help
 
 ### Log Collection
+
 When reporting issues, collect the following logs:
 
 ```bash
@@ -549,6 +615,7 @@ echo "Logs collected in gitops-logs/ directory"
 ```
 
 ### Support Channels
+
 1. **Internal Documentation**: Check project documentation and runbooks
 2. **Monitoring Dashboards**: Review Grafana dashboards for system health
 3. **Team Communication**: Use established team communication channels
