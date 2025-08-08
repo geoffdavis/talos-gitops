@@ -1,4 +1,0 @@
-{{- if and .Values.monitoring.enabled .Values.monitoring.prometheusRules.enabled }}
-# Prometheus rules temporarily disabled due to YAML parsing issues
-# TODO: Fix template syntax and re-enable monitoring rules
-{{- end }}
