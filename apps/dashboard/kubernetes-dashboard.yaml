@@ -47,6 +47,63 @@ spec:
       extraConfigMaps:
         - name: kubernetes-dashboard-kong-config
           mountPath: /kong-config
+      # Add init container for Kong configuration processing
+      initContainers:
+        - name: kong-config-processor
+          image: alpine/k8s:1.31.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Processing Kong configuration with service account token..."
+              
+              # Read service account token
+              SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              echo "Token length: ${#SA_TOKEN}"
+              
+              # Process Kong configuration template
+              sed "s/\$(SA_TOKEN)/$SA_TOKEN/g" /tmp/kong-config/kong.yml > /processed-config/kong.yml
+              
+              # Create processed ConfigMap
+              echo "Creating processed ConfigMap..."
+              kubectl delete configmap kubernetes-dashboard-kong-config --ignore-not-found=true
+              kubectl create configmap kubernetes-dashboard-kong-config --from-file=kong.yml=/processed-config/kong.yml
+              
+              echo "Kong configuration ConfigMap updated successfully"
+              echo "Configuration file size: $(wc -c < /processed-config/kong.yml) bytes"
+          volumeMounts:
+            - name: kong-config-template
+              mountPath: /tmp/kong-config
+              readOnly: true
+            - name: processed-config
+              mountPath: /processed-config
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+      # Add volumes for init container
+      extraVolumes:
+        - name: kong-config-template
+          configMap:
+            name: kubernetes-dashboard-kong-config-template
+        - name: processed-config
+          emptyDir: {}
       # Kong proxy configuration
       proxy:
         tls:

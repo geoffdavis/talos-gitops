@@ -1,0 +1,85 @@
+{{- if and .Values.database.enabled .Values.database.hooks.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-db-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.databaseHookLabels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.database.hooks.backoffLimit | default .Values.authentication.hooks.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.database.hooks.activeDeadlineSeconds | default .Values.authentication.hooks.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.database.hooks.ttlSecondsAfterFinished | default .Values.authentication.hooks.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitops-lifecycle-management.databaseHookLabels" . | nindent 8 }}
+      annotations:
+        {{- include "gitops-lifecycle-management.annotations" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "gitops-lifecycle-management.serviceAccountName" . }}
+      {{- include "gitops-lifecycle-management.hookPodSecurityContext" . | nindent 6 }}
+      containers:
+        - name: db-init
+          image: "postgres:16-alpine"
+          imagePullPolicy: IfNotPresent
+          {{- include "gitops-lifecycle-management.hookSecurityContext" . | nindent 10 }}
+          env:
+            - name: PGHOST
+              value: {{ .Values.database.hooks.postgresql.host | quote }}
+            - name: PGPORT
+              value: {{ .Values.database.hooks.postgresql.port | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.database.hooks.postgresql.database | quote }}
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.hooks.postgresql.credentialsSecret.name }}
+                  key: {{ .Values.database.hooks.postgresql.credentialsSecret.usernameKey }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.hooks.postgresql.credentialsSecret.name }}
+                  key: {{ .Values.database.hooks.postgresql.credentialsSecret.passwordKey }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== Database Initialization Hook ==="
+              
+              # Wait for database to be ready
+              echo "Waiting for PostgreSQL to be ready..."
+              until pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; do
+                echo "PostgreSQL is not ready yet, waiting..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+              
+              # Test connection
+              echo "Testing database connection..."
+              psql -c "SELECT version();" || {
+                echo "ERROR: Failed to connect to database"
+                exit 1
+              }
+              
+              {{- range $name, $script := .Values.database.hooks.initScripts }}
+              {{- if $script.enabled }}
+              echo "Running initialization script: {{ $name }}"
+              psql -c "{{ $script.sql }}" || {
+                echo "ERROR: Failed to execute script {{ $name }}"
+                exit 1
+              }
+              echo "Script {{ $name }} completed successfully"
+              {{- end }}
+              {{- end }}
+              
+              echo "=== Database Initialization Complete ==="
+      {{- include "gitops-lifecycle-management.hookVolumes" . | nindent 6 }}
+{{- end }}

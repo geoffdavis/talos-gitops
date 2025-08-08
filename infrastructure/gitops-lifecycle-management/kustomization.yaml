@@ -1,0 +1,25 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: gitops-lifecycle-management
+  namespace: flux-system
+
+resources:
+  - helmrelease.yaml
+
+commonLabels:
+  app.kubernetes.io/name: gitops-lifecycle-management
+  app.kubernetes.io/part-of: talos-gitops
+  app.kubernetes.io/component: infrastructure
+
+patches:
+  # Environment-specific patches can be added here
+  - target:
+      kind: HelmRelease
+      name: gitops-lifecycle-management
+    patch: |-
+      - op: replace
+        path: /spec/values/global/domain
+        value: "k8s.home.geoffdavis.com"

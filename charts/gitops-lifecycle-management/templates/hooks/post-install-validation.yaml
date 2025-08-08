@@ -1,0 +1,124 @@
+{{- if and .Values.validation.enabled .Values.validation.hooks.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-validation
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.validationHookLabels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.validation.hooks.backoffLimit | default .Values.authentication.hooks.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.validation.hooks.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.validation.hooks.ttlSecondsAfterFinished | default .Values.authentication.hooks.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitops-lifecycle-management.validationHookLabels" . | nindent 8 }}
+      annotations:
+        {{- include "gitops-lifecycle-management.annotations" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "gitops-lifecycle-management.serviceAccountName" . }}
+      {{- include "gitops-lifecycle-management.hookPodSecurityContext" . | nindent 6 }}
+      containers:
+        - name: validation
+          {{- include "gitops-lifecycle-management.hookContainerTemplate" . | nindent 10 }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== GitOps Lifecycle Management Validation ==="
+              
+              VALIDATION_FAILED=0
+              
+              {{- if .Values.validation.hooks.tests.authentikConnectivity }}
+              echo "=== Testing Authentik API Connectivity ==="
+              {{- include "gitops-lifecycle-management.authentikConnectivityTest" . | nindent 14 }}
+              echo "✅ Authentik connectivity test passed"
+              {{- end }}
+              
+              {{- if .Values.validation.hooks.tests.serviceDiscovery }}
+              echo "=== Testing Service Discovery Controller ==="
+              
+              # Check if service discovery controller is running
+              if kubectl get deployment {{ include "gitops-lifecycle-management.fullname" . }}-service-discovery -n {{ .Release.Namespace }} > /dev/null 2>&1; then
+                echo "✅ Service discovery controller deployment exists"
+                
+                # Check if pods are ready
+                READY_REPLICAS=$(kubectl get deployment {{ include "gitops-lifecycle-management.fullname" . }}-service-discovery -n {{ .Release.Namespace }} -o jsonpath='{.status.readyReplicas}')
+                DESIRED_REPLICAS=$(kubectl get deployment {{ include "gitops-lifecycle-management.fullname" . }}-service-discovery -n {{ .Release.Namespace }} -o jsonpath='{.spec.replicas}')
+                
+                if [ "$READY_REPLICAS" = "$DESIRED_REPLICAS" ] && [ "$READY_REPLICAS" != "" ]; then
+                  echo "✅ Service discovery controller is ready ($READY_REPLICAS/$DESIRED_REPLICAS replicas)"
+                else
+                  echo "❌ Service discovery controller not ready ($READY_REPLICAS/$DESIRED_REPLICAS replicas)"
+                  VALIDATION_FAILED=1
+                fi
+              else
+                echo "❌ Service discovery controller deployment not found"
+                VALIDATION_FAILED=1
+              fi
+              
+              # Check if ProxyConfig CRD is installed
+              if kubectl get crd proxyconfigs.gitops.io > /dev/null 2>&1; then
+                echo "✅ ProxyConfig CRD is installed"
+              else
+                echo "❌ ProxyConfig CRD not found"
+                VALIDATION_FAILED=1
+              fi
+              {{- end }}
+              
+              {{- if .Values.validation.hooks.tests.databaseConnectivity }}
+              echo "=== Testing Database Connectivity ==="
+              
+              # Test database connectivity using the same credentials as the init hook
+              if command -v psql > /dev/null 2>&1; then
+                export PGHOST="{{ .Values.database.hooks.postgresql.host }}"
+                export PGPORT="{{ .Values.database.hooks.postgresql.port }}"
+                export PGDATABASE="{{ .Values.database.hooks.postgresql.database }}"
+                export PGUSER="$(cat /var/run/secrets/database/{{ .Values.database.hooks.postgresql.credentialsSecret.usernameKey }})"
+                export PGPASSWORD="$(cat /var/run/secrets/database/{{ .Values.database.hooks.postgresql.credentialsSecret.passwordKey }})"
+                
+                if pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER"; then
+                  echo "✅ Database connectivity test passed"
+                else
+                  echo "❌ Database connectivity test failed"
+                  VALIDATION_FAILED=1
+                fi
+              else
+                echo "⚠️  PostgreSQL client not available, skipping database test"
+              fi
+              {{- end }}
+              
+              echo "=== Validation Summary ==="
+              if [ $VALIDATION_FAILED -eq 0 ]; then
+                echo "✅ All validation tests passed!"
+                echo "GitOps Lifecycle Management is ready for use."
+              else
+                echo "❌ Some validation tests failed!"
+                echo "Please check the logs above for details."
+                exit 1
+              fi
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            {{- if .Values.validation.hooks.tests.databaseConnectivity }}
+            - name: database-credentials
+              mountPath: /var/run/secrets/database
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        {{- if .Values.validation.hooks.tests.databaseConnectivity }}
+        - name: database-credentials
+          secret:
+            secretName: {{ .Values.database.hooks.postgresql.credentialsSecret.name }}
+        {{- end }}
+{{- end }}

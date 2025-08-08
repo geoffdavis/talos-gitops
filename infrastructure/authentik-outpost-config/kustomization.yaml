@@ -8,16 +8,18 @@ metadata:
 resources:
   # RBAC configuration (must be first)
   - rbac.yaml
-  # Enhanced admin token setup with 1-year expiry (runs first)
-  - enhanced-token-setup-job.yaml
-  # OIDC application setup for native authentication
-  - grafana-oidc-setup-job.yaml
-  - dashboard-oidc-setup-job.yaml
-  # Outpost configuration jobs (run after token setup)
+  # RADIUS outpost configuration (specialized, not replaced by GitOps Lifecycle Management)
+  - radius-outpost-config-job.yaml
+  
+  # NOTE: The following jobs are now replaced by the GitOps Lifecycle Management Helm chart:
+  # - enhanced-token-setup-job.yaml (replaced by chart's authentication hooks)
+  # - grafana-oidc-setup-job.yaml (replaced by chart's OIDC setup)
+  # - dashboard-oidc-setup-job.yaml (replaced by chart's OIDC setup)
+  # - cleanup-duplicate-tokens-job.yaml (replaced by chart's cleanup policies)
+  
   # NOTE: ALL embedded outpost jobs disabled for external outpost architecture
   # The external outpost handles all proxy providers via authentik-proxy namespace
   # - embedded-outpost-config-job.yaml
-  - radius-outpost-config-job.yaml
   # DISABLED: These create competing "proxy-outpost" that conflicts with external outpost
   # - longhorn-proxy-config-job.yaml
   # - dashboard-proxy-config-job.yaml

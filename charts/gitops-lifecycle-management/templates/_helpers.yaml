@@ -1,0 +1,246 @@
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "gitops-lifecycle-management.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "gitops-lifecycle-management.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create chart name and version as used by the chart label.
+*/}}
+{{- define "gitops-lifecycle-management.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "gitops-lifecycle-management.labels" -}}
+helm.sh/chart: {{ include "gitops-lifecycle-management.chart" . }}
+{{ include "gitops-lifecycle-management.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- with .Values.commonLabels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "gitops-lifecycle-management.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "gitops-lifecycle-management.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Authentication hook labels
+*/}}
+{{- define "gitops-lifecycle-management.authHookLabels" -}}
+{{ include "gitops-lifecycle-management.labels" . }}
+app.kubernetes.io/component: auth-hook
+{{- end }}
+
+{{/*
+Database hook labels
+*/}}
+{{- define "gitops-lifecycle-management.databaseHookLabels" -}}
+{{ include "gitops-lifecycle-management.labels" . }}
+app.kubernetes.io/component: database-hook
+{{- end }}
+
+{{/*
+Validation hook labels
+*/}}
+{{- define "gitops-lifecycle-management.validationHookLabels" -}}
+{{ include "gitops-lifecycle-management.labels" . }}
+app.kubernetes.io/component: validation-hook
+{{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "gitops-lifecycle-management.annotations" -}}
+{{- with .Values.commonAnnotations }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "gitops-lifecycle-management.serviceAccountName" -}}
+{{- if .Values.rbac.serviceAccount.create }}
+{{- default (include "gitops-lifecycle-management.fullname" .) .Values.rbac.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.rbac.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Hook pod security context
+*/}}
+{{- define "gitops-lifecycle-management.hookPodSecurityContext" -}}
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+  seccompProfile:
+    type: RuntimeDefault
+{{- end }}
+
+{{/*
+Hook container security context
+*/}}
+{{- define "gitops-lifecycle-management.hookSecurityContext" -}}
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
+{{- end }}
+
+{{/*
+Hook container template
+*/}}
+{{- define "gitops-lifecycle-management.hookContainerTemplate" -}}
+image: "{{ .Values.authentication.hooks.image.repository }}:{{ .Values.authentication.hooks.image.tag }}"
+imagePullPolicy: {{ .Values.authentication.hooks.image.pullPolicy }}
+{{- include "gitops-lifecycle-management.hookSecurityContext" . }}
+env:
+  - name: AUTHENTIK_HOST
+    value: {{ .Values.global.authentikHost | quote }}
+  - name: AUTHENTIK_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.authentication.authentik.token.secretName }}
+        key: {{ .Values.authentication.authentik.token.secretKey }}
+volumeMounts:
+  - name: tmp-volume
+    mountPath: /tmp
+{{- end }}
+
+{{/*
+Hook volumes
+*/}}
+{{- define "gitops-lifecycle-management.hookVolumes" -}}
+volumes:
+  - name: tmp-volume
+    emptyDir: {}
+{{- end }}
+
+{{/*
+Authentik connectivity test
+*/}}
+{{- define "gitops-lifecycle-management.authentikConnectivityTest" -}}
+echo "Testing Authentik API connectivity..."
+AUTHENTIK_API_URL="${AUTHENTIK_HOST}/api/v3/core/users/me/"
+
+# Test API connectivity with retry
+for i in $(seq 1 10); do
+  echo "Attempt $i: Testing Authentik API..."
+  if curl -s -f -H "Authorization: Bearer $AUTHENTIK_TOKEN" "$AUTHENTIK_API_URL" > /dev/null; then
+    echo "✅ Authentik API is accessible"
+    break
+  else
+    echo "❌ Authentik API not accessible, retrying in 5s..."
+    if [ $i -eq 10 ]; then
+      echo "ERROR: Failed to connect to Authentik API after 10 attempts"
+      exit 1
+    fi
+    sleep 5
+  fi
+done
+{{- end }}
+
+{{/*
+Proxy provider function
+*/}}
+{{- define "gitops-lifecycle-management.proxyProviderFunction" -}}
+# Function to create proxy provider
+create_proxy_provider() {
+  local name="$1"
+  local external_host="$2"
+  local internal_host="$3"
+  local slug="$4"
+  
+  echo "Creating proxy provider: $name"
+  
+  # Check if provider already exists
+  PROVIDER_ID=$(curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+    "${AUTHENTIK_HOST}/api/v3/providers/proxy/" | \
+    jq -r ".results[] | select(.name == \"$name\") | .pk" 2>/dev/null || echo "")
+  
+  if [ -n "$PROVIDER_ID" ] && [ "$PROVIDER_ID" != "null" ]; then
+    echo "Provider '$name' already exists with ID: $PROVIDER_ID"
+    return 0
+  fi
+  
+  # Create new provider
+  PROVIDER_DATA=$(cat <<EOF
+{
+  "name": "$name",
+  "external_host": "https://$external_host",
+  "internal_host": "$internal_host",
+  "authorization_flow": "{{ .Values.authentication.authentik.flows.authorization | default "default-provider-authorization-implicit-consent" }}",
+  "invalidation_flow": "{{ .Values.authentication.authentik.flows.invalidation | default "default-provider-invalidation-flow" }}",
+  "cookie_domain": "{{ .Values.authentication.authentik.cookieDomain }}",
+  "mode": "forward_single",
+  "skip_path_regex": "^/api/.*$"
+}
+EOF
+)
+  
+  RESPONSE=$(curl -s -X POST \
+    -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$PROVIDER_DATA" \
+    "${AUTHENTIK_HOST}/api/v3/providers/proxy/")
+  
+  PROVIDER_ID=$(echo "$RESPONSE" | jq -r '.pk' 2>/dev/null || echo "")
+  
+  if [ -n "$PROVIDER_ID" ] && [ "$PROVIDER_ID" != "null" ]; then
+    echo "✅ Created proxy provider '$name' with ID: $PROVIDER_ID"
+    
+    # Assign to external outpost
+    OUTPOST_ID="{{ .Values.authentication.authentik.externalOutpost.outpostId | default "3f0970c5-d6a3-43b2-9a36-d74665c6b24e" }}"
+    curl -s -X POST \
+      -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "{\"providers\": [\"$PROVIDER_ID\"]}" \
+      "${AUTHENTIK_HOST}/api/v3/outposts/instances/$OUTPOST_ID/set_providers/" > /dev/null
+    
+    echo "✅ Assigned provider '$name' to external outpost"
+  else
+    echo "❌ Failed to create proxy provider '$name'"
+    echo "Response: $RESPONSE"
+    return 1
+  fi
+}
+{{- end }}

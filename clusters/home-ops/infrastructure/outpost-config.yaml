@@ -8,7 +8,8 @@ spec:
   dependsOn:
     - name: infrastructure-authentik
     - name: infrastructure-external-secrets
-    - name: infrastructure-onepassword
+    - name: infrastructure-onepassword-connect
+    - name: infrastructure-gitops-lifecycle-management
   interval: 30m
   retryInterval: 2m
   timeout: 15m
@@ -19,21 +20,8 @@ spec:
   prune: true
   wait: true
   healthChecks:
-    # Check that the enhanced token setup job completes successfully
-    - apiVersion: batch/v1
-      kind: Job
-      name: authentik-enhanced-token-setup
-      namespace: authentik
-    # Check that the OIDC setup jobs complete successfully
-    - apiVersion: batch/v1
-      kind: Job
-      name: grafana-oidc-setup
-      namespace: authentik
-    - apiVersion: batch/v1
-      kind: Job
-      name: dashboard-oidc-setup
-      namespace: authentik
-    # Check that the outpost configuration job completes successfully
+    # Check that the RADIUS outpost configuration job completes successfully
+    # (Other jobs are now handled by GitOps Lifecycle Management chart)
     - apiVersion: batch/v1
       kind: Job
       name: authentik-radius-outpost-config

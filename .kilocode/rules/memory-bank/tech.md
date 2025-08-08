@@ -129,6 +129,104 @@ task pre-commit:update        # Update hook versions
 task pre-commit:clean         # Clean cache
 ```
 
+## MCP Servers
+
+The development environment includes several Model Context Protocol (MCP) servers that extend capabilities for interacting with various systems and services. These servers provide specialized tools and resources that integrate seamlessly with the development workflow.
+
+### Configured MCP Servers
+
+#### Git Server (`mcp-server-git`)
+- **Type**: Local stdio-based server
+- **Command**: `uvx mcp-server-git --repository /Users/geoff/src/personal/talos-gitops`
+- **Capabilities**:
+  - Git repository operations and history analysis
+  - Branch and commit management
+  - File change tracking and diff analysis
+  - Repository structure exploration
+- **Integration**: Provides direct access to the Talos GitOps repository for code analysis, change tracking, and repository management tasks
+- **Usage Patterns**: Ideal for understanding project history, analyzing changes, and managing Git operations within the development workflow
+
+#### Cloudflare Observability Server
+- **Type**: Remote SSE-based server
+- **Endpoint**: `https://observability.mcp.cloudflare.com/sse`
+- **Command**: `npx mcp-remote https://observability.mcp.cloudflare.com/sse`
+- **Capabilities**:
+  - Cloudflare Workers observability and logging
+  - Performance metrics and analytics
+  - Error tracking and debugging
+  - Workers deployment monitoring
+- **Integration**: Provides observability into Cloudflare services used in the cluster (Cloudflare Tunnel, DNS management)
+- **Usage Patterns**: Monitor Cloudflare Tunnel performance, analyze DNS resolution, troubleshoot external access issues
+
+#### Kubernetes Server (`mcp-server-kubernetes`)
+- **Type**: Local stdio-based server (configured in both locations)
+- **Command**: `npx mcp-server-kubernetes`
+- **Capabilities**:
+  - Kubernetes cluster operations and management
+  - Resource inspection and manipulation
+  - Pod logs and debugging
+  - Deployment and service management
+  - Helm chart operations
+- **Integration**: Direct integration with the Talos GitOps cluster for operational tasks
+- **Usage Patterns**:
+  - Cluster health monitoring and diagnostics
+  - Application deployment and troubleshooting
+  - Resource management and scaling operations
+  - Integration with GitOps workflows
+
+#### GitHub Copilot Server
+- **Type**: Remote HTTP-based server
+- **Endpoint**: `https://api.githubcopilot.com/mcp/`
+- **Capabilities**:
+  - GitHub repository integration
+  - Code analysis and suggestions
+  - Pull request and issue management
+  - Repository insights and analytics
+- **Integration**: Enhances development workflow with GitHub-specific operations
+- **Usage Patterns**: Repository management, code review assistance, GitHub Actions integration
+
+### Development Workflow Integration
+
+#### Cluster Operations
+```bash
+# MCP servers enhance these common operations:
+# - Kubernetes resource management via kubernetes server
+# - Git operations and history analysis via git server
+# - Cloudflare service monitoring via cloudflare server
+# - GitHub integration via github server
+```
+
+#### Operational Patterns
+
+- **Troubleshooting**: Kubernetes server provides direct cluster access for diagnostics
+- **Change Management**: Git server enables comprehensive repository analysis and change tracking
+- **External Service Monitoring**: Cloudflare server provides visibility into external service performance
+- **Development Collaboration**: GitHub server facilitates repository management and collaboration
+
+#### Integration Benefits
+
+- **Unified Interface**: All servers accessible through consistent MCP protocol
+- **Context Awareness**: Servers understand the specific project context and configuration
+- **Operational Efficiency**: Direct access to cluster and external services without context switching
+- **Enhanced Debugging**: Combined visibility across Git, Kubernetes, and external services
+
+### Configuration Management
+
+- **Local Configuration**: `.kilocode/mcp.json` - Project-specific MCP server configuration
+- **Global Configuration**: `~/Library/Application Support/Code/User/mcp.json` - User-wide MCP server settings
+- **Server Types**: Mix of local stdio servers and remote HTTP/SSE servers
+- **Security**: Servers operate with appropriate permissions for their respective domains
+
+### Usage Notes
+
+- **Git Server**: Scoped to the specific Talos GitOps repository for focused operations
+- **Kubernetes Server**: Requires proper kubectl configuration and cluster access
+- **Cloudflare Server**: Provides read-only observability into Cloudflare services
+- **GitHub Server**: Integrates with existing GitHub authentication and permissions
+- **Performance**: Local servers provide faster response times, remote servers offer specialized capabilities
+
+This MCP server ecosystem significantly enhances the development and operational capabilities by providing direct, context-aware access to the key systems and services that comprise the Talos GitOps infrastructure.
+
 ## Hardware Architecture
 
 ### Node Specifications

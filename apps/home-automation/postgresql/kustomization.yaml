@@ -10,7 +10,6 @@ metadata:
 resources:
   - objectstore.yaml
   - cluster-plugin.yaml
-  - database-init-job.yaml
   - external-secret-superuser.yaml
   - external-secret-database.yaml
   - external-secret-s3-backup.yaml

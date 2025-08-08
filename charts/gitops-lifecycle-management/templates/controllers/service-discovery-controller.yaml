@@ -1,0 +1,212 @@
+{{- if .Values.serviceDiscovery.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-service-discovery
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.serviceDiscoveryLabels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.serviceDiscovery.controller.replicas }}
+  selector:
+    matchLabels:
+      {{- include "gitops-lifecycle-management.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: service-discovery-controller
+  template:
+    metadata:
+      labels:
+        {{- include "gitops-lifecycle-management.serviceDiscoveryLabels" . | nindent 8 }}
+      annotations:
+        {{- include "gitops-lifecycle-management.annotations" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "gitops-lifecycle-management.serviceAccountName" . }}
+      {{- include "gitops-lifecycle-management.controllerPodSecurityContext" . | nindent 6 }}
+      containers:
+        - name: controller
+          image: "{{ .Values.serviceDiscovery.controller.image.repository }}:{{ .Values.serviceDiscovery.controller.image.tag }}"
+          imagePullPolicy: {{ .Values.serviceDiscovery.controller.image.pullPolicy }}
+          {{- include "gitops-lifecycle-management.controllerSecurityContext" . | nindent 10 }}
+          env:
+            - name: AUTHENTIK_HOST
+              value: {{ .Values.global.authentikHost | quote }}
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.onePassword.secrets.authentikToken.targetSecret }}
+                  key: {{ .Values.externalSecrets.onePassword.secrets.authentikToken.targetKey }}
+            - name: EXTERNAL_OUTPOST_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.onePassword.secrets.authentikOutpost.targetSecret }}
+                  key: outpostId
+            - name: AUTHORIZATION_FLOW
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.onePassword.secrets.authentikOutpost.targetSecret }}
+                  key: authorizationFlow
+            - name: INVALIDATION_FLOW
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.onePassword.secrets.authentikOutpost.targetSecret }}
+                  key: invalidationFlow
+            - name: COOKIE_DOMAIN
+              value: {{ .Values.authentication.authentik.cookieDomain | quote }}
+            - name: RECONCILE_INTERVAL
+              value: {{ .Values.serviceDiscovery.discovery.reconcileInterval | quote }}
+            - name: CLEANUP_ORPHANED
+              value: {{ .Values.serviceDiscovery.discovery.cleanupOrphaned | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logging.level | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logging.format | quote }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.monitoring.metrics.port }}
+              protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.serviceDiscovery.controller.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: controller-config
+              mountPath: /etc/controller
+              readOnly: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== GitOps Lifecycle Management Service Discovery Controller ==="
+              echo "Starting event-driven service discovery controller..."
+              
+              # Controller main loop
+              while true; do
+                echo "$(date): Checking for ProxyConfig resources..."
+                
+                # Get all ProxyConfig resources
+                kubectl get proxyconfigs --all-namespaces -o json > /tmp/proxyconfigs.json
+                
+                if [ -s /tmp/proxyconfigs.json ]; then
+                  echo "Processing ProxyConfig resources..."
+                  
+                  # Process each ProxyConfig resource
+                  cat /tmp/proxyconfigs.json | jq -r '.items[] | @base64' | while read config; do
+                    echo "$config" | base64 -d > /tmp/current_config.json
+                    
+                    NAME=$(cat /tmp/current_config.json | jq -r '.metadata.name')
+                    NAMESPACE=$(cat /tmp/current_config.json | jq -r '.metadata.namespace')
+                    SERVICE_NAME=$(cat /tmp/current_config.json | jq -r '.spec.serviceName')
+                    EXTERNAL_HOST=$(cat /tmp/current_config.json | jq -r '.spec.externalHost')
+                    INTERNAL_HOST=$(cat /tmp/current_config.json | jq -r '.spec.internalHost')
+                    PROVIDER_NAME=$(cat /tmp/current_config.json | jq -r '.spec.authentikConfig.providerName')
+                    
+                    echo "Processing ProxyConfig: $NAME in namespace $NAMESPACE"
+                    
+                    # Check if Authentik proxy provider exists
+                    if curl -s "${AUTHENTIK_HOST}/api/v3/providers/proxy/?name=${PROVIDER_NAME}" \
+                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" | jq -r '.count' | grep -q "0"; then
+                      
+                      echo "Creating Authentik proxy provider: $PROVIDER_NAME"
+                      
+                      # Create proxy provider
+                      PROVIDER_RESPONSE=$(curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/proxy/" \
+                        -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
+                        -H "Content-Type: application/json" \
+                        -d "{
+                          \"name\": \"${PROVIDER_NAME}\",
+                          \"external_host\": \"https://${EXTERNAL_HOST}\",
+                          \"internal_host\": \"${INTERNAL_HOST}\",
+                          \"authorization_flow\": \"${AUTHORIZATION_FLOW}\",
+                          \"invalidation_flow\": \"${INVALIDATION_FLOW}\",
+                          \"cookie_domain\": \"${COOKIE_DOMAIN}\",
+                          \"mode\": \"forward_single\",
+                          \"skip_path_regex\": \"^/api/.*$\",
+                          \"basic_auth_enabled\": false,
+                          \"internal_host_ssl_validation\": false
+                        }")
+                      
+                      PROVIDER_ID=$(echo "$PROVIDER_RESPONSE" | jq -r '.pk')
+                      
+                      if [ "$PROVIDER_ID" != "null" ] && [ -n "$PROVIDER_ID" ]; then
+                        echo "Created provider ID: $PROVIDER_ID"
+                        
+                        # Update ProxyConfig status
+                        kubectl patch proxyconfig "$NAME" -n "$NAMESPACE" --type=merge -p "{
+                          \"status\": {
+                            \"phase\": \"Ready\",
+                            \"authentikProviderId\": \"$PROVIDER_ID\",
+                            \"lastReconciled\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                            \"conditions\": [{
+                              \"type\": \"Ready\",
+                              \"status\": \"True\",
+                              \"lastTransitionTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                              \"reason\": \"ProviderCreated\",
+                              \"message\": \"Authentik proxy provider created successfully\"
+                            }]
+                          }
+                        }"
+                      else
+                        echo "Failed to create provider for $PROVIDER_NAME"
+                        
+                        # Update ProxyConfig status with error
+                        kubectl patch proxyconfig "$NAME" -n "$NAMESPACE" --type=merge -p "{
+                          \"status\": {
+                            \"phase\": \"Failed\",
+                            \"lastReconciled\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                            \"conditions\": [{
+                              \"type\": \"Ready\",
+                              \"status\": \"False\",
+                              \"lastTransitionTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                              \"reason\": \"ProviderCreationFailed\",
+                              \"message\": \"Failed to create Authentik proxy provider\"
+                            }]
+                          }
+                        }"
+                      fi
+                    else
+                      echo "Provider $PROVIDER_NAME already exists, skipping creation"
+                    fi
+                  done
+                else
+                  echo "No ProxyConfig resources found"
+                fi
+                
+                echo "Sleeping for ${RECONCILE_INTERVAL}..."
+                sleep "${RECONCILE_INTERVAL}"
+              done
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        - name: controller-config
+          configMap:
+            name: {{ include "gitops-lifecycle-management.fullname" . }}-controller-config
+      {{- with .Values.serviceDiscovery.controller.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.serviceDiscovery.controller.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.serviceDiscovery.controller.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

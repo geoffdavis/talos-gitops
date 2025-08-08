@@ -1,0 +1,57 @@
+{{- if and .Values.authentication.enabled .Values.authentication.hooks.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-auth-setup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.authHookLabels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.authentication.hooks.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.authentication.hooks.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.authentication.hooks.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitops-lifecycle-management.authHookLabels" . | nindent 8 }}
+      annotations:
+        {{- include "gitops-lifecycle-management.annotations" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ include "gitops-lifecycle-management.serviceAccountName" . }}
+      {{- include "gitops-lifecycle-management.hookPodSecurityContext" . | nindent 6 }}
+      containers:
+        - name: auth-setup
+          {{- include "gitops-lifecycle-management.hookContainerTemplate" . | nindent 10 }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              {{- include "gitops-lifecycle-management.authentikConnectivityTest" . | nindent 14 }}
+              
+              {{- include "gitops-lifecycle-management.proxyProviderFunction" . | nindent 14 }}
+              
+              echo "=== Creating Authentik Proxy Providers for External Outpost ==="
+              
+              # Create proxy providers for all services that need authentication
+              create_proxy_provider "Longhorn Storage" "longhorn.{{ .Values.global.domain }}" \
+                "http://longhorn-frontend.longhorn-system.svc.cluster.local:80" "longhorn"
+              
+              create_proxy_provider "AlertManager" "alertmanager.{{ .Values.global.domain }}" \
+                "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093" "alertmanager"
+              
+              create_proxy_provider "Hubble UI" "hubble.{{ .Values.global.domain }}" \
+                "http://hubble-ui.kube-system.svc.cluster.local:80" "hubble"
+              
+              create_proxy_provider "Home Assistant" "homeassistant.{{ .Values.global.domain }}" \
+                "http://home-assistant.home-automation.svc.cluster.local:8123" "homeassistant"
+              
+              echo "=== Authentication Setup Complete ==="
+              echo "Configured proxy providers for: Longhorn, AlertManager, Hubble, Home Assistant"
+      {{- include "gitops-lifecycle-management.hookVolumes" . | nindent 6 }}
+{{- end }}

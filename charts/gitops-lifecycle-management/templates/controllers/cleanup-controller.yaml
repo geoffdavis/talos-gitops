@@ -1,0 +1,473 @@
+{{- if .Values.cleanup.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-cleanup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.cleanupLabels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "gitops-lifecycle-management.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: cleanup-controller
+  template:
+    metadata:
+      labels:
+        {{- include "gitops-lifecycle-management.cleanupLabels" . | nindent 8 }}
+      annotations:
+        {{- include "gitops-lifecycle-management.annotations" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "gitops-lifecycle-management.serviceAccountName" . }}
+      {{- include "gitops-lifecycle-management.controllerPodSecurityContext" . | nindent 6 }}
+      containers:
+        - name: cleanup-controller
+          image: "{{ .Values.serviceDiscovery.controller.image.repository }}:{{ .Values.serviceDiscovery.controller.image.tag }}"
+          imagePullPolicy: {{ .Values.serviceDiscovery.controller.image.pullPolicy }}
+          {{- include "gitops-lifecycle-management.controllerSecurityContext" . | nindent 10 }}
+          env:
+            - name: CLEANUP_INTERVAL
+              value: {{ .Values.cleanup.controller.interval | quote }}
+            - name: COMPLETED_JOBS_TTL
+              value: {{ .Values.cleanup.controller.policies.completedJobs.ttl | quote }}
+            - name: FAILED_JOBS_TTL
+              value: {{ .Values.cleanup.controller.policies.failedJobs.ttl | quote }}
+            - name: ORPHANED_PROVIDERS_MAX_AGE
+              value: {{ .Values.cleanup.controller.policies.orphanedProviders.maxAge | quote }}
+            - name: COMPLETED_JOBS_ENABLED
+              value: {{ .Values.cleanup.controller.policies.completedJobs.enabled | quote }}
+            - name: FAILED_JOBS_ENABLED
+              value: {{ .Values.cleanup.controller.policies.failedJobs.enabled | quote }}
+            - name: ORPHANED_PROVIDERS_ENABLED
+              value: {{ .Values.cleanup.controller.policies.orphanedProviders.enabled | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logging.level | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.logging.format | quote }}
+            - name: AUTHENTIK_HOST
+              value: {{ .Values.global.authentikHost | quote }}
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.externalSecrets.onePassword.secrets.authentikToken.targetSecret }}
+                  key: {{ .Values.externalSecrets.onePassword.secrets.authentikToken.targetKey }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.monitoring.metrics.port }}
+              protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.serviceDiscovery.controller.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: cleanup-scripts
+              mountPath: /scripts
+              readOnly: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "=== GitOps Lifecycle Management Cleanup Controller ==="
+              echo "Starting cleanup controller with interval: ${CLEANUP_INTERVAL}"
+              
+              # Source cleanup functions
+              source /scripts/cleanup-functions.sh
+              
+              # Initialize metrics
+              initialize_metrics
+              
+              # Main cleanup loop
+              while true; do
+                echo "$(date): Starting cleanup cycle..."
+                
+                # Track cleanup cycle start
+                cleanup_cycle_start=$(date +%s)
+                
+                # Job cleanup
+                if [ "${COMPLETED_JOBS_ENABLED}" = "true" ]; then
+                  echo "Cleaning up completed jobs older than ${COMPLETED_JOBS_TTL}..."
+                  cleanup_completed_jobs "${COMPLETED_JOBS_TTL}"
+                fi
+                
+                if [ "${FAILED_JOBS_ENABLED}" = "true" ]; then
+                  echo "Cleaning up failed jobs older than ${FAILED_JOBS_TTL}..."
+                  cleanup_failed_jobs "${FAILED_JOBS_TTL}"
+                fi
+                
+                # Orphaned resource cleanup
+                if [ "${ORPHANED_PROVIDERS_ENABLED}" = "true" ]; then
+                  echo "Cleaning up orphaned proxy providers older than ${ORPHANED_PROVIDERS_MAX_AGE}..."
+                  cleanup_orphaned_providers "${ORPHANED_PROVIDERS_MAX_AGE}"
+                fi
+                
+                # Failed resource cleanup
+                echo "Cleaning up stuck resources..."
+                cleanup_stuck_resources
+                
+                # Update metrics
+                cleanup_cycle_end=$(date +%s)
+                cleanup_duration=$((cleanup_cycle_end - cleanup_cycle_start))
+                update_cleanup_metrics "${cleanup_duration}"
+                
+                echo "$(date): Cleanup cycle completed in ${cleanup_duration}s. Sleeping for ${CLEANUP_INTERVAL}..."
+                sleep_duration=$(parse_duration "${CLEANUP_INTERVAL}")
+                sleep "${sleep_duration}"
+              done
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        - name: cleanup-scripts
+          configMap:
+            name: {{ include "gitops-lifecycle-management.fullname" . }}-cleanup-scripts
+            defaultMode: 0755
+      {{- with .Values.serviceDiscovery.controller.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.serviceDiscovery.controller.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.serviceDiscovery.controller.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-cleanup-scripts
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.cleanupLabels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+data:
+  cleanup-functions.sh: |
+    #!/bin/bash
+    
+    # Metrics file for Prometheus exposition
+    METRICS_FILE="/tmp/cleanup_metrics.prom"
+    
+    # Initialize metrics
+    initialize_metrics() {
+      cat > "${METRICS_FILE}" << 'EOF'
+    # HELP gitops_cleanup_jobs_cleaned_total Total number of jobs cleaned up
+    # TYPE gitops_cleanup_jobs_cleaned_total counter
+    gitops_cleanup_jobs_cleaned_total{type="completed"} 0
+    gitops_cleanup_jobs_cleaned_total{type="failed"} 0
+    
+    # HELP gitops_cleanup_providers_cleaned_total Total number of orphaned providers cleaned up
+    # TYPE gitops_cleanup_providers_cleaned_total counter
+    gitops_cleanup_providers_cleaned_total 0
+    
+    # HELP gitops_cleanup_stuck_resources_cleaned_total Total number of stuck resources cleaned up
+    # TYPE gitops_cleanup_stuck_resources_cleaned_total counter
+    gitops_cleanup_stuck_resources_cleaned_total 0
+    
+    # HELP gitops_cleanup_cycle_duration_seconds Duration of cleanup cycles
+    # TYPE gitops_cleanup_cycle_duration_seconds histogram
+    gitops_cleanup_cycle_duration_seconds_bucket{le="10"} 0
+    gitops_cleanup_cycle_duration_seconds_bucket{le="30"} 0
+    gitops_cleanup_cycle_duration_seconds_bucket{le="60"} 0
+    gitops_cleanup_cycle_duration_seconds_bucket{le="120"} 0
+    gitops_cleanup_cycle_duration_seconds_bucket{le="300"} 0
+    gitops_cleanup_cycle_duration_seconds_bucket{le="+Inf"} 0
+    gitops_cleanup_cycle_duration_seconds_sum 0
+    gitops_cleanup_cycle_duration_seconds_count 0
+    
+    # HELP gitops_cleanup_errors_total Total number of cleanup errors
+    # TYPE gitops_cleanup_errors_total counter
+    gitops_cleanup_errors_total{operation="job_cleanup"} 0
+    gitops_cleanup_errors_total{operation="provider_cleanup"} 0
+    gitops_cleanup_errors_total{operation="resource_cleanup"} 0
+    
+    # HELP gitops_cleanup_last_run_timestamp_seconds Timestamp of last cleanup run
+    # TYPE gitops_cleanup_last_run_timestamp_seconds gauge
+    gitops_cleanup_last_run_timestamp_seconds $(date +%s)
+    EOF
+    }
+    
+    # Parse duration string to seconds
+    parse_duration() {
+      local duration="$1"
+      local value="${duration%?}"
+      local unit="${duration: -1}"
+      
+      case "$unit" in
+        s) echo "$value" ;;
+        m) echo $((value * 60)) ;;
+        h) echo $((value * 3600)) ;;
+        d) echo $((value * 86400)) ;;
+        *) echo "3600" ;; # Default to 1 hour
+      esac
+    }
+    
+    # Convert age to seconds for comparison
+    age_to_seconds() {
+      local age="$1"
+      parse_duration "$age"
+    }
+    
+    # Check if resource is older than specified age
+    is_older_than() {
+      local resource_time="$1"
+      local max_age_seconds="$2"
+      local current_time=$(date +%s)
+      local resource_timestamp=$(date -d "$resource_time" +%s 2>/dev/null || echo "0")
+      local age_seconds=$((current_time - resource_timestamp))
+      
+      [ "$age_seconds" -gt "$max_age_seconds" ]
+    }
+    
+    # Cleanup completed jobs
+    cleanup_completed_jobs() {
+      local ttl="$1"
+      local ttl_seconds=$(age_to_seconds "$ttl")
+      local cleaned_count=0
+      
+      echo "Searching for completed jobs older than ${ttl}..."
+      
+      # Get completed jobs across all namespaces
+      kubectl get jobs --all-namespaces -o json | jq -r '
+        .items[] | 
+        select(.status.conditions[]? | select(.type == "Complete" and .status == "True")) |
+        select(.status.completionTime != null) |
+        "\(.metadata.namespace) \(.metadata.name) \(.status.completionTime)"
+      ' | while read namespace name completion_time; do
+        if [ -n "$namespace" ] && [ -n "$name" ] && [ -n "$completion_time" ]; then
+          if is_older_than "$completion_time" "$ttl_seconds"; then
+            echo "Deleting completed job: $namespace/$name (completed: $completion_time)"
+            if kubectl delete job "$name" -n "$namespace" --ignore-not-found=true; then
+              cleaned_count=$((cleaned_count + 1))
+            else
+              increment_error_metric "job_cleanup"
+            fi
+          fi
+        fi
+      done
+      
+      update_job_cleanup_metric "completed" "$cleaned_count"
+    }
+    
+    # Cleanup failed jobs
+    cleanup_failed_jobs() {
+      local ttl="$1"
+      local ttl_seconds=$(age_to_seconds "$ttl")
+      local cleaned_count=0
+      
+      echo "Searching for failed jobs older than ${ttl}..."
+      
+      # Get failed jobs across all namespaces
+      kubectl get jobs --all-namespaces -o json | jq -r '
+        .items[] | 
+        select(.status.conditions[]? | select(.type == "Failed" and .status == "True")) |
+        select(.status.startTime != null) |
+        "\(.metadata.namespace) \(.metadata.name) \(.status.startTime)"
+      ' | while read namespace name start_time; do
+        if [ -n "$namespace" ] && [ -n "$name" ] && [ -n "$start_time" ]; then
+          if is_older_than "$start_time" "$ttl_seconds"; then
+            echo "Deleting failed job: $namespace/$name (started: $start_time)"
+            if kubectl delete job "$name" -n "$namespace" --ignore-not-found=true; then
+              cleaned_count=$((cleaned_count + 1))
+            else
+              increment_error_metric "job_cleanup"
+            fi
+          fi
+        fi
+      done
+      
+      update_job_cleanup_metric "failed" "$cleaned_count"
+    }
+    
+    # Cleanup orphaned proxy providers
+    cleanup_orphaned_providers() {
+      local max_age="$1"
+      local max_age_seconds=$(age_to_seconds "$max_age")
+      local cleaned_count=0
+      
+      echo "Searching for orphaned proxy providers older than ${max_age}..."
+      
+      if [ -z "${AUTHENTIK_TOKEN}" ]; then
+        echo "WARNING: AUTHENTIK_TOKEN not set, skipping provider cleanup"
+        return 0
+      fi
+      
+      # Get all proxy providers from Authentik
+      if ! curl -s "${AUTHENTIK_HOST}/api/v3/providers/proxy/" \
+        -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/providers.json; then
+        echo "ERROR: Failed to fetch proxy providers from Authentik"
+        increment_error_metric "provider_cleanup"
+        return 1
+      fi
+      
+      # Get all ProxyConfig resources
+      kubectl get proxyconfigs --all-namespaces -o json > /tmp/proxyconfigs.json
+      
+      # Extract provider names from ProxyConfigs
+      cat /tmp/proxyconfigs.json | jq -r '.items[].spec.authentikConfig.providerName' > /tmp/expected_providers.txt
+      
+      # Check each Authentik provider
+      cat /tmp/providers.json | jq -r '.results[] | "\(.pk) \(.name)"' | while read provider_id provider_name; do
+        if [ -n "$provider_id" ] && [ -n "$provider_name" ]; then
+          # Check if provider is referenced by any ProxyConfig
+          if ! grep -q "^${provider_name}$" /tmp/expected_providers.txt; then
+            echo "Found orphaned provider: $provider_name (ID: $provider_id)"
+            
+            # Delete orphaned provider
+            if curl -s -X DELETE "${AUTHENTIK_HOST}/api/v3/providers/proxy/${provider_id}/" \
+              -H "Authorization: Bearer ${AUTHENTIK_TOKEN}"; then
+              echo "Deleted orphaned provider: $provider_name"
+              cleaned_count=$((cleaned_count + 1))
+            else
+              echo "ERROR: Failed to delete provider: $provider_name"
+              increment_error_metric "provider_cleanup"
+            fi
+          fi
+        fi
+      done
+      
+      update_provider_cleanup_metric "$cleaned_count"
+    }
+    
+    # Cleanup stuck resources
+    cleanup_stuck_resources() {
+      local cleaned_count=0
+      
+      echo "Searching for stuck resources..."
+      
+      # Find pods stuck in terminating state for more than 5 minutes
+      kubectl get pods --all-namespaces --field-selector=status.phase=Terminating -o json | \
+        jq -r '.items[] | select(.metadata.deletionTimestamp != null) | 
+               select((now - (.metadata.deletionTimestamp | fromdateiso8601)) > 300) |
+               "\(.metadata.namespace) \(.metadata.name)"' | \
+      while read namespace name; do
+        if [ -n "$namespace" ] && [ -n "$name" ]; then
+          echo "Force deleting stuck pod: $namespace/$name"
+          if kubectl delete pod "$name" -n "$namespace" --force --grace-period=0 --ignore-not-found=true; then
+            cleaned_count=$((cleaned_count + 1))
+          else
+            increment_error_metric "resource_cleanup"
+          fi
+        fi
+      done
+      
+      # Find jobs without TTL that are older than 1 hour
+      kubectl get jobs --all-namespaces -o json | \
+        jq -r '.items[] | select(.spec.ttlSecondsAfterFinished == null) |
+               select(.status.completionTime != null) |
+               select((now - (.status.completionTime | fromdateiso8601)) > 3600) |
+               "\(.metadata.namespace) \(.metadata.name)"' | \
+      while read namespace name; do
+        if [ -n "$namespace" ] && [ -n "$name" ]; then
+          echo "Cleaning up job without TTL: $namespace/$name"
+          if kubectl delete job "$name" -n "$namespace" --ignore-not-found=true; then
+            cleaned_count=$((cleaned_count + 1))
+          else
+            increment_error_metric "resource_cleanup"
+          fi
+        fi
+      done
+      
+      update_stuck_resource_metric "$cleaned_count"
+    }
+    
+    # Update job cleanup metrics
+    update_job_cleanup_metric() {
+      local job_type="$1"
+      local count="$2"
+      
+      if [ "$count" -gt 0 ]; then
+        sed -i "s/gitops_cleanup_jobs_cleaned_total{type=\"${job_type}\"} [0-9]*/gitops_cleanup_jobs_cleaned_total{type=\"${job_type}\"} $(($(grep "gitops_cleanup_jobs_cleaned_total{type=\"${job_type}\"}" "${METRICS_FILE}" | awk '{print $2}') + count))/" "${METRICS_FILE}"
+      fi
+    }
+    
+    # Update provider cleanup metrics
+    update_provider_cleanup_metric() {
+      local count="$1"
+      
+      if [ "$count" -gt 0 ]; then
+        sed -i "s/gitops_cleanup_providers_cleaned_total [0-9]*/gitops_cleanup_providers_cleaned_total $(($(grep "gitops_cleanup_providers_cleaned_total" "${METRICS_FILE}" | awk '{print $2}') + count))/" "${METRICS_FILE}"
+      fi
+    }
+    
+    # Update stuck resource metrics
+    update_stuck_resource_metric() {
+      local count="$1"
+      
+      if [ "$count" -gt 0 ]; then
+        sed -i "s/gitops_cleanup_stuck_resources_cleaned_total [0-9]*/gitops_cleanup_stuck_resources_cleaned_total $(($(grep "gitops_cleanup_stuck_resources_cleaned_total" "${METRICS_FILE}" | awk '{print $2}') + count))/" "${METRICS_FILE}"
+      fi
+    }
+    
+    # Increment error metrics
+    increment_error_metric() {
+      local operation="$1"
+      sed -i "s/gitops_cleanup_errors_total{operation=\"${operation}\"} [0-9]*/gitops_cleanup_errors_total{operation=\"${operation}\"} $(($(grep "gitops_cleanup_errors_total{operation=\"${operation}\"}" "${METRICS_FILE}" | awk '{print $2}') + 1))/" "${METRICS_FILE}"
+    }
+    
+    # Update cleanup cycle metrics
+    update_cleanup_metrics() {
+      local duration="$1"
+      
+      # Update histogram buckets
+      for bucket in 10 30 60 120 300; do
+        if [ "$duration" -le "$bucket" ]; then
+          sed -i "s/gitops_cleanup_cycle_duration_seconds_bucket{le=\"${bucket}\"} [0-9]*/gitops_cleanup_cycle_duration_seconds_bucket{le=\"${bucket}\"} $(($(grep "gitops_cleanup_cycle_duration_seconds_bucket{le=\"${bucket}\"}" "${METRICS_FILE}" | awk '{print $2}') + 1))/" "${METRICS_FILE}"
+        fi
+      done
+      
+      # Update +Inf bucket
+      sed -i "s/gitops_cleanup_cycle_duration_seconds_bucket{le=\"+Inf\"} [0-9]*/gitops_cleanup_cycle_duration_seconds_bucket{le=\"+Inf\"} $(($(grep "gitops_cleanup_cycle_duration_seconds_bucket{le=\"+Inf\"}" "${METRICS_FILE}" | awk '{print $2}') + 1))/" "${METRICS_FILE}"
+      
+      # Update sum and count
+      sed -i "s/gitops_cleanup_cycle_duration_seconds_sum [0-9]*/gitops_cleanup_cycle_duration_seconds_sum $(($(grep "gitops_cleanup_cycle_duration_seconds_sum" "${METRICS_FILE}" | awk '{print $2}') + duration))/" "${METRICS_FILE}"
+      sed -i "s/gitops_cleanup_cycle_duration_seconds_count [0-9]*/gitops_cleanup_cycle_duration_seconds_count $(($(grep "gitops_cleanup_cycle_duration_seconds_count" "${METRICS_FILE}" | awk '{print $2}') + 1))/" "${METRICS_FILE}"
+      
+      # Update last run timestamp
+      sed -i "s/gitops_cleanup_last_run_timestamp_seconds [0-9]*/gitops_cleanup_last_run_timestamp_seconds $(date +%s)/" "${METRICS_FILE}"
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-cleanup-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.cleanupLabels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: {{ .Values.monitoring.metrics.port }}
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    {{- include "gitops-lifecycle-management.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: cleanup-controller
+{{- end }}

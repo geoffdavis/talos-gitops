@@ -1,0 +1,190 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gitops-lifecycle-management
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  timeout: 15m0s
+  chart:
+    spec:
+      chart: ./charts/gitops-lifecycle-management
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+      interval: 10m0s
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    global:
+      domain: "k8s.home.geoffdavis.com"
+      authentikHost: "http://authentik-server.authentik.svc.cluster.local:9000"
+    
+    # Authentication management configuration
+    authentication:
+      enabled: true
+      authentik:
+        externalOutpost:
+          onePasswordKey: "home-ops-authentik-external-outpost-config"
+          secretName: "authentik-outpost-config"
+        flows:
+          onePasswordKey: "home-ops-authentik-flow-config"
+          secretName: "authentik-flow-config"
+        cookieDomain: "k8s.home.geoffdavis.com"
+        token:
+          onePasswordKey: "home-ops-authentik-admin-token"
+          secretName: "authentik-admin-token"
+          secretKey: "token"
+      hooks:
+        enabled: true
+        activeDeadlineSeconds: 300
+        backoffLimit: 3
+        ttlSecondsAfterFinished: 300
+    
+    # Service discovery controller configuration
+    serviceDiscovery:
+      enabled: true
+      controller:
+        replicas: 1
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+      discovery:
+        serviceSelector:
+          matchLabels:
+            authentik.io/proxy: "enabled"
+        reconcileInterval: "5m"
+        cleanupOrphaned: true
+    
+    # Database initialization configuration
+    database:
+      enabled: true
+      hooks:
+        enabled: true
+        postgresql:
+          host: "homeassistant-postgresql-rw.home-automation.svc.cluster.local"
+          port: 5432
+          database: "homeassistant"
+          credentialsSecret:
+            name: "homeassistant-postgresql-superuser"
+            usernameKey: "username"
+            passwordKey: "password"
+        initScripts:
+          homeassistant:
+            enabled: true
+    
+    # RBAC configuration
+    rbac:
+      create: true
+      serviceAccount:
+        create: true
+        name: ""
+        annotations: {}
+    
+    # Custom Resource Definitions
+    crds:
+      install: true
+      proxyConfig:
+        enabled: true
+    
+    # Validation and cleanup configuration
+    validation:
+      enabled: true
+      hooks:
+        enabled: true
+        activeDeadlineSeconds: 180
+        tests:
+          authentikConnectivity: true
+          serviceDiscovery: true
+          databaseConnectivity: true
+    
+    # Cleanup configuration
+    cleanup:
+      enabled: true
+      controller:
+        interval: "1h"
+        policies:
+          completedJobs:
+            enabled: true
+            ttl: "1h"
+          failedJobs:
+            enabled: true
+            ttl: "24h"
+          orphanedProviders:
+            enabled: true
+            maxAge: "7d"
+    
+    # Monitoring and observability
+    monitoring:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        interval: "30s"
+        scrapeTimeout: "10s"
+      metrics:
+        port: 8080
+        path: "/metrics"
+    
+    # External Secrets configuration
+    externalSecrets:
+      enabled: true
+      secretStore:
+        name: "onepassword-connect"
+        kind: "ClusterSecretStore"
+      refreshInterval: "15m"
+      onePassword:
+        vault: "Automation"
+        secrets:
+          authentikToken:
+            enabled: true
+            key: "home-ops-authentik-admin-token"
+            property: "credential"
+            targetSecret: "authentik-admin-token"
+            targetKey: "token"
+          authentikOutpost:
+            enabled: true
+            key: "home-ops-authentik-external-outpost-config"
+            properties:
+              outpostId: "outpost_id"
+              authorizationFlow: "authorization_flow"
+              invalidationFlow: "invalidation_flow"
+            targetSecret: "authentik-outpost-config"
+          databaseCredentials:
+            enabled: true
+            key: "home-ops-postgresql-superuser-credentials"
+            properties:
+              username: "username"
+              password: "password"
+            targetSecret: "postgresql-admin-credentials"
+          oidcSecrets:
+            enabled: true
+            grafana:
+              key: "home-ops-grafana-oidc-client-secret"
+              property: "credential"
+              targetSecret: "grafana-oidc-secret"
+              targetKey: "client-secret"
+            dashboard:
+              key: "home-ops-dashboard-oidc-client-secret"
+              property: "credential"
+              targetSecret: "dashboard-oidc-secret"
+              targetKey: "client-secret"
+    
+    # Common labels and annotations
+    commonLabels:
+      app.kubernetes.io/name: gitops-lifecycle-management
+      app.kubernetes.io/part-of: talos-gitops
+    
+    # Logging configuration
+    logging:
+      level: "info"
+      format: "json"
