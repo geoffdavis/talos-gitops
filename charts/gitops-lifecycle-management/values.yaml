@@ -93,8 +93,8 @@ serviceDiscovery:
     replicas: 1
 
     image:
-      repository: "registry.k8s.io/ingress-nginx/kube-webhook-certgen"
-      tag: "v1.4.3"
+      repository: "bitnami/kubectl"
+      tag: "1.31.1"
       pullPolicy: IfNotPresent
 
     # Resource limits
@@ -259,8 +259,8 @@ cleanup:
     replicas: 1
 
     image:
-      repository: "registry.k8s.io/ingress-nginx/kube-webhook-certgen"
-      tag: "v1.4.3"
+      repository: "bitnami/kubectl"
+      tag: "1.31.1"
       pullPolicy: IfNotPresent
 
     # Resource limits
@@ -440,9 +440,7 @@ commonLabels:
   app.kubernetes.io/part-of: talos-gitops
 
 # Common annotations applied to all resources
-commonAnnotations:
-  meta.helm.sh/release-name: "{{ .Release.Name }}"
-  meta.helm.sh/release-namespace: "{{ .Release.Namespace }}"
+commonAnnotations: {}
 
 # External Secrets configuration
 externalSecrets:
