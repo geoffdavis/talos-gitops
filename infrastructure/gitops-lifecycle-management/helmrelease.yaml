@@ -76,7 +76,7 @@ spec:
           port: 5432
           database: "homeassistant"
           credentialsSecret:
-            name: "homeassistant-postgresql-superuser"
+            name: "postgresql-admin-credentials"
             usernameKey: "username"
             passwordKey: "password"
         initScripts:
