@@ -154,26 +154,27 @@ spec:
     - name: infrastructure-authentik
   retryInterval: 2m0s
   wait: true
-  healthChecks:
-    # Check HelmRelease
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: gitops-lifecycle-management
-      namespace: flux-system
+  # Temporarily remove health checks to allow Kustomization to update HelmRelease
+  # healthChecks:
+  #   # Check HelmRelease
+  #   - apiVersion: helm.toolkit.fluxcd.io/v2
+  #     kind: HelmRelease
+  #     name: gitops-lifecycle-management
+  #     namespace: flux-system
   postBuild:
     substitute:
       # Environment-specific substitutions
       cluster_name: "homelab"
       domain_name: "k8s.home.geoffdavis.com"
       authentik_domain: "authentik.k8s.home.geoffdavis.com"
-      
+
       # Network configuration
       internal_ingress_ip: "172.29.52.200"
-      
+
       # Authentik server connection
       authentik_server_host: "authentik-server.authentik.svc.cluster.local"
       authentik_server_port: "9000"
-      
+
       # Database configuration
       homeassistant_postgres_host: "homeassistant-postgresql-rw.home-automation.svc.cluster.local"
       homeassistant_postgres_port: "5432"
