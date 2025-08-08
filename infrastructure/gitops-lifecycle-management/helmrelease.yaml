@@ -31,16 +31,16 @@ spec:
       enabled: true
       authentik:
         externalOutpost:
-          onePasswordKey: "home-ops-authentik-external-outpost-config"
-          secretName: "authentik-outpost-config"
+          onePasswordKey: "home-ops-authentik-external-outpost-config"  # pragma: allowlist secret
+          secretName: "authentik-outpost-config"  # pragma: allowlist secret
         flows:
-          onePasswordKey: "home-ops-authentik-flow-config"
-          secretName: "authentik-flow-config"
+          onePasswordKey: "home-ops-authentik-flow-config"  # pragma: allowlist secret
+          secretName: "authentik-flow-config"  # pragma: allowlist secret
         cookieDomain: "k8s.home.geoffdavis.com"
         token:
-          onePasswordKey: "home-ops-authentik-admin-token"
-          secretName: "authentik-admin-token"
-          secretKey: "token"
+          onePasswordKey: "home-ops-authentik-admin-token"  # pragma: allowlist secret
+          secretName: "authentik-admin-token"  # pragma: allowlist secret
+          secretKey: "token"  # pragma: allowlist secret
       hooks:
         enabled: true
         activeDeadlineSeconds: 900
@@ -78,7 +78,7 @@ spec:
           credentialsSecret:
             name: "homeassistant-postgresql-superuser"
             usernameKey: "username"
-            passwordKey: "password"
+            passwordKey: "password"  # pragma: allowlist secret
         initScripts:
           homeassistant:
             enabled: true
@@ -148,7 +148,7 @@ spec:
           authentikToken:
             enabled: true
             key: "Authentik Admin API Token - home-ops"
-            property: "credential"
+            property: "token"
             targetSecret: "authentik-admin-token"
             targetKey: "token"
           authentikOutpost:
@@ -165,18 +165,18 @@ spec:
             properties:
               username: "username"
               password: "password"
-            targetSecret: "homeassistant-postgresql-superuser"
+            targetSecret: "homeassistant-postgresql-superuser"  # pragma: allowlist secret
           oidcSecrets:
             enabled: true
             grafana:
               key: "home-ops-grafana-oidc-client-secret"
               property: "credential"
-              targetSecret: "grafana-oidc-secret"
+              targetSecret: "grafana-oidc-secret"  # pragma: allowlist secret
               targetKey: "client-secret"
             dashboard:
               key: "home-ops-dashboard-oidc-client-secret"
               property: "credential"
-              targetSecret: "dashboard-oidc-secret"
+              targetSecret: "dashboard-oidc-secret"  # pragma: allowlist secret
               targetKey: "client-secret"
 
     # Common labels and annotations
