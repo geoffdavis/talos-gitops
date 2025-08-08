@@ -198,7 +198,7 @@ spec:
       rules:
         # High memory usage
         - alert: GitOpsControllerHighMemoryUsage
-          expr: >
+          expr: |
             (
               container_memory_working_set_bytes{container=~".*gitops-lifecycle-management.*"} /
               container_spec_memory_limit_bytes{container=~".*gitops-lifecycle-management.*"}
@@ -214,7 +214,7 @@ spec:
         
         # High CPU usage
         - alert: GitOpsControllerHighCPUUsage
-          expr: >
+          expr: |
             (
               rate(container_cpu_usage_seconds_total{container=~".*gitops-lifecycle-management.*"}[5m]) /
               container_spec_cpu_quota{container=~".*gitops-lifecycle-management.*"} *
@@ -231,7 +231,7 @@ spec:
         
         # Pod restart rate too high
         - alert: GitOpsControllerHighRestartRate
-          expr: >
+          expr: |
             rate(kube_pod_container_status_restarts_total{container=~".*gitops-lifecycle-management.*"}[1h]) >
             {{ .Values.monitoring.prometheusRules.thresholds.maxRestartRate | default "0.1" }}
           for: {{ .Values.monitoring.prometheusRules.alertFor.highRestartRate | default "15m" }}
