@@ -20,7 +20,28 @@
       "args": [
         "mcp-server-kubernetes"
       ],
-      "alwaysAllow": []
+      "alwaysAllow": [
+        "",
+        "kubectl_describe",
+        "kubectl_logs"
+      ]
+    },
+    "flux-operator": {
+      "command": "/opt/homebrew/bin/flux-operator-mcp",
+      "args": [
+        "serve"
+      ],
+      "env": {
+        "KUBECONFIG": "/Users/geoff/.kube/config"
+      },
+      "alwaysAllow": [
+        "kubernetes_resources",
+        "suspend_flux_kustomization",
+        "resume_flux_kustomization",
+        "get_kubernetes_resources",
+        "reconcile_flux_source",
+        "reconcile_flux_helmrelease"
+      ]
     }
   }
 }

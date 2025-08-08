@@ -351,7 +351,7 @@ cleanup:
 
 # Monitoring and observability
 monitoring:
-  enabled: false
+  enabled: true
   
   # ServiceMonitor for Prometheus
   serviceMonitor:
@@ -380,7 +380,7 @@ monitoring:
   
   # Prometheus alerting rules
   prometheusRules:
-    enabled: true
+    enabled: false
     # Evaluation interval for rules
     evaluationInterval: "30s"
     # Runbook URL base for alert annotations
