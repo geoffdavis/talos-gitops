@@ -18,7 +18,9 @@ repos:
             \.git/.*|
             .*\.lock|
             .*\.log|
-            SECURITY_INCIDENT_REPORT\.md
+            SECURITY_INCIDENT_REPORT\.md|
+            infrastructure/authentik-proxy/helmrelease-config\.yaml|
+            infrastructure/gitops-lifecycle-management/helmrelease\.yaml
           )$
 
   # Git leaks detection

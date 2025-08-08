@@ -1,0 +1,8 @@
+# Gitleaks configuration for Talos GitOps repository
+# Exclude the secrets baseline file from scanning
+
+[allowlist]
+description = "Allowlist for legitimate configuration files"
+paths = [
+    ".secrets.baseline"
+]

@@ -43,8 +43,8 @@ spec:
           secretKey: "token"
       hooks:
         enabled: true
-        activeDeadlineSeconds: 300
-        backoffLimit: 3
+        activeDeadlineSeconds: 900
+        backoffLimit: 5
         ttlSecondsAfterFinished: 300
 
     # Service discovery controller configuration
@@ -91,9 +91,9 @@ spec:
         name: ""
         annotations: {}
 
-    # Custom Resource Definitions
+    # Custom Resource Definitions - disabled to prevent conflicts with existing CRDs
     crds:
-      install: true
+      install: false
       proxyConfig:
         enabled: true
 
@@ -147,7 +147,7 @@ spec:
         secrets:
           authentikToken:
             enabled: true
-            key: "home-ops-authentik-admin-token"
+            key: "Authentik Admin API Token - home-ops"
             property: "credential"
             targetSecret: "authentik-admin-token"
             targetKey: "token"
@@ -161,7 +161,7 @@ spec:
             targetSecret: "authentik-outpost-config"
           databaseCredentials:
             enabled: true
-            key: "home-ops-postgresql-superuser-credentials"
+            key: "PostgreSQL Superuser - home-ops"
             properties:
               username: "username"
               password: "password"

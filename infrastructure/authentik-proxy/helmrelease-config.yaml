@@ -17,6 +17,14 @@ spec:
         name: flux-system
         namespace: flux-system
   values:
+    # Disable the problematic pre-upgrade hook that requires 1Password Connect
+    hooks:
+      preInstallTokenSetup:
+        enabled: false
+    # Override the secret name to use the correct token secret
+    externalSecrets:
+      tokenSecretName: "authentik-admin-token-enhanced"
+      tokenSecretKey: "token"
     resources:
       - apiVersion: batch/v1
         kind: Job
@@ -63,7 +71,7 @@ spec:
                     readOnlyRootFilesystem: true
                   env:
                     - name: AUTHENTIK_HOST
-                      value: "http://authentik-server.authentik.svc.cluster.local:80"
+                      value: "http://authentik-server.authentik.svc.cluster.local:9000"
                     - name: AUTHENTIK_TOKEN
                       valueFrom:
                         secretKeyRef:
