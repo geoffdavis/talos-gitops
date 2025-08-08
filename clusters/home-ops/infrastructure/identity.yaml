@@ -154,13 +154,12 @@ spec:
     - name: infrastructure-authentik
   retryInterval: 2m0s
   wait: true
-  # Temporarily remove health checks to allow Kustomization to update HelmRelease
-  # healthChecks:
-  #   # Check HelmRelease
-  #   - apiVersion: helm.toolkit.fluxcd.io/v2
-  #     kind: HelmRelease
-  #     name: gitops-lifecycle-management
-  #     namespace: flux-system
+  healthChecks:
+    # Check HelmRelease
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: gitops-lifecycle-management
+      namespace: flux-system
   postBuild:
     substitute:
       # Environment-specific substitutions
