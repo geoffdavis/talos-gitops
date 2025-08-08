@@ -42,7 +42,7 @@ spec:
           secretName: "authentik-admin-token"  # pragma: allowlist secret
           secretKey: "token"  # pragma: allowlist secret
       hooks:
-        enabled: true
+        enabled: false  # Temporarily disabled to allow ExternalSecrets to sync first
         activeDeadlineSeconds: 900
         backoffLimit: 5
         ttlSecondsAfterFinished: 300
@@ -108,9 +108,9 @@ spec:
           serviceDiscovery: true
           databaseConnectivity: true
 
-    # Cleanup configuration
+    # Cleanup configuration - temporarily disabled to avoid secret dependency
     cleanup:
-      enabled: true
+      enabled: false  # Temporarily disabled to allow ExternalSecrets to sync first
       controller:
         interval: "1h"
         policies:

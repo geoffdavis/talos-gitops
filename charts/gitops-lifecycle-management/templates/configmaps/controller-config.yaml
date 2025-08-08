@@ -1,0 +1,21 @@
+{{- if .Values.serviceDiscovery.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gitops-lifecycle-management.fullname" . }}-controller-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops-lifecycle-management.labels" . | nindent 4 }}
+  annotations:
+    {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
+data:
+  # Basic controller configuration - currently not used by the controller script
+  # but required for the volume mount to succeed
+  config.yaml: |
+    # GitOps Lifecycle Management Service Discovery Controller Configuration
+    # This file is mounted but not currently used by the controller
+    reconcileInterval: "5m"
+    cleanupOrphaned: true
+    logLevel: "info"
+    logFormat: "json"
+{{- end }}
