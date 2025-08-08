@@ -150,7 +150,7 @@ spec:
   dependsOn:
     - name: infrastructure-sources
     - name: infrastructure-external-secrets
-    - name: infrastructure-onepassword-connect
+    - name: infrastructure-onepassword
     - name: infrastructure-authentik
   retryInterval: 2m0s
   wait: true
