@@ -76,7 +76,7 @@ spec:
           port: 5432
           database: "homeassistant"
           credentialsSecret:
-            name: "postgresql-admin-credentials"
+            name: "homeassistant-postgresql-superuser"
             usernameKey: "username"
             passwordKey: "password"
         initScripts:
@@ -165,7 +165,7 @@ spec:
             properties:
               username: "username"
               password: "password"
-            targetSecret: "postgresql-admin-credentials"
+            targetSecret: "homeassistant-postgresql-superuser"
           oidcSecrets:
             enabled: true
             grafana:
