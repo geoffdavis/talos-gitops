@@ -434,8 +434,9 @@ logging:
   format: "json"
 
 # Common labels applied to all resources
+# Note: Standard labels (app.kubernetes.io/name, app.kubernetes.io/instance) are provided by chart templates
+# Only add additional labels here that don't conflict with template-generated labels
 commonLabels:
-  app.kubernetes.io/name: gitops-lifecycle-management
   app.kubernetes.io/part-of: talos-gitops
 
 # Common annotations applied to all resources
