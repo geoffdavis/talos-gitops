@@ -7,8 +7,6 @@ metadata:
     {{- include "gitops-lifecycle-management.labels" . | nindent 4 }}
   annotations:
     {{- include "gitops-lifecycle-management.annotations" . | nindent 4 }}
-    "helm.sh/hook": pre-install
-    "helm.sh/hook-weight": "-5"
 spec:
   group: gitops.io
   versions:

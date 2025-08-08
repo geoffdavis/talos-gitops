@@ -42,8 +42,8 @@ authentication:
   hooks:
     enabled: true
 
-    # Hook execution timeout
-    activeDeadlineSeconds: 600
+    # Hook execution timeout - increased for complex operations
+    activeDeadlineSeconds: 900
 
     # Enhanced retry configuration
     backoffLimit: 5
@@ -211,8 +211,8 @@ rbac:
 
 # Custom Resource Definitions
 crds:
-  # Install CRDs
-  install: true
+  # Install CRDs - disabled to prevent conflicts with existing CRDs
+  install: false
 
   # ProxyConfig CRD configuration
   proxyConfig:
