@@ -473,9 +473,9 @@ externalSecrets:
         enabled: true
         key: "home-ops-authentik-external-outpost-config"
         properties:
-          outpostId: "outpost_id"
-          authorizationFlow: "authorization_flow"
-          invalidationFlow: "invalidation_flow"
+          outpost_id: "outpost_id"
+          authorization_flow: "authorization_flow"
+          invalidation_flow: "invalidation_flow"
         targetSecret: "authentik-outpost-config"
 
       # Database credentials

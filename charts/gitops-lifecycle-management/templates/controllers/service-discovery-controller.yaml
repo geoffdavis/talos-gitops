@@ -40,17 +40,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.externalSecrets.onePassword.secrets.authentikOutpost.targetSecret }}
-                  key: outpostId
+                  key: outpost_id
             - name: AUTHORIZATION_FLOW
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.externalSecrets.onePassword.secrets.authentikOutpost.targetSecret }}
-                  key: authorizationFlow
+                  key: authorization_flow
             - name: INVALIDATION_FLOW
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.externalSecrets.onePassword.secrets.authentikOutpost.targetSecret }}
-                  key: invalidationFlow
+                  key: invalidation_flow
             - name: COOKIE_DOMAIN
               value: {{ .Values.authentication.authentik.cookieDomain | quote }}
             - name: RECONCILE_INTERVAL
