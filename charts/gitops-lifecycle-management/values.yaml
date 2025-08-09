@@ -93,7 +93,7 @@ serviceDiscovery:
     replicas: 1
 
     image:
-      repository: "bitnami/kubectl"
+      repository: "alpine/k8s"
       tag: "1.31.1"
       pullPolicy: IfNotPresent
 
@@ -259,7 +259,7 @@ cleanup:
     replicas: 1
 
     image:
-      repository: "bitnami/kubectl"
+      repository: "alpine/k8s"
       tag: "1.31.1"
       pullPolicy: IfNotPresent
 
