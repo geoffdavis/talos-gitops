@@ -151,7 +151,8 @@ spec:
     - name: infrastructure-sources
     - name: infrastructure-external-secrets
     - name: infrastructure-onepassword
-    - name: infrastructure-authentik
+    # Temporarily removed infrastructure-authentik dependency to unblock v0.1.9 deployment
+    # - name: infrastructure-authentik
   retryInterval: 2m0s
   wait: true
   # healthChecks temporarily disabled to allow HelmRelease creation
