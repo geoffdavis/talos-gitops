@@ -25,7 +25,7 @@ spec:
       {{- include "gitops-lifecycle-management.controllerPodSecurityContext" . | nindent 6 }}
       containers:
         - name: controller
-          image: "alpine:3.18"
+          image: "python:3.12-alpine"
           imagePullPolicy: {{ .Values.serviceDiscovery.controller.image.pullPolicy }}
           {{- include "gitops-lifecycle-management.controllerSecurityContext" . | nindent 10 }}
           env:
@@ -95,8 +95,8 @@ spec:
             - /bin/sh
             - -c
             - |
-              apk add --no-cache python3 py3-pip py3-requests &&
-              python3 /app/controller.py
+              pip install --no-cache-dir requests &&
+              python /app/controller.py
       volumes:
         - name: tmp-volume
           emptyDir: {}
