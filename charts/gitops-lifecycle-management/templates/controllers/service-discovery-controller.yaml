@@ -25,7 +25,7 @@ spec:
       {{- include "gitops-lifecycle-management.controllerPodSecurityContext" . | nindent 6 }}
       containers:
         - name: controller
-          image: "alpine/k8s:1.31.1"
+          image: "python:3.12-alpine"
           imagePullPolicy: {{ .Values.serviceDiscovery.controller.image.pullPolicy }}
           {{- include "gitops-lifecycle-management.controllerSecurityContext" . | nindent 10 }}
           env:
@@ -92,14 +92,13 @@ spec:
               mountPath: /app
               readOnly: true
           command:
-            - /bin/sh
+            - sh
             - -c
-            - |
-              # Install Python and requests (minimal install)
-              apk add --no-cache python3 py3-pip
-              pip3 install --break-system-packages requests
-              
-              # Run the Python controller
+            - >
+              apk add --no-cache curl &&
+              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" &&
+              chmod +x kubectl &&
+              mv kubectl /usr/local/bin/ &&
               python3 /app/controller.py
       volumes:
         - name: tmp-volume
