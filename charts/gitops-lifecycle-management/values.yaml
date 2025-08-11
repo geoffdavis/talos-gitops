@@ -94,7 +94,7 @@ serviceDiscovery:
 
     image:
       repository: "alpine/k8s"
-      tag: "1.31.1"
+      tag: "1.33.3"
       pullPolicy: IfNotPresent
 
     # Resource limits
@@ -260,7 +260,7 @@ cleanup:
 
     image:
       repository: "alpine/k8s"
-      tag: "1.31.1"
+      tag: "1.33.3"
       pullPolicy: IfNotPresent
 
     # Resource limits
