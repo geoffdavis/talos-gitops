@@ -25,7 +25,7 @@ spec:
       {{- include "gitops-lifecycle-management.controllerPodSecurityContext" . | nindent 6 }}
       containers:
         - name: controller
-          image: "{{ .Values.serviceDiscovery.controller.image.repository }}:{{ .Values.serviceDiscovery.controller.image.tag }}"
+          image: "python:3.11-alpine"
           imagePullPolicy: {{ .Values.serviceDiscovery.controller.image.pullPolicy }}
           {{- include "gitops-lifecycle-management.controllerSecurityContext" . | nindent 10 }}
           env:
@@ -88,115 +88,29 @@ spec:
             - name: controller-config
               mountPath: /etc/controller
               readOnly: true
+            - name: controller-script
+              mountPath: /app
+              readOnly: true
           command:
             - /bin/sh
             - -c
             - |
-              set -e
-              echo "=== GitOps Lifecycle Management Service Discovery Controller ==="
-              echo "Starting event-driven service discovery controller..."
+              # Install required packages
+              apk add --no-cache kubectl curl
+              pip install requests
               
-              # Controller main loop
-              while true; do
-                echo "$(date): Checking for ProxyConfig resources..."
-                
-                # Get all ProxyConfig resources
-                kubectl get proxyconfigs --all-namespaces -o json > /tmp/proxyconfigs.json
-                
-                if [ -s /tmp/proxyconfigs.json ]; then
-                  echo "Processing ProxyConfig resources..."
-                  
-                  # Process each ProxyConfig resource
-                  cat /tmp/proxyconfigs.json | jq -r '.items[] | @base64' | while read config; do
-                    echo "$config" | base64 -d > /tmp/current_config.json
-                    
-                    NAME=$(cat /tmp/current_config.json | jq -r '.metadata.name')
-                    NAMESPACE=$(cat /tmp/current_config.json | jq -r '.metadata.namespace')
-                    SERVICE_NAME=$(cat /tmp/current_config.json | jq -r '.spec.serviceName')
-                    EXTERNAL_HOST=$(cat /tmp/current_config.json | jq -r '.spec.externalHost')
-                    INTERNAL_HOST=$(cat /tmp/current_config.json | jq -r '.spec.internalHost')
-                    PROVIDER_NAME=$(cat /tmp/current_config.json | jq -r '.spec.authentikConfig.providerName')
-                    
-                    echo "Processing ProxyConfig: $NAME in namespace $NAMESPACE"
-                    
-                    # Check if Authentik proxy provider exists
-                    if curl -s "${AUTHENTIK_HOST}/api/v3/providers/proxy/?name=${PROVIDER_NAME}" \
-                      -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" | jq -r '.count' | grep -q "0"; then
-                      
-                      echo "Creating Authentik proxy provider: $PROVIDER_NAME"
-                      
-                      # Create proxy provider
-                      PROVIDER_RESPONSE=$(curl -s -X POST "${AUTHENTIK_HOST}/api/v3/providers/proxy/" \
-                        -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
-                        -H "Content-Type: application/json" \
-                        -d "{
-                          \"name\": \"${PROVIDER_NAME}\",
-                          \"external_host\": \"https://${EXTERNAL_HOST}\",
-                          \"internal_host\": \"${INTERNAL_HOST}\",
-                          \"authorization_flow\": \"${AUTHORIZATION_FLOW}\",
-                          \"invalidation_flow\": \"${INVALIDATION_FLOW}\",
-                          \"cookie_domain\": \"${COOKIE_DOMAIN}\",
-                          \"mode\": \"forward_single\",
-                          \"skip_path_regex\": \"^/api/.*$\",
-                          \"basic_auth_enabled\": false,
-                          \"internal_host_ssl_validation\": false
-                        }")
-                      
-                      PROVIDER_ID=$(echo "$PROVIDER_RESPONSE" | jq -r '.pk')
-                      
-                      if [ "$PROVIDER_ID" != "null" ] && [ -n "$PROVIDER_ID" ]; then
-                        echo "Created provider ID: $PROVIDER_ID"
-                        
-                        # Update ProxyConfig status
-                        kubectl patch proxyconfig "$NAME" -n "$NAMESPACE" --type=merge -p "{
-                          \"status\": {
-                            \"phase\": \"Ready\",
-                            \"authentikProviderId\": \"$PROVIDER_ID\",
-                            \"lastReconciled\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                            \"conditions\": [{
-                              \"type\": \"Ready\",
-                              \"status\": \"True\",
-                              \"lastTransitionTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                              \"reason\": \"ProviderCreated\",
-                              \"message\": \"Authentik proxy provider created successfully\"
-                            }]
-                          }
-                        }"
-                      else
-                        echo "Failed to create provider for $PROVIDER_NAME"
-                        
-                        # Update ProxyConfig status with error
-                        kubectl patch proxyconfig "$NAME" -n "$NAMESPACE" --type=merge -p "{
-                          \"status\": {
-                            \"phase\": \"Failed\",
-                            \"lastReconciled\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                            \"conditions\": [{
-                              \"type\": \"Ready\",
-                              \"status\": \"False\",
-                              \"lastTransitionTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                              \"reason\": \"ProviderCreationFailed\",
-                              \"message\": \"Failed to create Authentik proxy provider\"
-                            }]
-                          }
-                        }"
-                      fi
-                    else
-                      echo "Provider $PROVIDER_NAME already exists, skipping creation"
-                    fi
-                  done
-                else
-                  echo "No ProxyConfig resources found"
-                fi
-                
-                echo "Sleeping for ${RECONCILE_INTERVAL}..."
-                sleep "${RECONCILE_INTERVAL}"
-              done
+              # Run the Python controller
+              python3 /app/controller.py
       volumes:
         - name: tmp-volume
           emptyDir: {}
         - name: controller-config
           configMap:
             name: {{ include "gitops-lifecycle-management.fullname" . }}-controller-config
+        - name: controller-script
+          configMap:
+            name: {{ include "gitops-lifecycle-management.fullname" . }}-service-discovery-script
+            defaultMode: 0755
       {{- with .Values.serviceDiscovery.controller.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
