@@ -95,7 +95,9 @@ spec:
             - /bin/sh
             - -c
             - |
-              pip install --no-cache-dir requests &&
+              export PYTHONUSERBASE=/tmp/.local &&
+              export PATH="/tmp/.local/bin:$PATH" &&
+              pip install --user --no-cache-dir requests &&
               python /app/controller.py
       volumes:
         - name: tmp-volume
