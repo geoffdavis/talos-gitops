@@ -21,6 +21,7 @@ spec:
   upgrade:
     remediation:
       retries: 3
+    disableWait: true
   values:
     global:
       domain: "k8s.home.geoffdavis.com"
