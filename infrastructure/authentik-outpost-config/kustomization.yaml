@@ -10,13 +10,13 @@ resources:
   - rbac.yaml
   # RADIUS outpost configuration (specialized, not replaced by GitOps Lifecycle Management)
   - radius-outpost-config-job.yaml
-  
+
   # NOTE: The following jobs are now replaced by the GitOps Lifecycle Management Helm chart:
   # - enhanced-token-setup-job.yaml (replaced by chart's authentication hooks)
   # - grafana-oidc-setup-job.yaml (replaced by chart's OIDC setup)
   # - dashboard-oidc-setup-job.yaml (replaced by chart's OIDC setup)
   # - cleanup-duplicate-tokens-job.yaml (replaced by chart's cleanup policies)
-  
+
   # NOTE: ALL embedded outpost jobs disabled for external outpost architecture
   # The external outpost handles all proxy providers via authentik-proxy namespace
   # - embedded-outpost-config-job.yaml

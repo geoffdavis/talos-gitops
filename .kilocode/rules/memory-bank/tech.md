@@ -136,6 +136,7 @@ The development environment includes several Model Context Protocol (MCP) server
 ### Configured MCP Servers
 
 #### Git Server (`mcp-server-git`)
+
 - **Type**: Local stdio-based server
 - **Command**: `uvx mcp-server-git --repository /Users/geoff/src/personal/talos-gitops`
 - **Capabilities**:
@@ -147,6 +148,7 @@ The development environment includes several Model Context Protocol (MCP) server
 - **Usage Patterns**: Ideal for understanding project history, analyzing changes, and managing Git operations within the development workflow
 
 #### Cloudflare Observability Server
+
 - **Type**: Remote SSE-based server
 - **Endpoint**: `https://observability.mcp.cloudflare.com/sse`
 - **Command**: `npx mcp-remote https://observability.mcp.cloudflare.com/sse`
@@ -159,6 +161,7 @@ The development environment includes several Model Context Protocol (MCP) server
 - **Usage Patterns**: Monitor Cloudflare Tunnel performance, analyze DNS resolution, troubleshoot external access issues
 
 #### Kubernetes Server (`mcp-server-kubernetes`)
+
 - **Type**: Local stdio-based server (configured in both locations)
 - **Command**: `npx mcp-server-kubernetes`
 - **Capabilities**:
@@ -175,6 +178,7 @@ The development environment includes several Model Context Protocol (MCP) server
   - Integration with GitOps workflows
 
 #### GitHub Copilot Server
+
 - **Type**: Remote HTTP-based server
 - **Endpoint**: `https://api.githubcopilot.com/mcp/`
 - **Capabilities**:
@@ -188,6 +192,7 @@ The development environment includes several Model Context Protocol (MCP) server
 ### Development Workflow Integration
 
 #### Cluster Operations
+
 ```bash
 # MCP servers enhance these common operations:
 # - Kubernetes resource management via kubernetes server

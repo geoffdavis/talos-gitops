@@ -41,7 +41,7 @@ spec:
         declarative_config: "/kong-config/kong.yml"
         log_level: "info"
         plugins: "bundled,request-transformer,response-transformer,cors"
-        dns_resolver: "10.96.0.10"  # Kubernetes cluster DNS
+        dns_resolver: "10.96.0.10" # Kubernetes cluster DNS
         dns_order: "LAST,A,CNAME"
       # Mount processed Kong configuration
       extraConfigMaps:
@@ -69,19 +69,19 @@ spec:
             - |
               set -e
               echo "Processing Kong configuration with service account token..."
-              
+
               # Read service account token
               SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
               echo "Token length: ${#SA_TOKEN}"
-              
+
               # Process Kong configuration template
               sed "s/\$(SA_TOKEN)/$SA_TOKEN/g" /tmp/kong-config/kong.yml > /processed-config/kong.yml
-              
+
               # Create processed ConfigMap
               echo "Creating processed ConfigMap..."
               kubectl delete configmap kubernetes-dashboard-kong-config --ignore-not-found=true
               kubectl create configmap kubernetes-dashboard-kong-config --from-file=kong.yml=/processed-config/kong.yml
-              
+
               echo "Kong configuration ConfigMap updated successfully"
               echo "Configuration file size: $(wc -c < /processed-config/kong.yml) bytes"
           volumeMounts:

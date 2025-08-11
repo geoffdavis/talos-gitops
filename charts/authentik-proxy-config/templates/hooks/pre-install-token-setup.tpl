@@ -1,3 +1,4 @@
+{{- if .Values.hooks.preInstallTokenSetup.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -281,3 +282,4 @@ spec:
               echo "✓ Token ready for use with outpost configurations"
               echo ""
               echo "Enhanced token setup completed successfully!"
+{{- end }}

@@ -9,6 +9,7 @@ This document outlines the updated operational procedures following the successf
 ### System Health Monitoring
 
 #### Morning Health Check Routine
+
 ```bash
 #!/bin/bash
 # Daily morning health check - save as scripts/daily-health-check.sh
@@ -61,7 +62,7 @@ echo -e "\n5. Checking Active Alerts..."
 if command -v curl >/dev/null 2>&1; then
     ACTIVE_ALERTS=$(curl -s http://prometheus.k8s.home.geoffdavis.com/api/v1/alerts 2>/dev/null | \
         jq -r '.data.alerts[] | select(.labels.component | contains("gitops")) | select(.state == "firing") | .labels.alertname' 2>/dev/null)
-    
+
     if [ -z "$ACTIVE_ALERTS" ]; then
         echo "✅ No active GitOps-related alerts"
     else
@@ -78,6 +79,7 @@ echo -e "\n=== Health Check Complete ==="
 #### Continuous Monitoring Tasks
 
 **Service Discovery Controller Monitoring**:
+
 ```bash
 # Check controller logs for issues
 kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-controller --tail=50
@@ -87,6 +89,7 @@ watch kubectl get proxyconfigs --all-namespaces
 ```
 
 **Cleanup Controller Monitoring**:
+
 ```bash
 # Check cleanup metrics (if Prometheus is available)
 curl -s http://prometheus.k8s.home.geoffdavis.com/api/v1/query?query=gitops_cleanup_cycle_duration_seconds
@@ -100,6 +103,7 @@ kubectl logs -n flux-system -l app.kubernetes.io/component=cleanup-controller --
 #### Standard Service Onboarding Process
 
 **Step 1: Create ProxyConfig Resource**
+
 ```yaml
 # Save as service-configs/<service-name>-proxy-config.yaml
 apiVersion: gitops.io/v1
@@ -132,6 +136,7 @@ spec:
 ```
 
 **Step 2: Deploy ProxyConfig**
+
 ```bash
 # Apply the ProxyConfig resource
 kubectl apply -f service-configs/<service-name>-proxy-config.yaml
@@ -144,6 +149,7 @@ kubectl describe proxyconfig <service-name>-proxy -n <service-namespace>
 ```
 
 **Step 3: Verify Service Integration**
+
 ```bash
 # Check Authentik proxy provider creation
 curl -s -H "Authorization: Bearer $AUTHENTIK_TOKEN" \
@@ -155,6 +161,7 @@ curl -I https://<service-name>.k8s.home.geoffdavis.com
 ```
 
 **Step 4: Update Service Documentation**
+
 ```bash
 # Add service to monitoring dashboard
 # Update service inventory
@@ -164,6 +171,7 @@ curl -I https://<service-name>.k8s.home.geoffdavis.com
 ### Service Configuration Updates
 
 #### Updating Existing ProxyConfig Resources
+
 ```bash
 # Edit ProxyConfig resource
 kubectl edit proxyconfig <service-name>-proxy -n <service-namespace>
@@ -177,6 +185,7 @@ kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-con
 ```
 
 #### Bulk Configuration Updates
+
 ```bash
 # Update multiple ProxyConfig resources
 kubectl get proxyconfigs --all-namespaces -o yaml > proxyconfigs-backup.yaml
@@ -191,6 +200,7 @@ kubectl get proxyconfigs --all-namespaces -o name | \
 ### Weekly Maintenance Tasks
 
 #### System Health Assessment
+
 ```bash
 #!/bin/bash
 # Weekly maintenance script - save as scripts/weekly-maintenance.sh
@@ -238,6 +248,7 @@ echo -e "\n=== Weekly Maintenance Complete ==="
 ```
 
 #### Configuration Backup
+
 ```bash
 #!/bin/bash
 # Configuration backup script
@@ -263,6 +274,7 @@ echo "Backup completed in $BACKUP_DIR"
 ### Monthly Maintenance Tasks
 
 #### Performance Optimization Review
+
 ```bash
 # 1. Analyze resource usage patterns
 kubectl top pods -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management --containers
@@ -276,6 +288,7 @@ kubectl patch deployment gitops-lifecycle-management-service-discovery -n flux-s
 ```
 
 #### Security Review
+
 ```bash
 # 1. Review RBAC permissions
 kubectl describe clusterrole gitops-lifecycle-management
@@ -291,6 +304,7 @@ kubectl get externalsecrets -n flux-system -l app.kubernetes.io/name=gitops-life
 ### Upgrade Procedures
 
 #### Helm Chart Upgrades
+
 ```bash
 # 1. Backup current configuration
 helm get values gitops-lifecycle-management -n flux-system > pre-upgrade-values.yaml
@@ -307,6 +321,7 @@ kubectl get proxyconfigs --all-namespaces | grep -v Ready
 ```
 
 #### CRD Upgrades
+
 ```bash
 # 1. Backup existing CRD and resources
 kubectl get crd proxyconfigs.gitops.io -o yaml > proxyconfig-crd-backup.yaml
@@ -324,10 +339,13 @@ kubectl get proxyconfigs --all-namespaces
 ### Severity Levels
 
 #### Severity 1: Critical System Failure
+
 **Definition**: Complete GitOps lifecycle management system failure affecting multiple services
 
 **Response Procedure**:
+
 1. **Immediate Assessment** (0-5 minutes):
+
    ```bash
    # Check system status
    kubectl get pods -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
@@ -335,10 +353,11 @@ kubectl get proxyconfigs --all-namespaces
    ```
 
 2. **Emergency Mitigation** (5-15 minutes):
+
    ```bash
    # Attempt quick restart
    kubectl rollout restart deployment gitops-lifecycle-management-service-discovery -n flux-system
-   
+
    # If restart fails, rollback
    helm rollback gitops-lifecycle-management -n flux-system
    ```
@@ -351,39 +370,47 @@ kubectl get proxyconfigs --all-namespaces
    ```
 
 #### Severity 2: Partial System Degradation
+
 **Definition**: Some ProxyConfig resources failing, but system partially functional
 
 **Response Procedure**:
+
 1. **Identify Affected Services** (0-10 minutes):
+
    ```bash
    kubectl get proxyconfigs --all-namespaces | grep -v Ready
    kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-controller --tail=100
    ```
 
 2. **Targeted Resolution** (10-30 minutes):
+
    ```bash
    # Restart controller if needed
    kubectl rollout restart deployment gitops-lifecycle-management-service-discovery -n flux-system
-   
+
    # Fix specific ProxyConfig issues
    kubectl describe proxyconfig <failing-config> -n <namespace>
    ```
 
 #### Severity 3: Performance Degradation
+
 **Definition**: System functional but performing poorly
 
 **Response Procedure**:
+
 1. **Performance Analysis** (0-15 minutes):
+
    ```bash
    kubectl top pods -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
    kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-controller | grep -i "slow\|timeout"
    ```
 
 2. **Optimization** (15-45 minutes):
+
    ```bash
    # Increase resource limits
    kubectl patch deployment gitops-lifecycle-management-service-discovery -n flux-system -p '{"spec":{"template":{"spec":{"containers":[{"name":"controller","resources":{"limits":{"cpu":"200m","memory":"256Mi"}}}]}}}}'
-   
+
    # Adjust reconciliation interval
    # Update Helm values and redeploy
    ```
@@ -391,6 +418,7 @@ kubectl get proxyconfigs --all-namespaces
 ### Communication Procedures
 
 #### Incident Communication Template
+
 ```
 Subject: [INCIDENT] GitOps Lifecycle Management - <Severity Level>
 
@@ -409,6 +437,7 @@ Contact: <incident commander>
 ```
 
 #### Status Page Updates
+
 ```bash
 # Update status page (if available)
 curl -X POST https://status.example.com/api/incidents \
@@ -425,9 +454,11 @@ curl -X POST https://status.example.com/api/incidents \
 ### Change Categories
 
 #### Standard Changes
+
 **Definition**: Low-risk changes following established procedures
 
 **Examples**:
+
 - Adding new ProxyConfig resources
 - Updating service configurations
 - Routine maintenance tasks
@@ -435,9 +466,11 @@ curl -X POST https://status.example.com/api/incidents \
 **Approval**: Team lead approval required
 
 #### Normal Changes
+
 **Definition**: Medium-risk changes requiring testing
 
 **Examples**:
+
 - Helm chart upgrades
 - CRD updates
 - Resource limit adjustments
@@ -445,9 +478,11 @@ curl -X POST https://status.example.com/api/incidents \
 **Approval**: Change advisory board approval required
 
 #### Emergency Changes
+
 **Definition**: High-risk changes required for incident resolution
 
 **Examples**:
+
 - Emergency rollbacks
 - Critical security patches
 - System recovery procedures
@@ -457,6 +492,7 @@ curl -X POST https://status.example.com/api/incidents \
 ### Change Implementation Process
 
 #### Pre-Change Checklist
+
 ```bash
 # 1. Backup current configuration
 helm get values gitops-lifecycle-management -n flux-system > pre-change-backup.yaml
@@ -473,6 +509,7 @@ kubectl get proxyconfigs --all-namespaces -o yaml > proxyconfigs-pre-change.yaml
 ```
 
 #### Post-Change Validation
+
 ```bash
 # 1. Verify system health
 kubectl get pods -n flux-system -l app.kubernetes.io/name=gitops-lifecycle-management
@@ -494,18 +531,21 @@ kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-con
 ### Key Metrics to Monitor
 
 #### System Health Metrics
+
 - Controller pod status and restart count
 - ProxyConfig resource status distribution
 - Helm release status
 - Resource usage (CPU, memory)
 
 #### Performance Metrics
+
 - ProxyConfig reconciliation duration
 - API call success rates
 - Cleanup operation effectiveness
 - Error rates and patterns
 
 #### Business Metrics
+
 - Number of services under management
 - Authentication success rates
 - Service availability
@@ -514,6 +554,7 @@ kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-con
 ### Alert Response Procedures
 
 #### Controller Down Alert
+
 ```bash
 # 1. Check pod status
 kubectl get pods -n flux-system -l app.kubernetes.io/component=service-discovery-controller
@@ -526,6 +567,7 @@ kubectl rollout restart deployment gitops-lifecycle-management-service-discovery
 ```
 
 #### High Error Rate Alert
+
 ```bash
 # 1. Analyze error patterns
 kubectl logs -n flux-system -l app.kubernetes.io/component=service-discovery-controller --since=1h | grep -i error | sort | uniq -c
@@ -541,12 +583,14 @@ kubectl get proxyconfigs --all-namespaces | grep -v Ready
 ## Documentation Maintenance
 
 ### Documentation Update Schedule
+
 - **Daily**: Update operational logs and incident reports
 - **Weekly**: Review and update troubleshooting procedures
 - **Monthly**: Update architectural documentation and runbooks
 - **Quarterly**: Comprehensive documentation review and reorganization
 
 ### Documentation Standards
+
 - All procedures must include example commands
 - Error scenarios must include diagnostic steps
 - Changes must be version controlled
@@ -555,12 +599,14 @@ kubectl get proxyconfigs --all-namespaces | grep -v Ready
 ## Training and Knowledge Transfer
 
 ### Operator Training Requirements
+
 1. **Basic Operations**: Daily health checks, service onboarding
 2. **Troubleshooting**: Common issues and resolution procedures
 3. **Incident Response**: Emergency procedures and communication
 4. **Change Management**: Safe change implementation practices
 
 ### Knowledge Transfer Procedures
+
 1. **Documentation Review**: New operators must review all operational procedures
 2. **Shadowing**: New operators shadow experienced team members
 3. **Hands-on Practice**: Practice procedures in development environment
@@ -571,6 +617,7 @@ kubectl get proxyconfigs --all-namespaces | grep -v Ready
 These updated operational procedures provide a comprehensive framework for managing the GitOps lifecycle management system. Regular adherence to these procedures will ensure system reliability, quick incident resolution, and smooth day-to-day operations.
 
 Key operational improvements achieved:
+
 - ✅ **Standardized Procedures**: Consistent approaches across all operations
 - ✅ **Automated Health Checks**: Proactive monitoring and issue detection
 - ✅ **Structured Incident Response**: Clear escalation and resolution procedures

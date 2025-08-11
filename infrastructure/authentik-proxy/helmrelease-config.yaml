@@ -23,8 +23,8 @@ spec:
         enabled: false
     # Override the secret name to use the correct token secret
     externalSecrets:
-      tokenSecretName: "authentik-admin-token-enhanced"
-      tokenSecretKey: "token"
+      tokenSecretName: "authentik-admin-token-enhanced"  # pragma: allowlist secret
+      tokenSecretKey: "token"  # pragma: allowlist secret
     resources:
       - apiVersion: batch/v1
         kind: Job
@@ -93,7 +93,8 @@ spec:
                       echo "=== Configuring Static Proxy Providers for Hybrid Architecture ==="
 
                       # Validate required environment variables
-                      if [ -z "${AUTHENTIK_HOST}" ] || [ -z "${AUTHENTIK_TOKEN}" ] || [ -z "${EXTERNAL_OUTPOST_ID}" ]; then
+                      if [ -z "${AUTHENTIK_HOST}" ] || [ -z "${AUTHENTIK_TOKEN}" ] || \
+                         [ -z "${EXTERNAL_OUTPOST_ID}" ]; then
                         echo "ERROR: Missing required environment variables"
                         exit 1
                       fi

@@ -66,6 +66,7 @@ When looking at logs, first you need to determine the pod name:
 When troubleshooting a HelmRelease, follow these steps:
 
 - Use the `get_flux_instance` tool to check the helm-controller deployment status and the apiVersion of the HelmRelease kind.
+  This may fail if the cluster is using a classic flux deployment rather than the operator module.
 - Use the `get_kubernetes_resources` tool to get the HelmRelease, then analyze the spec, the status, inventory and events.
 - Determine which Flux object is managing the HelmRelease by looking at the annotations; it can be a Kustomization or a ResourceSet.
 - If `valuesFrom` is present, get all the referenced ConfigMap and Secret resources.

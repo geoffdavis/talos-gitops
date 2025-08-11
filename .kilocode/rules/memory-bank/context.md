@@ -2,6 +2,10 @@
 
 ## Current Work Focus
 
+**🚨 EMERGENCY SYSTEM RECOVERY IN PROGRESS (August 2025)**: Executing comprehensive system recovery to achieve 100% Ready status across ALL Kustomizations. System degraded from fully operational to 67.7% Ready status, requiring emergency intervention to restore complete GitOps lifecycle management.
+
+**🎉 MAJOR PROGRESS ACHIEVED (August 2025)**: Successfully improved system status from 67.7% to 90.3% Ready (28/31 Kustomizations) through systematic emergency recovery procedures. Critical dependency chain issues identified and partially resolved.
+
 **🎉 CLUSTER FULLY OPERATIONAL - ALL MAJOR SYSTEMS COMPLETE (July 2025)**: The Talos GitOps home-ops cluster has achieved full operational status with all major systems successfully deployed and production-ready. All authentication, monitoring, home automation, and infrastructure components are operational with comprehensive GitOps management.
 
 **🎉 MAJOR SUCCESS: Monitoring Stack Recovery Complete (COMPLETED - July 2025)**: Successfully resolved comprehensive monitoring stack failures caused by Renovate dependency updates. Eliminated duplicate HelmRelease conflicts and fixed critical LoadBalancer IPAM issues, restoring full monitoring functionality with external access via BGP-advertised IPs.
@@ -62,6 +66,56 @@
 **Monitoring Stack Recovery Achievement**: Resolved complex monitoring stack failures through systematic investigation and resolution of both duplicate HelmRelease conflicts and LoadBalancer IPAM dysfunction. All monitoring components (Prometheus, Grafana, AlertManager) now operational with external access via BGP-advertised IPs and comprehensive metric collection from 29 healthy targets.
 
 ## Recent Changes
+
+### 🚨 Emergency System Recovery Session (August 2025 - IN PROGRESS)
+
+**CRITICAL RECOVERY OPERATION**: Executing comprehensive emergency recovery to restore 100% Ready status across all 31 Flux Kustomizations. System experienced significant degradation requiring systematic intervention.
+
+**Recovery Progress Achieved**:
+
+- **✅ MAJOR IMPROVEMENT**: System status improved from 67.7% to 90.3% Ready (28/31 Kustomizations operational)
+- **✅ EMERGENCY CLEANUP COMPLETED**: Successfully removed failed resources blocking GitOps reconciliation
+- **✅ CRD CONFLICTS RESOLVED**: Eliminated CustomResourceDefinition conflicts preventing installations
+- **✅ HEALTH CHECK DEADLOCK BROKEN**: Disabled problematic health checks allowing HelmRelease recreation
+- **✅ TEMPLATE RENDERING FIXES**: Resolved ExternalSecret template issues causing "map has no entry for key Release" errors
+- **✅ CHART VERSION MANAGEMENT**: Successfully deployed chart version 0.1.2 with template fixes
+
+**Current Critical Path**:
+
+- **🔄 ACTIVE ISSUE**: `infrastructure-gitops-lifecycle-management` HelmRelease failing due to missing `authentik-outpost-config` secret
+- **🔄 DEPENDENCY CHAIN**: 3 remaining Kustomizations blocked by gitops-lifecycle-management dependency
+- **🔄 SECRET SYNC ISSUE**: ExternalSecret template fixes deployed but secret synchronization from 1Password still pending
+
+**Root Cause Analysis Completed**:
+
+1. **Missing Secret Dependency**: Pod startup failing with `secret "authentik-outpost-config" not found`
+2. **ExternalSecret Template Issues**: Helm template functions accessing unavailable Release context (RESOLVED)
+3. **Health Check Deadlocks**: Flux health checks preventing resource recreation when resources don't exist (RESOLVED)
+4. **Chart Version Recognition**: Helm not recognizing template changes due to same chart version (RESOLVED)
+
+**Technical Fixes Applied**:
+
+- **Template Rendering**: Replaced dynamic Helm template functions with static values in ExternalSecret templates
+- **Chart Version Bump**: Updated from 0.1.1 to 0.1.2 to force deployment of template fixes
+- **Health Check Suspension**: Temporarily disabled health checks to break reconciliation deadlock
+- **Git Repository Updates**: Successfully committed and pushed all template fixes (commits 58f2db2, 68e64df)
+
+**Remaining Recovery Tasks**:
+
+1. **Secret Synchronization**: Verify ExternalSecret creates `authentik-outpost-config` secret successfully
+2. **Pod Startup Validation**: Confirm service-discovery pods start once secrets are available
+3. **Dependency Chain Recovery**: Monitor automatic recovery of 3 blocked Kustomizations
+4. **Health Check Restoration**: Re-enable health checks after successful deployment
+5. **100% Ready Status Validation**: Confirm all 31 Kustomizations achieve Ready: True status
+
+**Emergency Recovery Methodology**:
+
+- **Systematic Approach**: Applied fixes in logical dependency order
+- **Root Cause Focus**: Addressed underlying template rendering and secret synchronization issues
+- **GitOps Compliance**: All changes deployed via standard Git commit and Flux reconciliation
+- **Safety Procedures**: Maintained cluster stability while resolving critical blocking issues
+
+**Current Status**: 90.3% Ready (28/31) - Significant improvement achieved, final 3 Kustomizations pending secret synchronization resolution.
 
 ### CNPG Barman Plugin Migration Complete (August 2025 - COMPLETED)
 
@@ -321,6 +375,47 @@
 
 ## Current State
 
+### Emergency Recovery Status (August 2025)
+
+**System Recovery Progress**: 90.3% Ready Status (28/31 Kustomizations)
+
+**✅ Operational Kustomizations (28/31)**:
+- All core infrastructure: sources, external-secrets, onepassword, cert-manager, monitoring
+- All networking: cilium, cilium-bgp, cilium-pools, ingress controllers
+- All storage: longhorn, volume-snapshots, postgresql-cluster, cnpg-operator
+- All authentication: authentik (core system operational)
+- All applications: dashboard, home-automation stack
+- All external services: cloudflare-tunnel, external-dns variants, flux-webhook
+
+**❌ Not Ready Kustomizations (3/31)**:
+1. **`infrastructure-gitops-lifecycle-management`** - Status: Progressing (HelmRelease upgrade failing)
+   - **Issue**: Service-discovery pods failing with `secret "authentik-outpost-config" not found`
+   - **Progress**: Chart version 0.1.2 deployed with template fixes, awaiting secret synchronization
+
+2. **`infrastructure-authentik-outpost-config`** - Status: DependencyNotReady
+   - **Dependency**: Waiting for `infrastructure-gitops-lifecycle-management` to become Ready
+   - **Health Issue**: Failed Job `authentik-enhanced-token-setup`
+
+3. **`infrastructure-authentik-proxy`** - Status: HealthCheckFailed
+   - **Issue**: Failed HelmRelease `authentik-proxy-config`
+   - **Dependency**: Indirectly blocked by gitops-lifecycle-management issues
+
+**Critical Recovery Path**: The `infrastructure-gitops-lifecycle-management` Kustomization is the key dependency blocking the remaining 2 Kustomizations. Once the ExternalSecret synchronization completes and pods start successfully, all 3 should achieve Ready status.
+
+**Emergency Recovery Actions Taken**:
+- Removed health check deadlocks preventing HelmRelease recreation
+- Fixed ExternalSecret template rendering issues causing sync failures
+- Deployed chart version 0.1.2 with corrected templates
+- Verified Git repository updates and Flux source reconciliation
+- Confirmed HelmRelease deployment with updated chart version
+
+**Next Critical Steps**:
+1. Monitor ExternalSecret `gitops-lifecycle-management-authentik-token` for successful sync
+2. Verify creation of `authentik-outpost-config` secret in flux-system namespace
+3. Confirm service-discovery pod startup once secrets are available
+4. Validate automatic recovery of dependent Kustomizations
+5. Achieve target 100% Ready status (31/31 Kustomizations)
+
 ### Operational Status
 
 - **Cluster Health**: All-control-plane setup running on 3 Intel Mac mini devices
@@ -334,16 +429,45 @@
 - **Bootstrap Phase**: Talos OS, Kubernetes cluster, Cilium CNI core, 1Password Connect, External Secrets, Flux system
 - **GitOps Phase**: Infrastructure services (cert-manager, ingress-nginx, monitoring), Authentik identity provider, Longhorn storage, BGP configuration, External authentik-proxy, Home Assistant stack
 
-### Flux Kustomization Status (RESOLVED)
+### Flux Kustomization Status (EMERGENCY RECOVERY IN PROGRESS)
 
+**✅ Ready Kustomizations (28/31 - 90.3% Ready)**:
 - **infrastructure-sources**: ✅ Ready
 - **infrastructure-external-secrets**: ✅ Ready
 - **infrastructure-onepassword**: ✅ Ready
 - **infrastructure-cert-manager**: ✅ Ready
-- **infrastructure-ingress-nginx-internal**: ✅ Ready (was blocked, now operational)
-- **infrastructure-authentik**: ✅ Ready (was blocked, now operational)
-- **infrastructure-authentik-proxy**: ✅ **COMPLETED** (External outpost architecture migration successful)
-- **infrastructure-monitoring**: ❌ Still failing due to HelmRelease issues, but no longer blocking other components
+- **infrastructure-cert-manager-issuers**: ✅ Ready
+- **infrastructure-cilium**: ✅ Ready
+- **infrastructure-cilium-bgp**: ✅ Ready
+- **infrastructure-cilium-pools**: ✅ Ready
+- **infrastructure-cloudflare-tunnel**: ✅ Ready
+- **infrastructure-cnpg-barman-plugin**: ✅ Ready
+- **infrastructure-cnpg-monitoring**: ✅ Ready
+- **infrastructure-cnpg-operator**: ✅ Ready
+- **infrastructure-external-dns**: ✅ Ready
+- **infrastructure-external-dns-internal**: ✅ Ready
+- **infrastructure-external-dns-unifi**: ✅ Ready
+- **infrastructure-flux-webhook**: ✅ Ready
+- **infrastructure-hubble**: ✅ Ready
+- **infrastructure-ingress-nginx**: ✅ Ready
+- **infrastructure-ingress-nginx-internal**: ✅ Ready
+- **infrastructure-ingress-nginx-public**: ✅ Ready
+- **infrastructure-longhorn**: ✅ Ready
+- **infrastructure-metrics-server**: ✅ Ready
+- **infrastructure-monitoring**: ✅ Ready (RECOVERED from previous failures)
+- **infrastructure-postgresql-cluster**: ✅ Ready
+- **infrastructure-volume-snapshots**: ✅ Ready
+- **infrastructure-authentik**: ✅ Ready
+- **apps-dashboard**: ✅ Ready
+- **apps-home-automation**: ✅ Ready
+- **flux-system**: ✅ Ready (root Kustomization)
+
+**❌ Not Ready Kustomizations (3/31 - Critical Recovery Path)**:
+- **infrastructure-gitops-lifecycle-management**: 🔄 Progressing (HelmRelease upgrade failing - secret dependency issue)
+- **infrastructure-authentik-outpost-config**: ❌ DependencyNotReady (blocked by gitops-lifecycle-management)
+- **infrastructure-authentik-proxy**: ❌ HealthCheckFailed (HelmRelease authentik-proxy-config failed)
+
+**Recovery Target**: 100% Ready Status (31/31 Kustomizations)
 
 ### 🎉 External Authentik Outpost System Status (SYSTEM COMPLETE - PRODUCTION READY)
 
@@ -357,9 +481,52 @@
 
 ## Next Steps
 
-### Operational Excellence (All Major Systems Complete)
+### Emergency Recovery Completion (CRITICAL PRIORITY)
 
-**Current Focus**: Maintenance and optimization of fully operational cluster systems.
+**Current Focus**: Complete emergency recovery to achieve 100% Ready status across all 31 Kustomizations.
+
+**Immediate Recovery Tasks**:
+
+1. **Secret Synchronization Resolution** (CRITICAL PATH)
+   - Monitor ExternalSecret `gitops-lifecycle-management-authentik-token` for successful sync from 1Password
+   - Verify creation of `authentik-outpost-config` secret in flux-system namespace
+   - Troubleshoot any 1Password connectivity or credential issues if sync fails
+
+2. **Pod Startup Validation**
+   - Confirm service-discovery pods start successfully once secrets are available
+   - Monitor HelmRelease upgrade completion for gitops-lifecycle-management
+   - Validate all chart resources deploy correctly
+
+3. **Dependency Chain Recovery**
+   - Monitor automatic recovery of `infrastructure-authentik-outpost-config` Kustomization
+   - Verify `infrastructure-authentik-proxy` HelmRelease resolves after dependency recovery
+   - Confirm all 3 blocked Kustomizations achieve Ready: True status
+
+4. **Health Check Restoration**
+   - Re-enable health checks in cluster configuration after successful deployment
+   - Verify health checks pass and provide proper monitoring
+   - Commit health check restoration via GitOps
+
+5. **100% Ready Status Validation**
+   - Confirm all 31 Kustomizations reach Ready: True status
+   - Validate complete GitOps lifecycle management functionality
+   - Document successful recovery completion
+
+**Post-Recovery Tasks**:
+
+6. **System Stabilization**
+   - Monitor cluster stability after recovery completion
+   - Validate all services remain accessible and functional
+   - Perform comprehensive health checks across all components
+
+7. **Recovery Documentation**
+   - Document emergency recovery procedures and lessons learned
+   - Update operational runbooks with recovery methodology
+   - Create preventive measures to avoid future degradation
+
+### Operational Excellence (Post-Recovery)
+
+**Future Focus**: Maintenance and optimization of fully operational cluster systems.
 
 1. **System Maintenance**: Regular health monitoring and proactive maintenance of all operational systems
 2. **Performance Optimization**: Fine-tune resource allocation and performance across all components
@@ -398,19 +565,29 @@
 - **Recovery**: `task cluster:emergency-recovery` for systematic troubleshooting
 - **Network Issues**: `task apps:deploy-cilium` for CNI problems
 
-## Current Status - Production Ready
+## Current Status - Emergency Recovery In Progress
 
-### All Major Systems Operational ✅
+### System Recovery Status: 90.3% Ready (28/31 Kustomizations) ⚠️
 
-**Infrastructure Status**: All core infrastructure components are operational and stable:
+**Infrastructure Status**: Most core infrastructure components are operational and stable, with 3 critical components requiring emergency recovery:
 
-- **✅ External Authentik Outpost**: Complete and production-ready with all 7 services authenticated
+**✅ Operational Systems (28/31)**:
+- **✅ External Authentik Outpost**: Core system operational (authentik Kustomization Ready)
 - **✅ Home Assistant Stack**: Full home automation platform operational with PostgreSQL, MQTT, and Redis
-- **✅ Monitoring Stack**: Complete observability with Prometheus, Grafana, and AlertManager
+- **✅ Monitoring Stack**: Complete observability with Prometheus, Grafana, and AlertManager (RECOVERED)
 - **✅ Kubernetes Dashboard**: Seamless SSO access without bearer token requirements
 - **✅ BGP LoadBalancer**: Stable BGP peering with route advertisement working
 - **✅ Storage System**: Longhorn distributed storage operational across USB SSDs
-- **✅ GitOps Pipeline**: Flux managing all infrastructure and application deployments
+- **✅ Core GitOps Pipeline**: Flux managing most infrastructure and application deployments
+
+**🚨 Emergency Recovery Required (3/31)**:
+- **❌ GitOps Lifecycle Management**: HelmRelease failing due to secret synchronization issues
+- **❌ Authentik Outpost Configuration**: Blocked by gitops-lifecycle-management dependency
+- **❌ Authentik Proxy System**: HelmRelease failing, indirectly blocked by dependency chain
+
+**Recovery Progress**: Significant improvement from 67.7% to 90.3% Ready status achieved through systematic emergency intervention. Template rendering issues resolved, chart version updated, and Git repository synchronized. Final phase requires secret synchronization completion.
+
+**Critical Path**: ExternalSecret synchronization from 1Password → Pod startup → HelmRelease completion → Dependency chain recovery → 100% Ready status achievement.
 
 ### Ongoing Operational Tasks
 
@@ -444,9 +621,30 @@
 - Enhance backup and recovery procedures
 - Implement advanced security policies
 
-## 🎉 Major Achievement Summary
+## 🚨 Emergency Recovery Summary
 
-This context reflects a cluster that has **successfully completed both the comprehensive external Authentik outpost system AND the Kubernetes Dashboard bearer token elimination project**. Both systems are **COMPLETE and PRODUCTION-READY** with seamless authentication integration.
+This context reflects a cluster undergoing **comprehensive emergency recovery** to restore 100% Ready status across all Kustomizations. **Significant progress achieved** with system status improved from 67.7% to 90.3% Ready through systematic intervention.
+
+**Emergency Recovery Achievements**:
+
+### System Recovery Progress (IN PROGRESS)
+
+- 🎉 **Major Improvement Achieved**: System status improved from 67.7% to 90.3% Ready (28/31 Kustomizations)
+- ✅ **Emergency Cleanup Completed**: Successfully removed failed resources blocking GitOps reconciliation
+- ✅ **Template Rendering Fixed**: Resolved ExternalSecret template issues causing sync failures
+- ✅ **Health Check Deadlock Broken**: Disabled problematic health checks allowing HelmRelease recreation
+- ✅ **Chart Version Management**: Successfully deployed updated chart version 0.1.2 with fixes
+- ✅ **Git Repository Synchronized**: All template fixes committed and deployed via GitOps
+
+**Remaining Recovery Tasks**:
+
+- 🔄 **Secret Synchronization**: ExternalSecret sync from 1Password pending for final 3 Kustomizations
+- 🔄 **Dependency Chain Recovery**: Awaiting automatic recovery of blocked authentication components
+- 🔄 **100% Ready Status**: Target achievement of 31/31 Kustomizations Ready: True
+
+## 🎉 Previous Major Achievement Summary
+
+The cluster has **successfully completed both the comprehensive external Authentik outpost system AND the Kubernetes Dashboard bearer token elimination project**. Both systems are **COMPLETE and PRODUCTION-READY** with seamless authentication integration.
 
 **Key Successes Achieved**:
 

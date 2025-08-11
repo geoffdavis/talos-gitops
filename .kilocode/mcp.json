@@ -1,30 +1,10 @@
 {
   "mcpServers": {
-    "git": {
-      "command": "uvx",
-      "args": [
-        "mcp-server-git",
-        "--repository",
-        "/Users/geoff/src/personal/talos-gitops"
-      ]
-    },
     "cloudflare": {
       "command": "npx",
       "args": [
         "mcp-remote",
         "https://observability.mcp.cloudflare.com/sse"
-      ]
-    },
-    "kubernetes": {
-      "command": "npx",
-      "args": [
-        "mcp-server-kubernetes"
-      ],
-      "alwaysAllow": [
-        "",
-        "kubectl_get",
-        "kubectl_describe",
-        "kubectl_logs"
       ]
     },
     "flux-operator": {
@@ -36,11 +16,39 @@
         "KUBECONFIG": "/Users/geoff/.kube/config"
       },
       "alwaysAllow": [
+        "get_flux_instance",
+        "get_kubernetes_logs",
         "get_kubernetes_resources",
         "suspend_flux_kustomization",
         "resume_flux_kustomization",
         "reconcile_flux_source",
-        "reconcile_flux_helmrelease"
+        "reconcile_flux_kustomization",
+        "reconcile_flux_helmrelease",
+        "suspend_flux_reconciliation"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {
+        "DEFAULT_MINIMUM_TOKENS": ""
+      }
+    },
+    "git": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "/Users/geoff/src/personal/talos-gitops/"
+      ],
+      "alwaysAllow": [
+        "git_status",
+        "git_log",
+        "git_diff",
+        "git_add"
       ]
     }
   }
