@@ -34,8 +34,8 @@ spec:
           onePasswordKey: "home-ops-authentik-external-outpost-config"  # pragma: allowlist secret
           secretName: "authentik-outpost-config"  # pragma: allowlist secret
         flows:
-          onePasswordKey: "home-ops-authentik-flow-config"  # pragma: allowlist secret
-          secretName: "authentik-flow-config"  # pragma: allowlist secret
+          onePasswordKey: "home-ops-authentik-external-outpost-config"  # pragma: allowlist secret
+          secretName: "authentik-outpost-config"  # pragma: allowlist secret
         cookieDomain: "k8s.home.geoffdavis.com"
         token:
           onePasswordKey: "home-ops-authentik-admin-token"  # pragma: allowlist secret
