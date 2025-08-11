@@ -179,7 +179,7 @@ spec:
 
         # MQTT broker readiness init container
         - name: wait-for-mqtt
-          image: busybox:1.36-musl
+          image: busybox:1.37-musl
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
