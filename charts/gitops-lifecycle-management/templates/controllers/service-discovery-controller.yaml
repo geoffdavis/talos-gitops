@@ -25,7 +25,7 @@ spec:
       {{- include "gitops-lifecycle-management.controllerPodSecurityContext" . | nindent 6 }}
       containers:
         - name: controller
-          image: "python:3.11-alpine"
+          image: "alpine/k8s:1.31.1"
           imagePullPolicy: {{ .Values.serviceDiscovery.controller.image.pullPolicy }}
           {{- include "gitops-lifecycle-management.controllerSecurityContext" . | nindent 10 }}
           env:
@@ -95,9 +95,9 @@ spec:
             - /bin/sh
             - -c
             - |
-              # Install required packages
-              apk add --no-cache kubectl curl
-              pip install requests
+              # Install Python and requests (minimal install)
+              apk add --no-cache python3 py3-pip
+              pip3 install --break-system-packages requests
               
               # Run the Python controller
               python3 /app/controller.py

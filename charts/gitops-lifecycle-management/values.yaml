@@ -78,7 +78,7 @@ authentication:
       runAsUser: 65534
       runAsGroup: 65534
       allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
+      readOnlyRootFilesystem: false
       capabilities:
         drop: ["ALL"]
       seccompProfile:
