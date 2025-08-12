@@ -57,7 +57,7 @@ spec:
                   type: RuntimeDefault
               containers:
                 - name: configure-proxy-providers
-                  image: alpine/curl:8.15.0
+                  image: alpine:3.20
                   securityContext:
                     allowPrivilegeEscalation: false
                     runAsNonRoot: true
@@ -90,7 +90,10 @@ spec:
                     - -c
                     - |
                       set -e
-                      echo "=== Configuring Static Proxy Providers for Hybrid Architecture ==="
+                      echo "=== Installing curl and configuring Static Proxy Providers for Hybrid Architecture ==="
+
+                      # Install curl
+                      apk add --no-cache curl
 
                       # Validate required environment variables
                       if [ -z "${AUTHENTIK_HOST}" ] || [ -z "${AUTHENTIK_TOKEN}" ] || \

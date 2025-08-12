@@ -46,6 +46,9 @@ spec:
             - |
               set -e
               echo "=== Authentik Proxy Configuration Pre-Install Readiness Check ==="
+              
+              # Install curl
+              apk add --no-cache curl
 
               # Function to check Authentik server readiness
               check_authentik_server() {
