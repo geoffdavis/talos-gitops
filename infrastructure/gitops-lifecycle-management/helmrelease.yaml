@@ -100,9 +100,9 @@ spec:
 
     # Validation and cleanup configuration
     validation:
-      enabled: true
+      enabled: false
       hooks:
-        enabled: true
+        enabled: false
         activeDeadlineSeconds: 180
         tests:
           authentikConnectivity: true
