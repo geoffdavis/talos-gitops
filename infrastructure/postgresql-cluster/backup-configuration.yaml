@@ -26,8 +26,7 @@ spec:
     parameters:
       objectStoreName: "postgresql-cluster-backup"
 
-  # Immediate checkpoint for consistent backup
-  immediate: true
+  # Immediate checkpoint for consistent backup (handled automatically by plugin)
 
   # Suspend backup if needed
   suspend: false
@@ -56,5 +55,4 @@ spec:
     parameters:
       objectStoreName: "postgresql-cluster-backup"
 
-  # Immediate checkpoint for consistent backup
-  immediate: true
+  # Immediate checkpoint for consistent backup (handled automatically by plugin)
