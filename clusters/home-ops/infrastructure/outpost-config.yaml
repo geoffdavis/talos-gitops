@@ -9,7 +9,6 @@ spec:
     - name: infrastructure-authentik
     - name: infrastructure-external-secrets
     - name: infrastructure-onepassword
-    - name: infrastructure-gitops-lifecycle-management
   interval: 30m
   retryInterval: 2m
   timeout: 15m
