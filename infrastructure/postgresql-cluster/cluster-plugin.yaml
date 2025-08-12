@@ -26,6 +26,7 @@ spec:
       isWALArchiver: true
       parameters:
         objectStoreName: "postgresql-cluster-backup"
+        barmanObjectName: "postgresql-cluster-backup"
         pluginAddress: "barman-cloud.cnpg-system.svc.cluster.local:9090"
 
   # PostgreSQL configuration
