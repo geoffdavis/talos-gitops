@@ -224,7 +224,7 @@ validation:
 
   # Post-install validation hooks
   hooks:
-    enabled: true
+    enabled: false
 
     # Validation timeout
     activeDeadlineSeconds: 180
