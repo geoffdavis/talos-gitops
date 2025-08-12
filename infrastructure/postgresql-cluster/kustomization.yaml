@@ -7,6 +7,7 @@ resources:
   - cluster-plugin.yaml
   - external-secret-superuser.yaml
   - external-secret-s3-backup.yaml
+  - backup-configuration.yaml
 
 # Common labels for all PostgreSQL cluster resources
 commonLabels:

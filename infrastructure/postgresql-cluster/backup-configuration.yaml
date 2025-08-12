@@ -19,8 +19,12 @@ spec:
   cluster:
     name: postgresql-cluster
 
-  # Backup method and configuration
-  method: barmanObjectStore
+  # Backup method and configuration - using plugin
+  method: plugin
+  pluginConfiguration:
+    name: "barman-cloud.cloudnative-pg.io"
+    parameters:
+      objectStoreName: "postgresql-cluster-backup"
 
   # Immediate checkpoint for consistent backup
   immediate: true
@@ -56,8 +60,12 @@ spec:
   cluster:
     name: postgresql-cluster
 
-  # Backup method
-  method: barmanObjectStore
+  # Backup method - using plugin
+  method: plugin
+  pluginConfiguration:
+    name: "barman-cloud.cloudnative-pg.io"
+    parameters:
+      objectStoreName: "postgresql-cluster-backup"
 
   # Immediate checkpoint for consistent backup
   immediate: true
