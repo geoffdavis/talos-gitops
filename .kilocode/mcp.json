@@ -42,15 +42,7 @@
       "args": [
         "mcp-server-git",
         "--repository",
-        "/Users/geoff/src/personal/talos-gitops/"
-      ],
-      "alwaysAllow": [
-        "git_status",
-        "git_log",
-        "git_diff",
-        "git_add",
-        "git_diff_unstaged",
-        "git_diff_staged"
+        "/Users/geoff/src/personal/talos-gitops"
       ]
     }
   }
