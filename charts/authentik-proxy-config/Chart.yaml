@@ -2,7 +2,7 @@ apiVersion: v2
 name: authentik-proxy-config
 description: A Helm chart for configuring Authentik proxy providers and applications
 type: application
-version: 0.1.2
+version: 0.1.3
 appVersion: "1.0.0"
 keywords:
   - authentik
