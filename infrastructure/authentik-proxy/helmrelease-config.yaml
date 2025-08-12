@@ -199,6 +199,6 @@ spec:
                       echo "Configured providers for: Longhorn, AlertManager, Hubble, Home Assistant"
                       echo "Services using native OIDC: Grafana, Dashboard"
                       echo "Internal-only services: Prometheus (kubectl port-forward only)"
-              volumes:
-                - name: tmp-volume
-                  emptyDir: {}
+                  volumes:
+                    - name: tmp-volume
+                      emptyDir: {}

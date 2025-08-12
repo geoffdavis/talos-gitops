@@ -15,6 +15,7 @@ resources:
   - secret.yaml
   - external-outpost-secret.yaml
   - admin-token-secret.yaml
+  - database-credentials-secret.yaml
   - outpost-id-static.yaml
   - service-discovery-config.yaml
 
