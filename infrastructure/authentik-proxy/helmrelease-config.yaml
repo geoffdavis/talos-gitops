@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: configuration
 spec:
   interval: 10m
-  timeout: 5m
+  timeout: 15m
   chart:
     spec:
       chart: ./charts/authentik-proxy-config
