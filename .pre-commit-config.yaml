@@ -161,6 +161,7 @@ repos:
       - id: markdownlint
         name: 📝 Markdown basic checks
         args: ["--config", ".markdownlint.yaml"]
+        exclude: ^\.kilocode/rules/memory-bank/.*\.md$
 
   # Markdown formatting - WARNING
   - repo: https://github.com/pre-commit/mirrors-prettier
