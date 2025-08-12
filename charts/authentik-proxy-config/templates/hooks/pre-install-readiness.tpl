@@ -57,7 +57,7 @@ spec:
                 local max_attempts=${MAX_RETRIES}
 
                 while [ $attempt -lt $max_attempts ]; do
-                  if curl -f -s "${AUTHENTIK_HOST}/if/flow/initial-setup/" > /dev/null 2>&1; then
+                  if curl -f -s "${AUTHENTIK_HOST}/-/health/live/" > /dev/null 2>&1; then
                     echo "✓ Authentik server is ready!"
                     return 0
                   fi
