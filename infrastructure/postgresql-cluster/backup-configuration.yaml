@@ -32,17 +32,6 @@ spec:
   # Suspend backup if needed
   suspend: false
 
-  # Additional metadata for backup tracking
-  metadata:
-    labels:
-      backup-tier: "critical"
-      backup-type: "database"
-      application: "postgresql"
-      scheduled: "true"
-    annotations:
-      backup.cnpg.io/retention-policy: "30d"
-      backup.cnpg.io/backup-type: "full"
-      backup.cnpg.io/compression: "gzip"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Backup
@@ -69,14 +58,3 @@ spec:
 
   # Immediate checkpoint for consistent backup
   immediate: true
-
-  # Additional metadata
-  metadata:
-    labels:
-      backup-tier: "critical"
-      backup-type: "database"
-      application: "postgresql"
-      backup-purpose: "bootstrap"
-    annotations:
-      backup.cnpg.io/backup-type: "bootstrap"
-      backup.cnpg.io/compression: "gzip"
