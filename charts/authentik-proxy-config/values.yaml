@@ -1,7 +1,7 @@
 # Authentik configuration
 authentik:
   enabled: false # Authentik should be deployed separately
-  host: "http://authentik-server.authentik.svc.cluster.local"
+  host: "http://authentik-server.authentik.svc.cluster.local:80"
   authFlowUuid: "be0ee023-11fe-4a43-b453-bc67957cafbf"
 
 # Service definitions for proxy configuration
