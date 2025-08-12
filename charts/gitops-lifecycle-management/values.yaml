@@ -220,7 +220,7 @@ crds:
 
 # Validation and cleanup configuration
 validation:
-  enabled: true
+  enabled: false
 
   # Post-install validation hooks
   hooks:
