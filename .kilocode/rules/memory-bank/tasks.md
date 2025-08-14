@@ -1926,6 +1926,7 @@ This task documents the process of organizing and committing large sets of chang
    - Handle pre-commit hook failures appropriately (use `--no-verify` for formatting-only issues)
 
 5. **Example Commit Structure**:
+
    ```bash
    # Breaking change - component removal
    git add charts/problematic-component/ infrastructure/problematic-component/

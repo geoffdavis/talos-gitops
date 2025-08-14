@@ -38,8 +38,8 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 
 ### Daily Health Check Procedure
 
-**Frequency:** Daily  
-**Duration:** 10-15 minutes  
+**Frequency:** Daily
+**Duration:** 10-15 minutes
 **Tools Required:** kubectl, monitoring dashboards
 
 #### Steps:
@@ -123,7 +123,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 
 ### Weekly Maintenance Tasks
 
-**Frequency:** Weekly  
+**Frequency:** Weekly
 **Duration:** 30-45 minutes
 
 #### Steps:
@@ -304,7 +304,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 
 #### Critical Alert: CNPGBackupFailed
 
-**Severity:** Critical  
+**Severity:** Critical
 **Response Time:** Immediate (< 15 minutes)
 
 **Investigation Steps:**
@@ -340,7 +340,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 
 #### Warning Alert: CNPGBackupTooOld
 
-**Severity:** Warning  
+**Severity:** Warning
 **Response Time:** 1 hour
 
 **Investigation Steps:**
@@ -366,7 +366,7 @@ This document provides comprehensive operational runbooks for maintaining CloudN
 
 #### Critical Alert: CNPGWALArchivingFailed
 
-**Severity:** Critical  
+**Severity:** Critical
 **Response Time:** Immediate (< 10 minutes)
 
 **Investigation Steps:**

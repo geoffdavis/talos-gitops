@@ -105,7 +105,7 @@ spec:
                 local sql="$1"
                 local max_attempts=30
                 local attempt=1
-                
+
                 while [ $attempt -le $max_attempts ]; do
                   echo "Attempt $attempt: Testing database connectivity..."
                   if psql -c "$sql" >/dev/null 2>&1; then
@@ -117,7 +117,7 @@ spec:
                     attempt=$((attempt + 1))
                   fi
                 done
-                
+
                 echo "Database failed to become ready after $max_attempts attempts"
                 return 1
               }

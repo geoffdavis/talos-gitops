@@ -2,35 +2,40 @@
 
 ## 🚨 Emergency Recovery Execution
 
-**Current Status**: 87.1% Ready (27/31 Kustomizations)  
-**Target**: 100% Ready (31/31 Kustomizations)  
-**Strategy**: Complete elimination of problematic `gitops-lifecycle-management` component  
+**Current Status**: 87.1% Ready (27/31 Kustomizations)
+**Target**: 100% Ready (31/31 Kustomizations)
+**Strategy**: Complete elimination of problematic `gitops-lifecycle-management` component
 **Success Probability**: 95%
 
 ## Quick Execution Steps
 
 ### 1. Create Backup (REQUIRED)
+
 ```bash
 ./scripts/aggressive-recovery-backup.sh
 ```
 
 ### 2. Execute Recovery
+
 ```bash
 ./scripts/aggressive-recovery-execute.sh
 ```
 
 ### 3. Monitor Progress
+
 ```bash
 # In separate terminal
 ./scripts/aggressive-recovery-monitor.sh
 ```
 
 ### 4. Validate Success
+
 ```bash
 ./validate-recovery-success.sh
 ```
 
 ### 5. Merge to Main (if successful)
+
 ```bash
 git checkout main
 git merge aggressive-recovery-YYYYMMDD-HHMMSS
@@ -40,16 +45,17 @@ git push origin main
 ## Emergency Rollback
 
 If anything goes wrong:
+
 ```bash
 ./scripts/aggressive-recovery-rollback.sh
 ```
 
 ## What This Strategy Does
 
-✅ **ELIMINATES**: `infrastructure-gitops-lifecycle-management` component causing HelmRelease timeouts  
-✅ **PRESERVES**: All operational systems (external outpost, monitoring, home automation)  
-✅ **UNBLOCKS**: `infrastructure-authentik-outpost-config` dependency chain  
-✅ **MAINTAINS**: 100% service availability during recovery  
+✅ **ELIMINATES**: `infrastructure-gitops-lifecycle-management` component causing HelmRelease timeouts
+✅ **PRESERVES**: All operational systems (external outpost, monitoring, home automation)
+✅ **UNBLOCKS**: `infrastructure-authentik-outpost-config` dependency chain
+✅ **MAINTAINS**: 100% service availability during recovery
 
 ## Safety Features
 

@@ -226,8 +226,8 @@ While the full documentation structure is being organized, these comprehensive g
 
 ---
 
-**Last Updated**: 2025-07-29  
-**Cluster Version**: Talos OS v1.10.5, Kubernetes v1.31.1  
+**Last Updated**: 2025-07-29
+**Cluster Version**: Talos OS v1.10.5, Kubernetes v1.31.1
 **Documentation Version**: 2.0 (Reorganized Structure)
 
 For the most up-to-date information, always refer to the specific component documentation and the cluster's current state.

@@ -4,9 +4,9 @@ This guide provides the practical implementation details for the prevention meas
 
 ## Quick Reference
 
-**Post-Mortem Document**: [`GITOPS_LIFECYCLE_MANAGEMENT_POST_MORTEM.md`](./GITOPS_LIFECYCLE_MANAGEMENT_POST_MORTEM.md)  
-**Emergency Recovery Plan**: [`AGGRESSIVE_RECOVERY_STRATEGY_IMPLEMENTATION_PLAN.md`](./AGGRESSIVE_RECOVERY_STRATEGY_IMPLEMENTATION_PLAN.md)  
-**Implementation Status**: Ready for execution  
+**Post-Mortem Document**: [`GITOPS_LIFECYCLE_MANAGEMENT_POST_MORTEM.md`](./GITOPS_LIFECYCLE_MANAGEMENT_POST_MORTEM.md)
+**Emergency Recovery Plan**: [`AGGRESSIVE_RECOVERY_STRATEGY_IMPLEMENTATION_PLAN.md`](./AGGRESSIVE_RECOVERY_STRATEGY_IMPLEMENTATION_PLAN.md)
+**Implementation Status**: Ready for execution
 **Priority**: Critical (prevents future week+ debugging sessions)
 
 ## Implementation Scripts
@@ -33,7 +33,7 @@ TOTAL_COUNT=$(flux get kustomizations | wc -l)
 if [ $TOTAL_COUNT -gt 0 ]; then
     READY_PERCENTAGE=$((READY_COUNT * 100 / TOTAL_COUNT))
     echo "   Ready: $READY_COUNT/$TOTAL_COUNT ($READY_PERCENTAGE%)"
-    
+
     if [ $READY_PERCENTAGE -lt 95 ]; then
         echo "   ⚠️  WARNING: Ready percentage below 95%"
         echo "   Failed Kustomizations:"
@@ -53,7 +53,7 @@ HELM_TOTAL=$(flux get helmreleases | wc -l)
 if [ $HELM_TOTAL -gt 0 ]; then
     HELM_PERCENTAGE=$((HELM_READY * 100 / HELM_TOTAL))
     echo "   Ready: $HELM_READY/$HELM_TOTAL ($HELM_PERCENTAGE%)"
-    
+
     if [ $HELM_PERCENTAGE -lt 95 ]; then
         echo "   ⚠️  WARNING: HelmRelease issues detected"
         flux get helmreleases | grep -v "True.*Ready" | sed 's/^/     /'
@@ -90,7 +90,7 @@ echo "4. Authentication System Check:"
 AUTH_PODS=$(kubectl get pods -n authentik-proxy --no-headers 2>/dev/null | grep -c "Running" || echo 0)
 if [ $AUTH_PODS -gt 0 ]; then
     echo "   ✅ Authentik Proxy pods running: $AUTH_PODS"
-    
+
     # Test key services
     echo "   Testing service accessibility:"
     services=("longhorn" "grafana" "prometheus")
@@ -150,8 +150,8 @@ echo
 echo "1. HelmRelease Complexity Analysis:"
 echo "   Component Resource Counts and Dependencies:"
 kubectl get helmreleases -A -o json 2>/dev/null | \
-  jq -r '.items[] | 
-    "\(.metadata.namespace)/\(.metadata.name): 
+  jq -r '.items[] |
+    "\(.metadata.namespace)/\(.metadata.name):
      Timeout: \(.spec.timeout // "default")
      Install Retries: \(.spec.install.remediation.retries // 0)
      Upgrade Retries: \(.spec.upgrade.remediation.retries // 0)"' | \
@@ -164,7 +164,7 @@ echo
 echo "2. Dependency Chain Analysis:"
 echo "   Components with most dependencies:"
 flux get kustomizations --output json 2>/dev/null | \
-  jq -r '.[] | select(.dependsOn != null) | 
+  jq -r '.[] | select(.dependsOn != null) |
     "\(.name): \(.dependsOn | length) dependencies (\(.dependsOn | map(.name) | join(", ")))"' | \
   sort -k2 -nr | head -10 | \
   while read line; do
@@ -235,7 +235,7 @@ exit_code=0
 for file in "$@"; do
     if [[ $file == *"helmrelease.yaml" ]]; then
         echo "Checking complexity of $file..."
-        
+
         # Check for excessive values configuration
         if command -v yq >/dev/null 2>&1; then
             values_count=$(yq eval '.spec.values | keys | length' "$file" 2>/dev/null || echo 0)
@@ -243,14 +243,14 @@ for file in "$@"; do
                 echo "⚠️  $file: High complexity ($values_count top-level values) - consider simplification"
                 exit_code=1
             fi
-            
+
             # Check timeout configuration
             timeout=$(yq eval '.spec.timeout' "$file" 2>/dev/null || echo "null")
             if [ "$timeout" = "null" ]; then
                 echo "⚠️  $file: No timeout specified - add explicit timeout configuration"
                 exit_code=1
             fi
-            
+
             # Check for retry configuration
             install_retries=$(yq eval '.spec.install.remediation.retries' "$file" 2>/dev/null || echo 0)
             if [ "$install_retries" -eq 0 ]; then
@@ -260,10 +260,10 @@ for file in "$@"; do
             echo "⚠️  yq not found - skipping detailed analysis of $file"
         fi
     fi
-    
+
     if [[ $file == *"infrastructure"* && $file == *".yaml" ]]; then
         echo "Checking dependencies in $file..."
-        
+
         # Check for excessive dependencies
         if command -v yq >/dev/null 2>&1; then
             dep_count=$(yq eval '.spec.dependsOn | length' "$file" 2>/dev/null || echo 0)
@@ -301,7 +301,7 @@ for file in "$@"; do
             # Extract component name and dependencies
             component=$(yq eval '.metadata.name' "$file" 2>/dev/null || echo "unknown")
             dependencies=$(yq eval '.spec.dependsOn[].name' "$file" 2>/dev/null || echo "")
-            
+
             if [ -n "$dependencies" ]; then
                 echo "$component -> $dependencies" >> "$temp_file"
             fi
@@ -312,19 +312,19 @@ done
 # Check for circular dependencies (simplified check)
 if [ -s "$temp_file" ]; then
     echo "Checking for potential circular dependencies..."
-    
+
     # Look for obvious circular patterns
     while read -r line; do
         component=$(echo "$line" | cut -d' ' -f1)
         dependency=$(echo "$line" | cut -d' ' -f3)
-        
+
         # Check if dependency also depends on component
         if grep -q "^$dependency -> .*$component" "$temp_file"; then
             echo "⚠️  Potential circular dependency: $component <-> $dependency"
             exit_code=1
         fi
     done < "$temp_file"
-    
+
     # Check dependency chain depth
     max_depth=0
     while read -r line; do
@@ -338,7 +338,7 @@ if [ -s "$temp_file" ]; then
             exit_code=1
         fi
     done < "$temp_file"
-    
+
     echo "Maximum dependency chain depth: $max_depth"
 fi
 
@@ -365,7 +365,7 @@ exit_code=0
 for file in "$@"; do
     if [[ $file == *"helmrelease.yaml" ]]; then
         echo "Checking timeout configuration in $file..."
-        
+
         if command -v yq >/dev/null 2>&1; then
             # Check main timeout
             timeout=$(yq eval '.spec.timeout' "$file" 2>/dev/null)
@@ -382,7 +382,7 @@ for file in "$@"; do
                     echo "⚠️  $file: Timeout very long ($timeout) - may indicate complexity issues"
                 fi
             fi
-            
+
             # Check install timeout
             install_timeout=$(yq eval '.spec.install.timeout' "$file" 2>/dev/null)
             if [ "$install_timeout" != "null" ] && [ -n "$install_timeout" ]; then
@@ -392,15 +392,15 @@ for file in "$@"; do
                     exit_code=1
                 fi
             fi
-            
+
             # Check for retry configuration
             install_retries=$(yq eval '.spec.install.remediation.retries' "$file" 2>/dev/null || echo 0)
             upgrade_retries=$(yq eval '.spec.upgrade.remediation.retries' "$file" 2>/dev/null || echo 0)
-            
+
             if [ "$install_retries" -eq 0 ] && [ "$upgrade_retries" -eq 0 ]; then
                 echo "⚠️  $file: No retry configuration - consider adding remediation.retries"
             fi
-            
+
             # Check for hook timeouts if hooks are present
             if yq eval '.spec.values | has("hooks")' "$file" 2>/dev/null | grep -q true; then
                 echo "   Hook configuration detected - ensure hook timeouts are reasonable"
@@ -439,8 +439,8 @@ spec:
         - alert: HelmReleaseInstallationTimeout
           expr: |
             (
-              kustomize_toolkit_kustomizations{ready="False"} 
-              and on(name, namespace) 
+              kustomize_toolkit_kustomizations{ready="False"}
+              and on(name, namespace)
               increase(kustomize_toolkit_kustomizations_condition_total{type="Ready", status="False"}[15m]) > 0
             )
           for: 0m
@@ -455,8 +455,8 @@ spec:
         - alert: DependencyChainBlocked
           expr: |
             count by (namespace) (
-              kustomize_toolkit_kustomizations{ready="False"} 
-              and on(name, namespace) 
+              kustomize_toolkit_kustomizations{ready="False"}
+              and on(name, namespace)
               kustomize_toolkit_kustomizations_condition{type="Ready", status="False", reason="DependencyNotReady"}
             ) > 0
           for: 5m
@@ -471,8 +471,8 @@ spec:
         - alert: GitOpsSystemDegraded
           expr: |
             (
-              count(kustomize_toolkit_kustomizations{ready="True"}) 
-              / 
+              count(kustomize_toolkit_kustomizations{ready="True"})
+              /
               count(kustomize_toolkit_kustomizations)
             ) < 0.9
           for: 10m
@@ -487,8 +487,8 @@ spec:
         # Warning Alerts
         - alert: ComponentComplexityHigh
           expr: |
-            kustomize_toolkit_kustomizations_condition{type="Ready", status="False"} 
-            and on(name, namespace) 
+            kustomize_toolkit_kustomizations_condition{type="Ready", status="False"}
+            and on(name, namespace)
             increase(kustomize_toolkit_kustomizations_condition_total{type="Ready", status="False"}[1h]) > 3
           for: 30m
           labels:
@@ -501,8 +501,8 @@ spec:
 
         - alert: HelmReleaseSlowInstallation
           expr: |
-            helm_toolkit_helmreleases_condition{type="Ready", status="Unknown"} 
-            and on(name, namespace) 
+            helm_toolkit_helmreleases_condition{type="Ready", status="Unknown"}
+            and on(name, namespace)
             (time() - helm_toolkit_helmreleases_condition_timestamp{type="Ready"}) > 600
           for: 5m
           labels:
@@ -622,7 +622,7 @@ data:
 ```yaml
 repos:
   # Existing repos...
-  
+
   - repo: local
     hooks:
       - id: component-complexity-check
@@ -631,21 +631,21 @@ repos:
         language: script
         files: '^(infrastructure|apps)/.*helmrelease\.yaml$'
         pass_filenames: true
-        
+
       - id: dependency-chain-validation
         name: Dependency Chain Validation
         entry: scripts/validate-dependency-chains.sh
         language: script
         files: '^clusters/.*/infrastructure/.*\.yaml$'
         pass_filenames: true
-        
+
       - id: timeout-configuration-check
         name: Timeout Configuration Check
         entry: scripts/check-timeout-configs.sh
         language: script
         files: '^.*helmrelease\.yaml$'
         pass_filenames: true
-        
+
       - id: gitops-architecture-validation
         name: GitOps Architecture Validation
         entry: scripts/validate-gitops-architecture.sh
@@ -662,17 +662,17 @@ repos:
 **File**: `taskfiles/gitops-lifecycle.yml`
 
 ```yaml
-version: '3'
+version: "3"
 
 tasks:
   health-check:
     desc: Run daily GitOps health check
     cmd: ./scripts/daily-health-check.sh
-    
+
   complexity-report:
     desc: Generate weekly complexity analysis report
     cmd: ./scripts/weekly-complexity-report.sh
-    
+
   validate-architecture:
     desc: Validate GitOps architecture compliance
     cmd: |
@@ -680,7 +680,7 @@ tasks:
       ./scripts/check-component-complexity.sh infrastructure/*/helmrelease.yaml
       ./scripts/validate-dependency-chains.sh clusters/home-ops/infrastructure/*.yaml
       ./scripts/check-timeout-configs.sh infrastructure/*/helmrelease.yaml
-      
+
   emergency-status:
     desc: Quick emergency status check
     cmd: |
@@ -690,7 +690,7 @@ tasks:
       kubectl get nodes --no-headers | grep -c "Ready" || echo "0"
       echo "Authentication system:"
       kubectl get pods -n authentik-proxy --no-headers | grep -c "Running" || echo "0"
-      
+
   component-eliminate:
     desc: Eliminate problematic component (use with caution)
     cmd: |
@@ -703,12 +703,12 @@ tasks:
       echo "6. Commit changes: git commit -m 'eliminate: {{.COMPONENT}}'"
     requires:
       vars: [COMPONENT]
-      
+
   recovery-status:
     desc: Monitor recovery progress
     cmd: |
-      watch -n 5 'echo "=== Recovery Status ==="; 
-      flux get kustomizations | head -20; 
+      watch -n 5 'echo "=== Recovery Status ===";
+      flux get kustomizations | head -20;
       echo "Ready: $(flux get kustomizations | grep -c "True.*Ready")/$(flux get kustomizations | wc -l)"'
 ```
 

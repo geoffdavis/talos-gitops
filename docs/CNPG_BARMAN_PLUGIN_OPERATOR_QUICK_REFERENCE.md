@@ -402,6 +402,6 @@ kubectl exec -n <namespace> <cluster-pod> -- psql -U postgres -c "SELECT pg_swit
 
 ---
 
-**Last Updated**: July 31, 2025  
-**Version**: 1.0  
+**Last Updated**: July 31, 2025
+**Version**: 1.0
 **Applies to**: CloudNativePG v1.26.1 + Barman Plugin v1.26.1

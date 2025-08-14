@@ -12,11 +12,13 @@ This document provides a detailed implementation plan for executing the **Aggres
 ## Root Cause Analysis
 
 ### Primary Blocker
+
 - **Component**: `infrastructure-gitops-lifecycle-management`
 - **Issue**: HelmRelease installation timeout (exceeding 15-minute limit)
 - **Impact**: Blocking dependency chain recovery for `infrastructure-authentik-outpost-config`
 
 ### Dependency Chain
+
 ```
 infrastructure-gitops-lifecycle-management (FAILED - PRIMARY BLOCKER)
     ↓ blocks
@@ -24,7 +26,9 @@ infrastructure-authentik-outpost-config (DependencyNotReady)
 ```
 
 ### Component Analysis
+
 The `gitops-lifecycle-management` component provides:
+
 - Authentication management automation
 - Service discovery controller
 - Database initialization hooks
@@ -36,7 +40,9 @@ The `gitops-lifecycle-management` component provides:
 ## Safety Assessment
 
 ### Pre-Recovery System State
+
 ✅ **Operational Systems (27/31)**:
+
 - External Authentik outpost system (COMPLETE and PRODUCTION-READY)
 - Home Assistant stack (COMPLETE)
 - Monitoring stack (COMPLETE)
@@ -45,6 +51,7 @@ The `gitops-lifecycle-management` component provides:
 - Core infrastructure (networking, storage, certificates)
 
 ### Risk Analysis
+
 - **LOW RISK**: External outpost system already handles all authentication requirements
 - **NO SERVICE DISRUPTION**: All user-facing services remain operational
 - **REVERSIBLE**: Complete rollback procedures provided
@@ -54,6 +61,7 @@ The `gitops-lifecycle-management` component provides:
 ### Phase 1: Pre-Recovery Safety Procedures
 
 #### 1.1 Create System Backup
+
 ```bash
 # Create backup directory with timestamp
 BACKUP_DIR="recovery-backup-$(date +%Y%m%d-%H%M%S)"
@@ -78,6 +86,7 @@ git status > "$BACKUP_DIR/git-status.txt"
 ```
 
 #### 1.2 Validate Current System Health
+
 ```bash
 # Check external outpost system health
 kubectl get pods -n authentik-proxy
@@ -98,6 +107,7 @@ kubectl get pods -n longhorn-system | head -5
 **Safety Checkpoint 1**: All validation commands must pass before proceeding.
 
 #### 1.3 Document Current Flux State
+
 ```bash
 # Document failing components
 flux get kustomizations | grep -E "(Failed|DependencyNotReady)"
@@ -112,18 +122,22 @@ kubectl get kustomization infrastructure-authentik-outpost-config -n flux-system
 ### Phase 2: Dependency Chain Analysis and Preparation
 
 #### 2.1 Identify All Dependencies
+
 ```bash
 # Find all Kustomizations that depend on gitops-lifecycle-management
 grep -r "infrastructure-gitops-lifecycle-management" clusters/home-ops/infrastructure/
 ```
 
 **Expected Dependencies**:
+
 - `infrastructure-authentik-outpost-config` (in `outpost-config.yaml`)
 
 #### 2.2 Prepare Dependency Updates
+
 Create updated configuration files that remove the dependency:
 
 **File**: `clusters/home-ops/infrastructure/outpost-config.yaml`
+
 ```yaml
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -156,6 +170,7 @@ spec:
 ### Phase 3: Aggressive Elimination Execution
 
 #### 3.1 Remove GitOps Lifecycle Management Kustomization
+
 ```bash
 # Stage 1: Remove from Flux configuration
 git checkout -b aggressive-recovery-$(date +%Y%m%d-%H%M%S)
@@ -169,6 +184,7 @@ sed -i '/^---$/,/^---$/{ /name: infrastructure-gitops-lifecycle-management/,/^--
 ```
 
 #### 3.2 Update Dependencies
+
 ```bash
 # Update outpost-config.yaml to remove dependency
 cp clusters/home-ops/infrastructure/outpost-config.yaml "$BACKUP_DIR/outpost-config.yaml.backup"
@@ -178,6 +194,7 @@ sed -i '/- name: infrastructure-gitops-lifecycle-management/d' clusters/home-ops
 ```
 
 #### 3.3 Remove Infrastructure Directory
+
 ```bash
 # Remove the entire gitops-lifecycle-management infrastructure
 rm -rf infrastructure/gitops-lifecycle-management/
@@ -189,6 +206,7 @@ rm -rf charts/gitops-lifecycle-management/
 **Safety Checkpoint 2**: Verify all changes before committing.
 
 #### 3.4 Commit and Deploy Changes
+
 ```bash
 # Verify changes
 git status
@@ -214,6 +232,7 @@ git push origin aggressive-recovery-$(date +%Y%m%d-%H%M%S)
 ### Phase 4: Recovery Monitoring and Validation
 
 #### 4.1 Monitor Flux Reconciliation
+
 ```bash
 # Force immediate reconciliation
 flux reconcile source git flux-system
@@ -226,6 +245,7 @@ watch -n 10 'flux get kustomizations | grep -c Ready; echo "Total: 31"'
 ```
 
 #### 4.2 Validate Dependency Chain Recovery
+
 ```bash
 # Check authentik-outpost-config recovery
 kubectl get kustomization infrastructure-authentik-outpost-config -n flux-system -o yaml
@@ -240,6 +260,7 @@ kubectl get kustomizations -A | grep gitops-lifecycle-management || echo "Succes
 **Safety Checkpoint 3**: Verify dependency chain recovery before proceeding.
 
 #### 4.3 Authentication System Validation
+
 ```bash
 # Test all authenticated services
 services=("longhorn" "grafana" "prometheus" "alertmanager" "dashboard" "homeassistant")
@@ -259,6 +280,7 @@ curl -I -k https://longhorn.k8s.home.geoffdavis.com/outpost.goauthentik.io/ping
 ### Phase 5: Success Validation and Cleanup
 
 #### 5.1 Verify 100% Ready Status
+
 ```bash
 # Check final Kustomization count
 READY_COUNT=$(flux get kustomizations | grep -c "True.*Ready")
@@ -275,6 +297,7 @@ fi
 ```
 
 #### 5.2 Final System Health Check
+
 ```bash
 # Comprehensive health validation
 kubectl get nodes
@@ -286,6 +309,7 @@ flux get helmreleases | grep -v "True.*Ready" || echo "All HelmReleases ready"
 ```
 
 #### 5.3 Merge Recovery Branch
+
 ```bash
 # Create pull request or merge directly
 git checkout main
@@ -302,6 +326,7 @@ git push origin --tags
 ### Emergency Rollback (if system becomes unstable)
 
 #### Immediate Rollback
+
 ```bash
 # Revert Git changes
 git checkout main
@@ -313,6 +338,7 @@ flux reconcile source git flux-system
 ```
 
 #### Full System Restore
+
 ```bash
 # Restore from backup
 kubectl apply -f "$BACKUP_DIR/cluster-kustomizations.yaml"
@@ -332,6 +358,7 @@ git push origin main
 ### Partial Rollback (if only specific components fail)
 
 #### Restore Dependencies Only
+
 ```bash
 # Restore dependency in outpost-config.yaml
 git checkout HEAD~1 -- clusters/home-ops/infrastructure/outpost-config.yaml
@@ -341,6 +368,7 @@ git push origin main
 ```
 
 #### Restore Infrastructure Directory Only
+
 ```bash
 # Restore infrastructure without Flux Kustomization
 git checkout HEAD~1 -- infrastructure/gitops-lifecycle-management/
@@ -352,6 +380,7 @@ git push origin main
 ## Monitoring Commands
 
 ### Real-time Recovery Monitoring
+
 ```bash
 # Terminal 1: Overall Flux status
 watch -n 5 'echo "=== FLUX KUSTOMIZATIONS ==="; flux get kustomizations | head -20'
@@ -367,6 +396,7 @@ watch -n 15 'echo "=== SYSTEM RESOURCES ==="; kubectl top nodes; echo; kubectl g
 ```
 
 ### Progress Tracking Commands
+
 ```bash
 # Count ready Kustomizations
 flux get kustomizations | grep -c "True.*Ready"
@@ -386,6 +416,7 @@ flux get helmreleases | grep -v "True.*Ready"
 ### Cluster Instability Response
 
 #### Level 1: Service Disruption
+
 ```bash
 # Check core services
 kubectl get pods -n kube-system | grep -E "(coredns|cilium)"
@@ -399,6 +430,7 @@ kubectl run test-pod --image=busybox --rm -it --restart=Never -- nslookup kubern
 ```
 
 #### Level 2: Authentication System Failure
+
 ```bash
 # Check external outpost system
 kubectl get pods -n authentik-proxy
@@ -414,6 +446,7 @@ kubectl get svc -n ingress-nginx-internal
 ```
 
 #### Level 3: Complete System Recovery
+
 ```bash
 # Emergency cluster reset (LAST RESORT)
 # This preserves OS but wipes cluster state
@@ -426,6 +459,7 @@ task bootstrap:phased
 ### Communication Procedures
 
 #### Status Updates
+
 ```bash
 # Generate status report
 echo "=== RECOVERY STATUS REPORT ===" > recovery-status.txt
@@ -440,6 +474,7 @@ kubectl get pods -n authentik-proxy >> recovery-status.txt
 ```
 
 #### Escalation Triggers
+
 - **Immediate**: If core services (DNS, networking) fail
 - **Within 15 minutes**: If authentication system becomes unavailable
 - **Within 30 minutes**: If rollback procedures fail
@@ -448,24 +483,28 @@ kubectl get pods -n authentik-proxy >> recovery-status.txt
 ## Success Criteria
 
 ### Primary Success Metrics
+
 - ✅ **100% Ready Status**: All 31 Flux Kustomizations show "Ready: True"
 - ✅ **Authentication System Operational**: All 6 services accessible via SSO
 - ✅ **No Service Disruption**: All user-facing services remain available
 - ✅ **Dependency Chain Resolved**: No "DependencyNotReady" status
 
 ### Secondary Success Metrics
+
 - ✅ **Flux Reconciliation**: All sources and Kustomizations reconciling normally
 - ✅ **Resource Health**: All pods running, no failed deployments
 - ✅ **Network Connectivity**: BGP peering stable, LoadBalancer IPs accessible
 - ✅ **Monitoring Active**: Prometheus, Grafana, AlertManager operational
 
 ### Validation Checklist
+
 ```bash
 # Run complete validation suite
 ./validate-recovery-success.sh
 ```
 
 **Validation Script** (`validate-recovery-success.sh`):
+
 ```bash
 #!/bin/bash
 set -e
@@ -544,16 +583,19 @@ fi
 ## Post-Recovery Actions
 
 ### Documentation Updates
+
 1. Update memory bank context with successful recovery
 2. Document lessons learned and process improvements
 3. Update operational procedures based on recovery experience
 
 ### System Optimization
+
 1. Review and optimize remaining Kustomization dependencies
 2. Implement monitoring for similar timeout issues
 3. Enhance backup and recovery procedures
 
 ### Preventive Measures
+
 1. Implement pre-commit hooks for dependency validation
 2. Add automated testing for Flux configuration changes
 3. Create monitoring alerts for HelmRelease timeout issues

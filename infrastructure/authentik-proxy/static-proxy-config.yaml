@@ -94,7 +94,7 @@ spec:
                   -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/existing_${slug}.json
 
                 EXISTING_COUNT=$(cat /tmp/existing_${slug}.json | grep -o '"count":[0-9]*' | cut -d':' -f2)
-                
+
                 if [ "$EXISTING_COUNT" != "0" ]; then
                   echo "Provider '$name' already exists, skipping creation"
                   return 0
@@ -120,7 +120,7 @@ spec:
                   PROVIDER_ID=$(cat /tmp/provider_${slug}.json | grep -o '\"pk\":[0-9]*' | cut -d':' -f2)
                   if [ -n "$PROVIDER_ID" ]; then
                     echo "Created provider ID: $PROVIDER_ID"
-                    
+
                     # Assign to external outpost
                     curl -s "${AUTHENTIK_HOST}/api/v3/outposts/instances/${EXTERNAL_OUTPOST_ID}/" \
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" > /tmp/outpost_current.json
@@ -128,7 +128,7 @@ spec:
                     CURRENT_PROVIDERS=$(cat /tmp/outpost_current.json | \
                       grep -o '\"providers\":\[[^]]*\]' | grep -o '[0-9]\+' | \
                       tr '\n' ',' | sed 's/,$//')
-                    
+
                     if [ -n "$CURRENT_PROVIDERS" ]; then
                       NEW_PROVIDERS="${CURRENT_PROVIDERS},${PROVIDER_ID}"
                     else
@@ -139,7 +139,7 @@ spec:
                       -H "Authorization: Bearer ${AUTHENTIK_TOKEN}" \
                       -H "Content-Type: application/json" \
                       -d "{\"providers\": [${NEW_PROVIDERS}]}" > /tmp/outpost_update.json
-                    
+
                     echo "Provider assigned to outpost successfully"
                   fi
                 else

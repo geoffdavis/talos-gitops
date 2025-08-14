@@ -23,8 +23,8 @@ spec:
         enabled: false
     # Override the secret name to use the correct token secret
     externalSecrets:
-      tokenSecretName: "authentik-admin-token-enhanced"  # pragma: allowlist secret
-      tokenSecretKey: "token"  # pragma: allowlist secret
+      tokenSecretName: "authentik-admin-token-enhanced" # pragma: allowlist secret
+      tokenSecretKey: "token" # pragma: allowlist secret
     resources:
       - apiVersion: batch/v1
         kind: Job
@@ -71,7 +71,7 @@ spec:
                     readOnlyRootFilesystem: true
                   env:
                     - name: AUTHENTIK_HOST
-                      value: "http://authentik-server.authentik.svc.cluster.local"
+                      value: "http://authentik-server.authentik.svc.cluster.local:80"
                     - name: AUTHENTIK_TOKEN
                       valueFrom:
                         secretKeyRef:

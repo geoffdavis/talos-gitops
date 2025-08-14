@@ -125,7 +125,7 @@ done
 - Storage corruption or hardware failure
 - Database corruption without infrastructure issues
 
-**Recovery Time:** 15-30 minutes  
+**Recovery Time:** 15-30 minutes
 **Data Loss:** Minimal (< 5 minutes if WAL archiving is working)
 
 #### Recovery Steps:
@@ -265,7 +265,7 @@ done
 - Data center or cloud region failure
 - Network partitioning isolating entire infrastructure
 
-**Recovery Time:** 45-90 minutes  
+**Recovery Time:** 45-90 minutes
 **Data Loss:** 5-15 minutes (depending on last successful WAL archive)
 
 #### Recovery Steps:
@@ -404,7 +404,7 @@ done
 - Application data inconsistencies
 - Accidental data deletion or modification
 
-**Recovery Time:** 20-45 minutes  
+**Recovery Time:** 20-45 minutes
 **Data Loss:** Variable (depends on when corruption occurred)
 
 #### Recovery Steps:

@@ -60,7 +60,7 @@ spec:
             - |
               set -e
               echo "=== Authentik Proxy Configuration Post-Upgrade Hook ==="
-              
+
               # Install curl
               apk add --no-cache curl
 
