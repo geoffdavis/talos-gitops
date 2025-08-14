@@ -1,0 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kong-config-manager
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/component: rbac
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["kubernetes-dashboard-kong-config"]
+    verbs: ["get", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kong-config-manager-viewer
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kong-config-manager
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-dashboard-viewer
+    namespace: kubernetes-dashboard

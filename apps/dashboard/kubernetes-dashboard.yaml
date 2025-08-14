@@ -52,6 +52,7 @@ spec:
         - name: kong-config-processor
           image: alpine/k8s:1.31.1
           imagePullPolicy: IfNotPresent
+          serviceAccountName: kubernetes-dashboard-viewer  # Use viewer SA with proper permissions
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
@@ -68,21 +69,21 @@ spec:
             - -c
             - |
               set -e
-              echo "Processing Kong configuration with service account token..."
+              echo "Processing Kong configuration with kubernetes-dashboard-viewer service account token..."
 
-              # Read service account token
+              # Read the viewer service account token
               SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-              echo "Token length: ${#SA_TOKEN}"
+              echo "Using kubernetes-dashboard-viewer token, length: ${#SA_TOKEN}"
 
               # Process Kong configuration template
               sed "s/\$(SA_TOKEN)/$SA_TOKEN/g" /tmp/kong-config/kong.yml > /processed-config/kong.yml
 
               # Create processed ConfigMap
-              echo "Creating processed ConfigMap..."
+              echo "Creating processed ConfigMap with viewer permissions..."
               kubectl delete configmap kubernetes-dashboard-kong-config --ignore-not-found=true
               kubectl create configmap kubernetes-dashboard-kong-config --from-file=kong.yml=/processed-config/kong.yml
 
-              echo "Kong configuration ConfigMap updated successfully"
+              echo "Kong configuration ConfigMap updated with viewer token successfully"
               echo "Configuration file size: $(wc -c < /processed-config/kong.yml) bytes"
           volumeMounts:
             - name: kong-config-template
@@ -108,28 +109,9 @@ spec:
       proxy:
         tls:
           servicePort: 8443
-        # Enable Kong ingress for external access
+        # Disable Kong ingress - will use Authentik proxy instead
         ingress:
-          enabled: true
-          ingressClassName: nginx-internal
-          annotations:
-            cert-manager.io/cluster-issuer: letsencrypt-prod
-            nginx.ingress.kubernetes.io/ssl-redirect: "true"
-            nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-            # External DNS annotations for DNS record creation
-            external-dns.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
-            external-dns.alpha.kubernetes.io/ttl: "300"
-            # Kong handles authentication internally - no nginx external auth needed
-          hosts:
-            - host: dashboard.k8s.home.geoffdavis.com
-              paths:
-                - path: /
-                  pathType: Prefix
-          tls:
-            - secretName: dashboard-tls # pragma: allowlist secret
-              hosts:
-                - dashboard.k8s.home.geoffdavis.com
+          enabled: false
 
     # Configure the dashboard API for header-based authentication
     api:

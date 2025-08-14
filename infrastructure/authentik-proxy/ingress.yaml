@@ -27,7 +27,8 @@ metadata:
     # Remove controller annotation since external-dns doesn't support --controller-name flag
     external-dns.alpha.kubernetes.io/hostname: >-
       longhorn.k8s.home.geoffdavis.com,alertmanager.k8s.home.geoffdavis.com,
-      hubble.k8s.home.geoffdavis.com,homeassistant.k8s.home.geoffdavis.com
+      hubble.k8s.home.geoffdavis.com,homeassistant.k8s.home.geoffdavis.com,
+      dashboard.k8s.home.geoffdavis.com
     external-dns.alpha.kubernetes.io/ttl: "300"
 spec:
   ingressClassName: nginx-internal
@@ -37,6 +38,7 @@ spec:
         - alertmanager.k8s.home.geoffdavis.com
         - hubble.k8s.home.geoffdavis.com
         - homeassistant.k8s.home.geoffdavis.com
+        - dashboard.k8s.home.geoffdavis.com
       secretName: authentik-proxy-tls
   rules:
     # Longhorn Storage Management
@@ -74,6 +76,17 @@ spec:
                   number: 9000
     # Home Assistant Home Automation
     - host: homeassistant.k8s.home.geoffdavis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-proxy
+                port:
+                  number: 9000
+    # Kubernetes Dashboard
+    - host: dashboard.k8s.home.geoffdavis.com
       http:
         paths:
           - path: /
