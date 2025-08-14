@@ -71,7 +71,7 @@ spec:
                     readOnlyRootFilesystem: true
                   env:
                     - name: AUTHENTIK_HOST
-                      value: "http://authentik-server.authentik.svc.cluster.local:9000"
+                      value: "http://authentik-server.authentik.svc.cluster.local"
                     - name: AUTHENTIK_TOKEN
                       valueFrom:
                         secretKeyRef:
