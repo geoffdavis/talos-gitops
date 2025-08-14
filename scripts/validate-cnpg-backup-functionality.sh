@@ -56,28 +56,28 @@ section() {
 check_prerequisites() {
     section "PREREQUISITES CHECK"
     log "Validating backup test prerequisites..."
-    
+
     # Check cluster connectivity
     if ! kubectl get nodes &> /dev/null; then
         error "Cannot connect to Kubernetes cluster"
     fi
-    
+
     # Check CNPG operator
     if ! kubectl get crd clusters.postgresql.cnpg.io &> /dev/null; then
         error "CloudNativePG operator not found"
     fi
-    
+
     # Check plugin availability
     if ! kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cnpg-barman-plugin &> /dev/null; then
         error "Barman Cloud Plugin not found - migration may not be complete"
     fi
-    
+
     local plugin_pods
     plugin_pods=$(kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cnpg-barman-plugin --field-selector=status.phase=Running | wc -l)
     if [[ $plugin_pods -eq 0 ]]; then
         error "No running plugin pods found"
     fi
-    
+
     info "✅ Prerequisites validated - $plugin_pods plugin pods running"
 }
 
@@ -85,44 +85,44 @@ check_prerequisites() {
 validate_cluster_status() {
     section "CLUSTER STATUS VALIDATION"
     log "Validating cluster configurations..."
-    
+
     local validation_failed=false
-    
+
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
         step "Validating cluster: $cluster ($namespace)"
-        
+
         # Check cluster exists and is healthy
         if ! kubectl get cluster "$cluster" -n "$namespace" &> /dev/null; then
             warn "Cluster $cluster not found in namespace $namespace"
             validation_failed=true
             continue
         fi
-        
+
         local status
         status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.phase}')
         info "Cluster Status: $status"
-        
+
         if [[ "$status" != "Cluster in healthy state" ]] && [[ "$status" != "Running" ]]; then
             warn "Cluster $cluster is not healthy: $status"
             validation_failed=true
         fi
-        
+
         # Check plugin configuration
         local plugins
         plugins=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.spec.plugins[*].name}' 2>/dev/null || echo "None")
         info "Configured Plugins: $plugins"
-        
+
         if [[ "$plugins" != *"barman-cloud.cloudnative-pg.io"* ]]; then
             warn "Cluster $cluster missing barman-cloud plugin"
             validation_failed=true
         fi
-        
+
         # Check ObjectStore reference
         local objectstore_name
         objectstore_name=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.spec.plugins[?(@.name=="barman-cloud.cloudnative-pg.io")].parameters.objectStoreName}' 2>/dev/null || echo "")
         info "ObjectStore Reference: $objectstore_name"
-        
+
         if [[ -z "$objectstore_name" ]]; then
             warn "No ObjectStore configured for cluster $cluster"
             validation_failed=true
@@ -135,19 +135,19 @@ validate_cluster_status() {
                 validation_failed=true
             fi
         fi
-        
+
         # Check continuous archiving
         local archiving_status
         archiving_status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].status}' 2>/dev/null || echo "Unknown")
         info "Continuous Archiving: $archiving_status"
-        
+
         if [[ "$archiving_status" == "False" ]]; then
             local reason
             reason=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].message}' 2>/dev/null || echo "Unknown")
             warn "Archiving issues: $reason"
             validation_failed=true
         fi
-        
+
         # Check for deprecated configuration
         local has_barman_config
         has_barman_config=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.spec.backup.barmanObjectStore}' 2>/dev/null || echo "")
@@ -156,11 +156,11 @@ validate_cluster_status() {
             validation_failed=true
         fi
     done
-    
+
     if [[ "$validation_failed" == "true" ]]; then
         error "Cluster validation failed - fix issues before testing backups"
     fi
-    
+
     log "✅ All clusters validated successfully"
 }
 
@@ -168,44 +168,44 @@ validate_cluster_status() {
 create_test_data() {
     local cluster="$1"
     local namespace="$2"
-    
+
     step "Creating test data in $cluster..."
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         info "DRY RUN: Would create test data"
         return 0
     fi
-    
+
     # Get the primary pod
     local primary_pod
     primary_pod=$(kubectl get pods -n "$namespace" -l postgresql="$cluster",role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-    
+
     if [[ -z "$primary_pod" ]]; then
         warn "No primary pod found for cluster $cluster"
         return 1
     fi
-    
+
     info "Primary pod: $primary_pod"
-    
+
     # Create test table and data
     local test_timestamp
     test_timestamp=$(date +%Y%m%d_%H%M%S)
-    
+
     kubectl exec -n "$namespace" "$primary_pod" -- psql -U postgres -c "
         CREATE TABLE IF NOT EXISTS backup_test_$test_timestamp (
             id SERIAL PRIMARY KEY,
             test_data TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
-        
-        INSERT INTO backup_test_$test_timestamp (test_data) VALUES 
+
+        INSERT INTO backup_test_$test_timestamp (test_data) VALUES
             ('Test data for backup validation'),
             ('Migration test data'),
             ('Backup functionality test');
-            
+
         SELECT COUNT(*) as test_records FROM backup_test_$test_timestamp;
     " 2>/dev/null || warn "Failed to create test data for $cluster"
-    
+
     echo "$test_timestamp"
 }
 
@@ -214,32 +214,32 @@ wait_for_backup() {
     local backup_name="$1"
     local namespace="$2"
     local timeout="${3:-$TIMEOUT_SECONDS}"
-    
+
     step "Waiting for backup $backup_name to complete..."
-    
+
     local elapsed=0
     local interval=15
-    
+
     while [[ $elapsed -lt $timeout ]]; do
         local status
         status=$(kubectl get backup "$backup_name" -n "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-        
+
         case "$status" in
             "completed")
                 info "✅ Backup completed successfully"
-                
+
                 # Show backup details
                 local start_time stop_time begin_wal end_wal size
                 start_time=$(kubectl get backup "$backup_name" -n "$namespace" -o jsonpath='{.status.startedAt}' 2>/dev/null || echo "")
                 stop_time=$(kubectl get backup "$backup_name" -n "$namespace" -o jsonpath='{.status.stoppedAt}' 2>/dev/null || echo "")
                 begin_wal=$(kubectl get backup "$backup_name" -n "$namespace" -o jsonpath='{.status.beginWal}' 2>/dev/null || echo "")
                 end_wal=$(kubectl get backup "$backup_name" -n "$namespace" -o jsonpath='{.status.endWal}' 2>/dev/null || echo "")
-                
+
                 info "Backup Details:"
                 info "  Started: $start_time"
                 info "  Completed: $stop_time"
                 info "  WAL Range: $begin_wal → $end_wal"
-                
+
                 return 0
                 ;;
             "failed")
@@ -254,11 +254,11 @@ wait_for_backup() {
                 info "Backup status: $status ($elapsed/${timeout}s)"
                 ;;
         esac
-        
+
         sleep $interval
         elapsed=$((elapsed + interval))
     done
-    
+
     error "Backup timed out after ${timeout}s"
 }
 
@@ -266,21 +266,21 @@ wait_for_backup() {
 test_ondemand_backup() {
     local cluster="$1"
     local namespace="$2"
-    
+
     step "Testing on-demand backup for $cluster..."
-    
+
     # Create test data first
     local test_timestamp
     test_timestamp=$(create_test_data "$cluster" "$namespace")
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         info "DRY RUN: Would create on-demand backup"
         return 0
     fi
-    
+
     # Create backup
     local backup_name="validation-test-$cluster-$(date +%Y%m%d-%H%M%S)"
-    
+
     cat <<EOF | kubectl apply -f -
 apiVersion: postgresql.cnpg.io/v1
 kind: Backup
@@ -299,14 +299,14 @@ EOF
 
     # Wait for backup to complete
     wait_for_backup "$backup_name" "$namespace"
-    
+
     # Verify backup exists in status
     local backup_id
     backup_id=$(kubectl get backup "$backup_name" -n "$namespace" -o jsonpath='{.status.backupId}' 2>/dev/null || echo "")
     if [[ -n "$backup_id" ]]; then
         info "✅ Backup ID: $backup_id"
     fi
-    
+
     log "✅ On-demand backup test completed for $cluster"
     echo "$backup_name"
 }
@@ -315,21 +315,21 @@ EOF
 test_scheduled_backup() {
     local cluster="$1"
     local namespace="$2"
-    
+
     step "Testing scheduled backup configuration for $cluster..."
-    
+
     # Check if scheduled backup exists
     local scheduled_backups
     scheduled_backups=$(kubectl get scheduledbackups -n "$namespace" -l app.kubernetes.io/name="$cluster" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
-    
+
     if [[ -z "$scheduled_backups" ]]; then
         warn "No scheduled backups found for $cluster"
-        
+
         if [[ "$DRY_RUN" == "true" ]]; then
             info "DRY RUN: Would create scheduled backup"
             return 0
         fi
-        
+
         # Create a test scheduled backup
         local scheduled_name="validation-scheduled-$cluster"
         cat <<EOF | kubectl apply -f -
@@ -351,21 +351,21 @@ EOF
         info "✅ Created test scheduled backup: $scheduled_name"
     else
         info "✅ Found scheduled backups: $scheduled_backups"
-        
+
         # Validate scheduled backup configuration
         for sb in $scheduled_backups; do
             local method schedule
             method=$(kubectl get scheduledbackup "$sb" -n "$namespace" -o jsonpath='{.spec.method}' 2>/dev/null || echo "")
             schedule=$(kubectl get scheduledbackup "$sb" -n "$namespace" -o jsonpath='{.spec.schedule}' 2>/dev/null || echo "")
-            
+
             info "Scheduled Backup $sb: method=$method, schedule=$schedule"
-            
+
             if [[ "$method" != "plugin" ]]; then
                 warn "Scheduled backup $sb not using plugin method"
             fi
         done
     fi
-    
+
     log "✅ Scheduled backup test completed for $cluster"
 }
 
@@ -373,47 +373,47 @@ EOF
 test_wal_archiving() {
     local cluster="$1"
     local namespace="$2"
-    
+
     step "Testing WAL archiving for $cluster..."
-    
+
     # Check WAL archiving status
     local archiving_status last_archived_wal
     archiving_status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].status}' 2>/dev/null || echo "Unknown")
     last_archived_wal=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.lastArchivedWAL}' 2>/dev/null || echo "")
-    
+
     info "WAL Archiving Status: $archiving_status"
     info "Last Archived WAL: $last_archived_wal"
-    
+
     if [[ "$archiving_status" != "True" ]]; then
         warn "WAL archiving not operational for $cluster"
         return 1
     fi
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         info "DRY RUN: Would test WAL archiving"
         return 0
     fi
-    
+
     # Force WAL switch to test archiving
     step "Forcing WAL switch to test archiving..."
     local primary_pod
     primary_pod=$(kubectl get pods -n "$namespace" -l postgresql="$cluster",role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-    
+
     if [[ -n "$primary_pod" ]]; then
         local current_wal
         current_wal=$(kubectl exec -n "$namespace" "$primary_pod" -- psql -U postgres -t -c "SELECT pg_current_wal_lsn();" 2>/dev/null | tr -d ' ' || echo "")
         info "Current WAL LSN: $current_wal"
-        
+
         # Switch WAL
         kubectl exec -n "$namespace" "$primary_pod" -- psql -U postgres -c "SELECT pg_switch_wal();" &>/dev/null || warn "Failed to switch WAL"
-        
+
         # Wait a bit and check if new WAL was archived
         sleep 30
-        
+
         local new_last_archived
         new_last_archived=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.lastArchivedWAL}' 2>/dev/null || echo "")
         info "New Last Archived WAL: $new_last_archived"
-        
+
         if [[ "$new_last_archived" != "$last_archived_wal" ]]; then
             info "✅ WAL archiving is working - new WAL archived"
         else
@@ -422,7 +422,7 @@ test_wal_archiving() {
     else
         warn "No primary pod found to test WAL switching"
     fi
-    
+
     log "✅ WAL archiving test completed for $cluster"
 }
 
@@ -430,14 +430,14 @@ test_wal_archiving() {
 run_backup_tests() {
     section "BACKUP FUNCTIONALITY TESTS"
     log "Running comprehensive backup functionality tests..."
-    
+
     local test_results=()
-    
+
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
-        
+
         section "TESTING CLUSTER: $cluster"
-        
+
         # Test on-demand backup
         local backup_name
         if backup_name=$(test_ondemand_backup "$cluster" "$namespace"); then
@@ -445,14 +445,14 @@ run_backup_tests() {
         else
             test_results+=("❌ On-demand backup: $cluster")
         fi
-        
+
         # Test scheduled backup configuration
         if test_scheduled_backup "$cluster" "$namespace"; then
             test_results+=("✅ Scheduled backup: $cluster")
         else
             test_results+=("❌ Scheduled backup: $cluster")
         fi
-        
+
         # Test WAL archiving
         if test_wal_archiving "$cluster" "$namespace"; then
             test_results+=("✅ WAL archiving: $cluster")
@@ -460,7 +460,7 @@ run_backup_tests() {
             test_results+=("❌ WAL archiving: $cluster")
         fi
     done
-    
+
     # Summary
     section "TEST RESULTS SUMMARY"
     for result in "${test_results[@]}"; do
@@ -470,11 +470,11 @@ run_backup_tests() {
             warn "$result"
         fi
     done
-    
+
     # Count failures
     local failures
     failures=$(printf '%s\n' "${test_results[@]}" | grep -c "❌" || echo "0")
-    
+
     if [[ $failures -eq 0 ]]; then
         log "🎉 All backup functionality tests passed!"
         return 0
@@ -488,9 +488,9 @@ run_backup_tests() {
 generate_report() {
     section "BACKUP VALIDATION REPORT"
     log "Generating comprehensive backup validation report..."
-    
+
     local report_file="${PROJECT_ROOT}/backup-validation-report-$(date +%Y%m%d-%H%M%S).md"
-    
+
     cat > "$report_file" <<EOF
 # CloudNativePG Backup Validation Report
 
@@ -505,22 +505,22 @@ This report validates the backup functionality after migrating from deprecated \
 ## Cluster Status
 
 EOF
-    
+
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
-        
+
         cat >> "$report_file" <<EOF
 ### Cluster: $cluster ($namespace)
 
 EOF
-        
+
         if kubectl get cluster "$cluster" -n "$namespace" &> /dev/null; then
             local status plugins archiving_status objectstore_name
             status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.phase}')
             plugins=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.spec.plugins[*].name}' 2>/dev/null || echo "None")
             archiving_status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].status}' 2>/dev/null || echo "Unknown")
             objectstore_name=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.spec.plugins[?(@.name=="barman-cloud.cloudnative-pg.io")].parameters.objectStoreName}' 2>/dev/null || echo "")
-            
+
             cat >> "$report_file" <<EOF
 - **Status:** $status
 - **Plugins:** $plugins
@@ -535,14 +535,14 @@ EOF
 EOF
         fi
     done
-    
+
     cat >> "$report_file" <<EOF
 ## Backup Tests
 
 ### On-Demand Backups
 - Tests creation and completion of manual backups using plugin method
 
-### Scheduled Backups  
+### Scheduled Backups
 - Validates scheduled backup configuration and method
 
 ### WAL Archiving
@@ -563,7 +563,7 @@ EOF
 ---
 *Generated by CloudNativePG Backup Validation Script*
 EOF
-    
+
     info "✅ Report generated: $report_file"
     echo "$report_file"
 }
@@ -600,13 +600,13 @@ ENVIRONMENT VARIABLES:
 EXAMPLES:
     # Full validation
     $0 validate
-    
+
     # Dry run validation
     $0 --dry-run validate
-    
+
     # Just show status
     $0 status
-    
+
     # Generate report only
     $0 report
 
@@ -622,7 +622,7 @@ EOF
 # Main execution
 main() {
     local command="validate"
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -643,17 +643,17 @@ main() {
                 ;;
         esac
     done
-    
+
     # Initialize logging
     echo "CloudNativePG Backup Functionality Validation" | tee "$LOG_FILE"
     echo "Started at: $(date)" | tee -a "$LOG_FILE"
     echo "Command: $command" | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         warn "DRY RUN MODE - No backups will be created"
     fi
-    
+
     # Execute command
     case "$command" in
         "validate")
@@ -681,7 +681,7 @@ main() {
             error "Unknown command: $command"
             ;;
     esac
-    
+
     echo "" | tee -a "$LOG_FILE"
     echo "Completed at: $(date)" | tee -a "$LOG_FILE"
     log "Log file: $LOG_FILE"

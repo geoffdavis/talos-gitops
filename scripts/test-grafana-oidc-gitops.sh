@@ -58,7 +58,7 @@ timeout=300  # 5 minutes
 elapsed=0
 while [ $elapsed -lt $timeout ]; do
     JOB_STATUS=$(kubectl get job grafana-oidc-setup -n authentik -o jsonpath='{.status.conditions[0].type}' 2>/dev/null || echo "Unknown")
-    
+
     if [ "$JOB_STATUS" = "Complete" ]; then
         print_status "OK" "Job completed successfully"
         break
@@ -87,7 +87,7 @@ sleep 10
 # Check if external secret is synced
 if kubectl get secret grafana-oidc-secret -n monitoring >/dev/null 2>&1; then
     print_status "OK" "External secret synced successfully"
-    
+
     # Check if secret has content
     SECRET_LENGTH=$(kubectl get secret grafana-oidc-secret -n monitoring -o jsonpath='{.data.client-secret}' | base64 -d | wc -c)
     if [ "$SECRET_LENGTH" -gt 10 ]; then

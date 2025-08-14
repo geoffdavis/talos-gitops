@@ -22,7 +22,7 @@ check_auth_system() {
 test_services() {
     local success=0
     local services=("longhorn" "grafana" "prometheus" "alertmanager" "dashboard" "homeassistant")
-    
+
     for service in "${services[@]}"; do
         if curl -s -I -k "https://$service.k8s.home.geoffdavis.com" --max-time 5 | grep -q "HTTP"; then
             ((success++))
@@ -46,20 +46,20 @@ LAST_AUTH=$INITIAL_AUTH
 
 while true; do
     ((COUNTER++))
-    
+
     # Clear previous output (keep header)
     if [ $COUNTER -gt 1 ]; then
         tput cuu 15  # Move cursor up 15 lines
         tput ed      # Clear from cursor to end of screen
     fi
-    
+
     echo "🔄 Monitoring Cycle #$COUNTER ($(date +%H:%M:%S))"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
+
     # Get current status
     CURRENT_READY=$(get_ready_count)
     CURRENT_AUTH=$(check_auth_system)
-    
+
     # Show progress
     echo "📈 Progress Tracking:"
     echo "   Ready Kustomizations: $CURRENT_READY/31"
@@ -70,14 +70,14 @@ while true; do
     else
         echo "   ➡️  No change since last check"
     fi
-    
+
     echo "   Auth System Pods: $CURRENT_AUTH"
     if [ "$CURRENT_AUTH" -gt "$LAST_AUTH" ]; then
         echo "   ✅ AUTH IMPROVED: +$(( CURRENT_AUTH - LAST_AUTH )) pods"
     elif [ "$CURRENT_AUTH" -lt "$LAST_AUTH" ]; then
         echo "   ⚠️  AUTH REGRESSION: -$(( LAST_AUTH - CURRENT_AUTH )) pods"
     fi
-    
+
     # Show failing components
     echo
     echo "❌ Failing Components:"
@@ -91,7 +91,7 @@ while true; do
             echo "   ... and $(( FAILING_COUNT - 5 )) more"
         fi
     fi
-    
+
     # Test services periodically (every 5th cycle)
     if [ $(( COUNTER % 5 )) -eq 0 ]; then
         echo
@@ -106,7 +106,7 @@ while true; do
             echo "   ❌ Most services not accessible"
         fi
     fi
-    
+
     # Success check
     if [ "$CURRENT_READY" -eq 31 ] && [ "$CURRENT_AUTH" -gt 0 ]; then
         echo
@@ -117,11 +117,11 @@ while true; do
         echo "Run './validate-recovery-success.sh' for full validation"
         break
     fi
-    
+
     # Update tracking variables
     LAST_READY=$CURRENT_READY
     LAST_AUTH=$CURRENT_AUTH
-    
+
     # Wait before next check
     sleep 10
 done

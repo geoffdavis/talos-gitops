@@ -87,10 +87,10 @@ sed -i.bak '/^---$/N;/name: infrastructure-gitops-lifecycle-management/,/^---$/{
 # Verify the removal worked
 if grep -q "infrastructure-gitops-lifecycle-management" clusters/home-ops/infrastructure/identity.yaml; then
     echo "   ❌ Automatic removal failed, attempting manual approach..."
-    
+
     # Manual approach - create new file without the problematic section
     awk '
-    /^---$/ { 
+    /^---$/ {
         if (in_gitops_section) {
             in_gitops_section = 0
             next
@@ -104,7 +104,7 @@ if grep -q "infrastructure-gitops-lifecycle-management" clusters/home-ops/infras
     }
     !in_gitops_section { print }
     ' clusters/home-ops/infrastructure/identity.yaml > clusters/home-ops/infrastructure/identity.yaml.tmp
-    
+
     mv clusters/home-ops/infrastructure/identity.yaml.tmp clusters/home-ops/infrastructure/identity.yaml
 fi
 
@@ -169,7 +169,7 @@ git add .
 git commit -m "feat: eliminate gitops-lifecycle-management component
 
 - Remove infrastructure-gitops-lifecycle-management Kustomization
-- Remove dependency from infrastructure-authentik-outpost-config  
+- Remove dependency from infrastructure-authentik-outpost-config
 - Delete infrastructure/gitops-lifecycle-management directory
 - Delete charts/gitops-lifecycle-management directory
 

@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxy-providers-static
+  namespace: authentik-proxy
+  labels:
+    app.kubernetes.io/name: authentik-proxy
+    app.kubernetes.io/component: configuration
+data:
+  providers.yaml: |
+    # Static configuration for proxy providers
+    # These should be configured manually in Authentik UI or via proper automation
+    providers:
+      - name: longhorn
+        displayName: "Longhorn Storage"
+        externalHost: https://longhorn.k8s.home.geoffdavis.com
+        internalHost: http://longhorn-frontend.longhorn-system.svc.cluster.local:80
+        description: "Longhorn distributed block storage management"
+        
+      - name: alertmanager
+        displayName: "AlertManager"
+        externalHost: https://alertmanager.k8s.home.geoffdavis.com
+        internalHost: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+        description: "Prometheus AlertManager for alert routing"
+        
+      - name: hubble
+        displayName: "Hubble UI"
+        externalHost: https://hubble.k8s.home.geoffdavis.com
+        internalHost: http://hubble-ui.kube-system.svc.cluster.local:80
+        description: "Cilium Hubble network observability"
+        
+      - name: homeassistant
+        displayName: "Home Assistant"
+        externalHost: https://homeassistant.k8s.home.geoffdavis.com
+        internalHost: http://home-assistant.home-automation.svc.cluster.local:8123
+        description: "Home automation platform"
+    
+    # Services using native OIDC (don't need proxy providers)
+    nativeOIDC:
+      - grafana
+      - kubernetes-dashboard
+    
+    # Internal-only services (no external access)
+    internalOnly:
+      - prometheus  # Use kubectl port-forward

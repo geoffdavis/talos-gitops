@@ -26,7 +26,7 @@ LOG_FILE="${PROJECT_ROOT}/cnpg-migration-$(date +%Y%m%d-%H%M%S).log"
 
 # Migration phases
 PHASE_PLUGIN="plugin"
-PHASE_OBJECTSTORES="objectstores" 
+PHASE_OBJECTSTORES="objectstores"
 PHASE_CLUSTERS="clusters"
 PHASE_VALIDATION="validation"
 CURRENT_PHASE=""
@@ -71,7 +71,7 @@ step() {
 check_prerequisites() {
     phase "$PHASE_PLUGIN"
     log "Checking deployment prerequisites..."
-    
+
     # Check required commands
     local required_commands=("kubectl" "flux" "yq" "jq")
     for cmd in "${required_commands[@]}"; do
@@ -79,57 +79,57 @@ check_prerequisites() {
             error "Required command '$cmd' is not installed or not in PATH"
         fi
     done
-    
+
     # Check cluster connectivity
     step "Testing cluster connectivity..."
     if ! kubectl get nodes &> /dev/null; then
         error "Cannot connect to Kubernetes cluster. Check your kubeconfig."
     fi
-    
+
     local node_count
     node_count=$(kubectl get nodes --no-headers | wc -l)
     info "Connected to cluster with $node_count nodes"
-    
+
     # Check CNPG operator
     step "Verifying CloudNativePG operator..."
     if ! kubectl get crd clusters.postgresql.cnpg.io &> /dev/null; then
         error "CloudNativePG operator CRDs not found. Ensure operator is installed."
     fi
-    
+
     # Check operator version and status
     local operator_version operator_status
     if kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg &> /dev/null; then
         operator_version=$(kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg -o jsonpath='{.items[0].spec.containers[0].image}' | grep -o 'v[0-9.]*' || echo "unknown")
         operator_status=$(kubectl get pods -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg -o jsonpath='{.items[0].status.phase}')
         info "CloudNativePG operator version: $operator_version (status: $operator_status)"
-        
+
         if [[ "$operator_status" != "Running" ]]; then
             error "CloudNativePG operator is not running"
         fi
     else
         error "CloudNativePG operator pods not found"
     fi
-    
+
     # Check Flux system
     step "Verifying Flux GitOps system..."
     if ! kubectl get pods -n flux-system &> /dev/null; then
         error "Flux system not found. Ensure Flux is properly installed."
     fi
-    
+
     local flux_ready
     flux_ready=$(kubectl get pods -n flux-system --field-selector=status.phase=Running | wc -l)
     info "Flux system operational with $flux_ready running pods"
-    
+
     # Check current cluster status
     step "Checking current cluster status..."
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
         local status
-        
+
         if kubectl get cluster "$cluster" -n "$namespace" &> /dev/null; then
             status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
             info "Cluster $cluster ($namespace): $status"
-            
+
             # Check for backup issues (this is why we're migrating)
             local backup_status
             backup_status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].status}' 2>/dev/null || echo "Unknown")
@@ -143,7 +143,7 @@ check_prerequisites() {
             warn "Cluster $cluster not found in namespace $namespace"
         fi
     done
-    
+
     log "Prerequisites check completed successfully"
 }
 
@@ -152,28 +152,28 @@ create_backup() {
     phase "BACKUP"
     log "Creating comprehensive backup in: $BACKUP_DIR"
     mkdir -p "$BACKUP_DIR"
-    
+
     # Backup cluster configurations
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
         step "Backing up cluster $cluster..."
-        
+
         # Cluster configuration
         kubectl get cluster "$cluster" -n "$namespace" -o yaml > "$BACKUP_DIR/${cluster}-cluster.yaml" 2>/dev/null || warn "Could not backup cluster $cluster"
-        
+
         # Backup all related resources
         kubectl get backups -n "$namespace" -o yaml > "$BACKUP_DIR/${namespace}-backups.yaml" 2>/dev/null || true
         kubectl get scheduledbackups -n "$namespace" -o yaml > "$BACKUP_DIR/${namespace}-scheduledbackups.yaml" 2>/dev/null || true
         kubectl get secrets -n "$namespace" -o yaml > "$BACKUP_DIR/${namespace}-secrets.yaml" 2>/dev/null || true
         kubectl get externalsecrets -n "$namespace" -o yaml > "$BACKUP_DIR/${namespace}-externalsecrets.yaml" 2>/dev/null || true
     done
-    
+
     # Backup current kustomization files
     step "Backing up GitOps configurations..."
     cp -r "${PROJECT_ROOT}/apps/home-automation/postgresql" "$BACKUP_DIR/apps-home-automation-postgresql" 2>/dev/null || true
     cp -r "${PROJECT_ROOT}/infrastructure/postgresql-cluster" "$BACKUP_DIR/infrastructure-postgresql-cluster" 2>/dev/null || true
     cp "${PROJECT_ROOT}/clusters/home-ops/infrastructure/database.yaml" "$BACKUP_DIR/database.yaml" 2>/dev/null || true
-    
+
     log "Backup completed successfully"
 }
 
@@ -184,20 +184,20 @@ wait_for_resource() {
     local namespace="$3"
     local condition="${4:-Ready}"
     local timeout="${5:-$TIMEOUT_SECONDS}"
-    
+
     step "Waiting for $resource_type/$resource_name in $namespace to be $condition..."
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         info "DRY RUN: Would wait for $resource_type/$resource_name"
         return 0
     fi
-    
+
     local elapsed=0
     local interval=10
-    
+
     while [[ $elapsed -lt $timeout ]]; do
         local status
-        
+
         case "$resource_type" in
             "cluster")
                 status=$(kubectl get cluster "$resource_name" -n "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
@@ -226,15 +226,15 @@ wait_for_resource() {
                 fi
                 ;;
         esac
-        
+
         if [[ $((elapsed % 60)) -eq 0 ]]; then
             info "Still waiting... ($elapsed/${timeout}s) - Status: $status"
         fi
-        
+
         sleep $interval
         elapsed=$((elapsed + interval))
     done
-    
+
     error "Timeout waiting for $resource_type/$resource_name (${timeout}s)"
 }
 
@@ -242,7 +242,7 @@ wait_for_resource() {
 deploy_plugin() {
     phase "$PHASE_PLUGIN"
     log "Deploying Barman Cloud Plugin..."
-    
+
     # Check if plugin is already deployed
     step "Checking existing plugin deployment..."
     if kubectl get helmrelease cnpg-barman-plugin -n cnpg-system &> /dev/null; then
@@ -255,7 +255,7 @@ deploy_plugin() {
             warn "Plugin exists but not ready, will redeploy"
         fi
     fi
-    
+
     # Deploy plugin via Flux
     step "Deploying plugin via Flux reconciliation..."
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -263,17 +263,17 @@ deploy_plugin() {
         info "DRY RUN: Would reconcile infrastructure-cnpg-barman-plugin"
         return 0
     fi
-    
+
     # Reconcile sources first (Helm repositories)
     flux reconcile kustomization infrastructure-sources --timeout=5m
-    
+
     # Reconcile plugin deployment
     flux reconcile kustomization infrastructure-cnpg-barman-plugin --timeout=10m
-    
+
     # Wait for plugin to be ready
     wait_for_resource "helmrelease" "cnpg-barman-plugin" "cnpg-system"
     wait_for_resource "deployment" "cnpg-barman-plugin" "cnpg-system"
-    
+
     # Verify plugin is available
     step "Verifying plugin availability..."
     local plugin_pods
@@ -283,7 +283,7 @@ deploy_plugin() {
     else
         error "Plugin deployment failed - no running pods found"
     fi
-    
+
     log "Plugin deployment completed successfully"
 }
 
@@ -291,7 +291,7 @@ deploy_plugin() {
 deploy_objectstores() {
     phase "$PHASE_OBJECTSTORES"
     log "Deploying ObjectStore resources..."
-    
+
     # Deploy infrastructure ObjectStore first
     step "Deploying infrastructure ObjectStore..."
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -300,7 +300,7 @@ deploy_objectstores() {
         flux reconcile kustomization infrastructure-postgresql-cluster --timeout=10m
         wait_for_resource "objectstore" "postgresql-cluster-backup" "postgresql-system"
     fi
-    
+
     # Deploy Home Assistant ObjectStore
     step "Deploying Home Assistant ObjectStore..."
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -309,26 +309,26 @@ deploy_objectstores() {
         flux reconcile kustomization apps-home-automation --timeout=10m
         wait_for_resource "objectstore" "homeassistant-postgresql-backup" "home-automation"
     fi
-    
+
     # Verify ObjectStores
     step "Verifying ObjectStore resources..."
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
         local objectstore_name
-        
+
         if [[ "$cluster" == "homeassistant-postgresql" ]]; then
             objectstore_name="homeassistant-postgresql-backup"
         else
             objectstore_name="postgresql-cluster-backup"
         fi
-        
+
         if kubectl get objectstore "$objectstore_name" -n "$namespace" &> /dev/null; then
             info "✅ ObjectStore $objectstore_name exists in $namespace"
         else
             error "ObjectStore $objectstore_name not found in $namespace"
         fi
     done
-    
+
     log "ObjectStore deployment completed successfully"
 }
 
@@ -336,7 +336,7 @@ deploy_objectstores() {
 deploy_clusters() {
     phase "$PHASE_CLUSTERS"
     log "Deploying plugin-based cluster configurations..."
-    
+
     # Deploy Home Assistant cluster first (it has the failing backups)
     step "Deploying Home Assistant cluster with plugin configuration..."
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -345,7 +345,7 @@ deploy_clusters() {
         flux reconcile kustomization apps-home-automation --timeout=15m
         wait_for_resource "cluster" "homeassistant-postgresql" "home-automation"
     fi
-    
+
     # Deploy infrastructure cluster
     step "Deploying infrastructure cluster with plugin configuration..."
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -354,13 +354,13 @@ deploy_clusters() {
         flux reconcile kustomization infrastructure-postgresql-cluster --timeout=15m
         wait_for_resource "cluster" "postgresql-cluster" "postgresql-system"
     fi
-    
+
     # Allow time for clusters to stabilize
     if [[ "$DRY_RUN" != "true" ]]; then
         step "Allowing clusters to stabilize..."
         sleep 30
     fi
-    
+
     log "Cluster deployment completed successfully"
 }
 
@@ -368,38 +368,38 @@ deploy_clusters() {
 validate_migration() {
     phase "$PHASE_VALIDATION"
     log "Validating migration success..."
-    
+
     if [[ "$SKIP_VALIDATIONS" == "true" ]]; then
         warn "Skipping validations as requested"
         return 0
     fi
-    
+
     local validation_failed=false
-    
+
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
         step "Validating cluster: $cluster"
-        
+
         # Check cluster status
         local status
         status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
         info "Cluster Status: $status"
-        
+
         if [[ "$status" != "Cluster in healthy state" ]] && [[ "$status" != "Running" ]]; then
             warn "Cluster $cluster is not in healthy state: $status"
             validation_failed=true
         fi
-        
+
         # Check plugin configuration
         local plugins
         plugins=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.spec.plugins[*].name}' 2>/dev/null || echo "None")
         info "Configured Plugins: $plugins"
-        
+
         if [[ "$plugins" != *"barman-cloud.cloudnative-pg.io"* ]]; then
             warn "Cluster $cluster does not have barman-cloud plugin configured"
             validation_failed=true
         fi
-        
+
         # Check that barmanObjectStore is removed
         local has_barman_config
         has_barman_config=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.spec.backup.barmanObjectStore}' 2>/dev/null || echo "")
@@ -409,12 +409,12 @@ validate_migration() {
         else
             info "✅ Deprecated barmanObjectStore configuration removed"
         fi
-        
+
         # Check continuous archiving status
         local archiving_status archiving_message
         archiving_status=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].status}' 2>/dev/null || echo "Unknown")
         archiving_message=$(kubectl get cluster "$cluster" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].message}' 2>/dev/null || echo "No message")
-        
+
         info "Continuous Archiving: $archiving_status"
         if [[ "$archiving_status" == "False" ]]; then
             warn "Continuous archiving issues: $archiving_message"
@@ -422,7 +422,7 @@ validate_migration() {
         elif [[ "$archiving_status" == "True" ]]; then
             info "✅ Continuous archiving operational"
         fi
-        
+
         # Check ObjectStore exists
         local objectstore_name
         if [[ "$cluster" == "homeassistant-postgresql" ]]; then
@@ -430,7 +430,7 @@ validate_migration() {
         else
             objectstore_name="postgresql-cluster-backup"
         fi
-        
+
         if kubectl get objectstore "$objectstore_name" -n "$namespace" &> /dev/null; then
             info "✅ ObjectStore $objectstore_name exists"
         else
@@ -438,7 +438,7 @@ validate_migration() {
             validation_failed=true
         fi
     done
-    
+
     if [[ "$validation_failed" == "true" ]]; then
         warn "Some validation checks failed - review the issues above"
         return 1
@@ -452,17 +452,17 @@ validate_migration() {
 test_backup_functionality() {
     phase "BACKUP_TEST"
     log "Testing backup functionality..."
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         info "DRY RUN: Would create test backup"
         return 0
     fi
-    
+
     # Create test backup for Home Assistant cluster
     local test_backup_name="homeassistant-postgresql-migration-test-$(date +%Y%m%d-%H%M%S)"
-    
+
     step "Creating test backup: $test_backup_name"
-    
+
     cat <<EOF | kubectl apply -f -
 apiVersion: postgresql.cnpg.io/v1
 kind: Backup
@@ -483,20 +483,20 @@ EOF
     local timeout=600  # 10 minutes
     local elapsed=0
     local interval=15
-    
+
     while [[ $elapsed -lt $timeout ]]; do
         local backup_status
         backup_status=$(kubectl get backup "$test_backup_name" -n home-automation -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-        
+
         case "$backup_status" in
             "completed")
                 info "✅ Test backup completed successfully!"
-                
+
                 # Show backup details
                 local backup_info
                 backup_info=$(kubectl get backup "$test_backup_name" -n home-automation -o jsonpath='{.status.startedAt},{.status.stoppedAt},{.status.beginWal},{.status.endWal}' 2>/dev/null || echo "")
                 info "Backup details: $backup_info"
-                
+
                 return 0
                 ;;
             "failed")
@@ -511,11 +511,11 @@ EOF
                 info "Backup status: $backup_status ($elapsed/${timeout}s)"
                 ;;
         esac
-        
+
         sleep $interval
         elapsed=$((elapsed + interval))
     done
-    
+
     warn "Test backup timed out after ${timeout}s"
     return 1
 }
@@ -524,16 +524,16 @@ EOF
 rollback_migration() {
     phase "ROLLBACK"
     warn "Initiating migration rollback..."
-    
+
     if [[ ! -d "$BACKUP_DIR" ]]; then
         error "Backup directory not found: $BACKUP_DIR"
     fi
-    
+
     # Restore cluster configurations
     for cluster in "${!CLUSTERS[@]}"; do
         local namespace="${CLUSTERS[$cluster]}"
         step "Rolling back cluster $cluster..."
-        
+
         if [[ -f "$BACKUP_DIR/${cluster}-cluster.yaml" ]]; then
             kubectl apply -f "$BACKUP_DIR/${cluster}-cluster.yaml"
             wait_for_resource "cluster" "$cluster" "$namespace"
@@ -541,10 +541,10 @@ rollback_migration() {
             warn "No backup found for cluster $cluster"
         fi
     done
-    
+
     # Wait for clusters to stabilize
     sleep 60
-    
+
     log "Rollback completed - please verify cluster status"
 }
 
@@ -552,18 +552,18 @@ rollback_migration() {
 cleanup_obsolete_files() {
     phase "CLEANUP"
     log "Cleaning up obsolete files..."
-    
+
     local cleanup_files=(
         # These are the old barmanObjectStore method files that are now obsolete
         # Note: we keep them for now until migration is fully validated
     )
-    
+
     # For now, just log what would be cleaned up
     info "Files that can be cleaned up after successful migration:"
     info "- apps/home-automation/postgresql/cluster.yaml (old barmanObjectStore method)"
     info "- infrastructure/postgresql-cluster/cluster.yaml (old barmanObjectStore method)"
     info "- Any old backup configurations using barmanObjectStore method"
-    
+
     log "Manual cleanup recommended after migration validation"
 }
 
@@ -571,7 +571,7 @@ cleanup_obsolete_files() {
 show_status() {
     phase "STATUS"
     log "Current migration status:"
-    
+
     # Plugin status
     step "Plugin Status:"
     if kubectl get helmrelease cnpg-barman-plugin -n cnpg-system &> /dev/null; then
@@ -581,11 +581,11 @@ show_status() {
     else
         info "Barman Plugin: Not Deployed"
     fi
-    
+
     # ObjectStore status
     step "ObjectStore Status:"
     kubectl get objectstores -A -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metadata.name,AGE:.metadata.creationTimestamp" 2>/dev/null || info "No ObjectStores found"
-    
+
     # Cluster status
     step "Cluster Status:"
     for cluster in "${!CLUSTERS[@]}"; do
@@ -634,19 +634,19 @@ ENVIRONMENT VARIABLES:
 EXAMPLES:
     # Full deployment with dry run
     $0 --dry-run deploy
-    
+
     # Deploy with custom timeout
     $0 --timeout 900 deploy
-    
+
     # Just show status
     $0 status
-    
+
     # Validate existing migration
     $0 validate
-    
+
     # Test backup functionality
     $0 test
-    
+
     # Rollback if needed
     $0 rollback
 
@@ -665,7 +665,7 @@ EOF
 # Main execution
 main() {
     local command="deploy"
-    
+
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -690,17 +690,17 @@ main() {
                 ;;
         esac
     done
-    
+
     # Initialize logging
     echo "CloudNativePG Barman Plugin Migration Deployment" | tee "$LOG_FILE"
     echo "Started at: $(date)" | tee -a "$LOG_FILE"
     echo "Log file: $LOG_FILE" | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
-    
+
     if [[ "$DRY_RUN" == "true" ]]; then
         warn "DRY RUN MODE - No changes will be made"
     fi
-    
+
     # Execute command
     case "$command" in
         "deploy")
@@ -712,7 +712,7 @@ main() {
             validate_migration
             test_backup_functionality
             cleanup_obsolete_files
-            
+
             log "🎉 Migration deployed successfully!"
             log "Log file: $LOG_FILE"
             log "Backup directory: $BACKUP_DIR"
@@ -739,7 +739,7 @@ main() {
             error "Unknown command: $command"
             ;;
     esac
-    
+
     echo "" | tee -a "$LOG_FILE"
     echo "Completed at: $(date)" | tee -a "$LOG_FILE"
 }

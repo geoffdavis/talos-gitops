@@ -30,7 +30,7 @@ check_resource() {
     local resource_type=$1
     local resource_name=$2
     local namespace=$3
-    
+
     if [ -n "$namespace" ]; then
         kubectl get "$resource_type" "$resource_name" -n "$namespace" >/dev/null 2>&1
     else
@@ -64,11 +64,11 @@ echo ""
 echo "2. Checking External Secret Configuration..."
 if check_resource "externalsecret" "grafana-oidc-secret" "monitoring"; then  # pragma: allowlist secret
     print_status "OK" "External secret 'grafana-oidc-secret' exists in monitoring namespace"
-    
+
     # Check if the secret is synced
     if kubectl get secret "grafana-oidc-secret" -n monitoring >/dev/null 2>&1; then
         print_status "OK" "Kubernetes secret 'grafana-oidc-secret' is synced"
-        
+
         # Check if the secret has the expected key
         if kubectl get secret "grafana-oidc-secret" -n monitoring -o jsonpath='{.data.client-secret}' | base64 -d >/dev/null 2>&1; then
             print_status "OK" "Secret contains 'client-secret' field"
@@ -96,7 +96,7 @@ echo ""
 echo "4. Checking Job Configuration..."
 if check_resource "job" "grafana-oidc-setup" "authentik"; then
     print_status "OK" "Job 'grafana-oidc-setup' exists"
-    
+
     # Check job status
     JOB_STATUS=$(kubectl get job "grafana-oidc-setup" -n authentik -o jsonpath='{.status.conditions[0].type}' 2>/dev/null || echo "Unknown")
     if [ "$JOB_STATUS" = "Complete" ]; then

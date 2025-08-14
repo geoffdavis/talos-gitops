@@ -9,7 +9,7 @@ echo ""
 check_kustomization() {
     local name=$1
     echo "Checking kustomization: $name"
-    
+
     if flux get kustomization "$name" --no-header | grep -q "True.*Ready"; then
         echo "✅ $name is ready"
         return 0
@@ -25,7 +25,7 @@ check_job() {
     local name=$1
     local namespace=$2
     echo "Checking job: $name in namespace $namespace"
-    
+
     if kubectl get job "$name" -n "$namespace" -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}' 2>/dev/null | grep -q "True"; then
         echo "✅ Job $name completed successfully"
         return 0
@@ -44,7 +44,7 @@ check_secret() {
     local name=$1
     local namespace=$2
     echo "Checking secret: $name in namespace $namespace"
-    
+
     if kubectl get secret "$name" -n "$namespace" >/dev/null 2>&1; then
         echo "✅ Secret $name exists"
         return 0
@@ -98,13 +98,13 @@ echo "------------------------------------"
 # Check if 1Password entries were created (requires op CLI)
 if command -v op >/dev/null 2>&1; then
     echo "Checking 1Password entries..."
-    
+
     if op item get "home-ops-grafana-oidc-client-secret" --vault="Automation" >/dev/null 2>&1; then
         echo "✅ Grafana OIDC client secret exists in 1Password"
     else
         echo "❌ Grafana OIDC client secret not found in 1Password"
     fi
-    
+
     if op item get "home-ops-dashboard-oidc-client-secret" --vault="Automation" >/dev/null 2>&1; then
         echo "✅ Dashboard OIDC client secret exists in 1Password"
     else
