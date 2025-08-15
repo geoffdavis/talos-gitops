@@ -1,7 +1,7 @@
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: authentik-admin-token-copy
+  name: authentik-admin-token-enhanced
   namespace: headlamp
 spec:
   secretStoreRef:
@@ -13,5 +13,5 @@ spec:
   data:
     - secretKey: token # pragma: allowlist secret
       remoteRef:
-        key: authentik-admin-api-token
-        property: api_token
+        key: "Authentik Admin API Token - home-ops"
+        property: token
