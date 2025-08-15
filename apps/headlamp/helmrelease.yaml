@@ -34,8 +34,8 @@ spec:
         issuerURL: "https://authentik.k8s.home.geoffdavis.com/application/o/headlamp/"
         # Scopes to request
         scopes: "openid profile email groups"
-        # Use external secret for sensitive data
-        existingSecret: "headlamp-oidc" # pragma: allowlist secret
+        # Use manual secret for now until ExternalSecret is configured
+        existingSecret: "headlamp-oidc-manual" # pragma: allowlist secret
 
       # Base URL for callbacks
       baseURL: "https://headlamp.k8s.home.geoffdavis.com" # pragma: allowlist secret
@@ -83,13 +83,8 @@ spec:
     persistentVolumeClaim:
       enabled: false # Not needed for home lab
 
-    # Additional environment variables
-    env:
-      - name: OIDC_CLIENT_SECRET
-        valueFrom:
-          secretKeyRef:
-            name: headlamp-oidc-manual # Change to headlamp-oidc when ExternalSecret is ready
-            key: clientSecret # pragma: allowlist secret
+    # Additional environment variables - not needed as we use existingSecret
+    # env: []
 
     # Security context
     securityContext:
