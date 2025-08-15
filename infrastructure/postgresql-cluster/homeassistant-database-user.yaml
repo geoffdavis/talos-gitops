@@ -1,0 +1,21 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: User
+metadata:
+  name: homeassistant
+  namespace: postgresql-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    application: homeassistant
+spec:
+  cluster:
+    name: postgresql-cluster
+  name: homeassistant
+  ensure: present
+  loginRole: true
+  superuserRole: false
+  createRole: true
+  passwordSecret:
+    name: homeassistant-database-credentials
+    key: password
