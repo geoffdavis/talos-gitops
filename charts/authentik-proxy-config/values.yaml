@@ -13,7 +13,7 @@ services:
     internalHost: "http://kubernetes-dashboard-web.kubernetes-dashboard.svc.cluster.local:8000"
     description: "Kubernetes cluster management dashboard"
     publisher: "Kubernetes"
-    enabled: true
+    enabled: false  # Dashboard is now internal-only and bypasses the proxy
 
   hubble:
     name: "Hubble UI"
