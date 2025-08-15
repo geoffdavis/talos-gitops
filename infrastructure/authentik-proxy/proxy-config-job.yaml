@@ -252,12 +252,11 @@ spec:
                 return 0
               }
 
-              # Configure all services
+              # Configure all services (dashboard removed - now internal-only)
               configure_service "longhorn" "longhorn.k8s.home.geoffdavis.com" "longhorn-frontend.longhorn-system" "80"
               configure_service "grafana" "grafana.k8s.home.geoffdavis.com" "kube-prometheus-stack-grafana.monitoring" "80"
               configure_service "prometheus" "prometheus.k8s.home.geoffdavis.com" "kube-prometheus-stack-prometheus.monitoring" "9090"
               configure_service "alertmanager" "alertmanager.k8s.home.geoffdavis.com" "kube-prometheus-stack-alertmanager.monitoring" "9093"
-              configure_service "dashboard" "dashboard.k8s.home.geoffdavis.com" "kubernetes-dashboard-kong-proxy.kubernetes-dashboard" "443"
               configure_service "hubble" "hubble.k8s.home.geoffdavis.com" "hubble-ui.kube-system" "80"
 
               # Configure the external outpost

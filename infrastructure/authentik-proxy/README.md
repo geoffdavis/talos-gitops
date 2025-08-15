@@ -20,8 +20,9 @@ The external outpost provides authentication for:
 2. **Grafana** (`grafana.k8s.home.geoffdavis.com`) → `kube-prometheus-stack-grafana.monitoring:80`
 3. **Prometheus** (`prometheus.k8s.home.geoffdavis.com`) → `kube-prometheus-stack-prometheus.monitoring:9090`
 4. **AlertManager** (`alertmanager.k8s.home.geoffdavis.com`) → `kube-prometheus-stack-alertmanager.monitoring:9093`
-5. **Dashboard** (`dashboard.k8s.home.geoffdavis.com`) → `kubernetes-dashboard-kong-proxy.kubernetes-dashboard:443`
-6. **Hubble** (`hubble.k8s.home.geoffdavis.com`) → `hubble-ui.kube-system:80`
+5. **Hubble** (`hubble.k8s.home.geoffdavis.com`) → `hubble-ui.kube-system:80`
+
+**Note**: The Kubernetes Dashboard is now configured as internal-only at `dashboard-internal.k8s.home.geoffdavis.com` and bypasses the Authentik proxy since it requires token authentication regardless.
 
 ## Configuration Files
 

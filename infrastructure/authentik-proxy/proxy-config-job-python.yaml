@@ -175,8 +175,6 @@ spec:
                                       "kube-prometheus-stack-prometheus.monitoring", 9090),
                           ServiceConfig("alertmanager", "alertmanager.k8s.home.geoffdavis.com",
                                       "kube-prometheus-stack-alertmanager.monitoring", 9093),
-                          ServiceConfig("dashboard", "dashboard.k8s.home.geoffdavis.com",
-                                      "kubernetes-dashboard-kong-proxy.kubernetes-dashboard", 443),
                           ServiceConfig("hubble", "hubble.k8s.home.geoffdavis.com",
                                       "hubble-ui.kube-system", 80),
                       ]

@@ -112,8 +112,6 @@ spec:
                 "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
               test_service_endpoint "AlertManager" "alertmanager.k8s.home.geoffdavis.com" \
                 "http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"
-              test_service_endpoint "Kubernetes Dashboard" "dashboard.k8s.home.geoffdavis.com" \
-                "http://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:8000"
               test_service_endpoint "Hubble UI" "hubble.k8s.home.geoffdavis.com" \
                 "http://hubble-ui.kube-system.svc.cluster.local:80"
               test_service_endpoint "Home Assistant" "homeassistant.k8s.home.geoffdavis.com" \
@@ -166,8 +164,10 @@ spec:
               echo "Please manually test the authentication flow by visiting:"
               echo "  - https://longhorn.k8s.home.geoffdavis.com"
               echo "  - https://grafana.k8s.home.geoffdavis.com"
-              echo "  - https://dashboard.k8s.home.geoffdavis.com"
               echo "  - https://homeassistant.k8s.home.geoffdavis.com"
+              echo ""
+              echo "Dashboard is now internal-only (bypasses proxy):"
+              echo "  - https://dashboard-internal.k8s.home.geoffdavis.com (token required)"
               echo ""
               echo "Expected behavior:"
               echo "  1. Redirect to Authentik login page"
