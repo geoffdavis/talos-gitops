@@ -109,9 +109,28 @@ spec:
       proxy:
         tls:
           servicePort: 8443
-        # Disable Kong ingress - will use Authentik proxy instead
+        # Enable Kong ingress for external access
         ingress:
-          enabled: false
+          enabled: true
+          ingressClassName: nginx-internal
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+            # External DNS annotations for DNS record creation
+            external-dns.alpha.kubernetes.io/hostname: "dashboard.k8s.home.geoffdavis.com"
+            external-dns.alpha.kubernetes.io/ttl: "300"
+            # Kong handles authentication internally - no nginx external auth needed
+          hosts:
+            - host: dashboard.k8s.home.geoffdavis.com
+              paths:
+                - path: /
+                  pathType: Prefix
+          tls:
+            - secretName: dashboard-tls # pragma: allowlist secret
+              hosts:
+                - dashboard.k8s.home.geoffdavis.com
 
     # Configure the dashboard API for header-based authentication
     api:
