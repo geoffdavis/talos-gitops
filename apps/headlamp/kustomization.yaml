@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrepository.yaml
-  - headlamp-oidc-secret.yaml
+  # - headlamp-oidc-secret.yaml  # Disabled: managed by GitOps Job
   - helmrelease.yaml
   - rbac.yaml
   - authentik-token-copy.yaml
