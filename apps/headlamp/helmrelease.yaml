@@ -87,6 +87,7 @@ spec:
 
     # Security context
     securityContext:
+      allowPrivilegeEscalation: false
       capabilities:
         drop:
           - ALL
