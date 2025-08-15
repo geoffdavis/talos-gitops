@@ -7,8 +7,8 @@ metadata:
     app.kubernetes.io/name: authentik-proxy
     app.kubernetes.io/component: configuration
 spec:
-  interval: 30m  # Increased from 10m for stability
-  timeout: 5m    # Reduced from 15m - config should be quick
+  interval: 30m # Increased from 10m for stability
+  timeout: 5m # Reduced from 15m - config should be quick
   chart:
     spec:
       chart: ./charts/authentik-proxy-config
@@ -19,20 +19,20 @@ spec:
   values:
     # Essential configuration only
     externalSecrets:
-      tokenSecretName: "authentik-admin-token-enhanced"  # pragma: allowlist secret
-      tokenSecretKey: "token"  # pragma: allowlist secret
-    
+      tokenSecretName: "authentik-admin-token-enhanced" # pragma: allowlist secret
+      tokenSecretKey: "token" # pragma: allowlist secret
+
     # Disable all hooks to prevent failures
     hooks:
       enabled: false
       preInstallTokenSetup:
         enabled: false
-    
+
     # Basic Authentik connection info
     authentik:
       host: "http://authentik-server.authentik.svc.cluster.local"
       authFlowUuid: "be0ee023-11fe-4a43-b453-bc67957cafbf"
-    
+
     # Static proxy provider configuration
     proxyProvider:
       mode: "forward_single"
@@ -40,7 +40,7 @@ spec:
       skipPathRegex: "^/api/.*$"
       basicAuthEnabled: false
       internalHostSslValidation: false
-    
+
     # Outpost configuration
     outpost:
       name: "proxy-outpost"

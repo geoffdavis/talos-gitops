@@ -1,0 +1,124 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: headlamp
+      version: "0.25.0"
+      sourceRef:
+        kind: HelmRepository
+        name: headlamp
+        namespace: flux-system
+  values:
+    replicaCount: 1
+
+    image:
+      registry: ghcr.io
+      repository: headlamp-k8s/headlamp
+      tag: "" # Uses chart appVersion
+      pullPolicy: IfNotPresent
+
+    # OIDC Configuration for Authentik
+    config:
+      oidc:
+        enabled: true
+        # Client ID from Authentik
+        clientId: "headlamp"
+        # Client Secret will be loaded from environment variable
+        clientSecret: "" # pragma: allowlist secret
+        # Authentik issuer URL
+        issuerURL: "https://authentik.k8s.home.geoffdavis.com/application/o/headlamp/"
+        # Scopes to request
+        scopes: "openid profile email groups"
+        # Use external secret for sensitive data
+        existingSecret: "headlamp-oidc" # pragma: allowlist secret
+
+      # Base URL for callbacks
+      baseURL: "https://headlamp.k8s.home.geoffdavis.com" # pragma: allowlist secret
+
+    # Enable cluster role binding for OIDC users
+    clusterRoleBinding:
+      create: true
+      clusterRoleName: cluster-admin # Adjust based on your RBAC needs
+
+    service:
+      type: ClusterIP
+      port: 80
+      targetPort: 4466
+
+    ingress:
+      enabled: true
+      className: nginx-internal
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+        external-dns.alpha.kubernetes.io/hostname: headlamp.k8s.home.geoffdavis.com
+        external-dns.alpha.kubernetes.io/ttl: "300"
+        # Increase buffer size for large OIDC tokens
+        nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+        nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+        nginx.ingress.kubernetes.io/server-snippet: |
+          large_client_header_buffers 4 32k;
+      hosts:
+        - host: headlamp.k8s.home.geoffdavis.com
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: headlamp-tls # pragma: allowlist secret
+          hosts:
+            - headlamp.k8s.home.geoffdavis.com
+
+    resources:
+      limits:
+        memory: 256Mi
+        cpu: 200m
+      requests:
+        memory: 128Mi
+        cpu: 100m
+
+    persistentVolumeClaim:
+      enabled: false # Not needed for home lab
+
+    # Additional environment variables
+    env:
+      - name: OIDC_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: headlamp-oidc-manual # Change to headlamp-oidc when ExternalSecret is ready
+            key: clientSecret # pragma: allowlist secret
+
+    # Security context
+    securityContext:
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 100
+
+    podSecurityContext:
+      fsGroup: 101
+      runAsGroup: 101
+      runAsNonRoot: true
+      runAsUser: 100
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Liveness and readiness probes
+    livenessProbe:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+
+    readinessProbe:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5

@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-oidc-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  # Add your Authentik groups here
+  - kind: Group
+    name: "oidc:admins" # Adjust based on your Authentik groups
+    apiGroup: rbac.authorization.k8s.io
+  - kind: Group
+    name: "oidc:headlamp-users"
+    apiGroup: rbac.authorization.k8s.io
+---
+# For users who should have read-only access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-oidc-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: Group
+    name: "oidc:viewers"
+    apiGroup: rbac.authorization.k8s.io
