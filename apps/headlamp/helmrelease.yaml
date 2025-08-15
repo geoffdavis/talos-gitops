@@ -66,7 +66,7 @@ spec:
         - host: headlamp.k8s.home.geoffdavis.com
           paths:
             - path: /
-              pathType: Prefix
+              type: Prefix
       tls:
         - secretName: headlamp-tls # pragma: allowlist secret
           hosts:
