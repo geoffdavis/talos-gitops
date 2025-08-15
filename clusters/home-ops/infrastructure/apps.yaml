@@ -33,7 +33,7 @@ spec:
   dependsOn:
     - name: infrastructure-ingress-nginx-internal
     - name: infrastructure-cert-manager
-    - name: infrastructure-external-secrets-stores
+    - name: infrastructure-external-secrets
   retryInterval: 1m0s
   wait: true
   postBuild:
