@@ -37,8 +37,8 @@ spec:
         # Use manual secret for now until ExternalSecret is configured
         existingSecret: "headlamp-oidc-manual" # pragma: allowlist secret
 
-      # Base URL for callbacks
-      baseURL: "https://headlamp.k8s.home.geoffdavis.com" # pragma: allowlist secret
+      # Base URL for callbacks (must start with / or be empty)
+      baseURL: "/" # pragma: allowlist secret
 
     # Enable cluster role binding for OIDC users
     clusterRoleBinding:
@@ -81,6 +81,15 @@ spec:
 
     persistentVolumeClaim:
       enabled: false # Not needed for home lab
+    
+    # Volume mounts for config directory
+    volumeMounts:
+      - name: config
+        mountPath: /home/headlamp/.config
+    
+    volumes:
+      - name: config
+        emptyDir: {}
 
     # Additional environment variables - not needed as we use existingSecret
     # env: []
