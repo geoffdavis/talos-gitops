@@ -23,6 +23,8 @@ spec:
               value: "https://authentik.k8s.home.geoffdavis.com"
             - name: HEADLAMP_URL
               value: "https://headlamp.k8s.home.geoffdavis.com"
+            - name: HOME
+              value: "/tmp"
             - name: AUTHENTIK_TOKEN
               valueFrom:
                 secretKeyRef:
