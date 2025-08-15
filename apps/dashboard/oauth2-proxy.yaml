@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oauth2-proxy-config
+  namespace: kubernetes-dashboard
+data:
+  oauth2-proxy.cfg: |
+    # Provider configuration for Authentik
+    provider = "oidc"
+    provider_display_name = "Authentik"
+    
+    # Authentik OIDC endpoints
+    oidc_issuer_url = "https://authentik.k8s.home.geoffdavis.com/application/o/kubernetes-dashboard/"
+    
+    # Client configuration (these will be replaced with actual values from secret)
+    client_id = "kubernetes-dashboard"
+    client_secret = "from-secret"
+    
+    # Cookie configuration
+    cookie_secret = "from-secret"
+    cookie_secure = true
+    cookie_samesite = "lax"
+    cookie_httponly = true
+    cookie_expire = "168h"
+    cookie_refresh = "60m"
+    cookie_name = "_oauth2_proxy_dashboard"
+    
+    # Session configuration
+    session_store_type = "cookie"
+    
+    # URLs
+    redirect_url = "https://dashboard.k8s.home.geoffdavis.com/oauth2/callback"
+    
+    # Upstream configuration - proxy to Kong
+    upstreams = ["https://kubernetes-dashboard-kong-proxy.kubernetes-dashboard.svc.cluster.local:8443"]
+    
+    # Skip SSL verification for internal services
+    ssl_upstream_insecure_skip_verify = true
+    
+    # Request configuration
+    pass_authorization_header = true
+    pass_access_token = true
+    pass_user_headers = true
+    set_authorization_header = true
+    set_xauthrequest = true
+    
+    # Email domains allowed
+    email_domains = ["*"]
+    
+    # Skip authentication for these paths (health checks)
+    skip_auth_routes = [
+      "GET=^/ping",
+      "GET=^/healthz",
+      "GET=^/metrics"
+    ]
+    
+    # Logging
+    standard_logging = true
+    auth_logging = true
+    request_logging = true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: kubernetes-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oauth2-proxy
+      app.kubernetes.io/instance: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oauth2-proxy
+        app.kubernetes.io/instance: kubernetes-dashboard
+    spec:
+      containers:
+      - name: oauth2-proxy
+        image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+        args:
+        - --config=/etc/oauth2-proxy/oauth2-proxy.cfg
+        - --http-address=0.0.0.0:4180
+        - --https-address=
+        env:
+        - name: OAUTH2_PROXY_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: oauth2-proxy-secret
+              key: client-secret
+        - name: OAUTH2_PROXY_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: oauth2-proxy-secret
+              key: cookie-secret
+        ports:
+        - containerPort: 4180
+          name: http
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 3
+        resources:
+          limits:
+            memory: 256Mi
+            cpu: 100m
+          requests:
+            memory: 128Mi
+            cpu: 50m
+        volumeMounts:
+        - name: config
+          mountPath: /etc/oauth2-proxy
+          readOnly: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 2000
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+      - name: config
+        configMap:
+          name: oauth2-proxy-config
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+        runAsUser: 2000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: kubernetes-dashboard
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4180
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: kubernetes-dashboard
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dashboard-oauth2-proxy
+  namespace: kubernetes-dashboard
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    external-dns.alpha.kubernetes.io/hostname: dashboard.k8s.home.geoffdavis.com
+spec:
+  ingressClassName: nginx-internal
+  rules:
+  - host: dashboard.k8s.home.geoffdavis.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 4180
+  tls:
+  - hosts:
+    - dashboard.k8s.home.geoffdavis.com
+    secretName: dashboard-tls

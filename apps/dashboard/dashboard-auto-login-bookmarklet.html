@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kubernetes Dashboard Auto-Login Setup</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .token-box {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .bookmarklet {
+            display: inline-block;
+            background: #007acc;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .bookmarklet:hover {
+            background: #005a9e;
+        }
+        .instructions {
+            background: #e7f3ff;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 5px 0;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kubernetes Dashboard Auto-Login Setup</h1>
+        
+        <div class="instructions">
+            <h2>Setup Instructions:</h2>
+            <ol>
+                <li>Click the button below to fetch your Dashboard token</li>
+                <li>Drag the "Auto-Login Dashboard" bookmarklet to your bookmarks bar</li>
+                <li>Navigate to the Dashboard at <a href="https://dashboard.k8s.home.geoffdavis.com" target="_blank">https://dashboard.k8s.home.geoffdavis.com</a></li>
+                <li>When prompted for a token, click the bookmarklet to auto-fill and submit</li>
+            </ol>
+        </div>
+
+        <button onclick="fetchToken()">Fetch Current Token</button>
+        
+        <div id="status"></div>
+        
+        <div id="tokenDisplay" style="display:none;">
+            <h3>Your Dashboard Token:</h3>
+            <div class="token-box" id="tokenBox">
+                Loading...
+            </div>
+            
+            <h3>Auto-Login Bookmarklet:</h3>
+            <p>Drag this link to your bookmarks bar:</p>
+            <a href="#" id="bookmarklet" class="bookmarklet">Auto-Login Dashboard</a>
+        </div>
+
+        <script>
+            let currentToken = '';
+            
+            function fetchToken() {
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerHTML = '<div class="status">Fetching token...</div>';
+                
+                // In a real implementation, this would call your backend to get the token
+                // For now, you'll need to manually paste the token here
+                const token = prompt('Paste the Dashboard token (run: kubectl get secret -n kubernetes-dashboard kubernetes-dashboard-viewer-token -o jsonpath="{.data.token}" | base64 -d)');
+                
+                if (token) {
+                    currentToken = token;
+                    document.getElementById('tokenBox').textContent = token;
+                    document.getElementById('tokenDisplay').style.display = 'block';
+                    statusDiv.innerHTML = '<div class="status success">Token fetched successfully!</div>';
+                    updateBookmarklet(token);
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">Failed to fetch token</div>';
+                }
+            }
+            
+            function updateBookmarklet(token) {
+                const bookmarkletCode = `
+                    javascript:(function(){
+                        const token = '${token}';
+                        const tokenInput = document.querySelector('input[type="password"], input[name="token"], input[formcontrolname="token"]');
+                        if (tokenInput) {
+                            tokenInput.value = token;
+                            tokenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            tokenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            setTimeout(() => {
+                                const submitButton = document.querySelector('button[type="submit"], button.btn-primary');
+                                if (submitButton) {
+                                    submitButton.click();
+                                }
+                            }, 100);
+                        } else {
+                            alert('Token input field not found. Make sure you are on the Dashboard login page.');
+                        }
+                    })();
+                `.replace(/\s+/g, ' ').trim();
+                
+                document.getElementById('bookmarklet').href = bookmarkletCode;
+            }
+        </script>
+        
+        <hr style="margin: 30px 0;">
+        
+        <h2>Alternative: Browser Extension</h2>
+        <p>For a more permanent solution, you can create a browser extension that automatically fills the token. Save this as a userscript for Tampermonkey or similar:</p>
+        
+        <div class="token-box">
+<pre>// ==UserScript==
+// @name         Kubernetes Dashboard Auto-Login
+// @namespace    http://k8s.home.geoffdavis.com/
+// @version      1.0
+// @description  Auto-fill Kubernetes Dashboard token
+// @match        https://dashboard.k8s.home.geoffdavis.com/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    // Store your token here or fetch it from a secure location
+    const TOKEN = GM_getValue('dashboardToken', '');
+    
+    // Function to fill and submit token
+    function autoLogin() {
+        const tokenInput = document.querySelector('input[type="password"], input[name="token"]');
+        const submitButton = document.querySelector('button[type="submit"]');
+        
+        if (tokenInput && submitButton && TOKEN) {
+            tokenInput.value = TOKEN;
+            tokenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            setTimeout(() => submitButton.click(), 500);
+        }
+    }
+    
+    // Wait for page to load and try auto-login
+    setTimeout(autoLogin, 1000);
+    
+    // Also watch for changes in case of SPA navigation
+    const observer = new MutationObserver(() => {
+        if (document.querySelector('input[type="password"]')) {
+            autoLogin();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+})();</pre>
+        </div>
+    </div>
+</body>
+</html>

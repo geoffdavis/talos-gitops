@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-settings
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/component: settings
+data:
+  settings.json: |
+    {
+      "clusterName": "Home Ops Cluster",
+      "itemsPerPage": 25,
+      "labelsLimit": 3,
+      "logsAutoRefreshTimeInterval": 5,
+      "resourceAutoRefreshTimeInterval": 30,
+      "disableAccessDeniedNotifications": false,
+      "defaultNamespace": "default",
+      "namespaceFallbackList": ["default", "kube-system", "kubernetes-dashboard"],
+      "authenticationMode": "token",
+      "skipLoginPage": false
+    }
+---
+# Create a ConfigMap with the viewer token for easy copy-paste
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-token-display
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: kubernetes-dashboard
+    app.kubernetes.io/component: token-display
+data:
+  instructions.md: |
+    # Kubernetes Dashboard Access Token
+    
+    To access the Dashboard, use the following token:
+    
+    1. Visit https://dashboard.k8s.home.geoffdavis.com
+    2. Select "Token" authentication
+    3. Use the token from the secret: kubernetes-dashboard-viewer-token
+    
+    To get the token, run:
+    ```
+    kubectl get secret -n kubernetes-dashboard kubernetes-dashboard-viewer-token \
+      -o jsonpath='{.data.token}' | base64 -d
+    ```
+    
+    This token provides full cluster access with read/write permissions.

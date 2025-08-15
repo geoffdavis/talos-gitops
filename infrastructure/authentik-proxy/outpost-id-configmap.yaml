@@ -9,6 +9,6 @@ metadata:
     app.kubernetes.io/component: external-outpost
 data:
   # External outpost ID (k8s-external-proxy-outpost)
-  # This outpost handles 5 services: longhorn, grafana, prometheus, alertmanager, hubble
+  # This outpost handles 6 services: longhorn, grafana, prometheus, alertmanager, hubble, homeassistant
   # Dashboard is now internal-only and bypasses the proxy
-  outpost_id: "3f0970c5-d6a3-43b2-9a36-d74665c6b24e"
+  outpost_id: "26d1a2cc-cdc3-42b1-84a0-9f3dbc6b6083"

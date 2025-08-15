@@ -1,0 +1,169 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-auto-auth-script
+  namespace: kubernetes-dashboard
+data:
+  auto-auth.sh: |
+    #!/bin/bash
+    # This script creates a simple proxy that automatically injects the Dashboard token
+    
+    set -e
+    
+    echo "Starting Dashboard Auto-Auth Proxy..."
+    
+    # Get the viewer token
+    TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    
+    # Install socat if not present (for Alpine-based images)
+    if ! command -v socat &> /dev/null; then
+      apk add --no-cache socat
+    fi
+    
+    # Create a simple HTTP proxy that injects the token
+    while true; do
+      echo "Waiting for connections on port 8080..."
+      socat TCP-LISTEN:8080,fork,reuseaddr SYSTEM:'
+        # Read the HTTP request
+        read request
+        
+        # Extract the path
+        path=$(echo "$request" | cut -d" " -f2)
+        
+        # Read headers until empty line
+        while read -r header && [ "$header" != $'\''\r'\'' ]; do
+          :
+        done
+        
+        # If accessing login endpoint, auto-submit the token
+        if [[ "$path" == "/api/v1/login" ]]; then
+          # Auto-login with token
+          response="{\"token\":\"'$TOKEN'\"}"
+          echo -e "HTTP/1.1 200 OK\r"
+          echo -e "Content-Type: application/json\r"
+          echo -e "Content-Length: ${#response}\r"
+          echo -e "\r"
+          echo -n "$response"
+        else
+          # Forward other requests to the actual Dashboard
+          echo "$request" | nc kubernetes-dashboard-kong-proxy 8443
+        fi
+      '
+    done
+  
+  nginx.conf: |
+    events {
+      worker_connections 1024;
+    }
+    
+    http {
+      upstream dashboard {
+        server kubernetes-dashboard-kong-proxy:8443;
+      }
+      
+      server {
+        listen 8080;
+        server_name _;
+        
+        # Auto-inject token into Dashboard
+        location /api/v1/login {
+          # Return pre-authenticated response
+          add_header Content-Type application/json;
+          return 200 '{"token":"$TOKEN"}';
+        }
+        
+        location / {
+          proxy_pass https://dashboard;
+          proxy_ssl_verify off;
+          
+          # Pass through headers
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          
+          # WebSocket support
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-auto-auth
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: dashboard-auto-auth
+    app.kubernetes.io/instance: kubernetes-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dashboard-auto-auth
+      app.kubernetes.io/instance: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dashboard-auto-auth
+        app.kubernetes.io/instance: kubernetes-dashboard
+    spec:
+      serviceAccountName: kubernetes-dashboard-viewer
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: kubernetes-dashboard-viewer-token
+              key: token
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: token
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          readOnly: true
+        resources:
+          limits:
+            memory: 128Mi
+            cpu: 100m
+          requests:
+            memory: 64Mi
+            cpu: 50m
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: dashboard-auto-auth-script
+      - name: token
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 3607
+              audience: https://kubernetes.default.svc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-auto-auth
+  namespace: kubernetes-dashboard
+  labels:
+    app.kubernetes.io/name: dashboard-auto-auth
+    app.kubernetes.io/instance: kubernetes-dashboard
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: dashboard-auto-auth
+    app.kubernetes.io/instance: kubernetes-dashboard
