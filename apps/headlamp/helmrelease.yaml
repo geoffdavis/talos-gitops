@@ -81,15 +81,6 @@ spec:
 
     persistentVolumeClaim:
       enabled: false # Not needed for home lab
-    
-    # Volume mounts for config directory
-    volumeMounts:
-      - name: config
-        mountPath: /home/headlamp/.config
-    
-    volumes:
-      - name: config
-        emptyDir: {}
 
     # Additional environment variables - not needed as we use existingSecret
     # env: []
@@ -100,7 +91,7 @@ spec:
       capabilities:
         drop:
           - ALL
-      readOnlyRootFilesystem: true
+      readOnlyRootFilesystem: false # Headlamp needs to write some files
       runAsNonRoot: true
       runAsUser: 100
 
