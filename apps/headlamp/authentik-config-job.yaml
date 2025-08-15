@@ -1,0 +1,255 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: headlamp-authentik-config
+  namespace: headlamp
+  annotations:
+    # Re-run job by changing this annotation
+    batch.kubernetes.io/job-tracking: "v1"
+spec:
+  ttlSecondsAfterFinished: 3600  # Clean up after 1 hour
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: headlamp-authentik-config
+      containers:
+        - name: config
+          image: python:3.11-slim
+          env:
+            - name: AUTHENTIK_URL
+              value: "https://authentik.k8s.home.geoffdavis.com"
+            - name: HEADLAMP_URL
+              value: "https://headlamp.k8s.home.geoffdavis.com"
+            - name: AUTHENTIK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-admin-token-enhanced
+                  key: token
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              # Install required packages
+              pip install requests
+
+              # Run configuration script
+              python3 << 'EOF'
+              import json
+              import requests
+              import secrets
+              import sys
+              import os
+              import subprocess
+
+              # Disable SSL warnings
+              import urllib3
+              urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+              AUTHENTIK_URL = os.environ["AUTHENTIK_URL"]
+              HEADLAMP_URL = os.environ["HEADLAMP_URL"]
+              token = os.environ["AUTHENTIK_TOKEN"]
+
+              def make_api_request(method, endpoint, data=None):
+                  headers = {
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": "application/json"
+                  }
+                  url = f"{AUTHENTIK_URL}/api/v3/{endpoint}"
+
+                  if method == "GET":
+                      response = requests.get(url, headers=headers, verify=False)
+                  elif method == "POST":
+                      response = requests.post(url, headers=headers, json=data, verify=False)
+                  elif method == "PATCH":
+                      response = requests.patch(url, headers=headers, json=data, verify=False)
+
+                  if response.status_code >= 400:
+                      print(f"API request failed: {response.status_code} - {response.text}")
+                      return None
+
+                  return response.json() if response.text else {}
+
+              def get_or_create_provider(client_secret):  # pragma: allowlist secret
+                  # Check if provider exists
+                  providers = make_api_request("GET", "providers/oauth2/")
+
+                  for provider in providers.get("results", []):
+                      if provider.get("name") == "headlamp-provider":
+                          print(f"Provider exists, updating...")
+                          update_data = {
+                              "client_secret": client_secret,  # pragma: allowlist secret
+                              "redirect_uris": "\n".join([
+                                  f"{HEADLAMP_URL}/oidc-callback",
+                                  f"{HEADLAMP_URL}/auth/callback"
+                              ])
+                          }
+                          make_api_request("PATCH", f"providers/oauth2/{provider['pk']}/", update_data)
+                          return provider["pk"]
+
+                  # Get flows
+                  flows = make_api_request("GET", "flows/instances/")
+                  auth_flow = next((f["pk"] for f in flows.get("results", [])
+                                   if "authentication" in f.get("slug", "")), None)
+                  authz_flow = next((f["pk"] for f in flows.get("results", [])
+                                    if "authorization" in f.get("slug", "")), None)
+
+                  # Create provider
+                  provider_data = {
+                      "name": "headlamp-provider",
+                      "authentication_flow": auth_flow,
+                      "authorization_flow": authz_flow,
+                      "client_type": "confidential",
+                      "client_id": "headlamp",
+                      "client_secret": client_secret,  # pragma: allowlist secret
+                      "redirect_uris": "\n".join([
+                          f"{HEADLAMP_URL}/oidc-callback",
+                          f"{HEADLAMP_URL}/auth/callback"
+                      ]),
+                      "sub_mode": "user_email",
+                      "include_claims_in_id_token": True,
+                      "access_token_validity": "hours=1",
+                      "refresh_token_validity": "days=30"
+                  }
+
+                  result = make_api_request("POST", "providers/oauth2/", provider_data)
+                  if result:
+                      print(f"Created provider: {result['pk']}")
+
+                      # Add scope mappings
+                      mappings = make_api_request("GET", "propertymappings/scope/")
+                      scope_mappings = [m["pk"] for m in mappings.get("results", [])
+                                       if m.get("scope_name") in ["openid", "profile", "email", "groups"]]
+
+                      if scope_mappings:
+                          make_api_request("PATCH", f"providers/oauth2/{result['pk']}/",
+                                          {"property_mappings": scope_mappings})
+
+                      return result["pk"]
+
+                  raise Exception("Failed to create provider")
+
+              def get_or_create_application(provider_id):
+                  # Check if application exists
+                  apps = make_api_request("GET", "core/applications/")
+
+                  for app in apps.get("results", []):
+                      if app.get("slug") == "headlamp":
+                          print(f"Application exists, updating...")
+                          update_data = {
+                              "provider": provider_id,
+                              "launch_url": HEADLAMP_URL
+                          }
+                          make_api_request("PATCH", f"core/applications/{app['pk']}/", update_data)
+                          return
+
+                  # Create application
+                  app_data = {
+                      "name": "Headlamp",
+                      "slug": "headlamp",
+                      "provider": provider_id,
+                      "policy_engine_mode": "any",
+                      "launch_url": HEADLAMP_URL,
+                      "meta_description": "Kubernetes Dashboard"
+                  }
+
+                  result = make_api_request("POST", "core/applications/", app_data)
+                  if result:
+                      print(f"Created application: headlamp")
+                  else:
+                      raise Exception("Failed to create application")
+
+              def update_kubernetes_secret(client_secret):  # pragma: allowlist secret
+                  # Create/update secret  # pragma: allowlist secret
+                  # Use kubectl to create/update secret  # pragma: allowlist secret
+
+                  # Create secret YAML
+                  secret_yaml = f'''apiVersion: v1
+              kind: Secret
+              metadata:
+                name: headlamp-oidc-manual
+                namespace: headlamp
+              type: Opaque
+              stringData:
+                clientId: headlamp
+                clientSecret: "{client_secret}"  # pragma: allowlist secret
+              '''
+
+                  # Apply the secret
+                  process = subprocess.Popen(
+                      ["kubectl", "apply", "-f", "-"],
+                      stdin=subprocess.PIPE,
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,
+                      text=True
+                  )
+
+                  stdout, stderr = process.communicate(input=secret_yaml)
+
+                  if process.returncode != 0:
+                      print(f"Error creating secret: {stderr}")
+                      raise Exception("Failed to create secret")
+
+                  print("Updated Kubernetes secret")
+
+              # Main execution
+              print("Configuring Authentik for Headlamp...")
+              client_secret = secrets.token_urlsafe(32)  # pragma: allowlist secret
+
+              provider_id = get_or_create_provider(client_secret)
+              get_or_create_application(provider_id)
+              update_kubernetes_secret(client_secret)  # pragma: allowlist secret
+
+              print("✅ Configuration complete!")
+              print(f"Client secret: {client_secret[:8]}...")  # pragma: allowlist secret
+
+              EOF
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp-authentik-config
+  namespace: headlamp
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: headlamp
+  name: headlamp-authentik-config
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headlamp-authentik-config
+  namespace: headlamp
+subjects:
+  - kind: ServiceAccount
+    name: headlamp-authentik-config
+    namespace: headlamp
+roleRef:
+  kind: Role
+  name: headlamp-authentik-config
+  apiGroup: rbac.authorization.k8s.io

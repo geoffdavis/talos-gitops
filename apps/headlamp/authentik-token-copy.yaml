@@ -1,0 +1,17 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: authentik-admin-token-copy
+  namespace: headlamp
+spec:
+  secretStoreRef:
+    name: onepassword-connect
+    kind: SecretStore
+  target:
+    name: authentik-admin-token-enhanced
+    creationPolicy: Owner
+  data:
+    - secretKey: token # pragma: allowlist secret
+      remoteRef:
+        key: authentik-admin-api-token
+        property: api_token
