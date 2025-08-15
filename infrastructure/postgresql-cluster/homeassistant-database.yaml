@@ -1,0 +1,16 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: homeassistant
+  namespace: postgresql-system
+  labels:
+    app.kubernetes.io/name: postgresql-cluster
+    app.kubernetes.io/component: database
+    application: homeassistant
+spec:
+  cluster:
+    name: postgresql-cluster
+  name: homeassistant
+  owner: homeassistant
+  ensure: present
