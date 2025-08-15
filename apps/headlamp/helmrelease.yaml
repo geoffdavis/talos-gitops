@@ -60,8 +60,7 @@ spec:
         # Increase buffer size for large OIDC tokens
         nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
         nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
-        nginx.ingress.kubernetes.io/server-snippet: |
-          large_client_header_buffers 4 32k;
+        nginx.ingress.kubernetes.io/large-client-header-buffers: "4 32k"
       hosts:
         - host: headlamp.k8s.home.geoffdavis.com
           paths:
