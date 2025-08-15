@@ -64,7 +64,7 @@ spec:
               type: RuntimeDefault
           env:
             - name: PGHOST
-              value: "homeassistant-postgresql-rw.home-automation.svc.cluster.local"
+              value: "postgresql-cluster-rw.postgresql-system.svc.cluster.local"
             - name: PGPORT
               value: "5432"
             - name: PGDATABASE
@@ -72,12 +72,12 @@ spec:
             - name: PGUSER
               valueFrom:
                 secretKeyRef:
-                  name: homeassistant-postgresql-superuser
+                  name: postgresql-superuser-credentials
                   key: username
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: homeassistant-postgresql-superuser
+                  name: postgresql-superuser-credentials
                   key: password
             - name: APP_DB_USER
               valueFrom:
@@ -278,6 +278,54 @@ spec:
               memory: "32Mi"
               cpu: "50m"
 
+        # Configuration setup init container
+        - name: setup-config
+          image: busybox:1.37-musl
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Setting up Home Assistant configuration..."
+              
+              # Copy the proper configuration.yaml from ConfigMap to persistent volume
+              if [ -f "/tmp/config-template/configuration.yaml" ]; then
+                echo "Copying configuration.yaml from ConfigMap..."
+                cp /tmp/config-template/configuration.yaml /config/configuration.yaml
+                chown 1000:1000 /config/configuration.yaml
+                echo "Configuration updated successfully"
+              else
+                echo "ConfigMap configuration not found, using existing configuration"
+              fi
+          volumeMounts:
+            - name: home-assistant-config
+              mountPath: /config
+            - name: home-assistant-configuration
+              mountPath: /tmp/config-template
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "10m"
+            limits:
+              memory: "32Mi"
+              cpu: "50m"
+
       containers:
         - name: home-assistant
           image: ghcr.io/home-assistant/home-assistant:2025.8
@@ -315,7 +363,7 @@ spec:
           env:
             # Database configuration
             - name: POSTGRES_HOST
-              value: "homeassistant-postgresql-rw.home-automation.svc.cluster.local"
+              value: "postgresql-cluster-rw.postgresql-system.svc.cluster.local"
             - name: POSTGRES_PORT
               value: "5432"
             - name: POSTGRES_DB
@@ -430,3 +478,6 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: 1Gi
+        - name: home-assistant-configuration
+          configMap:
+            name: home-assistant-configuration
