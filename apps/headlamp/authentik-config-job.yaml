@@ -20,7 +20,7 @@ spec:
           image: python:3.11-slim
           env:
             - name: AUTHENTIK_URL
-              value: "https://authentik.k8s.home.geoffdavis.com"
+              value: "http://authentik-server.authentik.svc.cluster.local"
             - name: HEADLAMP_URL
               value: "https://headlamp.k8s.home.geoffdavis.com"
             - name: HOME
@@ -64,11 +64,11 @@ spec:
                   url = f"{AUTHENTIK_URL}/api/v3/{endpoint}"
 
                   if method == "GET":
-                      response = requests.get(url, headers=headers, verify=False)
+                      response = requests.get(url, headers=headers)
                   elif method == "POST":
-                      response = requests.post(url, headers=headers, json=data, verify=False)
+                      response = requests.post(url, headers=headers, json=data)
                   elif method == "PATCH":
-                      response = requests.patch(url, headers=headers, json=data, verify=False)
+                      response = requests.patch(url, headers=headers, json=data)
 
                   if response.status_code >= 400:
                       print(f"API request failed: {response.status_code} - {response.text}")
