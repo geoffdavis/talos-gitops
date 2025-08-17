@@ -9,8 +9,7 @@ resources:
   - external-secret-s3-backup.yaml
   - backup-configuration.yaml
   - homeassistant-database-credentials.yaml
-  - homeassistant-database-user.yaml
-  - homeassistant-database.yaml
+  - homeassistant-user-creation-job.yaml
 
 # Common labels for all PostgreSQL cluster resources
 commonLabels:

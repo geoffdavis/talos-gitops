@@ -160,10 +160,14 @@ spec:
               # Connect to the target database and grant schema permissions
               echo "Granting schema permissions..."
               PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL ON SCHEMA public TO ${APP_DB_USER};" || true
-              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${APP_DB_USER};" || true
-              PGDATABASE=${TARGET_DATABASE} psql -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${APP_DB_USER};" || true
-              PGDATABASE=${TARGET_DATABASE} psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${APP_DB_USER};" || true
-              PGDATABASE=${TARGET_DATABASE} psql -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql \
+                -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql \
+                -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql \
+                -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${APP_DB_USER};" || true
+              PGDATABASE=${TARGET_DATABASE} psql \
+                -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${APP_DB_USER};" || true
 
               echo "Database initialization completed successfully for Home Assistant"
           volumeMounts:
@@ -301,7 +305,6 @@ spec:
             - |
               set -e
               echo "Setting up Home Assistant configuration..."
-              
               # Copy the proper configuration.yaml from ConfigMap to persistent volume
               if [ -f "/tmp/config-template/configuration.yaml" ]; then
                 echo "Copying configuration.yaml from ConfigMap..."
