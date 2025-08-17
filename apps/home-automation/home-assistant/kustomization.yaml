@@ -12,6 +12,7 @@ resources:
   - pvc.yaml
   - configmap.yaml
   - external-secret.yaml
+  - postgresql-cluster-credentials.yaml
 
 labels:
   - pairs:
