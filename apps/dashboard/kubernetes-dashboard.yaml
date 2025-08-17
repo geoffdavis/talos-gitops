@@ -50,7 +50,7 @@ spec:
       # Add init container for Kong configuration processing
       initContainers:
         - name: kong-config-processor
-          image: alpine/k8s:1.31.1
+          image: alpine/k8s:1.33.4
           imagePullPolicy: IfNotPresent
           serviceAccountName: kubernetes-dashboard-viewer # Use viewer SA with proper permissions
           securityContext:
