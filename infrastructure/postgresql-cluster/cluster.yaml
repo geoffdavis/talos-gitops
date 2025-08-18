@@ -166,6 +166,9 @@ spec:
     clientCASecret: "postgresql-cluster-ca"
     replicationTLSSecret: "postgresql-cluster-replication-tls"
 
+  # Enable superuser access for administrative tasks
+  enableSuperuserAccess: true
+
   # Superuser secret
   superuserSecret:
     name: postgresql-superuser-credentials
