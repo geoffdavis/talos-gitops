@@ -27,7 +27,7 @@ spec:
   chart:
     spec:
       chart: home-assistant-matter-server
-      version: "3.0.0"
+      version: "3.0.1"
       sourceRef:
         kind: HelmRepository
         name: charts-derwitt-dev
