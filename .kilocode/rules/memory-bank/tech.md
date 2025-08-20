@@ -36,6 +36,7 @@
 - **CNPG Barman Plugin v0.5.0**: Modern plugin-based backup system for PostgreSQL clusters
 - **Mosquitto MQTT v2.0.18**: IoT device communication broker
 - **Redis**: Caching and session storage
+- **Matter Server v8.0.0**: Thread/Matter device support for home automation
 
 ### Secret Management
 
@@ -160,34 +161,44 @@ The development environment includes several Model Context Protocol (MCP) server
 - **Integration**: Provides observability into Cloudflare services used in the cluster (Cloudflare Tunnel, DNS management)
 - **Usage Patterns**: Monitor Cloudflare Tunnel performance, analyze DNS resolution, troubleshoot external access issues
 
-#### Kubernetes Server (`mcp-server-kubernetes`)
+#### Flux Operator Server (`flux-operator-mcp`)
 
-- **Type**: Local stdio-based server (configured in both locations)
-- **Command**: `npx mcp-server-kubernetes`
+- **Type**: Local stdio-based server
+- **Command**: `/opt/homebrew/bin/flux-operator-mcp serve`
 - **Capabilities**:
-  - Kubernetes cluster operations and management
-  - Resource inspection and manipulation
-  - Pod logs and debugging
-  - Deployment and service management
-  - Helm chart operations
-- **Integration**: Direct integration with the Talos GitOps cluster for operational tasks
+  - Flux GitOps operations and management
+  - Kubernetes resource inspection and manipulation
+  - HelmRelease and Kustomization management
+  - Flux reconciliation and troubleshooting
+- **Integration**: Direct integration with the Talos GitOps cluster for Flux operations
 - **Usage Patterns**:
-  - Cluster health monitoring and diagnostics
-  - Application deployment and troubleshooting
-  - Resource management and scaling operations
-  - Integration with GitOps workflows
+  - GitOps workflow management and troubleshooting
+  - Flux resource reconciliation and monitoring
+  - HelmRelease and Kustomization debugging
+  - Integration with emergency recovery procedures
 
-#### GitHub Copilot Server
+#### Filesystem Server (`mcp-server-filesystem`)
+
+- **Type**: Local stdio-based server
+- **Command**: `npx -y @modelcontextprotocol/server-filesystem /Users/geoff/src`
+- **Capabilities**:
+  - File system operations and management
+  - File reading, writing, and manipulation
+  - Directory structure exploration
+  - File search and content analysis
+- **Integration**: Provides comprehensive file system access for project management
+- **Usage Patterns**: File operations, content analysis, project structure management
+
+#### Context7 Server (`context7-mcp`)
 
 - **Type**: Remote HTTP-based server
-- **Endpoint**: `https://api.githubcopilot.com/mcp/`
+- **Command**: `npx -y @upstash/context7-mcp`
 - **Capabilities**:
-  - GitHub repository integration
-  - Code analysis and suggestions
-  - Pull request and issue management
-  - Repository insights and analytics
-- **Integration**: Enhances development workflow with GitHub-specific operations
-- **Usage Patterns**: Repository management, code review assistance, GitHub Actions integration
+  - Library documentation and code examples
+  - Up-to-date documentation retrieval
+  - Code pattern analysis and suggestions
+- **Integration**: Enhances development workflow with library-specific guidance
+- **Usage Patterns**: Documentation lookup, code examples, library integration guidance
 
 ### Development Workflow Integration
 
@@ -195,25 +206,25 @@ The development environment includes several Model Context Protocol (MCP) server
 
 ```bash
 # MCP servers enhance these common operations:
-# - Kubernetes resource management via kubernetes server
+# - Flux GitOps management via flux-operator server
 # - Git operations and history analysis via git server
 # - Cloudflare service monitoring via cloudflare server
-# - GitHub integration via github server
+# - File system operations via filesystem server
 ```
 
 #### Operational Patterns
 
-- **Troubleshooting**: Kubernetes server provides direct cluster access for diagnostics
+- **Troubleshooting**: Flux server provides direct cluster access for GitOps diagnostics
 - **Change Management**: Git server enables comprehensive repository analysis and change tracking
 - **External Service Monitoring**: Cloudflare server provides visibility into external service performance
-- **Development Collaboration**: GitHub server facilitates repository management and collaboration
+- **Development Collaboration**: Multiple servers facilitate comprehensive project management
 
 #### Integration Benefits
 
 - **Unified Interface**: All servers accessible through consistent MCP protocol
 - **Context Awareness**: Servers understand the specific project context and configuration
 - **Operational Efficiency**: Direct access to cluster and external services without context switching
-- **Enhanced Debugging**: Combined visibility across Git, Kubernetes, and external services
+- **Enhanced Debugging**: Combined visibility across Git, Kubernetes, Flux, and external services
 
 ### Configuration Management
 
@@ -225,9 +236,9 @@ The development environment includes several Model Context Protocol (MCP) server
 ### Usage Notes
 
 - **Git Server**: Scoped to the specific Talos GitOps repository for focused operations
-- **Kubernetes Server**: Requires proper kubectl configuration and cluster access
+- **Flux Server**: Requires proper kubectl configuration and cluster access
 - **Cloudflare Server**: Provides read-only observability into Cloudflare services
-- **GitHub Server**: Integrates with existing GitHub authentication and permissions
+- **Filesystem Server**: Provides comprehensive file system access within allowed directories
 - **Performance**: Local servers provide faster response times, remote servers offer specialized capabilities
 
 This MCP server ecosystem significantly enhances the development and operational capabilities by providing direct, context-aware access to the key systems and services that comprise the Talos GitOps infrastructure.
@@ -331,6 +342,22 @@ flux logs --follow           # Monitor deployments
 git add apps/my-app/         # Stage application
 git commit -m "Add my-app"   # Commit changes
 git push                     # Trigger deployment
+```
+
+### Emergency Recovery Operations
+
+```bash
+# Emergency recovery framework
+./scripts/aggressive-recovery-backup.sh    # Create comprehensive backup
+./scripts/aggressive-recovery-execute.sh   # Execute recovery strategy
+./scripts/aggressive-recovery-monitor.sh   # Monitor recovery progress
+./scripts/aggressive-recovery-rollback.sh  # Rollback if needed
+./validate-recovery-success.sh             # Validate recovery success
+
+# Recovery validation
+flux get kustomizations                     # Check GitOps status (target: 31/31 Ready)
+kubectl get pods -A | grep -v Running      # Check for failed pods
+curl -I https://longhorn.k8s.home.geoffdavis.com # Test service accessibility
 ```
 
 ### Monitoring & Diagnostics
@@ -443,12 +470,23 @@ task storage:validate-usb-ssd # USB SSD validation
 - **Access**: <https://homeassistant.k8s.home.geoffdavis.com>
 - **Production Status**: **PRODUCTION-READY** - Successfully recovered from complete non-functional state through systematic troubleshooting
 
+### Matter Server Integration
+
+- **Platform**: Python Matter Server v8.0.0 for Thread/Matter device support
+- **Network Configuration**: Host networking with `enp3s0f0` interface for device discovery
+- **Bluetooth Support**: Enabled for Matter device commissioning
+- **Storage**: 5GB Longhorn persistent volume for certificates and device data
+- **Communication**: WebSocket API at `ws://localhost:5580/ws` for Home Assistant integration
+- **Security Context**: Privileged mode with NET_ADMIN, NET_RAW, SYS_ADMIN capabilities
+- **Chart**: home-assistant-matter-server v3.0.0 via Helm
+
 ### IoT Device Integration
 
 - **MQTT Protocol**: Secure communication with IoT devices via Mosquitto with resolved configuration conflicts
 - **Network Isolation**: Proper network policies for IoT device security with updated PodSecurity policies
 - **Device Discovery**: Automatic device discovery and integration with proper security contexts
 - **Data Persistence**: PostgreSQL storage for device states and history with CloudNativePG automatic certificate management
+- **Matter/Thread**: Advanced IoT protocol support via dedicated Matter Server
 
 ### Home Assistant Troubleshooting Recovery
 
@@ -469,4 +507,30 @@ task storage:validate-usb-ssd # USB SSD validation
 - **GitOps Management**: Full integration with Flux GitOps for monitoring system deployment and configuration management
 - **Zero Downtime Operations**: Blue-green deployment strategy enables configuration changes without service interruption
 
-This technology stack provides a robust, secure, and scalable foundation for home lab operations while demonstrating enterprise-grade Kubernetes practices, GitOps workflows, comprehensive code quality standards, and full home automation capabilities with proven troubleshooting and recovery procedures.
+## Chart Development
+
+### Authentik-Proxy-Config Chart
+
+- **Chart Versions**: 0.1.0 through 0.2.0 with comprehensive feature development
+- **Location**: [`charts/authentik-proxy-config/`](../charts/authentik-proxy-config/)
+- **Purpose**: Automated Authentik proxy provider configuration and management
+- **Architecture**: Comprehensive Helm chart with templates, values, and RBAC integration
+
+#### Chart Components
+
+- **Templates**: Complete template system with helpers, RBAC, and configuration management
+  - [`_helpers.tpl`](../charts/authentik-proxy-config/templates/_helpers.tpl): Standard Helm helper functions
+  - [`configmaps/service-config.tpl`](../charts/authentik-proxy-config/templates/configmaps/service-config.tpl): Service configuration management
+  - [`rbac/`](../charts/authentik-proxy-config/templates/rbac/): Complete RBAC system with ClusterRole, ClusterRoleBinding, Role, RoleBinding, ServiceAccount
+- **Values**: [`values.yaml`](../charts/authentik-proxy-config/values.yaml) - 122-line comprehensive configuration
+- **Service Management**: Configuration for 7 services (Dashboard, Hubble, Grafana, Prometheus, AlertManager, Longhorn, Home Assistant)
+
+#### Chart Features
+
+- **RBAC Integration**: Comprehensive role-based access control with proper permissions
+- **Security Context**: Proper security contexts with non-root execution and restricted capabilities
+- **Hook Management**: Pre-install and pre-upgrade hooks with timeout and retry configuration
+- **External Secrets**: Integration with 1Password via ExternalSecrets for secure token management
+- **Service Discovery**: Automated service discovery and configuration management capabilities
+
+This technology stack provides a robust, secure, and scalable foundation for home lab operations while demonstrating enterprise-grade Kubernetes practices, GitOps workflows, comprehensive code quality standards, emergency recovery capabilities, and full home automation capabilities with proven troubleshooting and recovery procedures.

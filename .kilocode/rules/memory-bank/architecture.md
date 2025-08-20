@@ -2,7 +2,7 @@
 
 ## System Architecture Overview
 
-This cluster implements a sophisticated two-phase architecture that separates foundational system components (Bootstrap Phase) from operational services (GitOps Phase), enabling both reliable cluster operations and collaborative development workflows.
+This cluster implements a sophisticated two-phase architecture that separates foundational system components (Bootstrap Phase) from operational services (GitOps Phase), enabling both reliable cluster operations and collaborative development workflows. The system has been enhanced with comprehensive emergency recovery capabilities and modern backup architecture.
 
 ## Core Architecture Principles
 
@@ -21,6 +21,15 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - Infrastructure services and applications
 - Operational configurations that change over time
 - Managed via Flux GitOps with Git commits triggering deployments
+
+### Emergency Recovery Architecture
+
+**Comprehensive Recovery Framework** - Advanced recovery capabilities:
+
+- **Aggressive Recovery Strategy**: 95% success probability approach for over-engineered component elimination
+- **Automated Recovery Scripts**: Complete backup, execution, monitoring, rollback, and validation automation
+- **Component Elimination Strategy**: Systematic approach to removing problematic components rather than fixing
+- **Post-Mortem Analysis**: Detailed documentation of debugging experiences and lessons learned
 
 ## Source Code Structure
 
@@ -51,13 +60,15 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 │   └── monitoring/             # Observability stack
 ├── apps/                       # Application deployments
 │   ├── dashboard/              # Kubernetes Dashboard
-│   ├── home-automation/        # Home Assistant stack
+│   ├── home-automation/        # Home Assistant stack with Matter server
 │   └── monitoring/             # Monitoring applications
 ├── charts/                     # Helm charts
 │   └── authentik-proxy-config/ # Authentik proxy configuration chart
 ├── scripts/                    # Bootstrap and utility scripts
 │   ├── authentik-proxy-config/ # Authentik configuration scripts
-│   └── token-management/       # Token management utilities
+│   ├── token-management/       # Token management utilities
+│   ├── aggressive-recovery-*.sh # Emergency recovery scripts
+│   └── validate-recovery-success.sh # Recovery validation
 ├── tests/                      # Test suites
 │   ├── authentik-proxy-config/ # Authentik proxy tests
 │   └── token-management/       # Token management tests
@@ -65,7 +76,11 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 │   ├── patches/                # Configuration patches
 │   └── manifests/              # System manifests
 ├── taskfiles/                  # Modular task definitions
-└── docs/                       # Comprehensive documentation
+├── docs/                       # Comprehensive documentation
+│   ├── AGGRESSIVE_RECOVERY_STRATEGY_IMPLEMENTATION_PLAN.md # Emergency recovery plan
+│   ├── GITOPS_LIFECYCLE_MANAGEMENT_IMPLEMENTATION_GUIDE.md # Implementation guide
+│   └── GITOPS_LIFECYCLE_MANAGEMENT_POST_MORTEM.md # Post-mortem analysis
+└── README-AGGRESSIVE-RECOVERY.md # Quick recovery reference
 ```
 
 ## Component Architecture
@@ -154,10 +169,25 @@ This cluster implements a sophisticated two-phase architecture that separates fo
   - **PostgreSQL Database**: CloudNativePG cluster for persistent storage with automatic certificate management and schema compatibility fixes
   - **Mosquitto MQTT**: IoT device communication broker with resolved port binding conflicts and simplified listener configuration
   - **Redis Cache**: Session storage and performance optimization
+  - **Matter Server**: Thread/Matter device support with host networking and Bluetooth commissioning
   - **Authentication Integration**: Full SSO via external Authentik outpost at <https://homeassistant.k8s.home.geoffdavis.com>
   - **Deployment Recovery**: Successfully recovered from complete non-functional state through systematic troubleshooting of schema validation, credentials, certificates, security policies, and MQTT configuration
 - **Kubernetes Dashboard**: [`apps/dashboard/`](../apps/dashboard/) - **PRODUCTION-READY** cluster management interface with seamless SSO integration and bearer token elimination completed
 - **Monitoring Applications**: [`apps/monitoring/`](../apps/monitoring/) - Application-level monitoring components
+
+#### 5. Emergency Recovery Systems
+
+- **Recovery Framework**: [`docs/AGGRESSIVE_RECOVERY_STRATEGY_IMPLEMENTATION_PLAN.md`](../docs/AGGRESSIVE_RECOVERY_STRATEGY_IMPLEMENTATION_PLAN.md) - Comprehensive emergency recovery strategy
+- **Recovery Scripts**: [`scripts/aggressive-recovery-*.sh`](../scripts/) - Complete automation for backup, execution, monitoring, and rollback
+- **Validation System**: [`validate-recovery-success.sh`](../validate-recovery-success.sh) - Automated success validation
+- **Post-Mortem Analysis**: [`docs/GITOPS_LIFECYCLE_MANAGEMENT_POST_MORTEM.md`](../docs/GITOPS_LIFECYCLE_MANAGEMENT_POST_MORTEM.md) - Detailed debugging experience documentation
+
+#### 6. Backup and Monitoring Architecture
+
+- **CNPG Barman Plugin**: [`infrastructure/cnpg-monitoring/`](../infrastructure/cnpg-monitoring/) - Modern plugin-based backup system
+- **Monitoring Integration**: Dedicated monitoring namespace with ServiceMonitor resources and Prometheus alerting rules
+- **Alert Coverage**: 15+ Prometheus alerts covering backup health, restoration capabilities, and plugin operational status
+- **S3 ObjectStore**: MinIO backend for backup storage with configurable retention policies
 
 ## Key Technical Decisions
 
@@ -271,6 +301,7 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **Backup Architecture**: CNPG Barman Plugin v0.5.0 providing plugin-based backup system with S3 ObjectStore integration and comprehensive monitoring
 - **MQTT Communication**: Mosquitto broker for IoT device integration with resolved port binding conflicts and simplified listener configuration
 - **Caching Layer**: Redis instance for session storage and performance optimization
+- **Matter Server Integration**: Thread/Matter device support with host networking, Bluetooth commissioning, and WebSocket API communication
 - **Authentication Integration**: Seamless SSO via external Authentik outpost with proper proxy configuration at <https://homeassistant.k8s.home.geoffdavis.com>
 - **Resource Management**: Production-ready resource limits, health checks, and monitoring integration with proper security contexts for s6-overlay
 - **Network Integration**: Full integration with cluster networking, DNS, and load balancer systems
@@ -307,6 +338,23 @@ This cluster implements a sophisticated two-phase architecture that separates fo
 - **RBAC Configuration**: Proper service accounts and cluster roles for monitoring access to CNPG resources
 - **GitOps Management**: Full integration with Flux GitOps for monitoring system deployment and configuration management
 
+### Emergency Recovery Architecture
+
+- **Recovery Strategy**: Aggressive recovery approach with 95% success probability for over-engineered component elimination
+- **Automated Scripts**: Complete automation framework with backup, execution, monitoring, rollback, and validation capabilities
+- **Component Analysis**: Systematic approach to identifying over-engineered components (667+ lines of Helm values, 20+ Kubernetes resources)
+- **Dependency Chain Management**: Understanding and resolving dependency chain blockages in GitOps systems
+- **Post-Mortem Process**: Comprehensive documentation of debugging experiences and lessons learned for future reference
+
+### Authentik-Proxy-Config Chart Architecture
+
+- **Chart Development**: Comprehensive Helm chart for Authentik proxy configuration management (versions 0.1.0-0.2.0)
+- **RBAC Integration**: Complete role-based access control with ClusterRole, ClusterRoleBinding, Role, RoleBinding, and ServiceAccount templates
+- **Service Discovery**: Automated service discovery and configuration management for 7 cluster services
+- **Security Context**: Proper security contexts with non-root execution and restricted capabilities
+- **Hook Management**: Pre-install and pre-upgrade hooks with timeout and retry configuration
+- **External Secrets**: Integration with 1Password via ExternalSecrets for secure token management
+
 ## Critical Implementation Paths
 
 ### Bootstrap Sequence
@@ -330,12 +378,23 @@ graph TD
     E --> F[Storage & Database]
     F --> G[Identity Management]
     G --> H[Applications]
+    H --> I[Emergency Recovery Systems]
 ```
+
+### Emergency Recovery Sequence
+
+1. **Problem Identification**: Systematic analysis of over-engineered components
+2. **Backup Creation**: Comprehensive backup of Git state, cluster resources, and configuration files
+3. **Component Elimination**: Surgical removal of problematic components
+4. **Dependency Resolution**: Update dependent configurations and remove references
+5. **Validation**: Automated success validation with comprehensive health checks
+6. **Rollback Capability**: Multiple rollback options if recovery fails
 
 ### Safety and Recovery Architecture
 
 - **Safe Reset**: `task cluster:safe-reset` preserves OS, wipes only STATE/EPHEMERAL
 - **Emergency Recovery**: `task cluster:emergency-recovery` for systematic troubleshooting
+- **Aggressive Recovery**: Complete recovery framework with automated scripts and validation
 - **LLDPD Stability**: Integrated configuration prevents periodic reboot issues
 - **Phased Bootstrap**: Resumable process with clear failure points
 
@@ -346,6 +405,7 @@ graph TD
 - **Cilium**: Core CNI (Bootstrap) + BGP/LoadBalancer config (GitOps)
 - **Secret Management**: Initial K8s secrets (Bootstrap) + ExternalSecrets (GitOps)
 - **Monitoring**: Basic health checks (Bootstrap) + Full observability stack (GitOps)
+- **Recovery Systems**: Emergency procedures (Bootstrap) + Automated recovery (GitOps)
 
 ### Critical Dependencies
 
@@ -355,6 +415,7 @@ graph TD
 - **Pods → 1Password Connect**: Secret management requires pod networking
 - **Secrets → Flux**: GitOps needs credentials for Git repository access
 - **Flux → Everything Else**: GitOps manages all subsequent deployments
+- **Recovery Systems → All Components**: Emergency recovery capabilities for all systems
 
 ## Operational Patterns
 
@@ -363,11 +424,13 @@ graph TD
 - **Bootstrap Phase**: Node configuration, cluster networking, system-level changes
 - **GitOps Phase**: Applications, infrastructure services, operational configuration
 - **Emergency Override**: Direct kubectl/talosctl when GitOps is broken
+- **Recovery Operations**: Automated recovery scripts for over-engineered component issues
 
 ### Change Management
 
 - **Bootstrap Changes**: Update configuration files → regenerate → apply via tasks
 - **GitOps Changes**: Update manifests → commit to Git → Flux deploys automatically
-- **Rollback Procedures**: Git revert for GitOps, configuration restore for Bootstrap
+- **Emergency Changes**: Use aggressive recovery framework for problematic components
+- **Rollback Procedures**: Git revert for GitOps, configuration restore for Bootstrap, automated rollback for recovery operations
 
-This architecture enables both robust cluster operations and collaborative development workflows while maintaining clear operational boundaries and comprehensive safety procedures.
+This architecture enables both robust cluster operations and collaborative development workflows while maintaining clear operational boundaries, comprehensive safety procedures, and advanced emergency recovery capabilities.

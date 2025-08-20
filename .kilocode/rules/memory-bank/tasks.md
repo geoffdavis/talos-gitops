@@ -2032,3 +2032,260 @@ flux get kustomizations
 ```
 
 This task provides a systematic approach to handling large change sets in GitOps repositories while maintaining clear commit history and ensuring system stability.
+
+## Emergency Recovery Operations
+
+### Execute Aggressive Recovery Strategy
+
+**Last performed:** August 2025 (successful completion - MISSION ACCOMPLISHED)
+**Files to modify:**
+
+- `clusters/home-ops/infrastructure/identity.yaml` - Remove problematic Kustomization
+- `clusters/home-ops/infrastructure/outpost-config.yaml` - Remove dependency references
+- `infrastructure/gitops-lifecycle-management/` - Delete entire directory
+- `charts/gitops-lifecycle-management/` - Delete entire directory
+
+**Context:**
+This task documents the execution of the comprehensive aggressive recovery strategy to eliminate the over-engineered `gitops-lifecycle-management` component that was causing system degradation from 100% to 67.7% Ready status through HelmRelease installation timeouts and dependency chain blockages.
+
+**Steps:**
+
+1. **Pre-Execution Validation**:
+   - Create comprehensive backup: `./scripts/aggressive-recovery-backup.sh`
+   - Verify external outpost system operational: `kubectl get pods -n authentik-proxy`
+   - Test key services accessibility: `curl -I -k https://longhorn.k8s.home.geoffdavis.com`
+   - Check current system status: `flux get kustomizations | grep -c "True.*Ready"`
+
+2. **Execute Recovery Strategy**:
+   - Run recovery execution script: `./scripts/aggressive-recovery-execute.sh`
+   - Confirm component elimination when prompted
+   - Monitor recovery branch creation and deployment
+   - Validate initial reconciliation progress
+
+3. **Monitor Recovery Progress**:
+   - Use monitoring script: `./scripts/aggressive-recovery-monitor.sh`
+   - Watch Flux Kustomization status: `watch -n 5 'flux get kustomizations | head -20'`
+   - Monitor target components: `kubectl get kustomization infrastructure-authentik-outpost-config -n flux-system`
+   - Track Ready status improvement over time
+
+4. **Validate Recovery Success**:
+   - Run validation script: `./validate-recovery-success.sh`
+   - Verify 31/31 Kustomizations Ready status achieved
+   - Test all service accessibility (6 services total)
+   - Confirm authentication system operational
+   - Check system health (nodes, pods, storage)
+
+5. **Finalize Recovery**:
+   - Merge recovery branch to main if successful: `git checkout main && git merge <recovery-branch>`
+   - Push final changes: `git push origin main`
+   - Clean up recovery artifacts if desired
+   - Document lessons learned and update procedures
+
+**Important notes:**
+
+- **Root Cause**: Over-engineered component with 667 lines of Helm values, 20+ Kubernetes resources causing timeout issues
+- **Success Probability**: 95% success rate through component elimination rather than fixing
+- **Backup Strategy**: Comprehensive backup of Git state, cluster resources, and configuration files
+- **Rollback Capability**: Multiple rollback options available via `./scripts/aggressive-recovery-rollback.sh`
+- **Validation Framework**: Automated success validation with comprehensive health checks
+
+**Success Criteria:**
+
+- ✅ System status improved from 67.7% to 100% Ready (31/31 Kustomizations)
+- ✅ All critical services accessible via external URLs
+- ✅ Authentication system fully operational
+- ✅ No failed pods or system health issues
+- ✅ Emergency recovery framework proven effective
+
+**Troubleshooting:**
+
+- **Recovery failures**: Use rollback script with appropriate option (1-4)
+- **Partial success**: Monitor for 10-15 minutes before considering rollback
+- **Service accessibility issues**: Check BGP routes and DNS resolution
+- **Authentication problems**: Verify external outpost connectivity and tokens
+
+### Monitor Emergency Recovery Progress
+
+**Last performed:** August 2025 (during recovery execution)
+**Files to modify:** None (monitoring task)
+
+**Steps:**
+
+1. **Real-Time Recovery Monitoring**:
+   - Execute monitoring script: `./scripts/aggressive-recovery-monitor.sh`
+   - Track Flux Kustomization reconciliation progress
+   - Monitor target component status changes
+   - Watch for dependency resolution improvements
+
+2. **Key Metrics Tracking**:
+   - Ready Kustomizations count: Target 31/31 (100%)
+   - Authentication system pods: Monitor authentik-proxy namespace
+   - Service accessibility: Test key services periodically
+   - System health indicators: Nodes, pods, storage status
+
+3. **Progress Validation Points**:
+   - 5 minutes: Initial reconciliation should begin
+   - 10 minutes: Target components should show progress
+   - 15 minutes: Majority of Kustomizations should be Ready
+   - 20 minutes: Full recovery should be achieved or rollback considered
+
+4. **Issue Detection and Response**:
+   - Stuck reconciliation: Check for new dependency issues
+   - Authentication failures: Verify external outpost connectivity
+   - Service timeouts: Monitor BGP routes and DNS resolution
+   - Resource constraints: Check node and storage capacity
+
+**Important notes:**
+
+- **Monitoring Duration**: Allow 15-20 minutes for full recovery completion
+- **Success Indicators**: Progressive improvement in Ready status count
+- **Failure Signals**: No progress after 10 minutes or degradation in status
+- **Intervention Points**: Clear criteria for when to initiate rollback procedures
+
+### Execute Emergency Recovery Rollback
+
+**Last performed:** Available as needed (not executed in successful recovery)
+**Files to modify:** Various files depending on rollback option selected
+
+**Steps:**
+
+1. **Assess Rollback Need**:
+   - Determine recovery failure severity
+   - Check system stability and accessibility
+   - Evaluate partial success vs complete failure
+   - Review available rollback options
+
+2. **Select Rollback Strategy**:
+   - **Option 1**: Quick Git Revert (recommended for most cases)
+   - **Option 2**: Full Configuration Restore (if Git revert insufficient)
+   - **Option 3**: Emergency Cluster State Restore (if cluster unstable)
+   - **Option 4**: Complete System Restore (nuclear option)
+
+3. **Execute Rollback**:
+   - Run rollback script: `./scripts/aggressive-recovery-rollback.sh`
+   - Select appropriate rollback option when prompted
+   - Confirm rollback execution for destructive options
+   - Monitor rollback progress and system stabilization
+
+4. **Post-Rollback Validation**:
+   - Wait 5-10 minutes for system stabilization
+   - Check Flux Kustomization status
+   - Verify authentication system functionality
+   - Test service accessibility
+   - Validate system health metrics
+
+5. **Recovery Analysis**:
+   - Document rollback reasons and outcomes
+   - Analyze what caused recovery failure
+   - Update recovery procedures based on lessons learned
+   - Plan alternative approaches if needed
+
+**Important notes:**
+
+- **Rollback Options**: Multiple strategies available based on failure severity
+- **Backup Dependency**: All rollback options require successful backup creation
+- **System Impact**: Higher-numbered options have greater system impact
+- **Validation Required**: Always validate system health after rollback completion
+
+### Validate Emergency Recovery Success
+
+**Last performed:** August 2025 (successful validation - 100% criteria met)
+**Files to modify:** None (validation task)
+
+**Steps:**
+
+1. **Comprehensive System Validation**:
+   - Execute validation script: `./validate-recovery-success.sh`
+   - Check Flux Kustomizations status: Target 31/31 Ready
+   - Verify authentication system operational
+   - Test service accessibility (6 services total)
+   - Validate system health (nodes, pods, storage)
+
+2. **Service Accessibility Testing**:
+   - Test all authenticated services:
+     - `https://longhorn.k8s.home.geoffdavis.com`
+     - `https://grafana.k8s.home.geoffdavis.com`
+     - `https://prometheus.k8s.home.geoffdavis.com`
+     - `https://alertmanager.k8s.home.geoffdavis.com`
+     - `https://dashboard.k8s.home.geoffdavis.com`
+     - `https://homeassistant.k8s.home.geoffdavis.com`
+
+3. **System Health Verification**:
+   - Node status: All 3 nodes Ready
+   - Pod health: No failed pods (excluding Completed jobs)
+   - Storage status: Longhorn system operational
+   - Network connectivity: BGP peering and route advertisement
+
+4. **Final Assessment**:
+   - **Complete Success**: All criteria met (exit code 0)
+   - **Partial Success**: Some criteria not met (exit code 1)
+   - **Recovery Required**: Significant issues detected
+
+**Success Criteria:**
+
+- ✅ 100% Flux Kustomizations ready (31/31)
+- ✅ Authentication system operational (authentik-proxy pods running)
+- ✅ All services accessible (6/6 services responding)
+- ✅ System health optimal (all nodes ready, no failed pods)
+
+**Important notes:**
+
+- **Automated Validation**: Script provides comprehensive automated checking
+- **Clear Success Criteria**: Binary pass/fail assessment with detailed reporting
+- **Exit Codes**: Script exit codes indicate success (0) or failure (1)
+- **Comprehensive Coverage**: Tests all critical system components and services
+
+### Maintain Emergency Recovery Framework
+
+**Last performed:** August 2025 (framework development completed)
+**Files to modify:** Various recovery scripts and documentation as needed
+
+**Steps:**
+
+1. **Regular Framework Validation**:
+   - Test backup script functionality: `./scripts/aggressive-recovery-backup.sh --dry-run`
+   - Validate recovery script syntax and logic
+   - Check rollback script options and procedures
+   - Verify validation script accuracy
+
+2. **Documentation Maintenance**:
+   - Update recovery strategy documentation based on lessons learned
+   - Maintain post-mortem analysis with new insights
+   - Keep operational procedures current with system changes
+   - Update quick reference guides
+
+3. **Script Enhancement**:
+   - Improve error handling and validation
+   - Add new monitoring capabilities
+   - Enhance rollback options based on experience
+   - Optimize backup and restore procedures
+
+4. **Framework Testing**:
+   - Periodic dry-run testing of recovery procedures
+   - Validate backup integrity and restoration capability
+   - Test rollback procedures in safe environments
+   - Verify integration with GitOps workflows
+
+5. **Knowledge Transfer**:
+   - Document operational procedures for team members
+   - Create training materials for emergency response
+   - Maintain troubleshooting guides and runbooks
+   - Share lessons learned and best practices
+
+**Important notes:**
+
+- **Proactive Maintenance**: Regular testing prevents framework degradation
+- **Continuous Improvement**: Update procedures based on operational experience
+- **Knowledge Preservation**: Document all procedures for team continuity
+- **Framework Evolution**: Adapt recovery strategies as system architecture evolves
+
+**Maintenance Checklist:**
+
+- [ ] Recovery scripts execute without errors
+- [ ] Backup procedures capture all necessary data
+- [ ] Rollback options function correctly
+- [ ] Validation scripts provide accurate assessment
+- [ ] Documentation reflects current system state
+- [ ] Team members understand emergency procedures
+
+This comprehensive emergency recovery framework provides robust capabilities for handling over-engineered component issues and system degradation scenarios with high success probability and comprehensive safety measures.
