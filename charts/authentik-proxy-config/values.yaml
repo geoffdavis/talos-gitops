@@ -74,7 +74,7 @@ hooks:
   timeout: 900
   retries: 3
   backoff: 15
-  image: "alpine:3.20"
+  image: "alpine:3.22"
   preInstallTokenSetup:
     enabled: false # Disable problematic pre-upgrade hook that requires 1Password Connect
 
