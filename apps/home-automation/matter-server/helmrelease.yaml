@@ -37,7 +37,7 @@ spec:
     # Container image configuration
     image:
       repository: ghcr.io/home-assistant-libs/python-matter-server
-      tag: "8.0.0"
+      tag: "8.1.0"
       pullPolicy: IfNotPresent
 
     # Required network interface for Matter/Thread device discovery
