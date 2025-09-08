@@ -331,7 +331,7 @@ spec:
 
       containers:
         - name: home-assistant
-          image: ghcr.io/home-assistant/home-assistant:2025.8
+          image: ghcr.io/home-assistant/home-assistant:2025.9
           imagePullPolicy: IfNotPresent
 
           # Container security context - Home Assistant needs root for s6-overlay
