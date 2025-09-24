@@ -59,7 +59,7 @@ spec:
               echo "Authentik server is ready!"
       containers:
         - name: setup-enhanced-token
-          image: ghcr.io/goauthentik/server:2025.8.1
+          image: ghcr.io/goauthentik/server:2025.8.3
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
