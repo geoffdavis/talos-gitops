@@ -153,7 +153,7 @@ spec:
           serviceAccountName: authentik-token-rotation
           containers:
             - name: health-check
-              image: curlimages/curl:8.15.0
+              image: curlimages/curl:8.16.0
               securityContext:
                 allowPrivilegeEscalation: false
                 runAsNonRoot: true
