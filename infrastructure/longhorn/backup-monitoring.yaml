@@ -79,7 +79,7 @@ spec:
           serviceAccountName: backup-verifier
           containers:
             - name: backup-verifier
-              image: alpine/k8s:1.34.0
+              image: alpine/k8s:1.34.1
               command: ["/bin/bash", "/scripts/verify-backups.sh"]
               env:
                 - name: NAMESPACE
