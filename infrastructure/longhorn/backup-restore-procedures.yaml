@@ -208,7 +208,7 @@ spec:
           serviceAccountName: backup-tester
           containers:
             - name: backup-tester
-              image: alpine/k8s:1.34.0
+              image: alpine/k8s:1.34.1
               command: ["/bin/bash", "/scripts/test-restore.sh"]
               env:
                 - name: NAMESPACE
