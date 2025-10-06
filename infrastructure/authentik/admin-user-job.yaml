@@ -46,7 +46,7 @@ spec:
               echo "Authentik server is ready!"
       containers:
         - name: create-admin-user
-          image: ghcr.io/goauthentik/server:2025.8.3
+          image: ghcr.io/goauthentik/server:2025.8.4
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

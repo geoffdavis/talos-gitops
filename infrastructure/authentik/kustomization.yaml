@@ -36,7 +36,7 @@ commonLabels:
 
 images:
   - name: ghcr.io/goauthentik/server
-    newTag: "2025.8.3"
+    newTag: "2025.8.4"
 
 generatorOptions:
   disableNameSuffixHash: true
