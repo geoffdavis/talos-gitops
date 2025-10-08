@@ -14,7 +14,7 @@ cilium-cli = "0.16.16"
 # renovate: datasource=github-releases depName=mikefarah/yq
 yq = "4.47.2"
 # renovate: datasource=github-releases depName=jqlang/jq
-jq = "1.7.1"
+jq = "1.8.1"
 # renovate: datasource=github-releases depName=go-task/task
 task = "3.38.0"
 # renovate: datasource=github-releases depName=budimanjojo/talhelper
