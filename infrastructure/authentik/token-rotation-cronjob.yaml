@@ -42,7 +42,7 @@ spec:
           serviceAccountName: authentik-token-rotation
           containers:
             - name: token-rotation
-              image: python:3.13-slim
+              image: python:3.14-slim
               securityContext:
                 allowPrivilegeEscalation: false
                 runAsNonRoot: true

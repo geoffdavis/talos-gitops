@@ -60,7 +60,7 @@ spec:
               exit 1
       containers:
         - name: fix-oauth2-redirects
-          image: python:3.13-slim
+          image: python:3.14-slim
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
