@@ -24,7 +24,7 @@ spec:
         fsGroup: 65534
       containers:
         - name: webhook
-          image: ghcr.io/kashalls/external-dns-unifi-webhook:v0.6.2
+          image: ghcr.io/kashalls/external-dns-unifi-webhook:v0.7.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
