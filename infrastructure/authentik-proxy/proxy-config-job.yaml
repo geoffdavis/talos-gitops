@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: wait-for-authentik
-          image: curlimages/curl:8.16.0
+          image: curlimages/curl:8.17.0
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -60,7 +60,7 @@ spec:
               exit 1
       containers:
         - name: configure-external-outpost
-          image: curlimages/curl:8.16.0
+          image: curlimages/curl:8.17.0
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
