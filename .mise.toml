@@ -6,7 +6,7 @@ talosctl = "1.11.3"
 # renovate: datasource=github-releases depName=fluxcd/flux2
 flux2 = "2.7.3"
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
-kustomize = "5.7.1"
+kustomize = "5.8.0"
 # renovate: datasource=github-releases depName=helm/helm
 helm = "3.19.0"
 # renovate: datasource=github-releases depName=cilium/cilium-cli
