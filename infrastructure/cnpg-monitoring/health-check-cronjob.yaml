@@ -41,7 +41,7 @@ spec:
             fsGroup: 1000
           containers:
             - name: health-check
-              image: ghcr.io/cloudnative-pg/cloudnative-pg:1.27.1
+              image: ghcr.io/cloudnative-pg/cloudnative-pg:1.28.0
               imagePullPolicy: IfNotPresent
               securityContext:
                 allowPrivilegeEscalation: false
@@ -140,7 +140,7 @@ spec:
             fsGroup: 1000
           containers:
             - name: backup-restore-test
-              image: ghcr.io/cloudnative-pg/cloudnative-pg:1.27.1
+              image: ghcr.io/cloudnative-pg/cloudnative-pg:1.28.0
               imagePullPolicy: IfNotPresent
               securityContext:
                 allowPrivilegeEscalation: false
@@ -240,7 +240,7 @@ spec:
             fsGroup: 1000
           containers:
             - name: performance-monitor
-              image: ghcr.io/cloudnative-pg/cloudnative-pg:1.27.1
+              image: ghcr.io/cloudnative-pg/cloudnative-pg:1.28.0
               imagePullPolicy: IfNotPresent
               securityContext:
                 allowPrivilegeEscalation: false
