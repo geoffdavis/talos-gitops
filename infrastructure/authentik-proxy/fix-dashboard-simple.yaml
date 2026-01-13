@@ -12,7 +12,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: fix-dashboard
-          image: curlimages/curl:8.17.0
+          image: curlimages/curl:8.18.0
           env:
             - name: AUTHENTIK_TOKEN
               valueFrom:

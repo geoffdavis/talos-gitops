@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: wait-for-authentik
-          image: curlimages/curl:8.17.0
+          image: curlimages/curl:8.18.0
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
