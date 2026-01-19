@@ -8,7 +8,7 @@ flux2 = "2.7.5"
 # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
 kustomize = "5.8.0"
 # renovate: datasource=github-releases depName=helm/helm
-helm = "4.0.4"
+helm = "4.0.5"
 # renovate: datasource=github-releases depName=cilium/cilium-cli
 cilium-cli = "0.16.16"
 # renovate: datasource=github-releases depName=mikefarah/yq
