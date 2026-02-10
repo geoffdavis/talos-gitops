@@ -23,7 +23,7 @@ talhelper = "latest"
 node = "24.13.0"
 cloudflared = "2025.7.0"
 # renovate: datasource=github-releases depName=python/cpython
-python = "3.14.2"
+python = "3.14.3"
 yamllint = "latest"
 # Pre-commit tools
 pre-commit = "latest"
