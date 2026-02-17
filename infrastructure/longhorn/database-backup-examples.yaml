@@ -232,7 +232,7 @@ spec:
           serviceAccountName: database-backup
           containers:
             - name: database-backup
-              image: alpine/k8s:1.35.0
+              image: alpine/k8s:1.35.1
               command:
                 - /bin/bash
                 - -c
