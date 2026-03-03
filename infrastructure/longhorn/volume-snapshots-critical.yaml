@@ -63,7 +63,7 @@ spec:
           serviceAccountName: snapshot-creator
           containers:
             - name: snapshot-creator
-              image: alpine/k8s:1.35.1
+              image: alpine/k8s:1.35.2
               command:
                 - /bin/bash
                 - -c
